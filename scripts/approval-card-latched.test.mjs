@@ -349,7 +349,7 @@ test("the full published suspended payload (latched AND suspended) hides them", 
 test("NEGATIVE CONTROL: an unlatched approval still offers both links and they still send their commands", async () => {
 	sent.length = 0;
 	await render(UNLATCHED_GATE);
-	const session = buttonNamed("Set auto for this session");
+	const session = buttonNamed("Auto-approve this session");
 	const all = buttonNamed("Set auto for all sessions");
 	assert.ok(session && all, "both links render on an unlatched card");
 	assert.equal(
@@ -381,9 +381,9 @@ test("NEGATIVE CONTROL: bridge flags that are explicitly false or absent leave t
 		taint_raised: false,
 		bridge_latched: false,
 	});
-	assert.ok(buttonNamed("Set auto for this session"));
+	assert.ok(buttonNamed("Auto-approve this session"));
 	// taint_raised alone does not latch: it says why THIS call asked, not that
 	// the conversation is latched.
 	await render({ ...UNLATCHED_GATE, taint_raised: true });
-	assert.ok(buttonNamed("Set auto for this session"));
+	assert.ok(buttonNamed("Auto-approve this session"));
 });

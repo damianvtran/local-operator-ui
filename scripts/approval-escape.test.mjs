@@ -340,7 +340,7 @@ test("a saved default with a refused live command reports the half that did not 
 
 test("the handles are subordinate text buttons with full names", () => {
 	const html = renderControls({});
-	assert.match(html, /Set auto for this session/);
+	assert.match(html, /Auto-approve this session/);
 	assert.match(html, /Set auto for all sessions/);
 	// The reserved status slot exists even when empty, so nothing reflows later.
 	assert.match(html, /data-approval-escape-status/);
@@ -356,7 +356,7 @@ test("the handles are subordinate text buttons with full names", () => {
 test("a policy call disables only its own handles", () => {
 	const html = renderControls({ busy: true });
 	assert.match(
-		buttonOpeningTag(html, "Set auto for this session"),
+		buttonOpeningTag(html, "Auto-approve this session"),
 		/ disabled(?:=""|\s|>)/,
 	);
 	assert.match(
@@ -402,7 +402,7 @@ test("the reserved slot carries the confirmation or the refusal", () => {
 	assert.match(refused, /text-danger/);
 	// The failure does not leave its own handles disabled either.
 	assert.doesNotMatch(
-		buttonOpeningTag(refused, "Set auto for this session"),
+		buttonOpeningTag(refused, "Auto-approve this session"),
 		/ disabled(?:=""|\s|>)/,
 	);
 	assert.equal(APPROVAL_ESCAPE_COPY.unchanged("x"), "Unchanged: x");
@@ -448,7 +448,7 @@ test("the policy line names the effective mode and its provenance", () => {
 	assert.match(line, /Approvals: Ask — session override; global Auto\./);
 	// Above the handles, in document order.
 	assert.ok(
-		line.indexOf("Approvals: Ask") < line.indexOf("Set auto for this session"),
+		line.indexOf("Approvals: Ask") < line.indexOf("Auto-approve this session"),
 	);
 	assert.doesNotMatch(renderControls({}), /data-approval-policy-line/);
 });
@@ -465,7 +465,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.match(html, /Set auto for this session/);
+	assert.match(html, /Auto-approve this session/);
 	assert.match(html, /Approvals: Ask — session override; global Auto\./);
 	assert.doesNotMatch(
 		buttonOpeningTag(html, "Approve"),
@@ -481,7 +481,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.doesNotMatch(noSession, /Set auto for this session/);
+	assert.doesNotMatch(noSession, /Auto-approve this session/);
 	assert.doesNotMatch(noSession, /data-approval-policy-line/);
 
 	// The same omission for a gate that CARRIES the fields with the core's
@@ -497,7 +497,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.match(notStated, /Set auto for this session/);
+	assert.match(notStated, /Auto-approve this session/);
 	assert.doesNotMatch(notStated, /data-approval-policy-line/);
 });
 
@@ -569,7 +569,7 @@ test("the pressed handle says it is working, then says what now holds", () => {
 		buttonOpeningTag(pending, "Setting auto…"),
 		/data-approval-escape-all/,
 	);
-	assert.match(pending, /Set auto for this session/);
+	assert.match(pending, /Auto-approve this session/);
 
 	/*
 	 * D1: the in-flight handle's label IS the status, so it is refused by

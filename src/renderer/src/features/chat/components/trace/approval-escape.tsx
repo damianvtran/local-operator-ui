@@ -91,7 +91,15 @@ import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 
 /** Which gate the press loosens: the live one, or the saved default. */
-export type ApprovalEscapeTarget = "session" | "all";
+/**
+ * `ask` is the way BACK (operator request, 2026-11-24, from Ryan Copp's
+ * feedback): a one-click loosening the operator cannot undo with one click is
+ * not reversible in any sense they can use, so once this session is on auto the
+ * card offers "Always ask", which sends `approvals ask` through the same owner
+ * route. `ask` is the runtime's canonical token (`serving.py:_approvals_slash`
+ * accepts `ask`/`on`/`prompt`; `desktop_catalogues.py` lists `auto`/`ask`).
+ */
+export type ApprovalEscapeTarget = "session" | "all" | "ask";
 
 /**
  * The effective approval modes the policy line can name. `""` is the core's
@@ -164,6 +172,9 @@ export function policyAfterSave(
 		case "default-saved-session-failed":
 			// The session part did not apply: only the default is known to have moved.
 			return { ...gate, globalMode: "auto" };
+		case "ask-saved":
+			// The session made its own choice again, this time to ask.
+			return { ...gate, mode: "ask", provenance: "session" };
 		default:
 			return gate;
 	}
@@ -175,6 +186,8 @@ export type ApprovalEscapeStatus =
 	| { kind: "session-saved" }
 	| { kind: "default-saved" }
 	| { kind: "default-saved-session-failed"; detail: string }
+	/** `approvals ask` landed: this session asks again before every tool. */
+	| { kind: "ask-saved" }
 	| { kind: "refused"; detail: string };
 
 /** The two doors a press can use; a test substitutes both. */
@@ -199,12 +212,17 @@ export type ApprovalEscapeOutcome =
  */
 const NO_GATE_NOTICE = "exec uses its original headless approval gate";
 
-/** Run `approvals auto` against the live gate and classify the receipt. */
-async function loosenLiveGate(
+/**
+ * Run `approvals <mode>` against the live gate and classify the receipt. The
+ * tightening direction (`ask`) reads its receipt by the same rule: a notice is
+ * the mode change, anything else is a refusal whose text is the detail.
+ */
+async function setLiveGate(
 	ports: ApprovalEscapePorts,
+	mode: "auto" | "ask" = "auto",
 ): Promise<{ ok: true } | { ok: false; detail: string }> {
 	try {
-		const run = await ports.runCommand("approvals", "auto");
+		const run = await ports.runCommand("approvals", mode);
 		const reported =
 			run.outcome && "text" in run.outcome ? run.outcome.text : run.result.text;
 		const text = reported.trim() || run.result.text;
@@ -252,8 +270,8 @@ export async function runApprovalEscape(
 	target: ApprovalEscapeTarget,
 	ports: ApprovalEscapePorts,
 ): Promise<ApprovalEscapeOutcome> {
-	if (target === "session") {
-		const live = await loosenLiveGate(ports);
+	if (target === "session" || target === "ask") {
+		const live = await setLiveGate(ports, target === "ask" ? "ask" : "auto");
 		return live.ok
 			? { kind: "saved" }
 			: { kind: "unchanged", detail: live.detail };
@@ -272,7 +290,7 @@ export async function runApprovalEscape(
 	} catch (error) {
 		return { kind: "unchanged", detail: errorText(error) };
 	}
-	const live = await loosenLiveGate(ports);
+	const live = await setLiveGate(ports, "auto");
 	return live.ok
 		? { kind: "saved" }
 		: { kind: "default-only", detail: live.detail };
@@ -285,6 +303,15 @@ export async function runApprovalEscape(
 export const APPROVAL_ESCAPE_COPY = {
 	setSession: () => t("ui.chat.approval.escape.set_session"),
 	setAll: () => t("ui.chat.approval.escape.set_all"),
+	alwaysAsk: () => t("ui.chat.approval.escape.always_ask"),
+	askSaved: () => t("ui.chat.approval.escape.ask_saved"),
+	/**
+	 * What auto does NOT switch off. The operator's condition for the one-click
+	 * switch was that the copy says guardrails still bind: auto skips the
+	 * approval prompt only, while guardrail refusals and the dangerous-delete
+	 * review are separate gates the runtime keeps applying in auto mode.
+	 */
+	guardrailsNote: () => t("ui.chat.approval.escape.guardrails_note"),
 	sessionSaved: () => t("ui.chat.approval.escape.session_saved"),
 	defaultSaved: () => t("ui.chat.approval.escape.default_saved"),
 	/**
@@ -422,6 +449,8 @@ const statusText = (status: ApprovalEscapeStatus): string => {
 			return APPROVAL_ESCAPE_COPY.defaultSaved();
 		case "default-saved-session-failed":
 			return APPROVAL_ESCAPE_COPY.defaultSavedSessionFailed(status.detail);
+		case "ask-saved":
+			return APPROVAL_ESCAPE_COPY.askSaved();
 		case "refused":
 			return APPROVAL_ESCAPE_COPY.unchanged(status.detail);
 		default:
@@ -462,6 +491,8 @@ export function approvalEscapeHandleState(
 	 * offers a press that would do nothing. A default-only save did not move the
 	 * session, so the session handle stays pressable there.
 	 */
+	// "Always ask" is never a finished state: it stays pressable while shown.
+	if (which === "ask") return "idle";
 	if (status.kind === "default-saved") return "done";
 	if (status.kind === "session-saved" && which === "session") return "done";
 	if (status.kind === "default-saved-session-failed" && which === "all")
@@ -473,6 +504,7 @@ const handleLabel = (
 	which: ApprovalEscapeTarget,
 	state: "idle" | "pending" | "done",
 ): string => {
+	if (which === "ask") return APPROVAL_ESCAPE_COPY.alwaysAsk();
 	if (state === "pending") return t("ui.recovery.approval.setting_auto");
 	if (state === "done")
 		return which === "all"
@@ -495,9 +527,18 @@ export const ApprovalEscapeControls = ({
 	policyLine = null,
 	onSetSession,
 	onSetAll,
+	onAlwaysAsk,
+	showAlwaysAsk = false,
 	compactIdle = false,
 	className,
 }: {
+	/**
+	 * Offer "Always ask" — only while this session is known to be on auto, so the
+	 * idle card keeps its two handles and the way back appears exactly when there
+	 * is something to go back from.
+	 */
+	showAlwaysAsk?: boolean;
+	onAlwaysAsk?: () => void;
 	busy?: boolean;
 	status?: ApprovalEscapeStatus;
 	/**
@@ -537,6 +578,7 @@ export const ApprovalEscapeControls = ({
 	}, [status]);
 	const sessionState = approvalEscapeHandleState("session", pending, status);
 	const allState = approvalEscapeHandleState("all", pending, status);
+	const askState = approvalEscapeHandleState("ask", pending, status);
 	return (
 		<div
 			className={cn("flex flex-col gap-1", className)}
@@ -594,7 +636,30 @@ export const ApprovalEscapeControls = ({
 					) : null}
 					{handleLabel("all", allState)}
 				</button>
+				{showAlwaysAsk && onAlwaysAsk ? (
+					<button
+						type="button"
+						data-approval-escape-ask=""
+						data-state={askState}
+						disabled={busy && askState !== "pending"}
+						aria-disabled={askState === "pending" || undefined}
+						aria-busy={askState === "pending" || undefined}
+						aria-describedby={statusId}
+						onClick={() => {
+							if (!busy) onAlwaysAsk();
+						}}
+						className={cn(
+							ESCAPE_LINK,
+							askState === "pending" && PENDING_HANDLE,
+						)}
+					>
+						{handleLabel("ask", askState)}
+					</button>
+				) : null}
 			</div>
+			<p data-approval-guardrails-note="" className="text-ink-muted text-meta">
+				{APPROVAL_ESCAPE_COPY.guardrailsNote()}
+			</p>
 			{/*
 			 * A reserved slot rather than a line that appears: a confirmation that
 			 * pushes the hint down moves two rows the reader was aiming at, and a
@@ -715,9 +780,11 @@ export const ApprovalEscape = ({
 				});
 				setStatus(
 					outcome.kind === "saved"
-						? which === "session"
-							? { kind: "session-saved" }
-							: { kind: "default-saved" }
+						? which === "ask"
+							? { kind: "ask-saved" }
+							: which === "session"
+								? { kind: "session-saved" }
+								: { kind: "default-saved" }
 						: outcome.kind === "default-only"
 							? {
 									kind: "default-saved-session-failed",
@@ -733,15 +800,16 @@ export const ApprovalEscape = ({
 		[command, editDefault],
 	);
 
+	const policy = policyAfterSave(status, {
+		mode: approvalMode,
+		provenance: approvalProvenance,
+		globalMode: approvalGlobalMode,
+	});
 	return (
 		<ApprovalEscapeControls
-			policyLine={approvalPolicyLine(
-				policyAfterSave(status, {
-					mode: approvalMode,
-					provenance: approvalProvenance,
-					globalMode: approvalGlobalMode,
-				}),
-			)}
+			policyLine={approvalPolicyLine(policy)}
+			showAlwaysAsk={policy.mode === "auto"}
+			onAlwaysAsk={() => void choose("ask")}
 			busy={target !== null}
 			pending={target}
 			status={status}
