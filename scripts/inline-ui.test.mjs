@@ -384,8 +384,10 @@ test("list items on either side of a widget paint separately without losing whol
 				markup,
 			);
 			if (tag === "ol") {
-				assert.ok(markup.includes('<ol start="3">'));
-				assert.ok(markup.includes('<ol start="8">'));
+				// Attribute-order-agnostic: every list also carries its own
+				// `dir="auto"` (i18n census N2, `rehype-block-direction.ts`).
+				assert.match(markup, /<ol\b[^>]*\bstart="3"[^>]*>/);
+				assert.match(markup, /<ol\b[^>]*\bstart="8"[^>]*>/);
 			}
 			assert.ok(markup.includes('href="https://example.test/report"'));
 		}

@@ -682,6 +682,48 @@ export function formatList(items: readonly string[], locale?: string): string {
 }
 
 /**
+ * The locale's bare list-item SEPARATOR, with no conjunction: `", "` (en, es,
+ * fr, ru, vi, hi), `"、"` (zh-CN), `"، "` (ur).
+ *
+ * WHY NOT `formatList`. Some sentences already carry their own conjunction in
+ * the catalogue ("More providers: {providers} and {last}", translated with the
+ * locale's "and"), so the code may only supply the separator between the
+ * leading items; `formatList` would add a second, locale-chosen "and"/"y"/"और"
+ * where CLDR spells the narrow list with a word. Others append a clause to an
+ * accessible name one fragment at a time (the sidebar row's `sr-only`
+ * ", opened by coder"), where there is no list to hand the formatter at all.
+ * Both used to hard-code an ASCII `", "`, which put a Latin comma inside Urdu
+ * and Chinese text (i18n census N3).
+ *
+ * WHERE THE STRING COMES FROM. CLDR's own list data, not a table here: the
+ * literal between the 2nd and 3rd items of a four-item narrow conjunction is
+ * CLDR's `middle` pattern, which never contains the conjunction word (that
+ * lives in `end`, and in `2`/`start` for some locales - es "a y b"). Measured
+ * on Node 24's ICU: en/es/fr/ru/vi/hi `", "`, zh-CN `"、"`, ur `"، "`; en is
+ * therefore byte-identical to the literal it replaces.
+ */
+const listSeparators = new Map<string, string>();
+
+export function listSeparator(locale?: string): string {
+	const tag = locale ?? currentLocale();
+	let separator = listSeparators.get(tag);
+	if (separator === undefined) {
+		const literals = new Intl.ListFormat(tag, {
+			type: "conjunction",
+			style: "narrow",
+		})
+			.formatToParts(["a", "b", "c", "d"])
+			.filter((part) => part.type === "literal");
+		// Four items always yield three literals; the fallback only guards an
+		// engine without CLDR list data, where English punctuation is the
+		// least-bad answer rather than items run together.
+		separator = literals[1]?.value ?? ", ";
+		listSeparators.set(tag, separator);
+	}
+	return separator;
+}
+
+/**
  * The clause separator of a sentence that strings whole clauses together
  * (`"a; b"`): ASCII `; ` for most languages, the full-width `；` for Chinese
  * (no following space) and the Arabic-script `؛ ` for Urdu.

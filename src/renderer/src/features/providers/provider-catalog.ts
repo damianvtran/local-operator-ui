@@ -22,7 +22,7 @@ import type {
 	DesktopProvider,
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
+import { listSeparator, t } from "@shared/i18n";
 
 /*
  * The patterns this module matches, hoisted so each is compiled once rather
@@ -148,11 +148,21 @@ export function moreProvidersSummary(
 		}
 	}
 	const others = cloud.length - named;
+	/*
+	 * THE SEPARATOR IS THE LOCALE'S, THE "AND" IS THE CATALOGUE'S. Both sentences
+	 * below spell their own conjunction in each translation ("{providers} and
+	 * {last}", "{providers} اور {last}"), so the code supplies only the comma
+	 * between the leading names - `listSeparator`, not `formatList`, which would
+	 * add a second "and" where CLDR's narrow list uses a word (hi, es). A literal
+	 * ", " here put a Latin comma inside the Urdu onboarding sentence (i18n
+	 * census N3); en stays byte-identical.
+	 */
+	const separator = listSeparator();
 	if (parts.length === 0)
 		return t("ui.providers.provider_catalog.more_providers");
 	if (others > 0)
 		return t("ui.providers.provider_catalog.more_providers_and", {
-			providers: parts.join(", "),
+			providers: parts.join(separator),
 			count: others,
 		});
 	if (parts.length === 1)
@@ -160,7 +170,7 @@ export function moreProvidersSummary(
 			provider: parts[0],
 		});
 	return t("ui.providers.provider_catalog.more_providers_and_variant_42", {
-		providers: parts.slice(0, -1).join(", "),
+		providers: parts.slice(0, -1).join(separator),
 		last: parts[parts.length - 1],
 	});
 }

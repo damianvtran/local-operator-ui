@@ -231,10 +231,22 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					 * or resting fill on any route; `text-ink` keeps the label the weight
 					 * it had on Chat (ghost's own default is `ink-muted`).
 					 */
+					/*
+					 * THE LABEL WRAPS AND THE BUTTON GROWS (i18n census L1). The base
+					 * Button is `whitespace-nowrap` at a fixed `h-8`, which suits a
+					 * one-word action but not this sentence-length one: ru's
+					 * "Установить всех встроенных агентов" ran past both edges of the
+					 * sidebar-width button. `h-auto` + `min-h-8` keeps the 32 px control
+					 * height whenever the label fits on one line (13 px x 1.5 line
+					 * height + 2 x 6 px padding = 31.5 px, so en is unchanged), and lets
+					 * a longer translation take a second line inside the button;
+					 * `text-balance` evens the two lines out. The fix is layout, not
+					 * copy: the translation is the translator's.
+					 */
 					<Button
 						ref={actionRef}
 						variant="ghost"
-						className="w-full text-ink"
+						className="h-auto min-h-8 w-full whitespace-normal py-1.5 text-balance text-center text-ink"
 						onClick={() => void run()}
 					>
 						{t("ui.agents.starters.action.all_builtins")}
