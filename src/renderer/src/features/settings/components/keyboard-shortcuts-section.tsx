@@ -233,6 +233,9 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					 * even after a wording pass.
 					 */
 					data-shortcut-action={action.id}
+					/* Marked for the page's Esc handler (`settings-escape.ts`): the recorder
+					   owns a press that cancels it, and the field stops the bubble below. */
+					data-shortcut-recorder=""
 					ref={fieldRef}
 					className={cn(
 						"w-52",
@@ -275,6 +278,15 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 								!event.altKey &&
 								!event.shiftKey)
 						) {
+							/*
+							 * ESC STOPS HERE (the page's close handler is an ancestor). The press is
+							 * the recorder's cancel, not a request to leave Settings - and Enter,
+							 * which also ends the edit, is left to bubble because it is still the
+							 * composer's plain send elsewhere in the page.
+							 */
+							if (event.key === "Escape" || event.key === "Esc") {
+								event.stopPropagation();
+							}
 							setRecording(false);
 							setRefusal(null);
 							return;

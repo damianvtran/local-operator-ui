@@ -60,7 +60,7 @@ import {
 	User,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FC, RefObject } from "react";
+import type { FC, ReactNode, RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
@@ -112,6 +112,7 @@ import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { NotificationsSection } from "./notifications-section";
 import { RadientAccountSection } from "./radient-account-section";
+import { SettingsCloseChrome } from "./settings-close-surface";
 import {
 	SettingsSearch,
 	type SettingsSearchHandle,
@@ -1043,6 +1044,59 @@ export const SettingsPage: FC = () => {
 	 * `RadientAccountSection` renders its own waiting state and its own failure
 	 * copy - and it still decides the two profile fields' read-only bit below.
 	 */
+	/*
+	 * THE PAGE-LEVEL STATES STILL CARRY THE WAY OUT (round 1: D2). While the
+	 * config read is out, fails, or settles empty, the page renders a state
+	 * instead of its surface - and those were the three states with no X and no
+	 * Esc, so the error case, the one where a reader most wants out, showed the
+	 * control missing and then appearing when the config arrived. The same
+	 * surface (button + Esc scope) now wraps all of them.
+	 */
+	/*
+	 * THE COLUMN THAT WEARS THE PAD (round 4: the merge gate's tree-wide guard,
+	 * `scripts/lane-leading.test.mjs`, reads this file). `panel-flush` moves the
+	 * root to y0 and pads NOTHING, so the pad must be visible in the same file as
+	 * the root it belongs to - a reader here has to see where the first row's
+	 * clearance below the lane comes from. Both the populated page and the three
+	 * page-level states render through this one box; the button and the Esc scope
+	 * ride inside it from `settings-close-surface.tsx`.
+	 *
+	 * THE MARKER IS ON THIS COLUMN, NOT ON THE SCROLLER: the root is
+	 * `data-glass-split`, so under window glass the root and `<main>` paint
+	 * nothing and `canvas-content` alone paints the canvas. The marker used to
+	 * sit on the `panel-scroll` scroller, whose pad is a MARGIN, so the painted
+	 * box began below the strip and the desktop showed through above it. With
+	 * `panel-top-pad` here the box that pads is the box that paints, the same
+	 * shape as Library and Agents; the scroller inside starts below the padding,
+	 * so its clip is still the content edge and scrolled text never paints into
+	 * the strip. `relative` is the close button's containing block.
+	 */
+	const contentColumn = (content: ReactNode) => (
+		<div
+			data-glass-region="canvas-content"
+			className="panel-top-pad relative flex min-h-0 min-w-0 flex-1 flex-col"
+		>
+			<SettingsCloseChrome />
+			{content}
+		</div>
+	);
+
+	const stateSurface = (content: ReactNode) => (
+		/*
+		 * THE SAME ROOT THE POPULATED PAGE HAS (round 2: D7/M5). Without
+		 * `panel-flush` the shell's top pad stayed above the column and the column
+		 * added its own on top - the states sat 32px low, the X jumped up when the
+		 * config arrived, and the ground showed three tones under window glass.
+		 */
+		<div
+			data-glass-region="canvas"
+			data-glass-split=""
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
+		>
+			{contentColumn(content)}
+		</div>
+	);
+
 	const isLoading = isConfigLoading;
 	/*
 	 * The account read's own state, from ONE classification (`accountRead` in
@@ -1088,7 +1142,7 @@ export const SettingsPage: FC = () => {
 	// hold the page on a spinner when the settings it is loading can no longer
 	// arrive. That ordering is what makes the recovery affordance reachable.
 	if (configError) {
-		return (
+		return stateSurface(
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
 				{/* `warning`, matching the providers grid: one fault must not render
 				    at two severities depending on which screen reports it, and a
@@ -1131,12 +1185,12 @@ export const SettingsPage: FC = () => {
 						)}
 					</div>
 				</Alert>
-			</div>
+			</div>,
 		);
 	}
 
 	if (isLoading) {
-		return (
+		return stateSurface(
 			/*
 			 * One live region around the whole waiting stack, so the caption IS the
 			 * announcement when it appears.
@@ -1185,12 +1239,12 @@ export const SettingsPage: FC = () => {
 						)}
 					</p>
 				)}
-			</div>
+			</div>,
 		);
 	}
 
 	if (!config) {
-		return (
+		return stateSurface(
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
 				{/* Settled with no error and no config: nothing classified it, so
 				    there is no status to advise on and no remedy to assert. Same
@@ -1201,7 +1255,7 @@ export const SettingsPage: FC = () => {
 						"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded",
 					)}
 				</Alert>
-			</div>
+			</div>,
 		);
 	}
 
@@ -1269,29 +1323,38 @@ export const SettingsPage: FC = () => {
 				/>
 			</div>
 
-			<div
-				data-glass-region="canvas-content"
-				/*
-				 * THE CONTENT COLUMN OWNS ITS GROUND FROM y0 (operator, 2026-11-04:
-				 * "a section above the settings in the titlebar area that isn't
-				 * properly filled"). The root is `data-glass-split`, so under window
-				 * glass the root and `<main>` paint nothing and `canvas-content` alone
-				 * paints the canvas. That marker used to sit on the `panel-scroll`
-				 * scroller, whose pad is a MARGIN - so the painted box began below
-				 * the strip and the desktop showed through above it. The ground now
-				 * lives on this full-height column, which pads with `panel-top-pad`
-				 * (the box that wears the pad is the box that paints, AGENTS.md
-				 * "Panels run to the window edge"), the same shape as Library and
-				 * Agents. The scroller inside starts below the padding, so its clip is
-				 * still the content edge and scrolled text never paints into the strip.
-				 */
-				className="panel-top-pad flex min-h-0 min-w-0 flex-1 flex-col"
-			>
+			{/*
+			 * The content column (`contentColumn` above, which is where the pad and
+			 * the ground marker live) with the pinned Close button and the Esc scope
+			 * inside it. The button and the key stay one component
+			 * (`settings-close-surface.tsx`) so they cannot disagree about what
+			 * closing means.
+			 */}
+			{contentColumn(
 				<div
 					ref={contentContainerRef}
 					data-settings-content
 					data-tour-tag="settings-general-section"
-					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
+					/*
+					 * `pe-14` while the measure fills the column: below the step the
+					 * 896px measure is not yet clear of the scroller's edge, and the
+					 * pinned Close button (32px at a 16px inset) sat ON the content's
+					 * last 8px - measured at 900px wide, the search field's edge and
+					 * the glyph both at x=860 (design round 1, D3).
+					 *
+					 * WHERE THE STEP SITS, AND WHY NOT 1464 (round 3: m1/D9/Q-9). An
+					 * arbitrary `min-[1464px]` variant is emitted BEFORE Tailwind's
+					 * `md:` block, so it never won the cascade - and forcing the base
+					 * padding that early put the field's edge on the plate at 1464
+					 * (measured gap 0). The step therefore carries the `md:` prefix -
+					 * a bare `max-[…]` sorts BEFORE `md:p-8` in the emitted CSS, so
+					 * `md` is what puts the rule after the shorthand it overrides -
+					 * and sits at the first
+					 * width where the centred measure clears the plate by the same
+					 * 16px the narrow layout keeps: every width below it keeps `pe-14`,
+					 * and from 1496 up the base `p-8` restores symmetric margins.
+					 */
+					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:max-[1495px]:pe-14"
 				>
 					{/*
 					 * One measured column, centred, rather than two.
@@ -2094,8 +2157,8 @@ export const SettingsPage: FC = () => {
 							</div>
 						</div>
 					</div>
-				</div>
-			</div>
+				</div>,
+			)}
 		</div>
 	);
 };

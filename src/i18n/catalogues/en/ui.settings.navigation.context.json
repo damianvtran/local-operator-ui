@@ -130,5 +130,17 @@
 		"tone": "Matter-of-fact state word; not a promise about the service.",
 		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
 		"note": "Shown while the re-request is running. Present-progressive, one word."
+	},
+	"ui.settings.navigation.settings_page.close_settings": {
+		"role": "Accessible name of the X button that closes the Settings page, and the sidebar gear's tooltip while Settings is open",
+		"tone": "Plain, direct action name in sentence case; the settings surface's own word for itself.",
+		"length": "One line: read by assistive tech as the X button's name, and rendered as the gear's tooltip. English is 15 characters.",
+		"note": "The visible X control has no text. 'Settings' is the page's own noun (page.title). Do not name a destination such as 'back to chat'."
+	},
+	"ui.settings.navigation.settings_page.close_settings_shortcut": {
+		"role": "Tooltip on the Settings close button, naming its keyboard shortcut",
+		"tone": "Quiet hint, same voice as other shortcut hints; the key name is a machine token.",
+		"length": "Tooltip label on one line. English is 12 characters.",
+		"note": "Keep 'Esc' untranslated: it is the physical key name used elsewhere for this shortcut. Parentheses may use the locale's own punctuation style."
 	}
 }
