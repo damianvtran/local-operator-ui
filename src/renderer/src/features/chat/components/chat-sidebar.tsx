@@ -7676,7 +7676,18 @@ export function ChatSidebar({
 							 * at all.
 							 */
 							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
-							className="min-w-4 shrink-0 text-end text-meta tabular-nums text-ink-dim"
+							/*
+							 * THREE DIGITS RESERVED, NOT ONE (operator, after v0.63.0: "the column
+							 * space for icons is uneven ... they don't go left and out of column
+							 * for shorter team names"). `min-w-4` held a single digit, so a
+							 * three-digit census ("511") widened the slot and pushed this row's
+							 * new-chat glyph ~14px start-ward of its neighbours'. `3ch` under
+							 * `tabular-nums` is exactly three digit advances, so 0-999 all share
+							 * one column; a four-digit census may still grow it, which is rarer
+							 * than truncating a census the reader is told is exact. Empty when
+							 * there is no count, so it adds no text to the tree.
+							 */
+							className="min-w-[3ch] shrink-0 text-end text-meta tabular-nums text-ink-dim"
 						>
 							{badge || ""}
 						</span>
@@ -7822,60 +7833,77 @@ export function ChatSidebar({
 							</button>
 						</Tooltip>
 					)}
-					{linkedOrigin && (
-						<HubLinkSidebarMark
-							link={linkedOrigin}
-							staged={staged}
-							onDetail={() => openHubDetail(kind, name)}
-							itemName={name}
-							displayName={displayName}
-							itemsById={hubItemsById}
-							nameAmbiguous={
-								!(kind === "team"
-									? teams.isSuccess && !teams.isFetching
-									: profiles.isSuccess && !profiles.isFetching) ||
-								(displayNameCounts[kind === "team" ? "team" : "agent"].get(
-									name.trim().toLowerCase(),
-								) ?? 0) !== 1
-							}
-						/>
-					)}
-					{aggregateOrigins && (
-						<HubLinkAggregateMark
-							links={aggregateOrigins}
-							staged={staged}
-							onDetail={() => openHubDetail(kind, name)}
-						/>
-					)}
-					{unresolvedOrigins.length > 0 && (
-						<HubUnresolvedMark
-							item={name}
-							details={unresolvedOrigins.map((origin) => origin.detail)}
-							staged={staged}
-							onResolve={() =>
-								navigate(
-									/* A fresh token per press: a repeat press on the SAME
-									 * already-open row must re-open/re-focus it, which a
-									 * constant `=1` cannot do (CODE MINOR-E). */
-									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
-								)
-							}
-						/>
-					)}
-					{!fullHubLinks && hubMark && hubItem && (
-						<HubUpdateMark
-							item={hubItem}
-							mark={hubMark}
-							busy={hub.pending.has(hubKey)}
-							blocked={
-								!hub.canWrite &&
-								(hubMark.kind === "available" ||
-									(hubMark.kind === "failed" && hubMark.retryable))
-							}
-							staged={staged}
-							onPress={() => pressHubMark(kind, name, hubMark)}
-						/>
-					)}
+					{/*
+					 * THE LINK SLOT IS RESERVED (same operator report as the count above).
+					 * The four hub marks are mutually exclusive (one origin / several /
+					 * unresolved only when there is no origin / the legacy update mark only
+					 * when hub links are not advertised) and each is a 24px `size-6`
+					 * control, so ONE fixed `w-6` slot holds whichever renders. It used to
+					 * collapse when none did, which slid the name button's end edge - and
+					 * with it the new-chat glyph and the count - 24px start-ward on exactly
+					 * the rows without a link. Empty, it is a bare span: no role, no name,
+					 * no tab stop, so nothing reaches the accessibility tree.
+					 * `scripts/sidebar-entity-columns.test.mjs` holds this.
+					 */}
+					<span
+						data-entity-link-slot
+						className="flex w-6 shrink-0 justify-center"
+					>
+						{linkedOrigin && (
+							<HubLinkSidebarMark
+								link={linkedOrigin}
+								staged={staged}
+								onDetail={() => openHubDetail(kind, name)}
+								itemName={name}
+								displayName={displayName}
+								itemsById={hubItemsById}
+								nameAmbiguous={
+									!(kind === "team"
+										? teams.isSuccess && !teams.isFetching
+										: profiles.isSuccess && !profiles.isFetching) ||
+									(displayNameCounts[kind === "team" ? "team" : "agent"].get(
+										name.trim().toLowerCase(),
+									) ?? 0) !== 1
+								}
+							/>
+						)}
+						{aggregateOrigins && (
+							<HubLinkAggregateMark
+								links={aggregateOrigins}
+								staged={staged}
+								onDetail={() => openHubDetail(kind, name)}
+							/>
+						)}
+						{unresolvedOrigins.length > 0 && (
+							<HubUnresolvedMark
+								item={name}
+								details={unresolvedOrigins.map((origin) => origin.detail)}
+								staged={staged}
+								onResolve={() =>
+									navigate(
+										/* A fresh token per press: a repeat press on the SAME
+										 * already-open row must re-open/re-focus it, which a
+										 * constant `=1` cannot do (CODE MINOR-E). */
+										`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
+									)
+								}
+							/>
+						)}
+						{!fullHubLinks && hubMark && hubItem && (
+							<HubUpdateMark
+								item={hubItem}
+								mark={hubMark}
+								busy={hub.pending.has(hubKey)}
+								blocked={
+									!hub.canWrite &&
+									(hubMark.kind === "available" ||
+										(hubMark.kind === "failed" && hubMark.retryable))
+								}
+								staged={staged}
+								onPress={() => pressHubMark(kind, name, hubMark)}
+							/>
+						)}
+					</span>
 					<button
 						type="button"
 						// Stepped down from `ink` so the row's own action outranks it.

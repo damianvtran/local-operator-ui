@@ -139,11 +139,11 @@ test("the sidebar's no-fill rules key off the sidebar, not the Chat route", () =
 	// The rules still exist, unconditionally scoped to the shell.
 	assert.match(
 		css,
-		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\) \{/,
+		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\):not\(\[data-chat-row\]:hover\) \{/,
 	);
 	assert.match(
 		css,
-		/\[data-workspace-shell\]\s*:is\(\s*\[data-session-row\]:not\(\[data-dragging\]\),[\s\S]*?\[data-workspace-launcher\] \[data-entity\] > div:first-child\s*\) \{\s*background: transparent;/,
+		/\[data-workspace-shell\]\s*:is\(\s*\[data-session-row\]:not\(\[data-dragging\]\):not\(:hover\)[\s\S]*?\[data-workspace-launcher\] \[data-entity\] > div:first-child:not\(:hover\),[\s\S]*?\) \{\s*background: transparent;/,
 	);
 	// Negative control: the round-7 gate, verbatim.
 	const gated = `${css}\n[data-workspace-shell]:has([data-chat-workspace])\n\t:is([data-entity], [data-session-row])\n\tbutton { background: transparent; }\n`;
