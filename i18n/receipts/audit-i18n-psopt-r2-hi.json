@@ -1,0 +1,108 @@
+{
+	"instance": "audit-i18n-psopt-r2-hi",
+	"locale": "hi",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": [
+		"ui.projects (round 2: delta 10c0c83a272..e1cb9d658fa — name_required, name_grammar retranslated for en 'key'; en change b3ebaf7944b)"
+	],
+	"previous_receipt": {
+		"path": "i18n/receipts/audit-i18n-psopt-hi.json",
+		"sha256": "36ed5cc392bbae23d601ca7898b1560fb36f72884d622503d07d9e234202d676"
+	},
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-hi, round 2)",
+		"session": "d054015c7056 (from this session's system header 'Session ID', not a registry read)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue/ledger, committed and posted nothing, ran no ledger write; only this receipt was written. Retranslation was by a separate translator session; same model family possible and not verifiable, so independence is session-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "origin/main 7809ec934a3",
+	"round_scope": "10c0c83a272..e1cb9d658fa",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"en_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+	"hi_sha256": "d762be817dc5fb9e324dc0493d3b724f33650491e4ab7d8f23aad0901b828b09",
+	"hashes": {
+		"en/ui.projects.json": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"hi/ui.projects.json": "d762be817dc5fb9e324dc0493d3b724f33650491e4ab7d8f23aad0901b828b09",
+		"en/ui.projects.context.json": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"references": {
+		"glossary": "local-operator@1b011ed566f9 i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (unchanged since round 1)",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/hi.md sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5 (unchanged since round 1)",
+		"shipped_terms": "hi ui.projects: project_form_dialog.key and project_editors.key 'कुंजी'; a_project_with_this_key_already_exists 'इस कुंजी वाला प्रोजेक्ट पहले से मौजूद है।'"
+	},
+	"checks": [
+		{
+			"check": "key-set parity en vs hi",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "delta in scope only",
+			"result": "PASS",
+			"detail": "10c0c83a272..HEAD hi/ui.projects.json: changed exactly name_required and name_grammar; 0 added, 0 removed; other 4 round-1 keys byte-unchanged"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "no { } in en or hi changed values; locale-parity '[hi] preserves every ICU placeholder' pass"
+		},
+		{
+			"check": "NFC / bidi / invisible",
+			"result": "PASS",
+			"detail": "both NFC; no U+200B-200F, U+202A-202E, U+2066-2069; non-Devanagari chars only space and ','; no double spaces"
+		},
+		{
+			"check": "hi punctuation & grammar",
+			"result": "PASS",
+			"detail": "danda U+0964 ends both; feminine agreement कुंजी ... शुरू होनी चाहिए correct (was होना for masc. नाम)"
+		},
+		{
+			"check": "key-label consistency",
+			"result": "PASS",
+			"detail": "'कुंजी' = hi label for Key (form_dialog.key, editors.key) and duplicate-key error; context note satisfied (not 'नाम')"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "context-parity ok; check-duplicates ok (0 dups); node --test locale-parity/catalogue-locale/hi-activation: 55/55 pass"
+		},
+		{
+			"check": "fit",
+			"result": "NOTE",
+			"detail": "no maxCells hint; name_grammar 124 vs 87 cp wraps under field as context allows"
+		},
+		{
+			"check": "RTL",
+			"result": "N/A",
+			"detail": "hi is LTR"
+		}
+	],
+	"round1_findings": {
+		"N1": "deferred by manager (hi digits nit) — not re-raised",
+		"N2": "no-change finding (keep as is); tag_grammar unchanged"
+	},
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: 'प्रोजेक्ट को एक कुंजी दें।' matches en 'Give the project a key.', label term कुंजी, polite imperative",
+		"ui.projects.project_edit_model.name_grammar": "ok: 'कुंजी किसी अंग्रेज़ी अक्षर या अंक से शुरू होनी चाहिए, …' accurate, feminine agreement fixed with the noun change, ASCII restriction kept; N1 deferred",
+		"ui.projects.project_edit_model.tag_grammar": "retained from round 1 (byte-unchanged)",
+		"ui.projects.project_sheet_model.template_summary": "retained from round 1 (byte-unchanged)",
+		"ui.projects.project_sheet_model.template_goals": "retained from round 1 (byte-unchanged)",
+		"ui.projects.project_sheet_model.template_notes": "retained from round 1 (byte-unchanged)"
+	},
+	"result": "clean",
+	"status": "passed"
+}

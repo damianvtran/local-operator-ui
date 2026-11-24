@@ -88,7 +88,7 @@
 	"ui.projects.project_edit_model.the_target_date_is_before_the_start_date": "Ngày mục tiêu sớm hơn ngày bắt đầu.",
 	"ui.projects.project_edit_model.titles_are_at_most_value1_characters": "Tiêu đề không được dài quá {value1, plural, other {{value1, number, ::group-off} ký tự}}.",
 	"ui.projects.project_edit_model.up_to_project_tags_max_tags": "Tối đa {PROJECT_TAGS_MAX, plural, other {{PROJECT_TAGS_MAX, number, ::group-off} thẻ}}.",
-	"ui.projects.project_edit_model.name_required": "Đặt khóa cho dự án.",
+	"ui.projects.project_edit_model.name_required": "Nhập khóa cho dự án.",
 	"ui.projects.project_edit_model.name_grammar": "Khóa phải bắt đầu bằng chữ cái không dấu hoặc chữ số và chỉ gồm chữ cái không dấu, chữ số, dấu chấm, dấu gạch dưới hoặc gạch ngang.",
 	"ui.projects.project_edit_model.tag_grammar": "Thẻ dài 1-24 ký tự, chỉ gồm chữ thường không dấu, chữ số, dấu gạch dưới hoặc gạch ngang.",
 	"ui.projects.project_editors.a_short_name_for_the_workstream": "Tên ngắn cho luồng công việc",

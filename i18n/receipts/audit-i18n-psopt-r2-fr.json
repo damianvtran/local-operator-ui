@@ -1,0 +1,114 @@
+{
+	"instance": "audit-i18n-psopt-r2-fr",
+	"locale": "fr",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": [
+		"ui.projects (round 2: delta 10c0c83a272..e1cb9d658fa — name_required, name_grammar; English source change b3ebaf7944b)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-fr round 2)",
+		"session": "333bdb7e8537 (session ID from this session's system header)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue, ledger or other repo file, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family possible, not verifiable: independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "round-1 head 10c0c83a272e434e7a747bbda045f7e1cdecc454 (round-1 receipt audit-i18n-psopt-fr, sha256 cf93d28e17ab53548b0c98b622be9afe2a0c2fcfa5de0092776045effe552ea5, committed byte-identical at e1cb9d658fa)",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File); keys 'en'/'fr' are the ones ledger-rules.mjs scopedHash reads",
+	"hashes": {
+		"en": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"fr": "26bb2325d7a6068a34b1a45a8082f40aaf52d5a0f662760803afe619209df27c",
+		"en_context": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"hash_files": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"fr": "src/i18n/catalogues/fr/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9, file last changed 60d8584eab6e) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7; identical bytes at translator rev 1b011ed566f9. 'project' -> projet; no tag/key/summary/goal entries",
+		"style_guide": "local-operator@origin/main (file last changed 0f8e3d101116) i18n/style-guides/fr.md sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7; identical at 1b011ed566f9: vous, sentence case, U+202F before : ; ! ?, apostrophe U+2019",
+		"shipped_terms": "same file: project_form_dialog.key / project_editors.key 'Clé'; tags 'Étiquettes'; hint letters_digits_dot_underscore_or_dash_no_spaces 'Lettres, chiffres, point, tiret bas ou tiret ; sans espaces.'; tag hint 'Lettres minuscules, chiffres, tiret bas ou tiret.'; titles_are_at_most 'Les titres sont limités à …'; placeholder a_short_name_for_the_workstream 'Un nom court pour le flux de travail'"
+	},
+	"checks": [
+		{
+			"check": "JSON validity",
+			"result": "PASS",
+			"detail": "fr/ui.projects.json parses"
+		},
+		{
+			"check": "key-set parity en vs fr",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty; key set identical to round 1"
+		},
+		{
+			"check": "changes only in scope",
+			"result": "PASS",
+			"detail": "10c0c83a272..e1cb9d658fa changes exactly 2 fr values: name_required, name_grammar; nothing added or dropped"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "no braces in changed en or fr values"
+		},
+		{
+			"check": "NFC / code points / bidi",
+			"result": "PASS",
+			"detail": "both changed values NFC; only non-ASCII U+00E9; no U+200E/F, U+202A-E, U+2066-9; no double spaces or ASCII apostrophes"
+		},
+		{
+			"check": "French punctuation",
+			"result": "PASS",
+			"detail": "no : ; ! ? in changed values; tag_grammar unchanged, U+202F before ':' re-verified"
+		},
+		{
+			"check": "key term consistency",
+			"result": "PASS",
+			"detail": "'clé' matches field labels project_form_dialog.key / project_editors.key 'Clé' and a_project_with_this_key_already_exists 'cette clé', as the updated context note requires"
+		},
+		{
+			"check": "ASCII-only grammar fidelity",
+			"result": "PASS",
+			"detail": "'lettres sans accent' + 'ne contenir que' retained; meaning matches /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/"
+		},
+		{
+			"check": "round-1 findings",
+			"result": "PASS",
+			"detail": "N1 resolved (prescriptive 'La clé doit commencer … et ne contenir que …', as suggested); N2 resolved at source (en now says key, fr follows); N3 deferred by manager (English source tag first-character gap), not re-raised"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "check-duplicates ok; context-parity ok; ledger-check shows fr/ui.projects stale hashes, expected until this audit is assembled"
+		},
+		{
+			"check": "length (chars fr/en)",
+			"result": "NOTE",
+			"detail": "name_required 25/23, name_grammar 150/87; validation text under the field, may wrap per context; unrendered here"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: 'Donnez une clé au projet.' vous imperative, matches 'Clé' label",
+		"ui.projects.project_edit_model.name_grammar": "ok: 'La clé doit commencer par une lettre ou un chiffre et ne contenir que des lettres sans accent, des chiffres, des points, des tirets bas ou des tirets.' exact and idiomatic",
+		"unchanged keys (template_summary/goals/notes, tag_grammar)": "retained from round 1, bytes unchanged"
+	},
+	"result": "clean",
+	"status": "passed",
+	"round1_findings_disposition": {
+		"N1": "resolved in e1cb9d658fa",
+		"N2": "resolved: English source now says key (b3ebaf7944b); fr uses 'clé'",
+		"N3": "deferred by manager — English source gap, not re-raised"
+	}
+}
