@@ -101,7 +101,7 @@ import { useTimelineWindow } from "./use-team-bridge-timeline-window";
  *
  * NULL MEANS UNKNOWN, AND LOOKS IT. When nothing names the sender (directory
  * still loading or failed, a member who left, the legacy "Member" label the
- * hub stored), the row says "Unknown person" / "Unknown agent" in a muted
+ * hub stored), the row says "Unknown person" / "Chief of staff" in a muted
  * italic with a neutral glyph. An initial avatar under a plausible word is what
  * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
@@ -436,8 +436,10 @@ export const TeamBridgeMessageList: FC<{
 	const firstUnreadId = chronological(unseen)[0]?.id;
 	const eventLabel: TeamBridgeEventLabel = (party) =>
 		labelFor(party) ??
+		/* An agent on Team Bridge is a chief of staff: unnamed, it is still
+		   that, never "Unknown agent" (operator report, 2026-11-23). */
 		(party.kind === "agent"
-			? t("ui.teamBridge.sender.unknown_agent")
+			? t("ui.teamBridge.chief.fallback")
 			: t("ui.teamBridge.sender.unknown_person"));
 	/*
 	 * ANCHORS COME FROM SERVER ROWS ONLY (review round 5, M1). A local row carries a
@@ -513,14 +515,14 @@ export const TeamBridgeMessageList: FC<{
 							 messages" always shows its author, as Slack and Discord do
 						  (agent review round 1, m1). */
 					continuation={item.continuation && item.message.id !== firstUnreadId}
-					/* The owner line must not use the directory's chief-of-staff
-					   alias. Resolve as a human with NO stored alias fallback; the
-					   trusted roster/self account may still name the owner. */
-					label={labelFor(
-						teamBridgeSenderPresentation(item.message) === "agent"
-							? { ...item.message.sender, kind: "human", display_label: "" }
-							: item.message.sender,
-					)}
+					/* THE AGENT IS THE AUTHOR (operator report, 2026-11-23). An
+					   agent row is named exactly as the rail's Chiefs row names it -
+					   "Santa Claus (Ben Tran)" via `participantLabel` - with the
+					   owner as the secondary part. PR #2035 resolved agents as their
+					   human owner here ("Ben Tran") and moved the agent's name to a
+					   session line the core does not populate yet, so every agent
+					   message read as the human's. */
+					label={labelFor(item.message.sender)}
 					member={profileFor?.(item.message.sender)}
 					profileFor={profileFor}
 					onMessagePerson={onMessagePerson}
@@ -1136,10 +1138,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const generic = app || presentation === "unknown";
 	const known = generic
 		? storedLabel(message.sender.display_label)
-		: agent
-			? (storedLabel(callerMember?.display_label ?? "") ??
-				storedLabel(callerLabel ?? ""))
-			: callerLabel;
+		: callerLabel;
 	const member = generic ? undefined : callerMember;
 	const label =
 		known ??
@@ -1147,7 +1146,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 			? t("ui.teamBridge.sender.unknown_app")
 			: presentation === "unknown"
 				? t("ui.teamBridge.sender.unknown_sender")
-				: t("ui.teamBridge.sender.unknown_person"));
+				: agent
+					? /* A chief of staff nobody could name is still a chief of
+						   staff: "Chief of staff", never "Unknown agent" (operator
+						   report, 2026-11-23). */
+						t("ui.teamBridge.chief.fallback")
+					: t("ui.teamBridge.sender.unknown_person"));
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
 	const clock = valid
@@ -1437,7 +1441,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 						{decoration?.badge}
 					</div>
 				)}
-				{!continuation && <TeamBridgeSenderProvenance message={message} />}
+				{!continuation && (
+					<TeamBridgeSenderProvenance
+						message={message}
+						shownNames={[label, member?.agent?.name]}
+					/>
+				)}
 				{continuation && decoration?.badge && (
 					<div className="flex pb-0.5">{decoration.badge}</div>
 				)}

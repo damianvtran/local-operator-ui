@@ -135,7 +135,10 @@ test("human/app/unknown senders ignore agent metadata and exact-body top-level l
 	assert.equal(htmlFor(row).includes("Not history provenance"), false);
 });
 
-test("fallback copy exists in source and every supported/shipped locale; host names are not translated", () => {
+test("no placeholder in any locale: an absent leaf renders nothing; the chief fallback copy ships everywhere", () => {
+	/* Regression (operator report, 2026-11-23): PR #2035 painted "Unknown
+	 * agent" here for every agent message because the core does not attach the
+	 * leaf yet. The leaf now renders only a real session name. */
 	const manifest = JSON.parse(readFileSync("i18n/languages.json", "utf8"));
 	const expected = manifest.languages
 		.filter((row) => ["source", "supported"].includes(row.status))
@@ -143,17 +146,13 @@ test("fallback copy exists in source and every supported/shipped locale; host na
 		.sort();
 	const shipped = Object.keys(m.bundledCatalogues).sort();
 	assert.deepEqual(shipped, expected);
-	const key = "ui.teamBridge.sender.unknown_agent";
+	const key = "ui.teamBridge.chief.fallback";
 	for (const locale of expected) {
 		const catalogue =
 			locale === "en" ? m.bundledEnglish : m.bundledCatalogues[locale];
 		assert.equal(typeof catalogue[key], "string", locale);
 		m.setLocale(locale);
-		assert.equal(
-			new JSDOM(htmlFor(message())).window.document.querySelector("span")
-				.textContent,
-			catalogue[key],
-		);
+		assert.equal(htmlFor(message()), "", locale);
 		assert.equal(
 			new JSDOM(
 				htmlFor(parse({ display_label: "Release coordinator" })),
@@ -245,7 +244,76 @@ const renderList = (messages, people = [owner]) =>
 		),
 	);
 
-test("real message rows put trusted human owner before actual session, never chief-of-staff alias", () => {
+/* Synthetic directory: an owner whose chief of staff has its own name. */
+const santaOwner = {
+	account_id: "acct_synthetic_owner",
+	display_label: "Ben Tran",
+	role: "member",
+	bridge_enabled: true,
+	bridge_state: "active",
+	agent: { name: "Santa Claus" },
+};
+const doc = (html) => new JSDOM(html).window.document;
+const author = (html) =>
+	doc(html).querySelector("[data-sender]")?.textContent ?? null;
+const session = (html) =>
+	doc(html).querySelector("[data-sender-provenance]")?.textContent ?? null;
+
+test("regression: an agent row is authored by the agent, owner secondary, as the rail names it - never 'Unknown agent'", () => {
+	// No leaf: what production sends while the capability is not live.
+	const html = renderList([parse(undefined)], [santaOwner]);
+	assert.equal(author(html), "Santa Claus (Ben Tran)");
+	assert.equal(
+		author(html),
+		m.participantLabel(parse(undefined).sender, [santaOwner], chiefCopy),
+	);
+	assert.equal(session(html), null);
+	assert.equal(html.includes("Unknown agent"), false);
+	// The profile/avatar is drawn as the AGENT (Bot plate), not the owner.
+	assert.equal(
+		doc(html)
+			.querySelector('[aria-label^="Open profile"]')
+			?.getAttribute("aria-label"),
+		"Open profile for Santa Claus (Ben Tran)",
+	);
+});
+
+test("regression: owner-only agent reads '{person}'s chief of staff'; nothing resolved reads 'Chief of staff'", () => {
+	const unnamed = { ...santaOwner, agent: { name: "" } };
+	const row = message(undefined, {});
+	row.sender.display_label = "";
+	const ownerOnly = renderList([row], [unnamed]);
+	assert.equal(author(ownerOnly), "Ben Tran's chief of staff");
+	assert.equal(ownerOnly.includes("Unknown agent"), false);
+	const nothing = renderList([row], []);
+	assert.equal(author(nothing), "Chief of staff");
+	assert.equal(nothing.includes("Unknown agent"), false);
+	assert.equal(session(nothing), null);
+});
+
+test("session line: shown only when present and different from the agent name on the author line", () => {
+	// Different session of the same agent: shown under the author line.
+	const different = renderList(
+		[parse({ display_label: "Release coordinator" })],
+		[santaOwner],
+	);
+	assert.equal(author(different), "Santa Claus (Ben Tran)");
+	assert.equal(session(different), "Release coordinator");
+	// Same as the agent's own name (case/space-insensitive): hidden.
+	for (const label of ["Santa Claus", "  santa  claus "]) {
+		const same = renderList([parse({ display_label: label })], [santaOwner]);
+		assert.equal(session(same), null, label);
+	}
+	// Same as the whole author label (no directory: the stored name is it).
+	const row = parse({ display_label: "Registered endpoint alias" });
+	const bare = renderList([row], []);
+	assert.equal(author(bare), "Registered endpoint alias");
+	assert.equal(session(bare), null);
+	// Absent: hidden.
+	assert.equal(session(renderList([parse(undefined)], [santaOwner])), null);
+});
+
+test("consecutive sessions keep their own headers under the agent author; human header unchanged", () => {
 	const a = parse({ display_label: "Release coordinator" });
 	const b = {
 		...parse({ display_label: "QA coordinator" }),
@@ -253,42 +321,20 @@ test("real message rows put trusted human owner before actual session, never chi
 		seq: 2,
 		created_at: "2026-11-22T10:01:00Z",
 	};
-	const html = renderList([a, b]);
-	const doc = new JSDOM(html).window.document;
-	const leaves = [...doc.querySelectorAll("[data-sender-provenance]")];
+	const d = doc(renderList([a, b], [santaOwner]));
 	assert.deepEqual(
-		leaves.map((leaf) => leaf.textContent),
+		[...d.querySelectorAll("[data-sender-provenance]")].map(
+			(leaf) => leaf.textContent,
+		),
 		["Release coordinator", "QA coordinator"],
 	);
-	for (const leaf of leaves)
-		assert.equal(
-			leaf.previousElementSibling.textContent.includes("Ada Okafor"),
-			true,
-		);
-	assert.equal(html.includes("Registered endpoint alias"), false);
-	assert.equal(html.includes("chief of staff"), false);
-});
-
-test("legacy/invalid rows stay owner-bound; unknown owner does not promote alias; human header unchanged", () => {
-	for (const leaf of [
-		undefined,
-		{ display_label: "" },
-		{ display_label: "bad", unsupported: true },
-	]) {
-		const html = renderList([parse(leaf)]);
-		assert.equal(html.includes("Ada Okafor"), true);
-		assert.equal(html.includes("Unknown agent"), true);
-		assert.equal(html.includes("Registered endpoint alias"), false);
-	}
-	const unknown = renderList(
-		[message({ display_label: "Release coordinator" })],
-		[],
+	assert.deepEqual(
+		[...d.querySelectorAll("[data-sender]")].map((n) => n.textContent),
+		["Santa Claus (Ben Tran)", "Santa Claus (Ben Tran)"],
 	);
-	assert.equal(unknown.includes("Unknown person"), true);
-	assert.equal(unknown.includes("Registered endpoint alias"), false);
 	const human = message({ display_label: "Ignored leaf" });
 	human.sender.kind = "human";
 	const humanHtml = renderList([human]);
-	assert.equal(humanHtml.includes("Ada Okafor"), true);
+	assert.equal(author(humanHtml), "Ada Okafor");
 	assert.equal(humanHtml.includes("data-sender-provenance"), false);
 });

@@ -254,7 +254,7 @@ test("a blank label falls back to the shared placeholders", () => {
 		lineTexts(
 			render([entry({ recipient_label: "  ", recipient_owner_label: "" })]),
 		),
-		["Not delivered to Unknown agent. Refused by moderation."],
+		["Not delivered to Chief of staff. Refused by moderation."],
 	);
 });
 
@@ -325,7 +325,7 @@ const RECIPIENT_SHAPES = [
 		"Ben Tran",
 		"Aida (Sales) (Ben Tran)",
 	],
-	["blank labels fall back to the shared copy", " ", "", "Unknown agent"],
+	["blank labels fall back to the shared copy", " ", "", "Chief of staff"],
 ];
 for (const [name, label, owner, expected] of RECIPIENT_SHAPES) {
 	for (const [kind, over, sentence] of LINE_STATES) {
@@ -441,13 +441,15 @@ for (const [name, kind, label, ownerLabel, expected] of RECIPIENT_LABEL_CASES) {
  * compositions: `chief.label` "{agent} ({person})" and the in-sentence /
  * standalone unnamed "{person}’s chief of staff" (identical in English). A row
  * whose owner is "" is an owner the hub sends blank and the directory does not
- * list. `null` is the caller's "Unknown agent" placeholder.
+ * list. `null` is the caller's "Chief of staff" placeholder.
  */
 const EN_CHIEF = {
 	named: (agent, person) => `${agent} (${person})`,
 	unnamed: (person) => `${person}’s chief of staff`,
 };
-const UNKNOWN_AGENT = "Unknown agent";
+// Every delivery recipient is a chief of staff: unnamed, it reads as one
+// (operator report, 2026-11-23), never "Unknown agent".
+const CHIEF_FALLBACK = "Chief of staff";
 const FROZEN_MATRIX = [
 	["Aida", "Ben Tran", "Aida (Ben Tran)"],
 	["Aida (Ben Tran)", "Ben Tran", "Aida (Ben Tran)"],
@@ -468,7 +470,7 @@ const FROZEN_MATRIX = [
 	["Ben Tran (Ben Tran)", "Ben Tran", "Ben Tran’s chief of staff"],
 	["Ana (she/her) (Ana (she/her))", "", "Ana (she/her)’s chief of staff"],
 	["Aida (v2)", "Ben Tran", "Aida (v2) (Ben Tran)"],
-	["", "", UNKNOWN_AGENT],
+	["", "", CHIEF_FALLBACK],
 ];
 const rowLabel = (stored, owner) => {
 	const people =
@@ -491,7 +493,7 @@ const rowLabel = (stored, owner) => {
 			{ account_id: "acct_owner", kind: "agent", display_label: stored },
 			people,
 			EN_CHIEF,
-		) ?? UNKNOWN_AGENT
+		) ?? CHIEF_FALLBACK
 	);
 };
 for (const [stored, owner, expected] of FROZEN_MATRIX) {
@@ -501,7 +503,7 @@ for (const [stored, owner, expected] of FROZEN_MATRIX) {
 			recipientLabel(
 				{ kind: "agent", label: stored, ownerLabel: owner },
 				EN_CHIEF,
-			) ?? UNKNOWN_AGENT,
+			) ?? CHIEF_FALLBACK,
 			expected,
 		);
 		assert.deepEqual(

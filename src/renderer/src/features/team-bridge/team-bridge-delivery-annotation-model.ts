@@ -126,7 +126,7 @@ const isNotDelivered = (state: string): boolean =>
  * rendered as a pair. The component resolves them to ONE display label through
  * the shared `recipientLabel`, so the line names the recipient exactly as the
  * message rows do and the owner never twice (operator report, 2026-11-03). A
- * label that resolves to nobody renders the shared "Unknown agent" copy, so a
+ * label that resolves to nobody renders the shared "Chief of staff" copy, so a
  * blank wire label never renders "Not delivered to  ()" (review R2).
  */
 export function teamBridgeDeliveryLines(
