@@ -564,11 +564,13 @@ export type WebauthnChooserOutcome =
 export interface WebauthnRequestSource {
 	tabId: number | null;
 	pageTitle: string | null;
+	/** Internal generation, never sent to the renderer. */
+	documentEpoch?: number;
 }
 
 export interface WebauthnChooserOptions {
 	/** Sends the request to the app's renderer. */
-	notify: (request: WebauthnChooserRequest) => void;
+	notify: (request: WebauthnChooserRequest, frame: unknown) => void;
 	log: (message: string) => void;
 	timeoutMs?: number;
 	/** Injectable so a test can name requests deterministically. */
@@ -581,12 +583,10 @@ export interface WebauthnChooserOptions {
 	onSettled?: (requestId: string, outcome: WebauthnChooserOutcome) => void;
 }
 
-interface PendingChoice {
+interface PendingChoice extends WebauthnRequestSource {
 	requestId: string;
 	relyingPartyId: string;
 	accounts: WebauthnAccountView[];
-	tabId: number | null;
-	pageTitle: string | null;
 	/** Guarded: Electron's contract is that the native callback is invoked exactly
 	 * once, so the guard wraps the callback rather than the map lookup. */
 	answer: (credentialId: string | null) => void;
@@ -724,13 +724,12 @@ export class WebauthnChooser {
 		 * in between: the renderer's answer arrives over IPC, which cannot preempt this
 		 * synchronous block.
 		 */
-		this.options.notify(request);
+		this.options.notify(request, details.frame);
 		this.pending.set(requestId, {
+			...source,
 			requestId,
 			relyingPartyId,
 			accounts,
-			tabId: source.tabId,
-			pageTitle: source.pageTitle,
 			answer,
 			timer,
 		});
@@ -792,6 +791,21 @@ export class WebauthnChooser {
 	 */
 	pendingRequests(): WebauthnChooserRequest[] {
 		return [...this.pending.keys()].map((requestId) => this.view(requestId));
+	}
+
+	/** Reuse settlement rather than dropping entries: Electron still owns the
+	 * callbacks. An ownership change passes the departing epoch because work can
+	 * start in the new generation before this runs or during a callback. */
+	cancelForTab(tabId: number, departedDocumentEpoch?: number): void {
+		for (const entry of [...this.pending.values()]) {
+			if (
+				entry.tabId === tabId &&
+				(departedDocumentEpoch === undefined ||
+					entry.documentEpoch === departedDocumentEpoch) &&
+				this.pending.get(entry.requestId) === entry
+			)
+				this.settle(entry, null, "dismissed");
+		}
 	}
 
 	/** Cancel everything still pending. Called when the host stops, because a

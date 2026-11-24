@@ -2,7 +2,6 @@ import { installClipboardShim } from "./actions/clipboard-shim";
 import { stopNetworkCapture } from "./actions/network";
 import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
-import { custodyRefusal } from "./extensions/passkey-custody";
 import {
 	hasLogCapture,
 	routeDebuggerEvent,
@@ -150,52 +149,63 @@ export interface CdpPoolOptions {
 }
 
 /**
- * The passkey-custody gate, as the pool sees it (`extensions/passkey-custody.ts`
- * has the why). Structural so the pool does not import the custody module, and
- * set after construction because the custody state is wired up later in the
- * host's start.
+ * The pending-passkey-request gate, as the pool sees it
+ * (`extensions/auth-request.ts` has the why). Structural so the pool does not
+ * import that module, and set after construction because the request state is
+ * wired up later in the host's start.
  */
-export interface CdpCustodyGate {
-	isHeld(webContentsId: number): boolean;
-	epoch(webContentsId: number): number;
+export interface CdpAuthRequestGate {
+	conflict(
+		webContentsId: number,
+		action: "navigate" | "close" | "prompt_document",
+	): Error | null;
+	/** Presence-keyed: a provider frame is on screen in this view. Optional so
+	 * a ceremony-only gate still installs; absent refuses no capture. */
+	quarantine?(
+		webContentsId: number,
+		action: "capture" | "input" | "key",
+	): Error | null;
 }
 
 /**
- * The ONLY commands a held view still accepts: the origin gate's own `Fetch`
- * answers (a paused request nobody continues would hang the very sign-in the
- * user is completing) and the TEARDOWN of what an agent had running when the
- * hold began. None of them returns page content, and none starts a capture:
- *   - `Page.stopScreencast` / `Page.stopScreenRecording`: end a recording that
- *     custody discarded (`discardRecordingForCustody`). The recorder stop
- *     answers only a stream HANDLE; reading it needs `IO.read`, which stays
- *     refused, so the bytes never leave Chromium (review R1).
- *   - `IO.close`: drop that unread stream.
- *   - `Emulation.clearDeviceMetricsOverride`: give the tab the user is looking
- *     at its own size back after a sized recording (review R2).
- *   - `Page.disable`: the origin gate's own teardown (`gate.ts`); refusing it
- *     left the Page domain enabled after a hold (review N3).
- * `IO.read`, `Page.startScreencast`, `Page.screencastFrameAck`, every
- * `Emulation.set*` and every capture stay refused.
+ * The commands a live passkey REQUEST refuses (ceremony-keyed): the ones that
+ * REPLACE the document the ceremony is pending in. `credentials.get()` is a
+ * document-scoped promise, so navigating the main frame away cancels the very
+ * request the person is answering in that tab — the one interfering action an
+ * agent can take that is not already covered by the registry's `navigate`
+ * refusal (this is the BACKSTOP for a path that reaches the pool without going
+ * through it).
  */
-const CUSTODY_INFRA_METHODS: ReadonlySet<string> = new Set([
-	"Fetch.continueRequest",
-	"Fetch.failRequest",
-	"Fetch.fulfillRequest",
-	"Fetch.continueWithAuth",
-	"Fetch.disable",
-	"Page.stopScreencast",
-	"Page.stopScreenRecording",
-	"IO.close",
-	"Emulation.clearDeviceMetricsOverride",
-	"Page.disable",
+const AUTH_INTERFERING_METHODS: ReadonlySet<string> = new Set([
+	"Page.navigate",
+	"Page.reload",
+	"Page.navigateToHistoryEntry",
 ]);
 
-/** Events a held view still routes: the origin gate must keep seeing the
- * requests it has to continue. Everything else (screencast frames, console,
- * network) is dropped while the user has the tab. */
-function routesUnderCustody(method: string): boolean {
-	return method.startsWith("Fetch.");
-}
+/**
+ * The commands a PRESENT provider frame refuses (presence-keyed; architect
+ * option A, review S2/S3). Each one produces pixels of the composited surface,
+ * provider frame included, that the agent would then hold: a passive autofill
+ * card renders vault items as much as a passkey prompt does. The `screenshot`
+ * and `record_start` actions refuse first with their own typed answer; this is
+ * the BACKSTOP for any path that reaches the pool without them (the HQ
+ * engine's screencast restart and tail frame, a future action).
+ *
+ * `IO.read` is here because the only stream this host reads is a recording's
+ * (`actions/recording.ts`); a recording is discarded the moment a prompt frame
+ * is admitted, so refusing the read while one is present costs nothing and
+ * closes the window between admission and that discard.
+ *
+ * Before a person engages the tab no provider frame is admitted, so none of
+ * this refuses anything on a login page the agent reached by itself.
+ */
+const AUTH_CAPTURE_METHODS: ReadonlySet<string> = new Set([
+	"Page.captureScreenshot",
+	"Page.startScreencast",
+	"Page.startScreenRecording",
+	"Page.captureSnapshot",
+	"IO.read",
+]);
 
 /**
  * The pool of debugger attachments, keyed by webContents id.
@@ -210,6 +220,50 @@ export const PAGE_DISABLED_EVENT = "LocalOperator.pageDisabled";
 
 export class CdpPool {
 	private readonly attachments = new Map<number, Attachment>();
+	private readonly keyDispatches = new Map<number, number>();
+
+	/** CDP key events can enter the page's native input pipeline. Don't treat
+	 * them as an operator's shortcut while the command is in flight. */
+	isDispatchingKey(webContentsId: number): boolean {
+		return this.keyDispatches.has(webContentsId);
+	}
+
+	private readonly inputDispatches = new Map<number, number>();
+
+	/** Any CDP `Input.*` command of this host is in flight for the view. The
+	 * page's native input events (`before-mouse-event`, `before-input-event`)
+	 * fire for those too, so this is how the host tells an agent's press from a
+	 * person's (`extensions/tab-engagement.ts`). Chromium runs those callbacks
+	 * before the command answers, so the window covers them. */
+	isDispatchingInput(webContentsId: number): boolean {
+		return this.inputDispatches.has(webContentsId);
+	}
+
+	private trackKeyDispatch<T>(
+		id: number,
+		method: string,
+		send: () => Promise<T>,
+	): Promise<T> {
+		if (!method.startsWith("Input.")) return send();
+		const counters =
+			method === "Input.dispatchKeyEvent"
+				? [this.keyDispatches, this.inputDispatches]
+				: [this.inputDispatches];
+		for (const counter of counters) counter.set(id, (counter.get(id) ?? 0) + 1);
+		const release = () => {
+			for (const counter of counters) {
+				const count = counter.get(id) ?? 0;
+				if (count <= 1) counter.delete(id);
+				else counter.set(id, count - 1);
+			}
+		};
+		try {
+			return send().finally(release);
+		} catch (error) {
+			release();
+			throw error;
+		}
+	}
 	/** Per-view CDP event subscribers, by webContents id. See `subscribe`. */
 	private readonly subscribers = new Map<
 		number,
@@ -231,13 +285,13 @@ export class CdpPool {
 	 * callers (see `attachFrame`). */
 	private readonly frameAttaches = new Map<string, Promise<string>>();
 
-	private custody: CdpCustodyGate | null = null;
+	private authRequests: CdpAuthRequestGate | null = null;
 
 	constructor(private readonly options: CdpPoolOptions = {}) {}
 
-	/** Install the passkey-custody gate (see `CdpCustodyGate`). */
-	setCustodyGate(gate: CdpCustodyGate | null): void {
-		this.custody = gate;
+	/** Install the pending-passkey-request gate (see `CdpAuthRequestGate`). */
+	setAuthRequestGate(gate: CdpAuthRequestGate | null): void {
+		this.authRequests = gate;
 	}
 
 	/**
@@ -272,11 +326,11 @@ export class CdpPool {
 		method: string,
 		params: Record<string, unknown>,
 	): void {
-		// While the user holds the tab for a passkey prompt, no page content may
-		// leave it through an event either: a screencast frame or a console line is
-		// as much a read as a screenshot.
-		if (this.custody?.isHeld(webContentsId) && !routesUnderCustody(method))
-			return;
+		// Events keep flowing while a passkey request is pending: the agent's own
+		// console and network captures are ordinary work it may keep doing
+		// (operator requirement, 2026-11-23). The only read this module guards is
+		// the provider's own prompt document, which is never an agent target
+		// (`actions/frames.ts`).
 		routeDebuggerEvent(webContentsId, method, params);
 		for (const listener of [...(this.subscribers.get(webContentsId) ?? [])]) {
 			listener(method, params);
@@ -625,27 +679,20 @@ export class CdpPool {
 		deadlineMs: number,
 		sessionId?: string,
 	): Promise<T> {
-		// THE SECOND CHOKE POINT for passkey custody (the first is
-		// `registry.requireSurface`): every command any action sends lands here, so
-		// a path that skipped the registry is refused all the same, before dispatch.
-		if (!CUSTODY_INFRA_METHODS.has(method)) {
-			const gate = this.custody;
-			if (gate) {
-				if (gate.isHeld(contents.id)) throw custodyRefusal();
-				const epoch = gate.epoch(contents.id);
-				const result = await this.dispatch<T>(
-					contents,
-					method,
-					params,
-					deadlineMs,
-					sessionId,
-				);
-				// A command already in flight when a hold began (a screenshot that
-				// raced the prompt's frame) must not deliver what it captured.
-				if (gate.isHeld(contents.id) || gate.epoch(contents.id) !== epoch)
-					throw custodyRefusal();
-				return result;
-			}
+		// THE SECOND CHOKE POINT for a provider prompt (the first is the registry):
+		// every command any action sends lands here, so an action that skipped the
+		// registry still cannot cancel a request pending in this document, nor
+		// take a picture of a provider frame present in it. Reads and input pass:
+		// the agent keeps the tab (operator requirement, 2026-11-23); positional
+		// input and targetless keys are narrowed at their own call sites, which
+		// can measure the frame's rect and focus (`actions/input.ts`).
+		if (this.authRequests && AUTH_INTERFERING_METHODS.has(method)) {
+			const conflict = this.authRequests.conflict(contents.id, "navigate");
+			if (conflict) throw conflict;
+		}
+		if (this.authRequests?.quarantine && AUTH_CAPTURE_METHODS.has(method)) {
+			const refusal = this.authRequests.quarantine(contents.id, "capture");
+			if (refusal) throw refusal;
 		}
 		return this.dispatch<T>(contents, method, params, deadlineMs, sessionId);
 	}
@@ -674,14 +721,27 @@ export class CdpPool {
 		}
 		if (!sessionId) {
 			return deadline(
-				contents.debugger.sendCommand(method, params) as Promise<T>,
+				this.trackKeyDispatch(
+					contents.id,
+					method,
+					() => contents.debugger.sendCommand(method, params) as Promise<T>,
+				),
 				deadlineMs,
 				method,
 			);
 		}
 		try {
 			return await deadline(
-				contents.debugger.sendCommand(method, params, sessionId) as Promise<T>,
+				this.trackKeyDispatch(
+					contents.id,
+					method,
+					() =>
+						contents.debugger.sendCommand(
+							method,
+							params,
+							sessionId,
+						) as Promise<T>,
+				),
 				deadlineMs,
 				method,
 			);

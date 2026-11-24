@@ -1223,8 +1223,8 @@ const api = {
 		 * while the band was open). Main validates the shape rather than trusting it. */
 		closeTabs: (intent: unknown): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tabs", intent),
-		activateTab: (tabId: number): Promise<unknown> =>
-			ipcRenderer.invoke("browser-activate-tab", tabId),
+		activateTab: (tabId: number, trusted?: boolean): Promise<unknown> =>
+			ipcRenderer.invoke("browser-activate-tab", tabId, trusted),
 		addressHistory: (
 			request: AddressHistoryRequest,
 		): Promise<AddressHistoryResponse> =>
@@ -1368,38 +1368,11 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
-		/** "Return to agent" on a passkey custody notice (see
-		 * `extensions/passkey-custody.ts`). Ids and the click's `isTrusted` only. */
-		releasePasskeyCustody: (
-			tabId: number,
-			at: number,
-			trusted: boolean,
-		): Promise<unknown> =>
-			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
 		/** A sidebar notification row's click: bring the tab an agent is waiting
 		 * on the user in forward, with its held popups (`user-attention.ts`). The
 		 * ONLY path that does; `false` when the tab is gone. */
 		openUserAttention: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-open-user-attention", tabId),
-		/** The hold `{tabId, at}` ended: the renderer may give the user back the
-		 * view it saved when they opened that hold from its notification
-		 * (`passkey-custody-handoff.ts`). */
-		onPasskeyCustodyEnded: (
-			callback: (payload: { tabId: number; at: number }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; at?: unknown },
-			) => {
-				if (typeof payload?.tabId !== "number") return;
-				if (typeof payload.at !== "number") return;
-				callback({ tabId: payload.tabId, at: payload.at });
-			};
-			ipcRenderer.on("browser-passkey-custody-ended", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-passkey-custody-ended", handler);
-			};
-		},
 		/**
 		 * Answer the camera/microphone prompt. `trusted` is the click's
 		 * `event.isTrusted`; main refuses a decision without it, and the id is the

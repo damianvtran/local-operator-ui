@@ -158,6 +158,13 @@ const bundle = await build({
       export * from "./src/shared/browser-approvals-overlay";
       export * as electron from "electron";
       export { emitIpc, listenerCount, resetIpc } from "electron";
+      export {
+        NativePasskeyNotice,
+        dismissPasskeyNotice,
+        passkeyNoticeFor,
+      } from "./src/main/browser/native-passkey-notice";
+      export { AuthRequests } from "./src/main/browser/extensions/auth-request";
+      export { TabEngagement } from "./src/main/browser/extensions/tab-engagement";
     `,
 		resolveDir: ROOT,
 	},
@@ -1925,5 +1932,211 @@ test("controller: a palette change carries its vars and a built-in clears them",
 		null,
 		"a built-in name must not inherit the previous composition's values",
 	);
+	controller.dispose("test");
+});
+
+/*
+ * THE PASSWORD-MANAGER NOTICE (operator report 2026-11-17): a non-deciding
+ * entry. It auto-presents the card unfocused with no request, its dismiss only
+ * reaches `onNoticeDismiss` (never `respond`), and it leaves with the hold.
+ */
+test("model: the notice is rebuilt from its allow-list, never forwarded", () => {
+	const base = { seq: 1, entries: [], locale: "en", dir: "ltr", theme: "dark" };
+	const ok = mod.approvalsCardModelFrom({
+		...base,
+		notice: {
+			entryId: "native-passkey:7:1700000000000",
+			kind: "native_passkey",
+			text: "<b>x</b>",
+		},
+	});
+	assert.deepEqual(ok.notice, {
+		entryId: "native-passkey:7:1700000000000",
+		kind: "native_passkey",
+	});
+	for (const notice of [
+		{ entryId: "native-passkey:7:1", kind: "anything" },
+		{ entryId: "e1", kind: "native_passkey" },
+		"native-passkey:7:1",
+		null,
+	]) {
+		assert.equal(mod.approvalsCardModelFrom({ ...base, notice }).notice, null);
+	}
+	assert.equal(
+		mod.sanitizeApprovalsCardModel({
+			...ok,
+			notice: { entryId: "x", kind: "native_passkey" },
+		}).notice,
+		null,
+	);
+});
+
+test("controller: the native passkey notice auto-presents unfocused, dismisses only through onNoticeDismiss, and clears", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const responded = [];
+	const noticeDismissed = [];
+	const focused = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: (entryId, decision) => responded.push([entryId, decision]),
+		onNoticeDismiss: (notice) => noticeDismissed.push(notice),
+		focusTarget: (target) => focused.push(target),
+	});
+	controller.onLayout({
+		presented: true,
+		chromeVisible: true,
+		contentRect: rect(0, 0, 600, 500),
+		revision: 1,
+	});
+	controller.setNotice({ tabId: 7, at: 1700000000000 });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the notice-only card",
+	);
+	assert.equal(
+		controller.facts().explicitOpen,
+		false,
+		"auto-present, not an open",
+	);
+	assert.equal(focused.length, 0, "the notice takes no focus");
+	// Idempotent: the host calls this on every projection change.
+	const seq = controller.facts().seq;
+	controller.setNotice({ tabId: 7, at: 1700000000000 });
+	assert.equal(controller.facts().seq, seq);
+
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq,
+		entryId: "native-passkey:7:1700000000000",
+	});
+	assert.deepEqual(noticeDismissed, [{ tabId: 7, at: 1700000000000 }]);
+	assert.deepEqual(responded, [], "a notice dismissal decides nothing");
+	// A forged notice id is dropped like any unknown entry.
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq: controller.facts().seq,
+		entryId: "native-passkey:8:1",
+	});
+	assert.equal(noticeDismissed.length, 1);
+	assert.equal(controller.facts().actions.dropped, 1);
+	// Main marks it dismissed and clears it: the card hides.
+	controller.setNotice(null);
+	assert.equal(controller.facts().visible, false);
+	controller.dispose("test");
+});
+
+/*
+ * Q3 (QA round 3): ONE native request used to carry two notice ids (the native
+ * notice's own, then the request's), so one X or Esc dismissed one and the slot
+ * fell back to the other: the card stayed. Driven through the REAL controller,
+ * with the host's own projection and dismissal (`passkeyNoticeFor`,
+ * `dismissPasskeyNotice`, exactly what `index.ts` wires).
+ */
+test("Q3: one native request is one notice — one X hides it, one Esc hides the next; the request stays live", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const agent = { tabId: 7, owner: "agent", presented: true };
+	const source = {
+		owner: "agent",
+		documentEpoch: 1,
+		origin: "https://rp.example",
+	};
+	const engagement = new mod.TabEngagement();
+	engagement.selected(7, true, true);
+	const native = new mod.NativePasskeyNotice();
+	let controller = null;
+	const sync = () =>
+		controller?.setNotice(mod.passkeyNoticeFor(agent, requests, native));
+	const requests = new mod.AuthRequests({
+		hasProviderFrame: () => false,
+		onBegin: sync,
+		onChange: sync,
+		onEnd: sync,
+	});
+	controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: () => {
+			throw new Error("a notice decides nothing");
+		},
+		onNoticeDismiss: (notice) => {
+			if (mod.dismissPasskeyNotice(notice, requests, native)) sync();
+		},
+		focusTarget: () => {},
+	});
+	controller.onLayout({
+		presented: true,
+		chromeVisible: true,
+		contentRect: rect(0, 0, 600, 500),
+		revision: 1,
+	});
+	// The host's `notify` order: the native notice first, then the request.
+	const begin = (requestId) => {
+		if (native.started({ requestId, tabId: 7 }, agent, engagement, source))
+			sync();
+		requests.beginNative({
+			webContentsId: 70,
+			tabId: 7,
+			requestId,
+			engaged: engagement.has(7),
+		});
+	};
+	begin("native-1");
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the notice card",
+	);
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	const entryId = "native-passkey:7:1";
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq: controller.facts().seq,
+		entryId,
+	});
+	assert.equal(controller.facts().visible, false, "one X hides it");
+	assert.equal(
+		requests.viewForTab(7)?.requestId,
+		"native-1",
+		"dismissal cancels nothing",
+	);
+	assert.ok(requests.conflict(70, "close"), "the request is still live");
+	// A NEW request is a new notice, with a new id; one Esc hides it.
+	native.settled("native-1");
+	requests.settleByRequestId("native-1");
+	begin("native-2");
+	await waitFor(() => controller.facts().visible, "the next request's notice");
+	assert.equal(controller.dismissVisibleNotice(7), true);
+	assert.equal(controller.facts().visible, false, "one Esc hides it");
+	assert.equal(requests.viewForTab(7)?.requestId, "native-2");
 	controller.dispose("test");
 });

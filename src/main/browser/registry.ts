@@ -1,7 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import { custodyRefusal } from "./extensions/passkey-custody";
+import type {
+	ConflictingAction,
+	QuarantinedAction,
+} from "./extensions/auth-request";
 import {
 	displayTitleFor,
 	displayUrlFor,
@@ -397,15 +400,69 @@ export class TabRegistry {
 		private readonly onBeforeLayout: () => void = () => {},
 	) {}
 
-	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
-	 * after construction. Null refuses nothing. */
-	private custody: {
-		isHeld(webContentsId: number): boolean;
-		epoch(webContentsId: number): number;
+	/** Pending passkey requests (`extensions/auth-request.ts`), installed by the
+	 * host after construction. Null refuses nothing. */
+	private authRequests: {
+		conflict(webContentsId: number, action: ConflictingAction): Error | null;
+		/** Presence-keyed (`AuthRequests.quarantine`); optional so a gate that
+		 * predates it still installs, and absent means "nothing present". */
+		quarantine?(webContentsId: number, action: QuarantinedAction): Error | null;
+		promptPresent?(webContentsId: number): boolean;
+		presenceEpoch?(webContentsId: number): number;
 	} | null = null;
 
-	setCustodyGate(gate: TabRegistry["custody"]): void {
-		this.custody = gate;
+	setAuthRequestGate(gate: TabRegistry["authRequests"]): void {
+		this.authRequests = gate;
+	}
+
+	/** Told when the AGENT replaces a tab's main document (`actions/gate.ts`
+	 * `navigateView`); the host ends the person's engagement of that tab there
+	 * (`extensions/tab-engagement.ts`, review R11). */
+	private agentNavigationListener: ((tabId: number) => void) | null = null;
+
+	setAgentNavigationListener(listener: ((tabId: number) => void) | null): void {
+		this.agentNavigationListener = listener;
+	}
+
+	/** The agent is about to load a new main document into this view. */
+	agentNavigating(webContentsId: number): void {
+		const record = this.byWebContents(webContentsId);
+		if (record) this.agentNavigationListener?.(record.tabId);
+	}
+
+	/**
+	 * Refuse only the actions that would cancel a passkey request pending in this
+	 * tab (`extensions/auth-request.ts`). Everything else proceeds: the tab is
+	 * still the agent's while a person answers a prompt in it.
+	 */
+	assertNoConflictingAuthRequest(
+		webContentsId: number,
+		action: ConflictingAction,
+	): void {
+		const conflict = this.authRequests?.conflict(webContentsId, action);
+		if (conflict) throw conflict;
+	}
+
+	/**
+	 * Refuse an action that would take a provider prompt's pixels or drive it
+	 * (`QuarantinedAction`) while one is present in this view. Presence-keyed,
+	 * not request-keyed: see `extensions/auth-request.ts` "PRESENCE-KEYED".
+	 */
+	assertNoAuthPrompt(webContentsId: number, action: QuarantinedAction): void {
+		const refusal = this.authRequests?.quarantine?.(webContentsId, action);
+		if (refusal) throw refusal;
+	}
+
+	/** Whether a provider prompt frame is present in this view (fail closed on
+	 * an unreadable answer, inside the gate). */
+	authPromptPresent(webContentsId: number): boolean {
+		return this.authRequests?.promptPresent?.(webContentsId) ?? false;
+	}
+
+	/** The view's provider-frame admission epoch; a capture compares it across
+	 * its own await to catch an admission that landed while it was in flight. */
+	authPromptEpoch(webContentsId: number): number {
+		return this.authRequests?.presenceEpoch?.(webContentsId) ?? 0;
 	}
 
 	/**
@@ -415,17 +472,7 @@ export class TabRegistry {
 	 * a held tab at the start; this closes the window between that check and the
 	 * answer, which is the one `cdp.ts` closes for CDP commands.
 	 */
-	async guardRead<T>(record: TabRecord, run: () => Promise<T>): Promise<T> {
-		const id = record.view.webContents.id;
-		const epoch = this.custody?.epoch(id) ?? 0;
-		const result = await run();
-		if (
-			this.custody &&
-			(this.custody.isHeld(id) || this.custody.epoch(id) !== epoch)
-		)
-			throw custodyRefusal();
-		return result;
-	}
+	// ---- pending passkey requests (extensions/auth-request.ts) ---------------
 
 	// ---- creation, addressing, listing ---------------------------------------
 
@@ -684,12 +731,21 @@ export class TabRegistry {
 	}
 
 	/** Terminal cleanup must distinguish a drive refusal from a gone surface,
-	 * without giving the caller a record or making the surface driveable. */
+	 * without giving the caller a record or making the surface driveable.
+	 *
+	 * A live passkey request refuses the close too (`owner_refused`, so the
+	 * caller's `owner_finish` stays `pending` and retries the same allocation).
+	 * Before the auth-request quarantine this came from `requireSurface`'s
+	 * custody refusal; that refusal is gone (agent tabs stay usable while a
+	 * prompt is up), so without this check a session ending mid-sign-in would
+	 * destroy the very request the user is answering — the one action the
+	 * `close` dispatch in `actions/tabs.ts` already refuses. */
 	closeOwnedSurface(token: string, beforeClose: () => void): boolean {
 		let record: TabRecord;
 		try {
 			record = this.requireLiveSurface(token);
 			this.assertSurfaceDriveable(record);
+			this.assertNoConflictingAuthRequest(record.view.webContents.id, "close");
 		} catch (error) {
 			if (error instanceof BrowserHostError) {
 				if (error.code === "tab_closed") return true;
@@ -729,22 +785,13 @@ export class TabRegistry {
 				{ reason: "internal_page" },
 			);
 		}
-		// A password manager's passkey prompt is up in this tab and only the user
-		// may see or answer it. Refused here, before any action does anything, and
-		// again per command in `cdp.ts` for any path that does not come through here.
-		this.assertNotInCustody(record);
-	}
-
-	/**
-	 * Refuse an agent path on a tab the user holds for a password manager prompt
-	 * (`extensions/passkey-custody.ts`), with the one custody refusal every agent
-	 * path answers. `requireSurface` calls it; a path that reaches a record
-	 * WITHOUT a handle (handle-less `close`, review Q3) must call it itself.
-	 */
-	assertNotInCustody(record: TabRecord): void {
-		if (this.custody?.isHeld(record.view.webContents.id)) {
-			throw custodyRefusal();
-		}
+		// NOTHING IS REFUSED HERE FOR A PASSKEY PROMPT (operator requirement,
+		// 2026-11-23): the reported bug was an agent tab that stopped serving its
+		// agent because a password manager's prompt — often its PASSIVE autofill card
+		// — was on screen. The prompt document itself is still not an agent target
+		// (`actions/frames.ts` `assertNotExtensionFrame`), and the three actions that
+		// would DESTROY a live request are refused where they are dispatched
+		// (`actions/tabs.ts` close, `actions/page.ts` navigation, `cdp.ts`).
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */
@@ -783,6 +830,7 @@ export class TabRegistry {
 		// boundary's capture: a re-hand must not move it, so an agent's tab that is
 		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
 		// capture keys on this, not on `handedTo`).
+		const departedDocumentEpoch = record.documentEpoch;
 		if (record.handedFrom === null) record.handedFrom = record.owner;
 		// Any hand-over spends an approval pickup: the tab now belongs to whichever
 		// session it went to, and a later `open` by the original requester must not
@@ -798,14 +846,16 @@ export class TabRegistry {
 		record.nonce = mintNonce();
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
-		this.ownerChanged?.(record);
+		this.ownerChanged?.(record, departedDocumentEpoch);
 		this.onChanged();
 	}
 
-	/** Called after a hand-over moves a tab away from the user; index.ts uses
-	 * it to re-apply the extension-subframe rule to frames that loaded while the
-	 * tab was the user's (extensions/subframe-policy.ts, review R1-4). */
-	ownerChanged: ((record: TabRecord) => void) | null = null;
+	/** Runs after authority and epoch change. The previous document epoch is
+	 * captured before the bump so its listeners may start new work without that
+	 * work being mistaken for a departing request. */
+	ownerChanged:
+		| ((record: TabRecord, departedDocumentEpoch: number) => void)
+		| null = null;
 
 	/** Revoke a hand-over: nulls the nonce, so the session's next action on that
 	 * handle gets the ordinary `tab_closed` refusal, and puts the tab back in the
@@ -821,7 +871,9 @@ export class TabRegistry {
 	 * `null`, which is the behaviour it always had. */
 	revokeHandOver(tabId: number): void {
 		const record = this.tabs.get(tabId);
-		if (!record) return;
+		// Repeating a revoke on a user's tab doesn't end its document generation.
+		if (!record || record.owner === "user") return;
+		const departedDocumentEpoch = record.documentEpoch;
 		record.nonce = null;
 		record.owner = "user";
 		record.sessionId = record.homeSessionId;
@@ -831,6 +883,7 @@ export class TabRegistry {
 		record.handedFrom = null;
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
+		this.ownerChanged?.(record, departedDocumentEpoch);
 		this.onChanged();
 	}
 

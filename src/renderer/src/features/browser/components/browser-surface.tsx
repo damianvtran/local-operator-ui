@@ -75,7 +75,6 @@ import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
-import { BrowserPasskeyCustody } from "./browser-passkey-custody";
 import { BrowserPasskeyNotice } from "./browser-passkey-notice";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import {
@@ -1205,7 +1204,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						sessions={sessions}
 						activeTabId={state?.activeTabId ?? null}
 						waiting={queue.waiting}
-						onActivate={(tabId) => void chrome.activateTab(tabId)}
+						onActivate={(tabId, trusted) =>
+							void chrome.activateTab(tabId, trusted)
+						}
 						onClose={closeTab}
 						onCloseTabs={(intent) => chrome.closeTabs(intent)}
 						onNewTab={() => void chrome.newTab(hostSessionId)}
@@ -1430,12 +1431,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					void browserBridge()
 						?.focusPage()
 						.catch(() => {})
-				}
-			/>
-			<BrowserPasskeyCustody
-				custody={chrome.state?.passkeyCustody}
-				onReturn={(custody, trusted) =>
-					chrome.releasePasskeyCustody(custody.tabId, custody.at, trusted)
 				}
 			/>
 			<PasskeyNoticeHost

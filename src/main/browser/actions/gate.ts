@@ -288,8 +288,23 @@ export async function navigateView(
 	approved: (candidate: URL) => boolean,
 	timeoutMs = 30_000,
 ): Promise<{ url: string; title: string }> {
+	// The ONE agent navigation choke point (`open` on a handed-over tab and
+	// `goto` both come through here). A live passkey request is a
+	// document-scoped promise in the document this would replace, so replacing it
+	// is the interfering action: refused, typed, and only for the tab that hosts
+	// the request. Read-and-input actions never reach this check.
+	ctx.registry.assertNoConflictingAuthRequest(view.webContents.id, "navigate");
 	const contents = view.webContents;
 	return withOriginGate(ctx, view, requester, approved, async () => {
+		// AGAIN, immediately before the load (review B7): `withOriginGate` awaits
+		// its gate setup, and a ceremony admitted in that window would otherwise
+		// be replaced by the `loadURL` below. Nothing is awaited between this
+		// check and the load, so the check and the act are one turn.
+		ctx.registry.assertNoConflictingAuthRequest(contents.id, "navigate");
+		// The agent, not the person, chose what this tab shows next: a click
+		// into the old page is no engagement of the new one (review R11), so a
+		// provider prompt on the agent's next login page needs a fresh press.
+		ctx.registry.agentNavigating(contents.id);
 		const settled = settle(contents, timeoutMs);
 		// Both arms are started before either is awaited, so a load that finishes
 		// before the settle's listeners are armed cannot be missed.

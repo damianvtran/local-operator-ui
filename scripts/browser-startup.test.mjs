@@ -139,7 +139,7 @@ export class ElectronChromeExtensions {
 				b.onLoad({ filter: /main\/webauthn(?:\/index)?\.ts$/ }, () => ({
 					contents: `
 export async function installWebauthn() { const f = globalThis.__browserStartupFixture; f.installs++; return { configured: !!f.touchIdConfigured }; }
-export class WebauthnChooser { dispose() {} state() { return null; } }
+export class WebauthnChooser { dispose() {} state() { return null; } cancelForTab() {} }
 export function attachWebauthnChooser() { return () => {}; }
 `,
 					loader: "ts",

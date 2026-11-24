@@ -9,6 +9,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import vm from "node:vm";
@@ -18,6 +19,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/passkey-notice";',
+			'export * from "./src/main/browser/native-passkey-notice";',
 			'export * from "./src/shared/browser-passkey-notice";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -35,6 +37,7 @@ const {
 	PASSKEY_NOTICE_TTL_MS,
 	PASSKEY_PENDING_MS,
 	PASSKEY_SIGNAL_SENTINEL,
+	NativePasskeyNotice,
 	PasskeyNotices,
 	continuePasskeyNoticeInUserTab,
 	httpOrigin,
@@ -553,6 +556,72 @@ test("open-in-system-browser reads the URL in main and refuses a stale notice", 
 		ok: false,
 		reason: "URL names a loopback or private-network host",
 	});
+});
+
+test("legacy Continue copy leaves native observations alone, including requests arriving during the copy", async () => {
+	const { n: passkeyNotices, frames } = notices("agent");
+	const tabId = 39;
+	frames.set("1:8", { origin: "https://rp.example", embedded: true });
+	passkeyNotices.observe(
+		tabId,
+		line(passkeyNotices.nonceFor(tabId, "1:8"), "get"),
+	);
+	const { at } = passkeyNotices.viewFor(tabId);
+	const nativePasskeyNotice = new NativePasskeyNotice();
+	const start = (requestId, id = tabId) =>
+		nativePasskeyNotice.started(
+			{ requestId, tabId: id },
+			null,
+			{ has: () => false },
+			{
+				owner: "agent",
+				documentEpoch: 2,
+				origin: "https://rp.example",
+			},
+		);
+	start("existing");
+	start("other-tab", 40);
+	const { promise, resolve } = Promise.withResolvers();
+	const copied = [];
+	// Replay the production IPC slot rather than a test-created openUserTab:
+	// the bad clear happened in the slot after awaiting the real recovery helper.
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	const slot = source.match(
+		/continueInUserTab: (\(tabId, at\) =>[\s\S]*?\n\t{5}\}\)),/,
+	);
+	assert.ok(slot, "the legacy Continue slot must be exercised");
+	const continueInUserTab = vm.runInNewContext(slot[1], {
+		passkeyNotices,
+		nativePasskeyNotice,
+		syncPasskeyNotice: () => {},
+		continuePasskeyNoticeInUserTab,
+		registry: { get: () => ({ owner: "agent" }) },
+		host: {
+			continueAgentTabInUserTab: (id) => {
+				copied.push(id);
+				return promise;
+			},
+		},
+		log: () => {},
+	});
+	const continuing = continueInUserTab(tabId, at);
+	assert.deepEqual(copied, [tabId]);
+	start("during-copy");
+	resolve({ ok: true, tabId: 41 });
+	assert.deepEqual(await continuing, { ok: true });
+	assert.equal(
+		passkeyNotices.viewFor(tabId),
+		null,
+		"the legacy notice still dismisses",
+	);
+	assert.deepEqual(
+		nativePasskeyNotice.pendingFor(tabId, 2).map((r) => r.requestId),
+		["existing", "during-copy"],
+	);
+	assert.deepEqual(
+		nativePasskeyNotice.pendingFor(40, 2).map((r) => r.requestId),
+		["other-tab"],
+	);
 });
 
 test("continue-in-your-own-tab: agent notice only, current notice only, ids only, dismissed on success", async () => {
