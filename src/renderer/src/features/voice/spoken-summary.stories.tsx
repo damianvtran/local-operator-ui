@@ -1,6 +1,7 @@
 import { CanonicalTranscript } from "@features/chat/canonical/canonical-transcript";
 import type { TranscriptRecord } from "@features/chat/canonical/transcript-reducer";
 import type { TranscriptState } from "@features/chat/canonical/transcript-reducer";
+import { GlobalScrollbarStyles } from "@shared/components/common/global-scrollbar-styles";
 import { MessageInput } from "@shared/components/composer/message-input";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, waitFor } from "@storybook/test";
@@ -239,6 +240,16 @@ function Scene({
 	}, [frame]);
 	return (
 		<div className="flex items-start bg-canvas p-6" data-story-ready={ready}>
+			{/*
+			 * THE APP'S OWN 8 PX SCROLLBAR SHEET, which `main.tsx` mounts for every
+			 * window (precedent: the agents stories' frame). Storybook's default bar is
+			 * 15 px, so a story without this sheet measures a layout the app never draws:
+			 * at the 393 px dock the History's content box is 7 px narrower than the
+			 * app's 317 px, and `vi`'s row then reads 316 against 310 — an overflow a
+			 * 15 px bar manufactures and the operator cannot see. The play measures the
+			 * app's regime, not the rig's.
+			 */}
+			<GlobalScrollbarStyles />
 			<div className="@container/chatcol min-w-0" style={{ width }}>
 				<div
 					className="flex flex-col"
