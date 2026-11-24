@@ -22,6 +22,14 @@ import { Button } from "./button";
  * canonical case for that shadow: it has genuinely left the flow, so a
  * lightness step alone cannot say how far in front it is.
  *
+ * THIS IS THE ONE DIALOG SURFACE. Every centred popup in the app renders through
+ * `DialogContent`, and it wears the shared raised treatment - a subtle gradient,
+ * a soft outline and top edge (`.lo-dialog-surface`) over a darker backdrop
+ * (`.lo-dialog-scrim`), both defined once in styles/index.css under "THE DIALOG
+ * SURFACE". Do not restyle a dialog's ground, edge or scrim at a call site and do
+ * not hand-roll a modal panel: a popup that should look like a dialog uses this
+ * primitive, so the look stays consistent and changes in one place.
+ *
  * Entrance is a fade. No zoom and no slide — the transform budget in this
  * system is for things arriving from off-screen (see `Sheet`), and a dialog
  * arrives in place.
@@ -43,7 +51,9 @@ export const DialogOverlay = forwardRef<
 		ref={ref}
 		className={cn(
 			// No entrance animation; see the note at the top of `tooltip.tsx`.
-			"fixed inset-0 z-50 bg-scrim",
+			// `lo-dialog-scrim` darkens the palette's scrim for dialogs only
+			// (styles/index.css, "THE DIALOG SURFACE").
+			"lo-dialog-scrim fixed inset-0 z-50 bg-scrim",
 			className,
 		)}
 		{...props}
@@ -104,6 +114,13 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	 * the drag band it draws itself may move the window.
 	 */
 	variant?: "floating" | "stage";
+	/**
+	 * `raised` (default): the shared dialog surface - a subtle gradient, a soft
+	 * outline and top edge over `elevated` (styles/index.css, "THE DIALOG
+	 * SURFACE"). `plain`: none of it, for content that is not a panel at all
+	 * (the image lightbox, which is the picture on a transparent ground).
+	 */
+	surface?: "raised" | "plain";
 };
 
 export const DialogContent = forwardRef<
@@ -119,6 +136,7 @@ export const DialogContent = forwardRef<
 			closeLabel,
 			overlayClassName,
 			variant = "floating",
+			surface = "raised",
 			...props
 		},
 		ref,
@@ -161,6 +179,7 @@ export const DialogContent = forwardRef<
 									"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
 									"flex w-full max-w-lg flex-col gap-4",
 									"rounded-lg bg-elevated p-6 shadow-overlay",
+									surface === "raised" && "lo-dialog-surface",
 								],
 						// No entrance animation; see the note at the top of `tooltip.tsx`.
 						className,

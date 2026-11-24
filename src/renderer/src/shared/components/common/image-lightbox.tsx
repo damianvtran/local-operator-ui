@@ -803,6 +803,9 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
+				/* Not a panel: the picture on a transparent ground keeps no dialog
+				   surface (gradient, outline) - see `DialogContent`'s `surface`. */
+				surface="plain"
 				/*
 				 * The layer ref + the open-focus policy: see `box`'s neighbour note in
 				 * the component body — the anchor takes focus so the cluster can rest
