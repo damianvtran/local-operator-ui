@@ -1,23 +1,32 @@
 import { BackendStartupGate } from "@shared/components/common/backend-startup-panel";
+import {
+	ErrorBoundary,
+	ErrorFallback,
+} from "@shared/components/common/error-boundary";
+import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import {
 	Navigate,
 	Route,
-	Routes,
+	createRoutesFromElements,
+	matchRoutes,
 	useLocation,
 	useNavigate,
+	useRoutes,
 } from "react-router-dom";
 
 import { AgentMessagesOnboarding } from "@features/agent-messages/agent-messages-onboarding";
 import { useAgentMessagesBusy } from "@features/agent-messages/use-agent-messages-busy";
 import { useAidaTarget } from "@features/aida/use-aida-target";
+import { BrowserRoutePending } from "@features/browser/components/browser-workspace";
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { ChatWorkspace } from "@features/chat/components/chat-workspace";
 import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import {
@@ -26,6 +35,7 @@ import {
 } from "@features/chat/new-chat-shortcut";
 import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
+import { useQueuedAskAttention } from "@features/chat/use-queued-ask-attention";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { useConversationRecents } from "@features/command-palette/use-conversation-recents";
@@ -45,7 +55,6 @@ import { SessionSwitcher } from "@features/session-switcher/components/session-s
 import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
 import { TeamBridgeAuthorizeNotices } from "@features/team-bridge/team-bridge-approval-notice";
-import { TEAM_BRIDGE_PATH } from "@features/team-bridge/team-bridge-nav";
 import { TeamBridgeEarlyColumn } from "@features/team-bridge/team-bridge-route-column";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
@@ -58,10 +67,6 @@ import {
 	consentClickTarget,
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
-import {
-	type CustodyViewSnapshot,
-	shellCustodyHandoffs,
-} from "@shared/browser-passkey-custody-handoff";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
@@ -86,6 +91,7 @@ import {
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
 import { useNavigationGestures } from "@shared/hooks/use-navigation-gestures";
+import { useSettingsReturnTracking } from "@shared/hooks/use-settings-route";
 import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
@@ -208,6 +214,12 @@ const App: FC = () => {
 	 */
 	useWindowChrome();
 	/*
+	 * The route Settings remembers so Close can return to it (memory-only, one
+	 * pathname+search). Mounted beside the chrome hooks because it must run before
+	 * the lazy Settings page can: entering the page is what pins the target.
+	 */
+	useSettingsReturnTracking();
+	/*
 	 * The i18n locale store's writer: mirrors the capabilities answer into it —
 	 * the device locale before any answer, the backend's resolved language
 	 * after (RFC §2.5). Mounted once, beside the window chrome, for the same
@@ -228,14 +240,7 @@ const App: FC = () => {
 	 * mount would be a second subscriber competing to write it.
 	 */
 	useDocumentDirection();
-	const { pathname } = useLocation();
-	/*
-	 * The routes that already own a 40px row at the window's top: the chat surface
-	 * draws the lane above both its columns, and the browser pane brings its own
-	 * toolbar. Every other route gets the drag band instead (see the band's note).
-	 */
-	const routeHasOwnChromeRow =
-		pathname.startsWith("/chat") || pathname.startsWith("/browser");
+	const { pathname, search } = useLocation();
 
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
@@ -373,6 +378,79 @@ const App: FC = () => {
 				: undefined,
 		[bridgeState],
 	);
+
+	const routes = createRoutesFromElements(
+		<>
+			<Route
+				path="/"
+				handle="redirect"
+				element={<Navigate to="/chat" replace />}
+			/>
+			<Route path="/chat" handle="chat" element={<ChatPage />} />
+			<Route path="/chat/:agentId" handle="chat" element={<ChatPage />} />
+			<Route path="/agents" handle="full-height" element={<AgentsPage />} />
+			<Route
+				path="/agents/:agentId"
+				handle="full-height"
+				element={<AgentsPage />}
+			/>
+			<Route path="/settings" handle="full-height" element={<SettingsPage />} />
+			<Route path="/agent-hub" element={<AgentHubPage />} />
+			<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
+			<Route path="/schedules" element={<SchedulesPage />} />
+			<Route path="/projects" element={<ProjectsPage />} />
+			<Route path="/projects/:projectId" element={<ProjectsPage />} />
+			<Route path="/browser" handle="chrome" element={<BrowserPage />} />
+			{/* Mounted only with `features.library`: without it `/library`
+		    falls through to the catch-all, like any unknown path. */}
+			{/* `features.notifications`: below it `/notifications`
+		    falls through to the catch-all, like `/library`. */}
+			{notificationsState === "enabled" && (
+				<>
+					<Route path="/notifications" element={<NotificationsPage />} />
+					<Route
+						path="/notifications/:notificationId"
+						element={<NotificationsPage />}
+					/>
+				</>
+			)}
+			{libraryState === "enabled" && (
+				<>
+					<Route path="/library" element={<LibraryPage />} />
+					<Route path="/library/assets/:assetId" element={<LibraryPage />} />
+				</>
+			)}
+			{/* The Team Bridge page. The SIDEBAR row is the Library lane's
+		    overflow group (one nav file, one owner); this route makes the
+		    page reachable by URL and by that row the moment it lands.
+		    Mounted only with `features.team_bridge_conversations`:
+		    `team_bridge` alone is the pair lane, whose backends do
+		    not have these routes. */}
+			{bridgeState === "enabled" && (
+				<Route
+					path="/team-bridge"
+					handle="bridge"
+					element={<TeamBridgePage />}
+				/>
+			)}
+			{/* Mounted only with `features.peers`: without it `/mesh` falls through
+		    to the catch-all like any unknown path, rather than rendering a tab
+		    for a feature this backend does not have. */}
+			{meshState === "enabled" && <Route path="/mesh" element={<MeshPage />} />}
+			<Route
+				path="*"
+				handle="redirect"
+				element={<Navigate to="/chat" replace />}
+			/>
+		</>,
+	);
+	// Use the enabled router table itself for frame placement. Prefixes like
+	// /browser-old or an unmatched detail must take the real redirect, not a
+	// special layout that this route will never actually mount.
+	const placement = matchRoutes(routes, pathname)?.at(-1)?.route.handle;
+	// The boot and catch-all redirects already use Chat's shell geometry.
+	const chatOwnsBody = placement === "chat" || placement === "redirect";
+	const routeHasOwnChromeRow = chatOwnsBody || placement === "chrome";
 	/*
 	 * TEAM BRIDGE TAKES THE LEFT COLUMN (operator, 2026-11-03: "the left sidebar
 	 * becomes the team bridge view" - two sidebars side by side were unpopular).
@@ -382,8 +460,16 @@ const App: FC = () => {
 	 * is not mounted yet) the shell keeps the navigation and never shows an empty
 	 * host.
 	 */
-	const routeOwnsSidebar =
-		bridgeState === "enabled" && pathname.startsWith(TEAM_BRIDGE_PATH);
+	const routeOwnsSidebar = placement === "bridge";
+	// A frame can separate the shell rails even when the route, not the
+	// outlet, mounts it. Team Bridge only takes the shell's left column.
+	const browserOwnsBody = placement === "chrome";
+	const outletFullHeight = placement === "full-height";
+	// Full-height split routes (Settings, Agents) mount `<WorkspaceFrame
+	// variant="full-height">` around their content column so their secondary
+	// sidebar stays full-height on `surface` beside an evenly inset canvas frame.
+	const outletWrapsRoute = !routeHasOwnChromeRow && !outletFullHeight;
+	const routeContent = useRoutes(routes);
 	/*
 	 * Team Bridge banners, watched in the SHELL because the page is the one place
 	 * a banner is not needed. The capability gate is the same one the route and
@@ -466,6 +552,14 @@ const App: FC = () => {
 	 * header's dot and the pane's rows paint.
 	 */
 	useConsoleAttention();
+
+	/*
+	 * The window's claim about conversations holding an open queued ask, pushed to
+	 * app-main so the dock/tray badge counts a queued ask once instead of as a
+	 * blocking question (`shared/app-attention-queued-asks.ts`). Mounted here, once,
+	 * because it speaks for the whole window rather than for a row.
+	 */
+	useQueuedAskAttention();
 
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
@@ -708,55 +802,6 @@ const App: FC = () => {
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
-	 * A password manager's prompt came up in an agent-driven tab and the agent is
-	 * paused there until the user answers it and returns the tab
-	 * (`main/browser/extensions/passkey-custody.ts`).
-	 *
-	 * NOTHING HERE MOVES THE VIEW WHEN A HOLD BEGINS (operator report 2026-11-15,
-	 * "the browser is stealing the view"). This effect used to navigate to the
-	 * hold's conversation or the browser route the moment main pushed an attention
-	 * event; the hold is now a sidebar notification row (`browser-user-attention.ts`)
-	 * and the user goes over when they choose. Only the GIVE-BACK lives here: when
-	 * a hold the user opened FROM ITS ROW ends, their previous view comes back if
-	 * they are still where that click put them (review U1/D3). The row's click is
-	 * what records the handoff in `shellCustodyHandoffs`, so a hold nobody opened
-	 * has nothing to give back.
-	 *
-	 * The route is read through a ref so the listener is not re-registered on
-	 * every navigation (the store reads use `getState()` for the same reason).
-	 */
-	const pathnameRef = useRef(pathname);
-	pathnameRef.current = pathname;
-	useEffect(() => {
-		const currentView = (): CustodyViewSnapshot => {
-			const sessions = useCanonicalSessionsStore.getState();
-			return {
-				pathname: pathnameRef.current,
-				activeSessionId: sessions.activeSessionId ?? null,
-				activeDraftKey: sessions.activeDraftKey ?? null,
-				browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
-			};
-		};
-		const custodyHandoffs = shellCustodyHandoffs;
-		const offEnded = window.api?.browser?.onPasskeyCustodyEnded?.((payload) => {
-			const plan = custodyHandoffs.end(payload, currentView());
-			if (!plan) return;
-			if (plan.openDraft) {
-				const store = useCanonicalSessionsStore.getState();
-				if (store.drafts[plan.openDraft]) store.openDraft(plan.openDraft);
-			} else if (plan.session !== undefined) {
-				setActiveSession(plan.session);
-			} else if (plan.closeBrowserPane) {
-				setBrowserPaneOpen(false);
-			}
-			if (plan.navigate) navigate(plan.navigate);
-		});
-		return () => {
-			offEnded?.();
-		};
-	}, [navigate, setActiveSession, setBrowserPaneOpen]);
-
-	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
 	 * half of the promise the sidebar's New chat row prints as a key cap.
 	 *
@@ -810,6 +855,69 @@ const App: FC = () => {
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [catalogueReady, isOnboardingActive, navigate, temporaryChats]);
+
+	// Keep the startup telemetry mounted across placement changes. The
+	// lazy chunk's fallback uses the same body boundary as its destination.
+	const routePending = (
+		<div
+			data-workspace-route-pending=""
+			data-workspace-safe-content={outletFullHeight ? "" : undefined}
+			className="flex min-h-0 flex-1 items-center justify-center"
+		>
+			<Spinner size="lg" label={t("ui.common.loading.page")} />
+		</div>
+	);
+	const routeBody = (
+		<>
+			<BackendStartupGate />
+			<Suspense
+				fallback={
+					<>
+						{/*
+						 * The lazy Team Bridge chunk is still loading, but the shell has
+						 * already swapped the navigation out: draw Back in the column
+						 * now (round 1, m2) rather than an empty slab with no way out.
+						 */}
+						{routeOwnsSidebar && <TeamBridgeEarlyColumn />}
+						{chatOwnsBody ? (
+							<ChatWorkspace>{routePending}</ChatWorkspace>
+						) : browserOwnsBody ? (
+							<BrowserRoutePending>{routePending}</BrowserRoutePending>
+						) : outletFullHeight ? (
+							<WorkspaceFrame variant="full-height">
+								{routePending}
+							</WorkspaceFrame>
+						) : (
+							routePending
+						)}
+					</>
+				}
+			>
+				{outletFullHeight ? (
+					// Keep a failed split route in the same evenly padded inset frame as
+					// pending and content. Navigation or the existing Retry can reset it.
+					<ErrorBoundary
+						resetKeys={[pathname, search]}
+						fallbackRender={(props) => (
+							<WorkspaceFrame variant="full-height">
+								<div
+									data-workspace-route-error=""
+									data-workspace-safe-content=""
+									className="min-h-0 flex-1 overflow-hidden"
+								>
+									<ErrorFallback {...props} />
+								</div>
+							</WorkspaceFrame>
+						)}
+					>
+						{routeContent}
+					</ErrorBoundary>
+				) : (
+					routeContent
+				)}
+			</Suspense>
+		</>
+	);
 
 	return (
 		<OnboardingProvider>
@@ -1068,6 +1176,8 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
+						insetRouteBody
+						showChatRail={placement === "chat"}
 						/*
 						 * `StripFeedKeeper` replaces the navigation's catalogue feed while it is
 						 * unmounted, so the chat list and Aida's marks are current the moment
@@ -1080,134 +1190,40 @@ const App: FC = () => {
 							}
 						}
 						content={
-							/*
-							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.
-							 *
-							 * `--panel-top-pad` is the content column's statement of the
-							 * OS controls' reach (set on every route by `ChatLayout`). A
-							 * page that is a full-height panel cancels this with
-							 * `panel-flush` and pads its own columns; every other page
-							 * inherits one inset and adds none of its own.
-							 */
 							<main
-								data-glass-region="canvas-backing"
+								data-workspace-outlet=""
+								data-workspace-full-height={outletFullHeight ? "" : undefined}
+								// Chat's legacy nested glass corrections still key on this scope.
+								// The outlet itself never paints a backing under glass.
+								data-glass-region={chatOwnsBody ? "canvas-backing" : undefined}
 								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
-								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
-								 *
-								 * Settings, agents, agent hub and schedules have no 40px toolbar row of
-								 * their own. On Windows and Linux - where the OS draws its caption
-								 * buttons INTO the client area and nothing is drawn above the columns -
-								 * the band is the drag surface a frameless window needs and the caption
-								 * clearance the page's heading needs. The rules in `styles/index.css`
-								 * gate it to exactly those two platforms with the buttons NOT leading,
-								 * in the SELECTORS rather than by cascade order, so which of the band
-								 * and the lane is drawn cannot change when either rule moves.
-								 *
-								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
-								 * `ChatLayout` already draws the 32px lane above BOTH columns there -
-								 * the same drag surface and the same clearance - and a band on top of
-								 * it was a SECOND inset that put the settings rail and its content
-								 * 32px below the chat header ("for sub-views like the settings page,
-								 * the sidebar and view doesn't go all the way to the top",
-								 * 2026-09-26). The element stays in the tree, rendered as nothing
-								 * there, so "where the OS draws" is decided in one place - the
-								 * `data-chrome-*` attributes on the document element, the same ones
-								 * the lane is gated on - rather than by a second JS platform read
-								 * that could drift from it.
-								 *
-								 * `/chat` is excluded because `ChatLayout` already draws the lane above
-								 * both of its columns.
-								 * `/browser` is excluded because the browser pane brings its own 40px
-								 * toolbar, which is the row the controls sit over on that route.
+								 * THE BAND ABOVE AN ORDINARY INSET IS PAINTED IN THE GUTTER ROLE
+								 * (design round 7, D2). Under glass the outlet is transparent, so
+								 * the 32px clearance above the frame showed bare window material
+								 * while the side and bottom gutters (`.workspace-frame-shell::before`)
+								 * carried the sidebar's surface - a hole along one edge only. This
+								 * in-flow element takes back exactly the outlet's own pad (its CSS
+								 * cancels it with a negative margin), so the frame stays at y32;
+								 * it is a real element rather than a pseudo so the route-tops probe
+								 * can read its paint. Only where the outlet draws the inset: Chat's
+								 * tabs and Browser's chrome already fill the band, and full-height
+								 * split routes start their panes at y0. It declares no app-region,
+								 * so the lane's (or the route band's) drag surface is unchanged.
 								 */}
+								{outletWrapsRoute ? (
+									<div data-workspace-top-band="" aria-hidden="true" />
+								) : null}
+								{/* Trailing caption buttons use this drag band on Windows/Linux.
+								    It stays in flow on ordinary pages and overlays split paint.
+								    macOS and leading WCO use ChatLayout's lane instead. */}
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
-								{/* This app's own server starting or failed to start, on
-								    routes the chat status strip does not cover. */}
-								<BackendStartupGate />
-								<Suspense
-									fallback={
-										<>
-											{/*
-											 * The lazy Team Bridge chunk is still loading, but the shell has
-											 * already swapped the navigation out: draw Back in the column
-											 * now (round 1, m2) rather than an empty slab with no way out.
-											 */}
-											{routeOwnsSidebar && <TeamBridgeEarlyColumn />}
-											<div className="flex grow items-center justify-center">
-												<Spinner
-													size="lg"
-													label={t("ui.common.loading.page")}
-												/>
-											</div>
-										</>
-									}
-								>
-									<Routes>
-										<Route path="/" element={<Navigate to="/chat" replace />} />
-										<Route path="/chat" element={<ChatPage />} />
-										<Route path="/chat/:agentId" element={<ChatPage />} />
-										<Route path="/agents" element={<AgentsPage />} />
-										<Route path="/agents/:agentId" element={<AgentsPage />} />
-										<Route path="/settings" element={<SettingsPage />} />
-										<Route path="/agent-hub" element={<AgentHubPage />} />
-										<Route
-											path="/agent-hub/:agentId"
-											element={<AgentDetailsPage />}
-										/>
-										<Route path="/schedules" element={<SchedulesPage />} />
-										<Route path="/projects" element={<ProjectsPage />} />
-										<Route
-											path="/projects/:projectId"
-											element={<ProjectsPage />}
-										/>
-										<Route path="/browser" element={<BrowserPage />} />
-										{/* Mounted only with `features.library`: without it `/library`
-										    falls through to the catch-all, like any unknown path. */}
-										{/* `features.notifications`: below it `/notifications`
-										    falls through to the catch-all, like `/library`. */}
-										{notificationsState === "enabled" && (
-											<>
-												<Route
-													path="/notifications"
-													element={<NotificationsPage />}
-												/>
-												<Route
-													path="/notifications/:notificationId"
-													element={<NotificationsPage />}
-												/>
-											</>
-										)}
-										{libraryState === "enabled" && (
-											<>
-												<Route path="/library" element={<LibraryPage />} />
-												<Route
-													path="/library/assets/:assetId"
-													element={<LibraryPage />}
-												/>
-											</>
-										)}
-										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
-										    overflow group (one nav file, one owner); this route makes the
-										    page reachable by URL and by that row the moment it lands.
-										    Mounted only with `features.team_bridge_conversations`:
-										    `team_bridge` alone is the pair lane, whose backends do
-										    not have these routes. */}
-										{bridgeState === "enabled" && (
-											<Route path="/team-bridge" element={<TeamBridgePage />} />
-										)}
-										{/* Mounted only with `features.peers`: without it `/mesh` falls through
-										    to the catch-all like any unknown path, rather than rendering a tab
-										    for a feature this backend does not have. */}
-										{meshState === "enabled" && (
-											<Route path="/mesh" element={<MeshPage />} />
-										)}
-										<Route path="*" element={<Navigate to="/chat" replace />} />
-									</Routes>
-								</Suspense>
+								<WorkspaceFrame inset={outletWrapsRoute}>
+									{routeBody}
+								</WorkspaceFrame>
 							</main>
 						}
 					/>

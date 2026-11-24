@@ -643,11 +643,27 @@ export async function runDrawerRemediationScene({
 			);
 		const rail = state.bounds.find((box) => box.selector === "rail");
 		if (!rail || rail.width === 0) return;
+		/*
+		 * THE SHEET IS PINNED TO ITS ROW'S INLINE END, and only a frame gutter sits
+		 * between that row and the rail. Since the shared inset (PR #2043) the row
+		 * lives inside the workspace frame, which keeps an 8px logical gutter from
+		 * the shell's panel rail (docs/branding.md, "Shared inset for primary pages"); a mount outside
+		 * the frame still abuts the rail. So the claim is two readings: the pane is
+		 * flush with the row, and the row-to-rail gap is either nothing or exactly
+		 * that gutter - a sheet floating anywhere else still fails.
+		 */
+		const INSET_GUTTER_PX = 8;
 		const paneEdge = state.dir === "rtl" ? pane.x : pane.x + pane.width;
+		const rowEdge = state.dir === "rtl" ? row.x : row.x + row.width;
 		const railEdge = state.dir === "rtl" ? rail.x + rail.width : rail.x;
 		assert.ok(
-			Math.abs(paneEdge - railEdge) <= 0.5,
-			`${label}: an overlay pane must sit flush with the rail's inner edge - pane inline end ${paneEdge}, rail inner edge ${railEdge} (dir ${state.dir})`,
+			Math.abs(paneEdge - rowEdge) <= 0.5,
+			`${label}: an overlay pane must sit flush with its row's inline end - pane inline end ${paneEdge}, row inline end ${rowEdge} (dir ${state.dir})`,
+		);
+		const gutter = Math.abs(rowEdge - railEdge);
+		assert.ok(
+			gutter <= 0.5 || Math.abs(gutter - INSET_GUTTER_PX) <= 0.5,
+			`${label}: only the inset frame's ${INSET_GUTTER_PX}px gutter may separate the pane row from the rail - row inline end ${rowEdge}, rail inner edge ${railEdge}, gap ${gutter} (dir ${state.dir})`,
 		);
 	};
 	const capture = async (label) => {

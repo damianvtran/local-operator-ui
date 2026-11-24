@@ -74,7 +74,7 @@ test("only a send without an echo uses the composer scroll fallback", () => {
 	const hook = code(SEND_HOOK);
 	assert.match(
 		hook,
-		/onSubmit\?\.\(submitted, \(\) => \{\s*echoPainted = true;/,
+		/onSubmit\?\.\(\s*submitted,\s*\(\) => \{\s*echoPainted = true;/,
 	);
 	assert.match(
 		hook,

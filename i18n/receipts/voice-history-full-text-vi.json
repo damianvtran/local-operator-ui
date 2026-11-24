@@ -1,0 +1,73 @@
+{
+	"instance": "voice-history-full-text-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-23",
+	"scope": [
+		"ui.chat.voice",
+		"ui.chat.composer"
+	],
+	"auditor": {
+		"agent": "reviewer",
+		"session": "audit-i18n-vi",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header); no provider fallback occurred this run.",
+		"independent_from_translator_session": true,
+		"independence_note": "Audit run as a lopdev reviewer task (read-only) session; authored and edited no catalogue, ledger or repo file. The strings were produced by a separate session (anthropic/claude-sonnet-5-5, same model family, different session). Read en values, en .context.json sidecars and vi values from the frozen worktree bytes at a9161f63eb; no translation or MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2065",
+	"branch": "voice-history-full-text",
+	"head": "a9161f63eb",
+	"base": "cd9d85f30d",
+	"references": {
+		"glossary": "damianvtran/local-operator@origin/main (last touched 60d8584ea) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@origin/main (last touched 60d8584ea) i18n/style-guides/vi.md sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51",
+		"shipped_terms": "src/i18n/catalogues/vi/*.json at a9161f63eb: «đọc to» for speaking text aloud (ui.common.speech.*, ui.common.errors.speech_*, ui.settings.speech.provider.description) and «đọc thành tiếng» in other voice captions; «Hãy nói gì đó» (ui.chat.voice.idle_caption); «Bạn»/«Giọng nói» (you_label/voice_label); «Đang nói»/«Đã đọc xong» phase wording; «Đã cắt ngắn» (cut_chip); colon-prefix siblings use no space before «:»."
+	},
+	"scope_note": "Keys audited in full (diff cd9d85f30d..a9161f63eb is authoritative): ui.chat.voice.heard_label, ui.chat.voice.said_label (colon added), NEW ui.chat.voice.spoken_part_note, REMOVED ui.chat.voice.cut_note; NEW ui.chat.composer.placeholder.voice. Checked: idiom (not literal), bạn/terse register per style guide, sentence case, colon form (ASCII ':' directly after the word, no space before, per style guide 'no space before punctuation'; the renderer only treats U+FF1A as tight, so ':' + flex gap is correct), no Cc/Cf chars, NFC, no ICU placeholders in any of the four keys (en has none), key-set parity en/vi in both namespaces (no missing/extra), retired key cut_note absent from vi and en catalogues and from src/ and i18n/ trees, spoken_part_note says only that audio stopped early and implies no missing text (matches context note) and uses «đọc to» as shipped elsewhere, length fit (8/7/23/24 chars; en 8/5/29/18) for a one-line strip caption and note, placeholder «Hãy nói, hoặc gõ vào đây» mirrors idle_caption «Hãy nói gì đó» and en comma.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 3,
+			"keys": [
+				"ui.chat.voice.heard_label",
+				"ui.chat.voice.said_label",
+				"ui.chat.voice.spoken_part_note"
+			],
+			"sha256": {
+				"en": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+				"vi": "467e478a3fcedebbb236c9afd5ed799cb35cccba8c975ea225a70a7e0c54c09f"
+			},
+			"context_sha256": "e1106acf56e0eb52432681804b8c109a2dbfdeec6406a0967c4358dbfe514a32",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.placeholder.voice"
+			],
+			"sha256": {
+				"en": "68e7108ce215c82f0f957bbfbd597594624500b9005f93a78744ed602e2eacc6",
+				"vi": "6e5941798e3adb916e51af9d01a9cad96dcf105a365c1b76f0f6b1e003e465b3"
+			},
+			"context_sha256": "b7a0393c5bff2f114fb9ff3c32c74bb83fe3580a130f35287ec8fa4e382c40ea",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": []
+		}
+	},
+	"result": "clean",
+	"findings_count": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	}
+}

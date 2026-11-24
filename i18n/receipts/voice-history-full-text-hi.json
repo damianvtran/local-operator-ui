@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev audit-i18n-hi reviewer task; not the translator session, anthropic/claude-sonnet-5-5 translator)",
+ "agent": "translation-auditor (lopdev audit-i18n-hi reviewer task; not the translator session, anthropic/claude-sonnet-5-5 translator)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session header served model; every read, check and verdict ran on it.",
+ "fallback": "none",
+ "independence": "Separate lopdev reviewer task session from the one that translated the keys. Same model family/name as the translator (anthropic/claude-sonnet-5-5), so independence is by session and by rebuilding the judgement from en source, context sidecars, sibling shipped hi keys, glossary and hi style guide, not by a different model. Read-only on the worktree; this receipt is the only file written.",
+ "independent_from_translator_session": true,
+ "instance": "voice-history-full-text-hi",
+ "session": "audit-i18n-hi",
+ "locale": "hi",
+ "branch": "voice-history-full-text",
+ "head": "a9161f63eb48cc0932558543c7b61d5a3eed54ba",
+ "base": "cd9d85f30d",
+ "repo": "damianvtran/local-operator-ui",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/2065",
+ "worktree": "/Users/bentran/workspace/repos/local-operator-ui/.worktrees/voice-history-full-text",
+ "date": "2026-11-23",
+ "status": "passed",
+ "result": "clean",
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "scope": "hi vs en, keys from git diff cd9d85f30d..a9161f63eb: ui.chat.voice.heard_label, said_label (colon added), NEW ui.chat.voice.spoken_part_note, REMOVED ui.chat.voice.cut_note; ui.chat.composer: NEW placeholder.voice. Checked: idiom, आप register, glossary/style guide (nukta, ASCII colon with no leading space as in shipped 'डिक्टेशन विफल:', no ZW/bidi), sibling consistency (idle_caption, you_label, byok_speech_failed 'बोलकर सुना', cut_chip, placeholder.answer 'टाइप करें', existing 'आपने कहा'/'कहा गया' base), ICU/placeholder parity (none changed; en/hi key sets equal 81/81 and 97/97), NFC, no edge/double spaces, one-line fit (34/24 code points), cut_note absent from hi catalogues, src, scripts and i18n/. Catalogue hashes cover the whole namespace files at this head (sha256 of file bytes, as ledger-rules.sha256Hex).",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md @ origin/main 52c5a4149)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/hi.md @ origin/main 52c5a4149)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "heard_label 'आपने कहा:' = 'You said:' — natural, आप register, same base as shipped 'आपने कहा'; colon half-width, no space (hi convention, not fr).",
+  "said_label 'कहा गया:' = 'Said:' — unchanged stem, passive reads as 'what was spoken'; shorter than a 'बोला गया:' alternative would gain nothing.",
+  "spoken_part_note 'बोलकर सुनाया गया: केवल पहला हिस्सा' — 'बोलकर सुनाया' matches shipped byok_speech_failed/stream_lost wording for speak-aloud; plain statement, says audio only, does not imply text is missing (en context note).",
+  "placeholder.voice 'बोलें, या यहाँ टाइप करें' — polite imperatives, sentence-case n/a in Devanagari, covers both speak and type; 'टाइप करें' matches placeholder.answer.",
+  "cut_note: no occurrence in hi catalogues, src, scripts, i18n; en key also removed (key sets equal).",
+  "voice-composer.tsx LabelledCaption only switches spacing on a full-width colon (U+FF1A); hi ASCII colon takes the normal path, no double colon."
+ ],
+ "namespaces": {
+  "ui.chat.voice": {
+   "namespace": "ui.chat.voice",
+   "status": "passed",
+   "result": "clean",
+   "delta_keys_audited": [
+    "ui.chat.voice.heard_label",
+    "ui.chat.voice.said_label",
+    "ui.chat.voice.spoken_part_note"
+   ],
+   "sha256": {
+    "en": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+    "hi": "48c5ff46212cb1d60e14331d5463df17510c32dd1e2382326284ec1854fc7d2f"
+   },
+   "context_sha256": "e1106acf56e0eb52432681804b8c109a2dbfdeec6406a0967c4358dbfe514a32",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.voice.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.voice.json",
+    "context": "src/i18n/catalogues/en/ui.chat.voice.context.json"
+   },
+   "findings": []
+  },
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean",
+   "delta_keys_audited": [
+    "ui.chat.composer.placeholder.voice"
+   ],
+   "sha256": {
+    "en": "68e7108ce215c82f0f957bbfbd597594624500b9005f93a78744ed602e2eacc6",
+    "hi": "2c08cbb4bda1cb6822cc620a956e25d64886da6cb3f61ce3e127f392b3bf7d42"
+   },
+   "context_sha256": "b7a0393c5bff2f114fb9ff3c32c74bb83fe3580a130f35287ec8fa4e382c40ea",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": []
+  }
+ }
+}

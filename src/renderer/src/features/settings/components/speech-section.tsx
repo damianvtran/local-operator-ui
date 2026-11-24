@@ -561,7 +561,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({
 					 * only leaving the route repairs it.
 					 */}
 					<ErrorBoundary
-						fallbackRender={PanelFallback}
+						fallbackRender={(props) => <PanelFallback {...props} />}
 						resetKeys={[pathsQuery.dataUpdatedAt]}
 					>
 						{availability && (

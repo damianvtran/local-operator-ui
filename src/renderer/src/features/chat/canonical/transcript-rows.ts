@@ -683,7 +683,7 @@ export function isStatementRow(record: TranscriptRecord): boolean {
  */
 export function paintsSomething(record: TranscriptRecord): boolean {
 	if (record.kind !== "assistant") return true;
-	return Boolean(record.text);
+	return Boolean(record.text || record.inlineUi);
 }
 
 /**

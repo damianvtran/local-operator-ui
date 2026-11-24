@@ -73,5 +73,12 @@
 		"placeholders": {},
 		"role": "first sentence of an error when the app cannot tell whether an answer reached the agent",
 		"tone": "short sentence, ends with a full stop"
+	},
+	"ui.chat.ask_answer.conversation_deleted": {
+		"length": "",
+		"note": "'Decline' and 'Dismiss' are the names of the two buttons on the ask card; use the same words as those buttons.",
+		"placeholders": {},
+		"role": "error on an ask card when the answer was refused because the conversation that asked was deleted",
+		"tone": "two short sentences, ends with a full stop"
 	}
 }

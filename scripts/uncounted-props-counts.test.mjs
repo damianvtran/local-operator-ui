@@ -76,12 +76,12 @@ const SITES = [
 		"ui.chat.run_details.wake.more",
 		(n) => `${n} more wake${n === 1 ? "" : "s"}`,
 	],
-	[
-		"components/chat-sidebar.tsx",
-		"ui.chat.sidebar.search.count_tooltip",
-		(n, clipped) =>
-			`${clipped ? "At least " : ""}${n} chat${n === 1 ? " matches" : "s match"} this search${clipped ? "; the list stops there" : ""}`,
-	],
+	/*
+	 * `components/chat-sidebar.tsx` / `ui.chat.sidebar.search.count_tooltip` left
+	 * this table with its only call site: design round 7 D1 on PR #2043 retired the
+	 * legacy Agents/Teams `heading()` builder and its search count badge, so every
+	 * sidebar route draws the shared `SidebarSectionHeading` instead.
+	 */
 ];
 const COUNTS = [0, 1, 2, 999, 1000, 1001, 1.25, 1000.12345, -1, -1000, 1e21];
 const BATCH_FALLBACK =
@@ -224,8 +224,10 @@ test("batch fallback retains supplied summaries, including the empty string", ()
 const LOCALES = ["fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
 const PLURAL_KEYS = [...new Set(SITES.map(([, key]) => key))];
 // `images_aria` has two call sites but is one key: assert the distinct key
-// count so a dropped key cannot shrink this proof silently.
-assert.equal(PLURAL_KEYS.length, 8, "eight distinct plural keys");
+// count so a dropped key cannot shrink this proof silently. Seven since PR #2043
+// retired the sidebar search count tooltip's only call site (see SITES); its
+// catalogue message is still rendered by the `ru` row in ARMS below.
+assert.equal(PLURAL_KEYS.length, 7, "seven distinct plural keys");
 // Any Unicode decimal digit: catches localised digit systems, not only ASCII.
 const ANY_DIGIT = /\p{Nd}/u;
 const DISPLAY_COUNTS = [0, 1, 2, 5, 999, 1000, 1001, 12345];

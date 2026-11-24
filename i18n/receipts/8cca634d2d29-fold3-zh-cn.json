@@ -1,0 +1,92 @@
+{
+ "schema": 1,
+ "auditor": "codex",
+ "agent": "codex",
+ "model": "gpt-5.6-sol",
+ "model_provenance": "Codex MCP, requested gpt-5.6-sol; the served model is not independently verifiable (no session header returned). Read-only; strings, English source, context notes, style-guide excerpt and glossary lines pasted into the prompt; it edited nothing.",
+ "instance": "8cca634d2d29-fold3-zh-cn",
+ "locale": "zh-CN",
+ "branch": "feat/busy-delivery-desktop",
+ "head": "merge of origin/main d8ff920195 into 0526fd6c2b (lane session 8cca634d2d29), on the bytes on disk at assembly time",
+ "date": "2026-11-23",
+ "status": "passed",
+ "verdict": "PASS - 0 blocker/major, 3 minor/nit",
+ "audit_kind": "DELTA audit of the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two audited parents (catalogue-union-parity: no value differences), so their audits stand in the superseded rows.",
+ "independence": "A different agent and model family from the translators (anthropic/claude-sonnet-5-5, self-reported). The coder that assembled this receipt neither translated nor audited. Same-lane corrections before this audit: es and fr keycap names made consistent with origin/main (es Enter->Intro in 13 strings; fr (Enter) -> (Entrée) and Esc -> Échap in the two steer hints), after a first pass found them MAJOR against the established vocabulary; round 1 for es/fr had been run with a prompt that wrongly demanded English keycaps and its findings on that point were discarded.",
+ "keys_audited": [
+  "ui.settings.shortcuts.action.send_both",
+  "ui.settings.shortcuts.action.send_queue",
+  "ui.settings.shortcuts.action.send_steer",
+  "ui.settings.shortcuts.category.sending",
+  "ui.settings.shortcuts.category.sending_description",
+  "ui.settings.shortcuts.reserved.enter",
+  "ui.settings.shortcuts.capture.send_newline",
+  "ui.settings.shortcuts.capture.send_needs_modifier",
+  "ui.settings.shortcuts.capture.panel_enter",
+  "ui.settings.shortcuts.capture.send_prompt",
+  "ui.settings.shortcuts.row_help.send_steer",
+  "ui.settings.shortcuts.row_help.send_queue",
+  "ui.settings.shortcuts.row_help.send_both",
+  "ui.chat.composer.placeholder.waiting_steer",
+  "ui.chat.composer.placeholder.waiting_queue",
+  "ui.chat.composer.placeholder.waiting_both",
+  "ui.chat.composer.steer_hint_steer",
+  "ui.chat.composer.steer_hint_queue",
+  "ui.chat.composer.steer_hint_both",
+  "ui.chat.composer.placeholder.waiting",
+  "ui.chat.composer.steer_hint",
+  "ui.chat.canonical.send_failure.delivery_unsupported",
+  "ui.chat.canonical.transcript.busy_wait.steer",
+  "ui.chat.canonical.transcript.busy_wait.queue",
+  "ui.chat.canonical.transcript.busy_wait.both",
+  "ui.chat.canonical.transcript.busy_wait.joined",
+  "ui.chat.canonical.transcript.busy_wait.deferred"
+ ],
+ "namespaces": {
+  "ui.settings.shortcuts": {
+   "status": "passed",
+   "en_sha256": "2a79b49cdfb97ac2d5628b9012e7fca6b2d646f802da0a8b3c07e8a03abe0821",
+   "zh-CN_sha256": "8e437d9912a59eabbb11b3c60aabe76dbd43ab18b9f12a931f1f88e8b90a54d4",
+   "findings": []
+  },
+  "ui.chat.composer": {
+   "status": "passed",
+   "en_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
+   "zh-CN_sha256": "13e5bd0a271a63aa87736ba50984029b91e514e912e0b278acfdd5cd6b07dbc8",
+   "findings": [
+    {
+     "id": "COM1",
+     "severity": "nit",
+     "key": "ui.chat.composer.placeholder.waiting_both",
+     "message": "中文与拉丁键名之间多加了空格，既不符合样式指南，也与同组字符串不一致。",
+     "suggested": "Enter排队后引导 · Esc停止",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    },
+    {
+     "id": "COM2",
+     "severity": "nit",
+     "key": "ui.chat.composer.steer_hint_both",
+     "message": "中文与拉丁键名之间多加了空格，既不符合样式指南，也与同组字符串不一致。",
+     "suggested": "Enter排队后引导 · Esc停止本轮",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    }
+   ]
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "en_sha256": "81c4d322e7be2af66bd872a750887e810e00d3221070dfd60f0b4c89fffbd52c",
+   "zh-CN_sha256": "ef03292aba838770fc7ced7fe28cfb9bd80bd8bd2a8a6d83ef9f423d74c1f025",
+   "findings": [
+    {
+     "id": "CAN1",
+     "severity": "minor",
+     "key": "ui.chat.canonical.send_failure.delivery_unsupported",
+     "message": "错误正文包含明确的下一步指令，但“改为引导发送”缺少样式指南要求的句首“请”。",
+     "suggested": "忙碌时无法更改发送方式，消息未发送。请改为引导发送，或更新后端。",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    }
+   ]
+  }
+ },
+ "notes": "整体含义准确、模式术语一致且无占位符或ICU问题；仅需修正一处指令语气和两处空格。"
+}

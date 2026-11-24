@@ -221,18 +221,24 @@ const Column = ({
 	width?: number;
 	children: ReactNode;
 }) => (
-	<div className="flex h-screen w-screen justify-center bg-canvas">
+	// Mirror the app's single canvas alpha owner; the preview's outer canvas
+	// clears itself on full glass and cannot stand in for this backing.
+	<main
+		className="flex h-screen w-screen justify-center bg-canvas"
+		data-glass-region="canvas-backing"
+	>
 		<div
 			className="flex h-full w-full flex-col"
 			style={width ? { width } : undefined}
 			data-story-column={width ?? "viewport"}
+			data-glass-region="canvas"
 		>
 			<span className="border-hairline border-b bg-canvas px-6 py-2 font-mono text-ink-dim text-mono-sm">
 				{label}
 			</span>
 			{children}
 		</div>
-	</div>
+	</main>
 );
 
 const meta: Meta = {

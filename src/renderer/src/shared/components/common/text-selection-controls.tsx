@@ -84,7 +84,11 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	}>({ text: "", html: "", rect: null, range: null });
 	const { speak } = useSpeechStore();
 
-	const { addReply, addAttachment } = useConversationInputStore();
+	// Two action selectors, never the bare store: a selector-less subscription
+	// re-rendered every mounted toolbar (one per message paper) on each composer
+	// keystroke, because the composer writes this store per keypress.
+	const addReply = useConversationInputStore((s) => s.addReply);
+	const addAttachment = useConversationInputStore((s) => s.addAttachment);
 	/*
 	 * ONE HIGHLIGHT, ONE STRIP (design round 2, D1). The quote/link toolkits are
 	 * also selection strips, and they already own the highlight that begins in

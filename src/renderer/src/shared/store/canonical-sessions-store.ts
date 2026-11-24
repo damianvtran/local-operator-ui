@@ -72,6 +72,12 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  * follow-up). A pure function with no React or store dependency, which is why
  * the direction is safe: this store is below it, and nothing there reads state.
  */
+/*
+ * `pageFrontierMs` is a pure function over rows (no React, no store read), so
+ * importing it here keeps the direction above: the store captures the sidebar's
+ * local horizon at the moment each page arrives (`head.frontierMs`).
+ */
+import { pageFrontierMs } from "../../features/chat/chat-sidebar-view";
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
@@ -791,6 +797,15 @@ export type ChatDraft = {
 	 */
 	submittedFiles?: ChatFile[];
 	submittedMode?: "prompt" | "steer";
+	/**
+	 * The busy-send delivery the FIRST attempt carried (`queue` / `both`), pinned
+	 * beside `submittedMode` for the same reason: the receipt hashes the whole
+	 * body, so a retry must resend the same body, not re-derive delivery from a
+	 * composer whose settings read has moved since. Like `submittedInputMode`,
+	 * a previous attempt's ABSENCE is replayed verbatim. Absent means the legacy
+	 * body (steer, or idle), exactly as the first attempt sent it.
+	 */
+	submittedDelivery?: "steer" | "queue" | "both";
 	/**
 	 * The provenance the FIRST attempt of the current message carried (arch
 	 * §4.2). Pinned beside `submittedMode` and for the same reason: the server
@@ -1594,6 +1609,17 @@ export const SEND_FAILURE_COPY = {
 	get lateDeliveryOverlap() {
 		return t("ui.chat.canonical.send_failure.late_delivery_overlap");
 	},
+	/*
+	 * THE BUSY-SEND REFUSAL (architect D11). Raised by the page, not the store:
+	 * a busy send whose resolved mode is `queue`/`both` while the backend does
+	 * not advertise `features.busy_delivery`. The draft is kept and nothing is
+	 * sent as steer (which would claim the user meant that mode), so the
+	 * sentence states the version fact and the remedy. `false` keeps the text
+	 * with the user.
+	 */
+	get deliveryUnsupported() {
+		return t("ui.chat.canonical.send_failure.delivery_unsupported");
+	},
 } as const;
 
 /**
@@ -1890,7 +1916,10 @@ export function buildSendPayload(
  * stayed held through a live reconnect because the draft the send wrote was keyed
  * `send:<id>` and carried no `sessionId` at all.
  */
-function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
+export function draftBelongsToSession(
+	draft: Pick<ChatDraft, "key" | "sessionId">,
+	sessionId: string,
+): boolean {
 	return (
 		draft.sessionId === sessionId ||
 		draft.key === sessionId ||
@@ -2875,6 +2904,45 @@ async function messageWithBusyResend(
  */
 const lastAdmissionSeam = new Map<string, AdmissionSeam>();
 
+/**
+ * The delivery mode each busy send was pressed with, by request id.
+ *
+ * THE ONE CLIENT-SIDE SOURCE THE WAITING LABEL NEEDS. The backend publishes
+ * WHICH messages wait (`frontend.queued_steering[]`, whose `id` is this same
+ * request id) but not HOW each one will reach the turn, so the mode is
+ * remembered here at the press and joined to the queue by id in
+ * `busy-wait.ts`. It is client-local by design (spec §C): a reload loses the
+ * entries and the row loses its label rather than mislabelling it.
+ *
+ * BOUNDED AT 100, oldest out first: an entry is dead the moment its id leaves
+ * the queue, but nothing tells this module when that happens (the queue is read
+ * by the transcript, not written by this store), so the bound is what keeps a
+ * long session's map from growing without one. 100 is larger than the queue any
+ * turn holds in practice and small enough to stay a rounding error.
+ */
+const BUSY_SEND_MODES_LIMIT = 100;
+const busySendModeById = new Map<string, "steer" | "queue" | "both">();
+
+/** Record the mode a busy send was pressed with, for the transcript's label. */
+export function noteBusySend(
+	requestId: string,
+	mode: "steer" | "queue" | "both" | undefined,
+): void {
+	if (mode === undefined) return;
+	busySendModeById.set(requestId, mode);
+	// A `Map` iterates in insertion order, so the first key is the oldest.
+	while (busySendModeById.size > BUSY_SEND_MODES_LIMIT) {
+		const oldest = busySendModeById.keys().next().value;
+		if (oldest === undefined) break;
+		busySendModeById.delete(oldest);
+	}
+}
+
+/** The modes recorded so far, for `busyWaitLabels`. Read-only to callers. */
+export function busySendModes(): ReadonlyMap<string, string> {
+	return busySendModeById;
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2892,6 +2960,19 @@ export async function admitChatDraft(
 		files?: ChatFile[];
 		mode: "prompt" | "steer";
 		cwd: string;
+		/**
+		 * How a busy send reaches the running turn (see `submittedDelivery`). The
+		 * gate (`features.busy_delivery`, busy, non-steer) is applied by the
+		 * caller; the store only pins it so a replay resends the same body.
+		 */
+		delivery?: "steer" | "queue" | "both";
+		/**
+		 * The same press's mode even when `delivery` does not ride the body (a
+		 * plain-Enter steer send is the legacy body). Recorded with
+		 * `noteBusySend` for the transcript's waiting label only: it never
+		 * reaches the wire.
+		 */
+		busyMode?: "steer" | "queue" | "both";
 		/**
 		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
 		 * `mixed` since the box last emptied. Carriage only.
@@ -3061,6 +3142,16 @@ export async function admitChatDraft(
 	const inputPath =
 		replay && previous ? previous.submittedInputPath : input.inputPath;
 	/*
+	 * THE SAME PINNING RULE GOVERNS `delivery`, FOR THE SAME REASON: it is part
+	 * of the hashed body, so the lost-response case must replay the value the
+	 * FIRST attempt sent. Replay verbatim INCLUDING ABSENCE, exactly like
+	 * `inputMode` above: on replay a turn that has since gone idle recomputes
+	 * to no delivery, and re-deriving would hash a different body for the same
+	 * request id — the one thing the pin exists to prevent.
+	 */
+	const delivery =
+		replay && previous ? previous.submittedDelivery : input.delivery;
+	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it
 	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
@@ -3096,6 +3187,7 @@ export async function admitChatDraft(
 		submittedImages: images,
 		submittedFiles: files,
 		submittedMode: mode,
+		submittedDelivery: delivery,
 		submittedInputMode: inputMode,
 		submittedInputPath: inputPath,
 		/*
@@ -3341,6 +3433,32 @@ export async function admitChatDraft(
 		 * for the create hop, and this only settles its final text.
 		 */
 		if (id) replacePendingSendText(id, admissionRequestId, rendered);
+		/*
+		 * THE LABEL'S MODE IS THE BODY'S MODE, NOT THIS PRESS'S (agent review
+		 * round 1, R-1). On a replay `delivery` above is the FIRST attempt's pinned
+		 * value - the receipt hash demands it - while `input.busyMode` is whatever
+		 * THIS retry pressed. A lost-response retry of a queued message sent with
+		 * plain Enter (the default steer) would otherwise record `steer` for a body
+		 * the owner holds as `queue`, and the row would claim a steer that never
+		 * happened; a queue chord over a pinned steer body would claim the reverse.
+		 * So the entry is read off the body actually sent: the effective `delivery`,
+		 * whose absence already means steer.
+		 *
+		 * ONLY A BUSY SEND EARNS AN ENTRY. A first attempt's busy-ness is the
+		 * press's own (`busyMode` is present exactly when the page decided the turn
+		 * was running); a replay's is pinned with its body, where `mode` is `steer`
+		 * for a busy send and `prompt` for an idle one. Deriving on a replay also
+		 * repairs an entry the 100-entry bound evicted between attempts, or one a
+		 * first attempt never wrote. A press the gate refused has no entry and no replay:
+		 * nothing was admitted.
+		 *
+		 * Recorded just before the request, as before: an entry no queue will ever
+		 * name draws nothing, so a failed attempt costs a slot and nothing else.
+		 */
+		const bodyMode = delivery ?? "steer";
+		const busySend =
+			replay && previous ? mode !== "prompt" : input.busyMode !== undefined;
+		noteBusySend(admissionRequestId, busySend ? bodyMode : undefined);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",
@@ -3350,6 +3468,7 @@ export async function admitChatDraft(
 			images: images.length ? images : undefined,
 			...(files?.length ? { files } : {}),
 			mode,
+			delivery,
 			inputMode,
 			inputPath,
 		});
@@ -3861,6 +3980,22 @@ export type CatalogueHeadState = {
 	tailCursor: string | null;
 	/** Whether an extension has ever been requested; see `tailCursor`. */
 	tailStarted: boolean;
+	/**
+	 * The listing's FRONTIER CLOCK (ms): the mtime of the last idle local row the
+	 * deepest page read so far carried, captured WHEN that page arrived
+	 * (`pageFrontierMs`), or null when no page carried one. The sidebar withholds
+	 * non-running remote rows at or below it (`localHorizonMs`).
+	 *
+	 * WHY CAPTURED AND NOT READ LIVE (agent review round 1, R2): the bound holds
+	 * for that row's mtime at read time. Touching the conversation later moves
+	 * its live clock to now, and a live read then hid every remote row. It moves
+	 * with `tailCursor`'s rule: page-one answers seed it until an extension is
+	 * requested, then only extensions move it (deeper pages, older clocks).
+	 *
+	 * Optional because fixtures and states written before it existed read as
+	 * "no frontier", which withholds more rather than less.
+	 */
+	frontierMs?: number | null;
 	/** True once an answer said this is the whole catalogue. */
 	complete: boolean;
 	/** Single flight for the tail extension. */
@@ -4279,6 +4414,8 @@ type CanonicalSessionsState = {
 	 * field too), so that shape is closed in the same commit.
 	 */
 	validatingSessionId: string | null;
+	/** A close handoff needs positive proof for its own switch, not a cleared gate. */
+	sessionValidationReceipt: { ticket: object; confirmed: boolean } | null;
 	/**
 	 * A pin press that did not survive, held until the user presses again.
 	 *
@@ -5021,7 +5158,10 @@ type CanonicalSessionsState = {
 		 */
 		counts?: SessionStatusFrameCounts,
 	) => void;
-	openSession: (sessionId: string) => Promise<boolean>;
+	openSession: (
+		sessionId: string,
+		validationTicket?: object,
+	) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	/**
 	 * Re-stage the pane's ACTIVE draft under a picked identity, carrying the
@@ -5709,6 +5849,7 @@ function unboundDraftRow(draft: ChatDraft): ChatDraft {
 		submittedAttachments: undefined,
 		submittedImages: undefined,
 		submittedMode: undefined,
+		submittedDelivery: undefined,
 		submittedInputMode: undefined,
 		submittedInputPath: undefined,
 		submittedAt: undefined,
@@ -6336,6 +6477,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			activeDraftKey: null,
 			drafts: {},
 			validatingSessionId: null,
+			sessionValidationReceipt: null,
 			pinFailure: null,
 			pinFacts: {},
 			answerSeq: 0,
@@ -6357,6 +6499,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				nextCursor: null,
 				tailCursor: null,
 				tailStarted: false,
+				frontierMs: null,
 				complete: false,
 				loading: false,
 				error: null,
@@ -6806,6 +6949,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 										? state.head.tailCursor
 										: answerCursor,
 								tailStarted: state.head.tailStarted,
+								// Same seeding rule as `tailCursor`, for the same reason.
+								frontierMs: answerComplete
+									? null
+									: state.head.tailStarted
+										? (state.head.frontierMs ?? null)
+										: pageFrontierMs(page),
 								complete: answerComplete,
 								loading: false,
 								error: null,
@@ -6953,6 +7102,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * extension has said nothing about the head page (QA round 2, Q2).
 								 */
 								tailCursor: nextCursor,
+								/*
+								 * The frontier moves with the cursor. A page with no idle local row
+								 * (all active band) keeps the previous one: core sorts that band
+								 * first, so idle rows below it are bounded by no newer clock.
+								 */
+								frontierMs:
+									pageFrontierMs(page) ?? state.head.frontierMs ?? null,
 								// The tail reached the end only when it says so. `head.at`
 								// is deliberately NOT advanced: it stamps the answer that
 								// is allowed to settle FACTS, and an extension must never be
@@ -7732,6 +7888,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId,
 					activeDraftKey: null,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 				});
 			},
 			/*
@@ -7778,6 +7935,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeDraftKey: key,
 					activeSessionId: null,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					error: null,
 				});
 			},
@@ -7788,13 +7946,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * for a window the user is no longer waiting in.
 			 */
 			confirmSessionLive: (sessionId) => {
-				if (sessionId && get().validatingSessionId === sessionId)
-					set({ validatingSessionId: null });
+				const state = get();
+				if (!sessionId || state.validatingSessionId !== sessionId) return;
+				const receipt = state.sessionValidationReceipt;
+				set({
+					validatingSessionId: null,
+					sessionValidationReceipt: receipt && { ...receipt, confirmed: true },
+				});
 			},
 			confirmSessionMissing: (sessionId) => {
 				if (!sessionId || get().validatingSessionId !== sessionId) return;
 				set({
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					...forgetSession(get(), sessionId),
 				});
 				/*
@@ -7988,7 +8152,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return { ...state, sessions };
 				});
 			},
-			openSession: async (sessionId) => {
+			openSession: async (sessionId, validationTicket) => {
 				/*
 				 * RE-SELECTING THE ROW THE VIEW IS ALREADY ON IS A NO-OP.
 				 *
@@ -8020,6 +8184,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * a log; `useCompletionView` is the only reader.
 				 */
 				if (get().activeSessionId === sessionId && !get().activeDraftKey) {
+					// An explicit repeat selection replaces a close intent even though it
+					// does not reopen the send gate or restart the stream.
+					if (get().sessionValidationReceipt)
+						set({ sessionValidationReceipt: null });
 					get().rearmReadAck(sessionId);
 					return true;
 				}
@@ -8071,6 +8239,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId: sessionId,
 					activeDraftKey: null,
 					validatingSessionId: sessionId,
+					sessionValidationReceipt: validationTicket
+						? { ticket: validationTicket, confirmed: false }
+						: null,
 					error: null,
 				});
 				// The same stamp as the no-op arm above, for the same reason: this press is
@@ -8150,6 +8321,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set((state) => ({
 					activeDraftKey: key,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					error: null,
 					drafts: {
 						...state.drafts,
@@ -8220,7 +8392,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * pair written here is the one `openDraft` leaves: a staged draft and no
 				 * selected conversation.
 				 */
-				set({ activeSessionId: null, validatingSessionId: null });
+				set({
+					activeSessionId: null,
+					validatingSessionId: null,
+					sessionValidationReceipt: null,
+				});
 				if (from) {
 					/*
 					 * THE WORDS THAT HAVE NOT BEEN ADOPTED YET GO FIRST (agent review round 2,
@@ -8887,6 +9063,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						submittedDelivery: _delivery,
 						submittedInputMode: _inputMode,
 						submittedInputPath: _inputPath,
 						heldClaimCode: _claimCode,

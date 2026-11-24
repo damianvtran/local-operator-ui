@@ -41,7 +41,7 @@ const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/chat-list-sections";',
+			'export * from "./src/renderer/src/features/chat/chat-list-sections"; export { withQueuedAskStatuses } from "./src/renderer/src/features/chat/components/chat-session-status";',
 		resolveDir: ROOT,
 		loader: "ts",
 	},
@@ -53,17 +53,24 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	// `chat-session-status.tsx` joins this bundle for the derivation test below, so
+	// the build needs the app's JSX runtime and path aliases (its siblings read
+	// the same tsconfig; the alias map above is what keeps this file standalone).
+	jsx: "automatic",
+	tsconfig: "tsconfig.app.json",
 });
 
 const {
 	CHAT_LIST_SECTIONS,
 	CHAT_LIST_SECTION_LABEL,
 	isRunningRow,
+	isStoppedOnReader,
 	relativeTime,
 	relativeTimeSentence,
 	rowTimeMs,
 	sectionRows,
 	sectionOf,
+	withQueuedAskStatuses,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -617,9 +624,32 @@ test("the sidebar draws those sections, and a label is not a control", () => {
 		/<button|<Button/,
 		"a section label became a control again, so pressing a heading acts",
 	);
+	/*
+	 * THE HEADING MARKUP LIVES IN `SidebarSectionHeading` since the shared inset
+	 * work (PR #2043, design round 7 D1) gave every sidebar route one section
+	 * heading. So the helper here must delegate to it WITHOUT a `disclosure` (the
+	 * component's only branch that renders a button), and the component's plain
+	 * branch must still be a bare `<h3>`: both halves together are the old
+	 * "a label is a heading, not a control" claim, read through the indirection.
+	 */
+	// The whole helper, so a `disclosure` prop (the branch that renders a
+	// button) cannot be added without failing here.
 	assert.match(
 		label,
-		/<h3/,
+		/^const sectionLabel = \(label: string, action\?: ReactNode\) => \(\s*<SidebarSectionHeading label=\{label\} action=\{action\} \/>\s*\);/,
+		"the section label helper must render the shared heading with a label and an action only; its `disclosure` branch renders a button, and pressing a heading would act again",
+	);
+	const heading = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/sidebar-section-heading.tsx",
+		),
+		"utf8",
+	);
+	const plainBranch = heading.slice(heading.lastIndexOf(") : ("));
+	assert.match(
+		plainBranch,
+		/^\) : \(\s*<h3 className=\{labelStyle\}>\{label\}<\/h3>\s*\)\}/,
 		"the label is a heading, which is what gives the list its structure",
 	);
 	// And the header action is a SIBLING of the label rather than nested in it.
@@ -660,11 +690,13 @@ test("a row prints its relative time, and a running row does not", () => {
 	);
 	/*
 	 * The accessible name keeps the time as its tail and the visible `2h` stays
-	 * out of it, the shape `ChatSessionStatus` uses for its own `, unread`.
+	 * out of it, the shape `ChatSessionStatus` uses for its own `, unread`. The
+	 * joiner is the LOCALE's list separator (`listSeparator`, src/i18n/format.ts),
+	 * not a literal ", ": a Latin comma inside Urdu or Chinese was census N3.
 	 */
 	assert.match(
 		sidebar,
-		/, \{relativeTimeSentence\(row, listNow, view\.basis\)\}/,
+		/\{listSeparator\(\)\}\s*\{relativeTimeSentence\(row, listNow, view\.basis\)\}/,
 		"the row's accessible name no longer says how long ago it moved",
 	);
 });
@@ -690,4 +722,57 @@ test("waiting is Running even when the conversation last moved long ago", () => 
 	});
 	assert.equal(isRunningRow(waiting), true);
 	assert.equal(sectionOf(waiting, NOW, ACTIVE), "running");
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * ONE DERIVED ROW SPEAKS FOR BOTH THE MARK AND THE SECTION (2026-11-23)
+ * ---------------------------------------------------------------------------
+ *
+ * The wire code for an open queued ask is `answer`, so an idle conversation
+ * with one ask filed under RUNNING and was lifted as "stopped on the reader" -
+ * while PR #2053 had already made it draw as a resting ring. The two disagreed
+ * because the section read the wire row and the mark read a derived one; the
+ * sidebar now derives the LIST first (`withQueuedAskStatuses`), and these cases
+ * pin what that has to mean for the section and the lift.
+ */
+const QUEUED_ASK = { status: { code: "answer", label: "Answer needed" } };
+const ASK_COUNT = new Map([["s", 1]]);
+
+test("[M-section-idle-asks1] an idle conversation with a queued ask is not running and not stopped on the reader", () => {
+	const [derived] = withQueuedAskStatuses(
+		[row({ ...QUEUED_ASK, live_state: "idle", ...at(NOW - HOUR) })],
+		ASK_COUNT,
+	);
+	assert.equal(isRunningRow(derived), false);
+	assert.equal(sectionOf(derived, NOW, ACTIVE), "today");
+});
+
+test("[M-section-busy-asks1] a busy conversation with a queued ask stays Running, and is not stopped on the reader", () => {
+	const [derived] = withQueuedAskStatuses(
+		[row({ ...QUEUED_ASK, live_state: "busy", ...at(NOW - HOUR) })],
+		ASK_COUNT,
+	);
+	assert.equal(isRunningRow(derived), true);
+	assert.equal(sectionOf(derived, NOW, ACTIVE), "running");
+});
+
+test("[M-section-blocking] a blocking answer and an approval still file under Running", () => {
+	const answer = row({ ...QUEUED_ASK, live_state: "idle" });
+	// No count: a question gate with no queue row behind it, so the code stands.
+	const [blocking] = withQueuedAskStatuses([answer], new Map());
+	assert.equal(blocking, answer);
+	assert.equal(isRunningRow(blocking), true);
+	assert.equal(isStoppedOnReader(blocking), true);
+	assert.equal(sectionOf(blocking, NOW, ACTIVE), "running");
+	// An approval keeps its own code even with a queued ask beside it.
+	const approval = row({
+		status: { code: "approval", label: "Approval needed" },
+		live_state: "idle",
+	});
+	const [gate] = withQueuedAskStatuses([approval], ASK_COUNT);
+	assert.equal(gate.status.code, "approval");
+	assert.equal(isRunningRow(gate), true);
+	assert.equal(isStoppedOnReader(gate), true);
+	assert.equal(sectionOf(gate, NOW, ACTIVE), "running");
 });

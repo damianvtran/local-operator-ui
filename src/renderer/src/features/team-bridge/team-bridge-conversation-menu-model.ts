@@ -77,7 +77,11 @@ export type TeamBridgeOwnAgentAction =
 export type TeamBridgeConversationMenuItem =
 	| { id: "view_members" }
 	| { id: "add_members" }
-	| { id: "rename"; kind: "channel" | "group" }
+	/* Team Integrations (RFC §10 item 2): console link-out, org owner/admin only. */
+	| { id: "manage_apps" }
+	/* Team Integrations (RFC §7.1, Flow D): the reader's own agent as alert responder. */
+	| { id: "responder" }
+	| { id: "rename"; kind: "channel" | "group"; edit?: boolean }
 	| { id: "join" }
 	| { id: "notify" }
 	| { id: "agent_notify" }
@@ -106,6 +110,8 @@ export type TeamBridgeConversationMenuItemId =
 export type TeamBridgeConversationMenuWiring = {
 	viewMembers?: boolean;
 	addMembers?: boolean;
+	manageApps?: boolean;
+	responder?: boolean;
 	rename?: boolean;
 	join?: boolean;
 	notify?: boolean;
@@ -136,6 +142,8 @@ export type TeamBridgeConversationMenuInput = {
 	 * would fail with an error no retry can fix.
 	 */
 	renamable?: boolean;
+	/** Full metadata PATCH capability; otherwise this is genuinely name-only. */
+	editable?: boolean;
 	wiring: TeamBridgeConversationMenuWiring;
 };
 
@@ -341,9 +349,37 @@ export function conversationMenuSections(
 	)
 		membership.push({
 			id: "rename",
+			...(input.editable ? { edit: true } : {}),
 			kind: conversation.kind === "group" ? "group" : "channel",
 		});
 	if (writable && wiring.join && preview) membership.push({ id: "join" });
+	/*
+	 * TEAM INTEGRATIONS ENTRIES (RFC §10 item 2, U3). Channels only: an app is
+	 * installed into a channel, never a DM or group.
+	 *  - Manage apps: the hub's own `can_manage_integrations` (org owner/admin),
+	 *    never inferred from a role; absent is false, so it fails closed.
+	 *  - Alert responder: the reader's OWN agent must be an active member here -
+	 *    the hub refuses to publish a responder for any other endpoint.
+	 */
+	const channel = conversation.kind === "channel" && !preview && open;
+	if (
+		channel &&
+		wiring.manageApps &&
+		conversation.can_manage_integrations === true
+	)
+		membership.push({ id: "manage_apps" });
+	if (
+		channel &&
+		!input.readOnly &&
+		wiring.responder &&
+		conversation.members.some(
+			(row) =>
+				row.kind === "agent" &&
+				row.account_id === selfAccountId &&
+				row.state === "active",
+		)
+	)
+		membership.push({ id: "responder" });
 
 	const notifications: TeamBridgeConversationMenuItem[] = [];
 	if (writable && !preview && wiring.notify) {

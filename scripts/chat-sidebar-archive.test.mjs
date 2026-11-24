@@ -586,24 +586,19 @@ test("the sidebar's own lane is deleted; the messages are raised by an always-mo
 });
 
 test("the press record expires on the pointer's own path", () => {
-	/*
-	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its start marker moved 2026-09-26: the
-	 * list panel no longer carries `ref={listPanelRef}` (the merged scroller takes the twin ref) and
-	 * its end marker is the new flow class the one-scroll pass gave it, `className={cn("relative
-	 * space-y-4")}` - the same `className={cn(` marker the sessionRow slice below uses. Before
-	 * `between` was hardened, this slice ran to the end of the file, so every pattern it asserts
-	 * could have been satisfied by the ENTITY region's nested rows rather than by this panel, which
-	 * is exactly what its own comment says the records are region-scoped about.
-	 */
-	const panel = between(
-		SIDEBAR,
-		'key="chats"',
-		'className={cn("relative space-y-4")}',
+	// Anchor on the rendered region, not a spacing utility. Both regions have
+	// pointer handlers; asserts must stop at the end of this opening tag.
+	const panel = between(SIDEBAR, 'key="chats"', "\n\t\t>");
+	assert.match(
+		panel,
+		/onPointerMove=\{\(event\) => \{[\s\S]*archivePressExpired\(lastArchivePress\.current/,
 	);
-	assert.match(panel, /onPointerMove=/);
-	assert.match(panel, /archivePressExpired\(lastArchivePress\.current/);
-	assert.match(panel, /onPointerLeave=/);
-	assert.match(panel, /lastArchivePress\.current = null/);
+	assert.match(
+		panel,
+		/onPointerLeave=\{\(\) => \{[\s\S]*?lastArchivePress\.current = null/,
+	);
+	assert.match(panel, /data-sidebar-region="chats"/);
+	assert.doesNotMatch(panel, /<section\b/);
 });
 
 /* ------------------------------------------------------- the chat header */

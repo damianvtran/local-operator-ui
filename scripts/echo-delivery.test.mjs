@@ -78,6 +78,31 @@ export const subscribeDesktopStream = () => () => {};`,
 					resolveDir: process.cwd(),
 				}));
 				/*
+				 * The composer reads the configured send chords off the preferences
+				 * store (`ui-preferences-store`), and that store's own import chain
+				 * reaches `@shared/themes` -> `base-theme` -> `@mui/material` and
+				 * `@emotion/react`, which call into React at module scope
+				 * (`createContext`, `forwardRef`). Those modules are not under test
+				 * here, and the note below says why this bundle must not carry a
+				 * renderer, so the store is answered at the one attribute the send
+				 * path reads: `shortcutBindings`, whose shipped initial state is
+				 * empty - every action then dispatches on its registry default
+				 * (see the `shortcutBindings: {}` initial state in
+				 * `ui-preferences-store.ts`).
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/store\/ui-preferences-store$/ },
+					() => ({ path: "ui-preferences", namespace: "echo-fixture-prefs" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "echo-fixture-prefs" },
+					() => ({
+						contents: `const state = { shortcutBindings: {} };
+export const useUiPreferencesStore = { getState: () => state, subscribe: () => () => {} };`,
+						loader: "js",
+					}),
+				);
+				/*
 				 * React is never imported by the DELIVERY fixtures - the hook module is
 				 * pulled in for its module-level registry there, and a node bundle must
 				 * not drag a renderer in behind it. The COMPOSER cases at the foot of
@@ -1030,7 +1055,12 @@ function makeComposerRuntime() {
 	return runtime;
 }
 
-async function driveComposer({ onSubmit, initial = input.text, prime }) {
+async function driveComposer({
+	onSubmit,
+	initial = input.text,
+	prime,
+	scrollToBottom,
+}) {
 	// The composer's persisted draft is module state and outlives a case.
 	useConversationInputStore.setState({ inputByConversation: {} });
 	/*
@@ -1044,6 +1074,7 @@ async function driveComposer({ onSubmit, initial = input.text, prime }) {
 	runtime.render = () => {
 		composer = useMessageInput({
 			conversationId: COMPOSER_ID,
+			scrollToBottom,
 			onSubmit: (message, onEchoPainted) =>
 				onSubmit({
 					message,
@@ -1117,6 +1148,31 @@ test("U1: the composer holds the text until the echo is painted, and empties wit
 		"",
 		"the clear happens in the same call as the paint, so the text moves in one step",
 	);
+});
+
+test("an echoed send carries a scrolled-up sender to the tail, at the paint (2026-11-23)", async () => {
+	/*
+	 * The operator's report: "after sending a message, the chat doesn't always
+	 * automatically smoothly scroll down". The composer skipped its scroll
+	 * whenever the echo painted - the NORMAL send - leaving it to a transcript
+	 * follow policy that only follows a reader already at the tail. This pins
+	 * that the composer asks for the tail itself, in the same call as the
+	 * paint (not on receipt, which could override a later reader scroll), and
+	 * exactly once. Whether that request animates, snaps or does nothing is
+	 * `scroll-to-tail.ts`'s decision, pinned in `scroll-to-tail.test.mjs`.
+	 */
+	const calls = [];
+	let atPaint = -1;
+	await driveComposer({
+		scrollToBottom: () => calls.push("tail"),
+		onSubmit: ({ onEchoPainted }) => {
+			onEchoPainted?.();
+			atPaint = calls.length;
+			return true;
+		},
+	});
+	assert.equal(atPaint, 1, "the tail is requested with the echo's paint");
+	assert.equal(calls.length, 1, "and not a second time when the send settles");
 });
 
 test("F1: a send whose echo never paints still retires the box (post-settle fallback)", async () => {

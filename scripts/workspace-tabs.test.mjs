@@ -1,0 +1,301 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+const { outputFiles } = await build({
+	stdin: {
+		contents: `
+			export * from "./workspace-tabs-model";
+			export * from "./workspace-tab-cleanup";
+			export { translate } from "../../../../i18n/messages";
+		`,
+		resolveDir: new URL("../src/renderer/src/features/chat/", import.meta.url)
+			.pathname,
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const {
+	WORKSPACE_INACTIVE_MINUTES,
+	workspaceRestRevisions,
+	workspaceRowCanRest,
+	displayedWorkspaceTabs,
+	makeWorkspaceTab,
+	moveWorkspaceTab,
+	sanitizeSavedWorkspaceTabs,
+	saveWorkspaceTabs,
+	syncWorkspaceTabs,
+	translate,
+	workspaceNeighbor,
+	workspaceSessionPathMatches,
+	workspaceTarget,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(outputFiles[0].contents).toString("base64")}`
+);
+
+const targetA = { kind: "session", id: "000000aaaaaa" };
+const targetB = { kind: "session", id: "000000bbbbbb" };
+const targetC = { kind: "session", id: "000000cccccc" };
+const draft = { kind: "draft", id: "draft:synthetic" };
+const sessionA = makeWorkspaceTab(targetA);
+const sessionB = makeWorkspaceTab(targetB);
+const sessionC = makeWorkspaceTab(targetC);
+const draftTab = makeWorkspaceTab(draft);
+
+const source = (name) =>
+	readFileSync(new URL(`../src/renderer/src/${name}`, import.meta.url), "utf8");
+const modelPath = "features/chat/components/";
+const routePath = /^\/chat\//;
+const TAB_STRIP =
+	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 32px;/;
+const TAB_PAINT_HOST =
+	/\[data-workspace-tab\]\s*\{[^}]*position: relative;\s*isolation: isolate;/;
+const TAB_PAINT =
+	/\[data-workspace-tab\]::before\s*\{[^}]*z-index: -1;\s*inset-block: 2px;[^}]*background: var\(--workspace-tab-fill\);\s*pointer-events: none;/;
+const ACTIVE_TAB_PAINT =
+	/\[data-workspace-tab\]\[data-active\]\s*\{\s*--workspace-tab-fill:/;
+const DRAG_SPACER = /\[data-workspace-tab-spacer\]\s*\{\s*align-self: stretch;/;
+const NO_DRAG_TAB = /data-workspace-tab=""[^>]*data-titlebar-no-drag=""/;
+const TAB_TARGET = /className="flex h-7 [^"]+"\s*aria-current=/;
+const CLOSE_TARGET = /data-workspace-close=""\s*className="[^"\n]*\bsize-6\b/;
+const MORE_TARGET =
+	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
+const TAB_FOCUS =
+	/\[data-workspace-tabs\] button:focus-visible\s*\{\s*outline: 2px solid var\(--color-accent\);\s*outline-offset: -2px;/;
+const HEADER_PADDING =
+	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-start: 4px;\s*padding-inline-end: 12px;\s*\}/;
+
+test("reopening canonical ids focuses the existing target without adding a duplicate", () => {
+	const opened = syncWorkspaceTabs([], targetA, {});
+	assert.strictEqual(syncWorkspaceTabs(opened, { ...targetA }, {}), opened);
+	assert.deepEqual(workspaceTarget(null, targetA.id, {}), targetA);
+	assert.deepEqual(
+		workspaceTarget(draft.id, targetB.id, { [draft.id]: {} }),
+		draft,
+	);
+	assert.equal(workspaceTarget(draft.id, targetB.id, {}), undefined);
+	assert.equal(
+		workspaceSessionPathMatches(`/chat/${targetA.id}`, targetA.id),
+		true,
+	);
+	for (const path of [
+		"/chat",
+		`/chat/${targetA.id}/extra`,
+		`/settings/${targetA.id}`,
+	]) {
+		assert.equal(workspaceSessionPathMatches(path, targetA.id), false);
+	}
+});
+
+test("a background admission preserves the exact draft tab position and either pin", () => {
+	const staged = [sessionB, draftTab, { ...sessionA, pinned: true }, sessionC];
+	const result = syncWorkspaceTabs(
+		staged,
+		targetC,
+		{},
+		{ [draft.id]: { sessionId: targetA.id } },
+	);
+	assert.deepEqual(result, [
+		sessionB,
+		{ ...draftTab, target: targetA, pinned: true },
+		sessionC,
+	]);
+	assert.deepEqual(
+		workspaceTarget(draft.id, null, { [draft.id]: { sessionId: targetA.id } }),
+		targetA,
+	);
+	assert.deepEqual(syncWorkspaceTabs(staged, targetC, {}), [
+		sessionB,
+		staged[2],
+		sessionC,
+	]);
+});
+
+test("re-launching the same draft target after admission creates a distinct tab", () => {
+	const admitted = syncWorkspaceTabs(
+		[sessionB, { ...draftTab, pinned: true }, sessionC],
+		targetA,
+		{ [draft.id]: { sessionId: targetA.id } },
+	);
+	const relaunched = syncWorkspaceTabs(admitted, draft, { [draft.id]: {} });
+	assert.equal(new Set(relaunched.map(({ key }) => key)).size, 4);
+	assert.deepEqual(
+		relaunched.map(({ target }) => target),
+		[targetB, targetA, targetC, draft],
+	);
+	assert.equal(relaunched[1].pinned, true);
+	assert.equal(relaunched[3].pinned, false);
+});
+
+test("close fallback follows visible order and reordering cannot cross lanes", () => {
+	const tabs = [sessionA, { ...sessionB, pinned: true }, sessionC];
+	assert.deepEqual(
+		displayedWorkspaceTabs(tabs).map((tab) => tab.key),
+		[sessionB.key, sessionA.key, sessionC.key],
+	);
+	assert.equal(workspaceNeighbor(tabs, sessionA.key), sessionC);
+	assert.equal(workspaceNeighbor(tabs, sessionB.key), sessionA);
+	assert.strictEqual(moveWorkspaceTab(tabs, sessionA.key, sessionB.key), tabs);
+	assert.strictEqual(moveWorkspaceTab(tabs, "external", sessionC.key), tabs);
+	assert.deepEqual(
+		displayedWorkspaceTabs(
+			moveWorkspaceTab(tabs, sessionA.key, sessionC.key),
+		).map((tab) => tab.key),
+		[sessionB.key, sessionC.key, sessionA.key],
+	);
+});
+
+test("saved preferences consist of known session identities, order and boolean pins only", () => {
+	const saved = saveWorkspaceTabs([
+		sessionB,
+		{ ...draftTab, pinned: true },
+		sessionA,
+	]);
+	assert.deepEqual(saved, [
+		{ id: targetB.id, pinned: false },
+		{ id: targetA.id, pinned: false },
+	]);
+	assert.deepEqual(
+		sanitizeSavedWorkspaceTabs([
+			...saved,
+			{ ...saved[0], pinned: true },
+			{ id: draft.id, pinned: true },
+			{ id: targetC.id, pinned: "true" },
+			{ id: targetC.id, pinned: true, message: "not copied" },
+		]),
+		[...saved, { id: targetC.id, pinned: true }],
+	);
+});
+
+test("catalogue facts can veto but never certify workspace rest", () => {
+	const resting = { id: targetA.id, locality: "local", jobs_running: null };
+	assert.equal(workspaceRowCanRest(resting), true);
+	for (const patch of [
+		{ locality: undefined },
+		{ locality: "remote" },
+		{ link_down: true },
+		{ archived: true },
+		{ pinned: true },
+		{ active: true },
+		{ background_work: true },
+		{ attention: { unseen: true } },
+		{ waiting_on: 1 },
+		{ jobs_running: 1 },
+		{ pending: "approve" },
+		{ asks_open: 1 },
+		{ status: { code: "answer" } },
+	])
+		assert.equal(
+			workspaceRowCanRest({ ...resting, ...patch }),
+			false,
+			JSON.stringify(patch),
+		);
+
+	const epoch = "known feed";
+	const revision = "opaque-String:+-123";
+	const workspace_rest = { version: 1, epoch, revision };
+	const local = { ...resting, workspace_rest };
+	const read = (...sessions) =>
+		workspaceRestRevisions(
+			{ status: 200, body: { result: { sessions } } },
+			new Set([targetA.id]),
+			epoch,
+		);
+	assert.equal(read(resting).get(targetA.id), undefined);
+	assert.equal(
+		read(local, { ...local, id: targetB.id }).get(targetA.id),
+		revision,
+	);
+	assert.equal(read(local, local).get(targetA.id), undefined);
+	assert.equal(
+		read({ ...local, locality: "remote" }).get(targetA.id),
+		undefined,
+	);
+	assert.equal(
+		read({
+			...local,
+			workspace_rest: { ...workspace_rest, revision: "  " },
+		}).get(targetA.id),
+		undefined,
+	);
+});
+
+// This label sits next to manual Close tab in a narrow menu. Keep the tab
+// terminology consistent and the timeout's number/unit together where the locale calls for it.
+for (const [locale, check] of Object.entries({
+	fr: (label) => label.endsWith(`${WORKSPACE_INACTIVE_MINUTES}\u202fmin`),
+	ur: (label, closeTab) =>
+		label.includes(
+			`${WORKSPACE_INACTIVE_MINUTES} منٹ تک غیر فعال رہنے کے بعد`,
+		) && label.endsWith(closeTab),
+	vi: (label, closeTab) =>
+		label.startsWith(`${closeTab} sau ${WORKSPACE_INACTIVE_MINUTES} phút`),
+	"zh-CN": (label) => label.startsWith(`闲置${WORKSPACE_INACTIVE_MINUTES}分钟`),
+})) {
+	test(`cleanup menu label follows ${locale} terminology and number spacing`, () => {
+		const label = translate(
+			"ui.chat.header.auto_close_inactive_tabs",
+			{
+				minutes: WORKSPACE_INACTIVE_MINUTES,
+			},
+			locale,
+		);
+		const closeTab = translate(
+			"ui.browser.browser_tab_strip.close_tab",
+			{},
+			locale,
+		);
+		assert.ok(check(label, closeTab), label);
+	});
+}
+
+test("the 32px strip leaves 4px of settled air on both sides of the tab paint without sacrificing hit area", () => {
+	const css = source("styles/index.css");
+	const strip = source(`${modelPath}workspace-tabs.tsx`);
+	// The centered 28px target leaves 2px of native lane on each edge; another
+	// 2px comes only out of its paint, not the scrollport or pointer target.
+	assert.match(css, TAB_STRIP);
+	assert.match(css, TAB_PAINT_HOST);
+	assert.match(css, TAB_PAINT);
+	assert.match(css, ACTIVE_TAB_PAINT);
+	assert.match(css, DRAG_SPACER);
+	assert.match(strip, NO_DRAG_TAB);
+	assert.match(strip, TAB_TARGET);
+	assert.match(strip, CLOSE_TARGET);
+	assert.match(strip, MORE_TARGET);
+	assert.match(css, TAB_FOCUS);
+});
+
+test("header leading padding follows direction without moving its trailing actions", () => {
+	assert.match(source("styles/index.css"), HEADER_PADDING);
+});
+
+test("titlebar activation and actions keep one navigation owner and never trust a drop payload", () => {
+	const strip = source(`${modelPath}workspace-tabs.tsx`);
+	const hook = source(`${modelPath}use-workspace-tabs.ts`);
+	const page = source(`${modelPath}chat-page.tsx`);
+	assert.equal((page.match(/<SessionPanel\b/g) ?? []).length, 1);
+	assert.ok(strip.includes("button.focus({ preventScroll: true })"));
+	assert.ok(strip.includes('data-titlebar-no-drag=""'));
+	assert.ok(strip.includes('data-titlebar-drag=""'));
+	assert.ok(
+		strip.includes('data-workspace-pinned=""') &&
+			strip.includes('data-workspace-regular=""'),
+	);
+	assert.ok(strip.includes('data-workspace-tab-menu=""'));
+	assert.ok(strip.includes('dataTransfer.setData(WORKSPACE_DRAG, "")'));
+	assert.ok(!strip.includes("dataTransfer.getData"));
+	assert.ok(hook.includes("store.openDraft(target.id)"));
+	assert.ok(
+		hook.includes(
+			'return openConversation(navigate, target.id, "open", ticket)',
+		),
+	);
+	assert.ok(hook.includes("receipt?.ticket !== handoff.ticket"));
+	assert.ok(hook.includes("receipt.confirmed"));
+	assert.ok(hook.includes("state.forgotten[handoff.to] !== undefined"));
+	assert.ok(!routePath.test(hook));
+});

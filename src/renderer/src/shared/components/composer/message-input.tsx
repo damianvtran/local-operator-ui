@@ -82,6 +82,8 @@ import {
 	REPLY_CHIP_REMOVE_SELECTOR,
 	registerComposerFocus,
 } from "@features/chat/composer-field";
+import type { DeliveryMode as ComposerDeliveryMode } from "@features/chat/composer-send-key";
+import { sendChordBindings, sendKeyOf } from "@features/chat/composer-send-key";
 import {
 	type SendRecordingPhase,
 	dictatedSendCheck,
@@ -184,6 +186,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { intentOverride } from "@shared/store/settings-intents";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
@@ -493,7 +496,7 @@ import {
 	activeModelForDefault,
 	writeModelDefaultSettings,
 } from "@features/chat/pickers/model-default-settings";
-import { BrandMark } from "@shared/components/common/brand-mark";
+import { NewChatHorizon } from "./new-chat-horizon";
 
 /**
  * A send that did not land, described for the composer that owns its text.
@@ -641,6 +644,14 @@ export type MessageInputProps = {
 		 * caller leaves it absent - the send is the press it always was.
 		 */
 		options?: { originBound?: boolean },
+		/**
+		 * Which delivery mode the press selects, when the press was a bound send
+		 * chord; `null` for plain Enter and for every non-key door (the Send
+		 * button, a retry). The page resolves it against the `delivery.busy_default`
+		 * default and the `features.busy_delivery` gate; this composer only
+		 * reports what the press was.
+		 */
+		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
 	/**
@@ -694,7 +705,8 @@ export type MessageInputProps = {
 	 * different things here and only one of them may change what the user can
 	 * DO. `isInputDisabled` (below) is `isLoading && currentJobId` and it is what
 	 * disables the box and swaps Send for Stop; a canonical turn deliberately
-	 * keeps the composer live, because typing during a turn steers it and a
+	 * keeps the composer live, because typing during a turn sends it with the
+	 * configured default mode, and a
 	 * pending gate is answered here. So this one changes the PLACEHOLDER only -
 	 * the empty box says why pressing Enter does nothing instead of inviting a
 	 * message it will refuse - and it gates no send: a send that would have gone
@@ -702,6 +714,14 @@ export type MessageInputProps = {
 	 * the disabled Send control, and this prop adds no second gate).
 	 */
 	awaitingReply?: boolean;
+	/**
+	 * The resolved default busy-send mode (`delivery.busy_default`), handed
+	 * down by the page that reads the settings query. The busy placeholder and
+	 * the send hint name what Enter does while the agent works, and under a
+	 * queue/both default the old steer sentences were false; absent means
+	 * `steer`, today's behaviour.
+	 */
+	busyDefaultMode?: ComposerDeliveryMode;
 	/**
 	 * A question is pending and the composer is where it is answered.
 	 *
@@ -913,7 +933,8 @@ export type MessageInputProps = {
 	scrollToBottom?: () => void;
 	/**
 	 * Canonical-session stop control. Unlike the legacy job cancel, a turn in
-	 * flight does NOT disable the composer: typing during a turn steers it, and
+	 * flight does NOT disable the composer: typing during a turn sends it with the
+	 * configured default mode, and
 	 * a pending gate is answered here. So the stop button sits beside Send
 	 * rather than replacing it, and only while the owner is actually working.
 	 *
@@ -1713,6 +1734,25 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
+ * The send control's tooltip while the agent works: the mode's own sentence,
+ * so a queue/both default never shows the old steer wording. `steer` names
+ * its own key (`steer_hint_steer`, text-identical to the absent-mode key);
+ * only an ABSENT mode falls back to `steer_hint`, so neither key is dead.
+ */
+export const steerHintKey = (
+	mode: ComposerDeliveryMode | undefined,
+):
+	| "ui.chat.composer.steer_hint"
+	| "ui.chat.composer.steer_hint_steer"
+	| "ui.chat.composer.steer_hint_queue"
+	| "ui.chat.composer.steer_hint_both" => {
+	if (mode === "queue") return "ui.chat.composer.steer_hint_queue";
+	if (mode === "both") return "ui.chat.composer.steer_hint_both";
+	if (mode === "steer") return "ui.chat.composer.steer_hint_steer";
+	return "ui.chat.composer.steer_hint";
+};
+
+/**
  * A `File`'s bytes as a data URL, or `null` when the read cannot produce one.
  *
  * The paste path spells this read out on `FileReader` inline because it fires and
@@ -1891,6 +1931,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSendMessage,
 			isLoading,
 			awaitingReply = false,
+			busyDefaultMode,
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
 			deviceHold,
@@ -3034,7 +3075,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				async (
 					message: string,
 					onEchoPainted?: () => void,
-					opts?: { dictatedAway?: true; inputMode?: "dictated" | "mixed" },
+					opts?: {
+						dictatedAway?: true;
+						inputMode?: "dictated" | "mixed";
+						delivery?: ComposerDeliveryMode | null;
+					},
 				) => {
 					/*
 					 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
@@ -3381,6 +3426,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * validation hold and its navigation exactly as they were.
 						 */
 						opts?.dictatedAway ? { originBound: true } : undefined,
+						/*
+						 * THE EIGHTH ARGUMENT: WHICH DELIVERY MODE THE PRESS SELECTED (see
+						 * `sendKeyOf`): the chord mode when the press was a bound chord, `null`
+						 * for plain Enter. Threaded from the hook's options so the page can
+						 * resolve it against the settings default; every non-key door above
+						 * arrives with `opts` undefined and reports plain Enter.
+						 */
+						opts?.delivery ?? null,
 					);
 					if (accepted !== false) {
 						/*
@@ -4269,10 +4322,27 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					end: field.selectionEnd ?? newMessage.length,
 				};
 
+				/*
+				 * THE SEND KEY, THROUGH THE ONE PREDICATE. A bound chord confirms
+				 * the capture exactly as Enter does (the predicate treats the chord
+				 * as Enter); the capture consumes the press and the message path
+				 * never sees it, so no delivery mode travels with it.
+				 */
 				if (
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
+					sendKeyOf(
+						{
+							key: event.key,
+							shiftKey: event.shiftKey,
+							ctrlKey: event.ctrlKey,
+							metaKey: event.metaKey,
+							altKey: event.altKey,
+							isComposing: event.nativeEvent.isComposing,
+							keyCode: event.keyCode,
+						},
+						sendChordBindings(
+							useUiPreferencesStore.getState().shortcutBindings,
+						),
+					)
 				) {
 					return submitCapture();
 				}
@@ -6240,12 +6310,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * to the front: that arming is the popup PICK's gesture, and only a pick
 				 * produces the staged line that arms it.
 				 */
-				if (
-					sendRefused &&
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
-				) {
+				/*
+				 * THE SEND KEY, THROUGH THE ONE PREDICATE. Computed once here so both
+				 * arms below agree on whether this press sends, and so the planner
+				 * arm can hand the press's mode to the submit that follows (the
+				 * hook's own key handler would re-answer without it).
+				 */
+				const sendKey = sendKeyOf(
+					{
+						key: event.key,
+						shiftKey: event.shiftKey,
+						ctrlKey: event.ctrlKey,
+						metaKey: event.metaKey,
+						altKey: event.altKey,
+						isComposing: event.nativeEvent.isComposing,
+						keyCode: event.keyCode,
+					},
+					sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
+				);
+				if (sendRefused && sendKey) {
 					/*
 					 * NOTHING CAN ANSWER, so Enter does not send. The button was already
 					 * disabled and the key was not: measured live, typing with no provider
@@ -6266,11 +6349,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					explainRefusedSend();
 					return;
 				}
-				if (
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
-				) {
+				if (sendKey) {
 					const plan = planForDraft(newMessage, caret);
 					if (plan.kind !== "send") {
 						event.preventDefault();
@@ -6291,6 +6370,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						event.preventDefault();
 						return;
 					}
+					/*
+					 * THE MODE RIDES THE SUBMIT, not the key handler below. The hook's
+					 * own key handler re-answers the send key without this press's
+					 * mode (it sees no composer, only the event), so the send plan
+					 * submits directly with the press's own delivery selection.
+					 */
+					event.preventDefault();
+					submitMessage({ delivery: sendKey.delivery });
+					return;
 				}
 				handleKeyDown(event);
 			},
@@ -10203,6 +10291,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														asideAttached: aside !== null,
 														sendingUnsettled: sendUnsettled || sendInFlight,
 														awaitingReply,
+														busyDefaultMode,
 														/*
 														 * The press's own window (round 1, D6): the box says the
 														 * press landed instead of re-teaching `Esc stops` under a
@@ -10226,6 +10315,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														// The host's own words for its own states (D1/D5); absent on
 														// every chat mount, which is what keeps chat unchanged.
 														hostLine: hostNotice?.placeholder ?? null,
+														/*
+														 * Voice on in THIS conversation and not paused: the band
+														 * above says it is listening, and the box says typing is
+														 * still welcome. A paused rig hands the microphone back, so
+														 * the ordinary invitation is true again.
+														 */
+														voiceOn: voiceOnHere && !voicePaused,
 													})
 										}
 										value={newMessage}
@@ -11113,7 +11209,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														: slotB.role === "steer"
 															? /* Stop is the same slot as Send, so while text is typed the
 															     pointer has no Stop: the tooltip is where Esc is said. */
-																t("ui.chat.composer.steer_hint")
+																t(steerHintKey(busyDefaultMode))
 															: t("ui.chat.composer.send_message")
 												}
 											>
@@ -11394,25 +11490,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								: "hidden",
 						)}
 					>
+						{/* The argument picker hides this wrapper, but dismissing it
+						    must not grant the current draft another animation budget.
+						    All send blocks mute motion; only setup dims the print. */}
+						{showEmptyChatPrompt ? (
+							<NewChatHorizon
+								key={conversationId}
+								quiet={noProvider || noModel || serverOffline}
+								dimmed={noProvider}
+								suppressed={!showSplash}
+							/>
+						) : null}
 						{showSplash ? (
 							<>
-								{/*
-								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
-								 * (the app's own mark, `ink-muted`, not an illustration), the
-								 * greeting, then the chips"), in its BUBBLE - the operator's call on
-								 * the preview (2026-09-24) - and through the one `BrandMark` the
-								 * sidebar uses, so the empty state and the brand row cannot drift
-								 * into two treatments of one mark.
-								 *
-								 * `ink-muted` rather than `ink`: the mark is decoration on a screen
-								 * whose subject is the greeting, and §H spends the loudest ink there.
-								 * Unnamed (so `aria-hidden`) because the greeting below says
-								 * everything this figure means. `data-lo-empty-mark` is the handle
-								 * the driver's `first-send` scene waits on.
-								 */}
-								<span data-lo-empty-mark="" className="contents">
-									<BrandMark className="size-8" tone="ink-muted" />
-								</span>
 								{/*
 								 * With nothing connected there is no question to ask yet: the card
 								 * below says what to do, and a headline inviting a prompt the app

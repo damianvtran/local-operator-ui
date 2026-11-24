@@ -703,7 +703,9 @@ const PIN_12 = /teamBridgeLeaveTarget\(window\.history\.state\)/;
 const PIN_13 = /<AttentionBadge\s+count=\{attention\}/;
 const PIN_14 = /<SidebarFoot \/>/;
 const PIN_15 =
-	/const routeOwnsSidebar =\s*bridgeState === "enabled" && pathname\.startsWith\(TEAM_BRIDGE_PATH\);/;
+	/\{bridgeState === "enabled" && \(\s*<Route\s+path="\/team-bridge"\s+handle="bridge"\s+element=\{<TeamBridgePage \/>\}\s*\/>\s*\)\}/;
+const PIN_MATCHED_SIDEBAR =
+	/const placement = matchRoutes\(routes, pathname\)\?\.at\(-1\)\?\.route\.handle;[\s\S]*?const routeOwnsSidebar = placement === "bridge";/;
 /* The keeper, and the host's region name from the route's EXISTING title. */
 const PIN_16 =
 	/routeSidebar=\{\s*routeOwnsSidebar && \{\s*keeper: <StripFeedKeeper \/>,\s*label: t\("ui\.teamBridge\.page\.title"\),\s*\}\s*\}/;
@@ -753,6 +755,7 @@ test("the column's Back row: direction-aware arrow, the chord, and the attention
 test("the app swaps on the bridge route only, keeps the feed alive, and docks the titlebar", () => {
 	const app = read(APP);
 	assert.match(app, PIN_15);
+	assert.match(app, PIN_MATCHED_SIDEBAR);
 	assert.match(app, PIN_16);
 	assert.match(app, PIN_17);
 });

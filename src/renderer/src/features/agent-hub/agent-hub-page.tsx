@@ -30,7 +30,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { openConsolePage } from "@shared/utils/radient-account-copy";
-import { Building2, Globe, Store } from "lucide-react";
+import { Building2, Globe } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -783,19 +783,8 @@ export const AgentHubPage: React.FC = () => {
 	}
 
 	return (
-		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
-		<div className="flex h-full flex-col gap-8 p-6">
-			<PageHeader
-				title={t("ui.hub.pages.header.title")}
-				subtitle={t("ui.hub.pages.header.subtitle")}
-				icon={Store}
-			/>
-			{/*
-			 * Everything under the header is ONE column with a tighter rhythm than the
-			 * page's `gap-8` (header to content): the notice, the browse bar and the
-			 * panel are one control surface and its content, and 32px between a
-			 * control and what it controls reads as two unrelated blocks.
-			 */}
+		<div className="flex h-full flex-col p-6">
+			<PageHeader variant="compact" title={t("ui.hub.pages.header.title")} />
 			<div className="flex min-h-0 flex-1 flex-col gap-4">
 				{/*
 				 * The CAPABILITY notice, in the scope row's own place: without
@@ -1022,7 +1011,10 @@ export const AgentHubPage: React.FC = () => {
 								</div>
 							</>
 						)}
-						<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+						<div
+							data-lo-pane-edge-cues=""
+							className="flex min-w-0 flex-1 flex-col overflow-y-auto"
+						>
 							{/*
 							 * The controls row, and its hierarchy.
 							 *

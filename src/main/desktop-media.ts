@@ -418,6 +418,25 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The OS banner picture for one session: its bound agent's own stored
+	 * picture with the Local Operator mark badged in the corner (core
+	 * `GET /v1/desktop/sessions/{id}/notification-avatar`, capability
+	 * `desktop_session_notification_avatar`). Main-only by intent - the
+	 * notifier asks for it and hands the decoded image to `Notification`, so the
+	 * OS is never given a URL and the bearer never leaves main. The query is
+	 * core's closed vocabulary (it refuses any other name with 422), so only
+	 * these two typed fields can reach it. A 404 means "no agent or no picture":
+	 * the banner keeps the app icon.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.notification_avatar"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			theme: z.enum(["light", "dark"]),
+			size: z.union([z.literal(64), z.literal(256)]),
+		})
+		.strict(),
+	/*
 	 * The Library's content and thumbnail bytes. The asset id is shape-checked
 	 * here as well as by the backend route: this relay's premise is that
 	 * renderer code cannot pick a URL, and an unvalidated id would become a path
@@ -521,6 +540,15 @@ export type DesktopMediaResponse =
 			 * composite only for its failure TTL (code review round 1, F1).
 			 */
 			fallback?: true;
+			/**
+			 * The composite's validator, forwarded ONLY for
+			 * `sessions.notification_avatar` and only when it is a well-formed
+			 * entity tag. Core derives it from the agent picture's sha256 + size +
+			 * theme, so main keys its in-memory banner image by it: two sessions
+			 * bound to one agent share one decoded image, and a changed picture is a
+			 * different key rather than a stale hit.
+			 */
+			etag?: string;
 	  }
 	| { status: number; kind: "json"; body: unknown }
 	| {
@@ -692,6 +720,11 @@ function endpoint(request: DesktopMediaRequest): {
 				method: "GET",
 			};
 		}
+		case "sessions.notification_avatar":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/notification-avatar?${new URLSearchParams({ size: String(request.size), theme: request.theme })}`,
+				method: "GET",
+			};
 		case "team_bridge.endpoint_avatar":
 			return {
 				path: `/v1/desktop/team-bridge/endpoints/${request.endpointId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
@@ -738,6 +771,19 @@ export type DesktopMediaOutcome = {
 	 */
 	serverUpdating?: boolean;
 };
+
+/**
+ * An RFC 9110 entity tag (strong or weak), at most 128 characters of opaque
+ * data. Core's is a quoted sha256-derived token, far shorter; the ceiling only
+ * stops a misbehaving peer from turning a header into an unbounded map key.
+ */
+const ENTITY_TAG = /^(?:W\/)?"[\x21\x23-\x7e]{1,128}"$/;
+
+/** The session banner composite's ETag, when present and well formed. */
+function notificationEtag(headers: Headers): { etag?: string } {
+	const etag = headers.get("etag");
+	return etag && ENTITY_TAG.test(etag) ? { etag } : {};
+}
 
 /**
  * A refusal's `params`, kept only as SHORT SCALARS (review round 1, n2): the
@@ -954,7 +1000,8 @@ export async function requestDesktopMediaOutcome(
 		request.op === "team_bridge.avatar" ||
 		request.op === "team_bridge.endpoint_avatar" ||
 		request.op === "team_bridge.link_preview.artifact" ||
-		request.op === "team_bridge.notification_avatar"
+		request.op === "team_bridge.notification_avatar" ||
+		request.op === "sessions.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
@@ -1136,12 +1183,20 @@ export async function requestDesktopMediaOutcome(
 			fileLane ||
 			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||
-			request.op === "team_bridge.notification_avatar"
+			request.op === "team_bridge.notification_avatar" ||
+			// A session banner's picture lives in main's own memory lease, keyed
+			// by core's ETag; Electron's HTTP cache would only be a second copy.
+			request.op === "sessions.notification_avatar"
 				? { cache: "no-store" as const }
 				: {}),
 			redirect: "error",
+			// Banner composites share one short ceiling: the post path gives up at
+			// 250 ms anyway, and a late answer only warms the next banner.
 			signal: AbortSignal.timeout(
-				request.op === "team_bridge.notification_avatar" ? 1500 : 120000,
+				request.op === "team_bridge.notification_avatar" ||
+					request.op === "sessions.notification_avatar"
+					? 1500
+					: 120000,
 			),
 		});
 		answered = true;
@@ -1170,9 +1225,14 @@ export async function requestDesktopMediaOutcome(
 		if (
 			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||
-			request.op === "team_bridge.notification_avatar"
+			request.op === "team_bridge.notification_avatar" ||
+			request.op === "sessions.notification_avatar"
 		) {
-			const composite = request.op === "team_bridge.notification_avatar";
+			// Both banner composites are core-rendered PNGs under the same 256 KiB
+			// encode cap and the same `renderer_busy` refusal.
+			const sessionBanner = request.op === "sessions.notification_avatar";
+			const composite =
+				request.op === "team_bridge.notification_avatar" || sessionBanner;
 			const mime = responseType.split(";")[0].trim().toLowerCase();
 			const refuse = (
 				status: number,
@@ -1275,6 +1335,7 @@ export async function requestDesktopMediaOutcome(
 					...(composite && response.headers.get("x-avatar-fallback") === "glyph"
 						? { fallback: true as const }
 						: {}),
+					...(sessionBanner ? notificationEtag(response.headers) : {}),
 				},
 				answered: true,
 			};

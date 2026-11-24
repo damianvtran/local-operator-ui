@@ -149,6 +149,7 @@ export function openConversation(
 	 * entrance the latency report is about.
 	 */
 	entrance: OpenEntrance = "open",
+	validationTicket?: object,
 ): Promise<boolean> {
 	// Before the store write, so the trace's zero is the click.
 	const traceId = beginOpenTrace(sessionId, entrance);
@@ -201,7 +202,7 @@ export function openConversation(
 		}
 	}
 	const store = useCanonicalSessionsStore.getState();
-	const pending = store.openSession(sessionId);
+	const pending = store.openSession(sessionId, validationTicket);
 	const written = `/chat/${sessionId}`;
 	navigate(written);
 	void pending.then((ok) => {

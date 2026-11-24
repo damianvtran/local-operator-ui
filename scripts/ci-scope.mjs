@@ -307,7 +307,7 @@ export const KNOWN_LIVE_ROOT_FILES = new Set([
  * the bytecode job exists to catch a packaging defect where it can hide, not to
  * pay a second full build on every pull request.
  */
-const MAIN_BUNDLE_PREFIXES = [
+export const MAIN_BUNDLE_PREFIXES = [
 	"src/main/",
 	"src/shared/",
 	"src/i18n/",
@@ -321,7 +321,7 @@ const MAIN_BUNDLE_PREFIXES = [
  * (`tsconfig.app.json`, `tsconfig.web.json`) cannot change this chunk, so they
  * are deliberately absent rather than matched by a `tsconfig*` glob.
  */
-const MAIN_BUNDLE_ROOT_FILES = new Set([
+export const MAIN_BUNDLE_ROOT_FILES = new Set([
 	"electron.vite.config.js",
 	"tsconfig.json",
 	"tsconfig.node.json",
@@ -527,6 +527,7 @@ export const JOB_FLAGS = {
 	// full-suite.yml (main, nightly); pull requests keep the tree-wide guards
 	// and the native-QA bundle the first shard used to build.
 	guards: ["unit"],
+	"browser-owner-finish": ["unit"],
 	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
 	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
@@ -668,6 +669,10 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"browser-owner-finish":
+		"the hosted job verifies the exact pull request head and requires the named " +
+		"passing TAP row. A local check-changed run has no PR-head provenance and " +
+		"cannot stand in for that gate.",
 	"bytecode-build-macos":
 		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
 		"what this job adds is an artifact for another machine - built on a macOS " +

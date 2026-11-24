@@ -289,11 +289,18 @@ const HotkeyInput = ({
 					"ui.settings.configuration.setting_control.label_press_the_key_you_want",
 					{ label: String(label) },
 				)}
+				/* The registry's recorder, marked for the page's Esc handler: this
+				   field's Esc cancels the capture and must not close Settings too. */
+				data-shortcut-recorder=""
 				className="font-mono text-body-sm"
 				onKeyDown={(event) => {
 					// Cancel/commit first: a keystroke that ends the edit is not a
 					// binding, so it must not reach `hotkeyFromEvent` at all.
 					if (END_EDIT_KEYS.has(event.key)) {
+						// Esc is this recorder's cancel, never the page's close.
+						if (event.key === "Escape" || event.key === "Esc") {
+							event.stopPropagation();
+						}
 						event.currentTarget.blur();
 						return;
 					}

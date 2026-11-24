@@ -112,6 +112,9 @@ export function SpeechShortcutRowFrame({
 					aria-invalid={error ? true : undefined}
 					aria-busy={saving}
 					data-shortcut-action={settingKey}
+					/* Both speech rows record through this one field: marked so the
+					   page's Esc handler never reads a recorder's cancel as "close". */
+					data-shortcut-recorder=""
 					className={
 						cleared
 							? "w-52 text-left text-body-sm"

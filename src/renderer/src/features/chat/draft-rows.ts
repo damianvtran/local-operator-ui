@@ -223,6 +223,61 @@ export function untargetedDraftRows(
 	return rows.reverse();
 }
 
+/** Any non-space character; stops at the first, so cost is not the draft's length. */
+const NON_BLANK = /\S/;
+
+/**
+ * Which conversation keys hold a non-blank typed draft, as ONE string.
+ *
+ * WHY THIS EXISTS (composer typing perf, 2026-11-23). The sidebar used to
+ * subscribe to the whole `inputByConversation` map, and the composer writes a
+ * new map on EVERY keystroke, so the whole ~11k-line `ChatSidebar` and its row
+ * tree re-rendered per keypress: measured on the new-chat splash at 4x CPU
+ * throttle (Storybook rig, 120 rows), 12-15 ms of sidebar commit per keystroke,
+ * ~70% of each keystroke's React work, enough to starve the helix's frames.
+ * The only fact the sidebar's ROW LIST depends on per keystroke is whether a
+ * draft's typed text is blank (`untargetedDraftRows` skips blank ones); the
+ * words themselves are painted by `liveDraftRow` in a per-row subscriber.
+ *
+ * A string rather than an array so the zustand selector's default `Object.is`
+ * equality holds across keystrokes without a shallow-compare helper: it changes
+ * only when a draft crosses blank <-> non-blank. NUL cannot occur in a key.
+ */
+export function typedDraftKeys(
+	inputByConversation: Record<string, { currentInput?: string } | undefined>,
+): string {
+	let keys = "";
+	for (const [key, row] of Object.entries(inputByConversation)) {
+		// Not `trim()`, which would copy the whole draft per keystroke.
+		if (row?.currentInput && NON_BLANK.test(row.currentInput))
+			keys += `${key}\0`;
+	}
+	return keys;
+}
+
+/**
+ * The row's title as the typed draft says it NOW, or `null` when the typed text
+ * is blank (the row then shows the fallback `untargetedDraftRows` chose).
+ *
+ * The per-row subscriber selects this rather than the raw text, so a keystroke
+ * past the title's 48-character cap, or on a later line, re-renders nothing.
+ */
+export const typedDraftTitle = (typed: string | undefined): string | null =>
+	typed && NON_BLANK.test(typed) ? draftRowTitle(typed) : null;
+
+/**
+ * `row` with its words brought up to the live typed title, the same rule
+ * `untargetedDraftRows` applies (typed text wins over the claim's fallback).
+ * Returns `row` itself when nothing changed, so a memo keyed on it holds.
+ */
+export function liveDraftRow(
+	row: DraftRow,
+	typedTitle: string | null,
+): DraftRow {
+	if (typedTitle === null || typedTitle === row.title) return row;
+	return { ...row, title: typedTitle, label: draftRowLabel(typedTitle) };
+}
+
 /**
  * The sessions whose row says `Not sent yet`: a draft that has learned its
  * session id and whose send hop is NOT live.

@@ -17,6 +17,7 @@ import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-
 import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Spinner } from "@shared/components/common/spinner";
+import { useWorkspaceClearance } from "@shared/components/common/workspace-frame";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { Alert } from "@shared/components/ui/alert";
@@ -66,6 +67,7 @@ import {
 	useReducer,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
@@ -97,6 +99,10 @@ import {
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
+import {
+	type TeamBridgeAlertActions,
+	TeamBridgeAlertActionsContext,
+} from "./team-bridge-alert-card";
 import { TeamBridgeRequests } from "./team-bridge-approvals";
 import {
 	TeamBridgeArchiveDialog,
@@ -267,10 +273,23 @@ import {
 import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
+	TeamBridgeEditDialog,
+	type TeamBridgeEditDraft,
+	TeamBridgeEditDraftJournal,
 	TeamBridgeRenameDialog,
 	type TeamBridgeRenameFailure,
+	editFailure,
 	renameFailure,
 } from "./team-bridge-rename-dialog";
+import { TeamBridgeResponderDialog } from "./team-bridge-responder-dialog";
+
+/*
+ * Org-level app administration lives in the Radient console (RFC §10 item 2:
+ * "user-console /dashboard/integrations"), so the desktop's "Manage apps"
+ * entry is a link-out, offered only with the hub's `can_manage_integrations`.
+ */
+const TEAM_INTEGRATIONS_CONSOLE_URL =
+	"https://console.radienthq.com/dashboard/integrations";
 import {
 	TeamBridgeEarlyColumn,
 	TeamBridgeRouteColumn,
@@ -356,6 +375,7 @@ import {
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 	useUnarchiveTeamBridgeConversation,
+	useUpdateTeamBridgeConversation,
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
 import {
@@ -968,6 +988,13 @@ export type TeamBridgePageViewProps = {
 	 * every save. Defaults to `unknown` (fail closed) like its siblings.
 	 */
 	renameCapabilityState?: DesktopFeatureState;
+	updateCapabilityState?: DesktopFeatureState;
+	onUpdate?: (
+		conversation: TeamBridgeConversation,
+		patch: { name?: string; topic?: string },
+	) => Promise<unknown>;
+	/** In-memory only, owned by the account/authority-token keyed page. */
+	metadataDrafts?: TeamBridgeEditDraftJournal;
 	unarchiveFailed?: boolean;
 	/** The Archived channels view's read (loaded the first time it is opened). */
 	archivedState?: "loading" | "error" | "ready";
@@ -999,8 +1026,9 @@ export type TeamBridgePageViewProps = {
 		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => void;
 	initialDialog?: {
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "edit" | "responder";
 		conversationId: string;
+		tenantId?: string;
 	};
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
@@ -1210,6 +1238,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onDelete,
 	onRename,
 	renameCapabilityState = "unknown",
+	updateCapabilityState = "unknown",
+	onUpdate,
+	metadataDrafts,
 	unarchiveFailed = false,
 	archivedState = "ready",
 	archivedConversations = [],
@@ -1270,14 +1301,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
 	const railHosted = useLeftSidebarHosted();
+	const clearanceReserved = useWorkspaceClearance();
 	const [quickView, setQuickView] = useState<TeamBridgeQuickView | null>(
 		initialQuickView ?? null,
 	);
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "edit" | "responder";
 		conversationId: string;
+		tenantId?: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
 	/* The members panel shares the thread pane's slot; one closes the other. */
@@ -1314,6 +1347,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * because the rail has just silently flipped back.
 	 */
 	const renameOpen = useRef(0);
+	const localMetadataDrafts = useRef(new TeamBridgeEditDraftJournal());
+	const editDrafts = metadataDrafts ?? localMetadataDrafts.current;
+	// The owner-scoped journal is also the authoritative snapshot during SSR.
+	// Reading its stable revision preserves preseeded drafts without creating a
+	// second empty journal or publishing a mutation during render.
+	useSyncExternalStore(
+		editDrafts.subscribe,
+		editDrafts.snapshot,
+		editDrafts.snapshot,
+	);
+	const editKey = (row: TeamBridgeConversation) =>
+		JSON.stringify([row.tenant_id, row.id]);
+	const putEditDraft = (key: string, draft: TeamBridgeEditDraft) => {
+		editDrafts.set(key, draft);
+	};
 	const [renameFailed, setRenameFailed] =
 		useState<TeamBridgeRenameFailure | null>(null);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
@@ -1690,8 +1738,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		tenantId: string,
 	) =>
 		labelFor(participant, tenantId) ??
+		/* A Team Bridge agent is a chief of staff: unnamed, it is still that,
+		   never "Unknown agent" (operator report, 2026-11-23). */
 		(participant.kind === "agent"
-			? t("ui.teamBridge.sender.unknown_agent")
+			? t("ui.teamBridge.chief.fallback")
 			: t("ui.teamBridge.sender.unknown_person"));
 	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
 	// owns is listed on its own. The union view folds them the same way, one
@@ -2952,6 +3002,26 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		selfAccountId
 			? rosterFor(tenantId).find((row) => row.account_id === selfAccountId)
 			: undefined;
+	/*
+	 * The hub reports that a claim is waiting, not which local ask it belongs
+	 * to. Only wire "Responders", using the conversation menu's own rule for
+	 * the "Alert responder" item so the card never offers what the menu would not.
+	 */
+	const alertActions: TeamBridgeAlertActions = {
+		onResponders:
+			shown &&
+			!readOnly &&
+			shown.kind === "channel" &&
+			shown.status === "open" &&
+			shown.members.some(
+				(row) =>
+					row.kind === "agent" &&
+					row.account_id === selfAccountId &&
+					row.state === "active",
+			)
+				? () => setDialog({ kind: "responder", conversationId: shown.id })
+				: undefined,
+	};
 	const menuFor = (conversation: TeamBridgeConversation) => {
 		const selectedRow = isSelectedConversation(conversation);
 		const notifyWrite =
@@ -2974,12 +3044,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					agentNotifyEnabled: agentNotify !== undefined,
 					archivable: canArchiveConversation(conversation),
 					renamable:
-						renameCapabilityState === "enabled" &&
+						((updateCapabilityState === "enabled" && Boolean(onUpdate)) ||
+							(renameCapabilityState === "enabled" && Boolean(onRename))) &&
 						canRenameConversation(conversation),
+					editable: updateCapabilityState === "enabled" && Boolean(onUpdate),
 					wiring: {
 						viewMembers: true,
 						addMembers: Boolean(onAddMembers),
-						rename: Boolean(onRename),
+						manageApps: true,
+						responder: true,
+						rename: Boolean(onRename || onUpdate),
 						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
 						notify: Boolean(notifyWrite),
 						agentNotify: Boolean(onAgentNotifyChange) && selectedRow,
@@ -3012,10 +3086,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				setMemberActionFailed(false);
 				setMembersOpen(true);
 			},
+			onManageApps: () => openConsolePage(TEAM_INTEGRATIONS_CONSOLE_URL),
+			onResponder: () =>
+				setDialog({ kind: "responder", conversationId: conversation.id }),
 			onRename: () => {
 				renameOpen.current += 1;
 				setRenameFailed(null);
-				setDialog({ kind: "rename", conversationId: conversation.id });
+				if (updateCapabilityState === "enabled" && onUpdate) {
+					const key = editKey(conversation);
+					const retained = editDrafts.get(key);
+					if (!retained || (!retained.pending && !retained.error)) {
+						const name = conversation.name ?? "";
+						const topic = conversation.topic ?? "";
+						editDrafts.set(key, {
+							baselineName: name,
+							baselineTopic: topic,
+							name,
+							topic,
+							pending: false,
+							error: null,
+						});
+					}
+					setDialog({
+						kind: "edit",
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					});
+				} else {
+					setDialog({ kind: "rename", conversationId: conversation.id });
+				}
 			},
 			onJoin: () => {
 				if (onMenuJoin) onMenuJoin(conversation);
@@ -3787,7 +3886,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		<div
 			data-glass-split=""
 			data-glass-region="canvas"
-			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
+			className={cn(
+				"@container/bridge relative flex min-h-0 w-full flex-1 overflow-hidden bg-canvas",
+				// The dock occupants still mount in legacy panels elsewhere. Tell
+				// them this route has already consumed the platform clearance.
+				clearanceReserved ? "[--panel-top-pad:0px]" : "panel-flush",
+			)}
 		>
 			{/*
 			 * THE RAIL, IN WHICHEVER COLUMN IS ITS (operator, 2026-11-03: one
@@ -3831,15 +3935,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    transcript - and the composer is a raised `elevated` card. Before
 			    this the rail and pane were both `surface` (ΔE00 0.00), so the only
 			    visible step on screen was the hover band. The pane paints its own
-			    `canvas` rather than inheriting the root's because it wears
-			    `panel-top-pad`, and the box that pads must be the box that paints
-			    (AGENTS.md "Panels run to the window edge"). */}
+			    `canvas` rather than inheriting the split root's, so the thread and
+			    members panes don't compound their glass over its canvas. */}
 			<section
 				/* The reading column alone owns the canvas alpha. The rail/thread
 				 * own their surface alpha directly, never over a canvas backing. */
 				data-glass-region="canvas-content"
 				className={cn(
-					"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas",
+					"flex min-w-0 flex-1 flex-col bg-canvas",
+					!clearanceReserved && "panel-top-pad",
 					(threadIsOpen || membersPanelShown) &&
 						"@max-[1024px]/bridge:invisible",
 				)}
@@ -3945,6 +4049,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/>
 				) : quickView === "drafts" ? (
 					<section
+						data-lo-pane-edge-cues=""
 						className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-5"
 						aria-label={t("ui.teamBridge.drafts.title")}
 					>
@@ -4480,100 +4585,104 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											: t("ui.teamBridge.thread.empty")}
 									</p>
 								) : (
-									<TeamBridgeMessageList
-										messages={merged.messages}
-										unreadAfterSeq={unreadAfterSeq}
-										events={events}
-										presentationOf={(message) => {
-											const local = merged.localOf(message);
-											/* A CONFIRMED row the page has not carried yet is drawn from
-											   the send response; it is the server's, so it keeps full ink
-											   and its real seq - only an unconfirmed row is "local". */
-											const unconfirmed =
-												local !== undefined &&
-												(local.status !== "sent" ||
-													local.serverRow === undefined);
-											return {
-												key: merged.keyOf(message),
-												local: unconfirmed,
-												delivery:
-													local && unconfirmed
-														? {
-																status:
-																	local.status === "failed"
-																		? "failed"
-																		: "pending",
-																/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
-															   attempt: the hub dedupes a request that landed with
-															   its answer lost. EDIT puts the words back in the box
-															   and drops the row, which is the other thing a reader
-															   wants to do with a message that did not go. */
-																onRetry:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				usePendingSends
-																					.getState()
-																					.patch(local.localId, {
-																						status: "pending",
-																						autoRetried: local.autoRetried,
-																					});
-																				void deliverOptimistic(local);
-																			}
-																		: undefined,
-																onEdit:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				useConversationInputStore
-																					.getState()
-																					.returnPayload(composerKey, {
-																						text: local.body,
-																						attachments: [],
-																						replies: [],
-																					});
-																				usePendingSends
-																					.getState()
-																					.remove(local.localId);
-																			}
-																		: undefined,
-															}
-														: undefined,
-											};
-										}}
-										profileFor={(sender) =>
-											profileFor(sender, shown?.tenant_id ?? "")
-										}
-										canMessagePerson={(sender) =>
-											messageTarget(sender, shown?.tenant_id ?? "") !== null
-										}
-										onMessagePerson={
-											identityKnown
-												? (sender) =>
-														messagePerson(sender, shown?.tenant_id ?? "")
-												: undefined
-										}
-										arrivalKey={timelineArrivalKey}
-										highlightId={highlightMessageId}
-										/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
-										   turns on the virtualized path (see `TeamBridgeMessageList`): only
-										   the visible rows plus overscan mount, and the list asks for an
-										   older page when the reader nears the top. */
-										scrollRootRef={timeline.rootRef}
-										isPinned={timeline.isPinned}
-										hasOlder={olderPaging?.hasOlder ?? false}
-										loadingOlder={olderPaging?.loadingOlder ?? false}
-										onLoadOlder={olderPaging?.onLoadOlder}
-										tenantId={shown?.tenant_id}
-										accountId={selfAccountId}
-										labelFor={(sender) =>
-											labelFor(sender, shown?.tenant_id ?? "")
-										}
-										reactionContext={reactionContext}
-										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
-										   reply button and the "N replies" summary are both rendered from this
-										   prop, and a visible Reply that opens nothing is the dead end the
-										   fail-closed rule forbids. */
-										onReply={threadsAvailable ? openThreadFor : undefined}
-									/>
+									<TeamBridgeAlertActionsContext.Provider value={alertActions}>
+										<TeamBridgeMessageList
+											messages={merged.messages}
+											unreadAfterSeq={unreadAfterSeq}
+											events={events}
+											presentationOf={(message) => {
+												const local = merged.localOf(message);
+												/* A CONFIRMED row the page has not carried yet is drawn from
+												   the send response; it is the server's, so it keeps full ink
+												   and its real seq - only an unconfirmed row is "local". */
+												const unconfirmed =
+													local !== undefined &&
+													(local.status !== "sent" ||
+														local.serverRow === undefined);
+												return {
+													key: merged.keyOf(message),
+													local: unconfirmed,
+													delivery:
+														local && unconfirmed
+															? {
+																	status:
+																		local.status === "failed"
+																			? "failed"
+																			: "pending",
+																	/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
+																   attempt: the hub dedupes a request that landed with
+																   its answer lost. EDIT puts the words back in the box
+																   and drops the row, which is the other thing a reader
+																   wants to do with a message that did not go. */
+																	onRetry:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					usePendingSends
+																						.getState()
+																						.patch(local.localId, {
+																							status: "pending",
+																							autoRetried: local.autoRetried,
+																						});
+																					void deliverOptimistic(local);
+																				}
+																			: undefined,
+																	onEdit:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					useConversationInputStore
+																						.getState()
+																						.returnPayload(composerKey, {
+																							text: local.body,
+																							attachments: [],
+																							replies: [],
+																						});
+																					usePendingSends
+																						.getState()
+																						.remove(local.localId);
+																				}
+																			: undefined,
+																}
+															: undefined,
+												};
+											}}
+											profileFor={(sender) =>
+												profileFor(sender, shown?.tenant_id ?? "")
+											}
+											canMessagePerson={(sender) =>
+												messageTarget(sender, shown?.tenant_id ?? "") !== null
+											}
+											onMessagePerson={
+												identityKnown
+													? (sender) =>
+															messagePerson(sender, shown?.tenant_id ?? "")
+													: undefined
+											}
+											arrivalKey={timelineArrivalKey}
+											highlightId={highlightMessageId}
+											/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
+											   turns on the virtualized path (see `TeamBridgeMessageList`): only
+											   the visible rows plus overscan mount, and the list asks for an
+											   older page when the reader nears the top. */
+											scrollRootRef={timeline.rootRef}
+											isPinned={timeline.isPinned}
+											hasOlder={olderPaging?.hasOlder ?? false}
+											loadingOlder={olderPaging?.loadingOlder ?? false}
+											onLoadOlder={olderPaging?.onLoadOlder}
+											tenantId={shown?.tenant_id}
+											accountId={selfAccountId}
+											labelFor={(sender) =>
+												labelFor(sender, shown?.tenant_id ?? "")
+											}
+											reactionContext={reactionContext}
+											/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+											   reply button and the "N replies" summary are both rendered from this
+											   prop, and a visible Reply that opens nothing is the dead end the
+											   fail-closed rule forbids. */
+											onReply={threadsAvailable ? openThreadFor : undefined}
+										/>
+									</TeamBridgeAlertActionsContext.Provider>
 								)}
 							</div>
 						</ScrollArea>
@@ -5057,9 +5166,72 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				/* The dialogs name the conversation they were opened for. A row that left
 				   the cache (archived, or deleted by someone else) closes its own dialog. */
 				const subject = dialog
-					? selectable.find((row) => row.id === dialog.conversationId)
+					? selectable.find(
+							(row) =>
+								row.id === dialog.conversationId &&
+								(dialog.kind !== "edit" || row.tenant_id === dialog.tenantId),
+						)
 					: undefined;
 				if (!dialog || !subject) return null;
+				if (dialog.kind === "edit") {
+					const key = editKey(subject);
+					const draft = editDrafts.get(key);
+					if (!draft) return null;
+					return (
+						<TeamBridgeEditDialog
+							kind={subject.kind === "group" ? "group" : "channel"}
+							draft={draft}
+							onChange={(next) => putEditDraft(key, next)}
+							onClose={() => {
+								renameOpen.current += 1;
+								if (!draft.pending && !draft.error) editDrafts.delete(key);
+								setDialog(null);
+							}}
+							onSave={(patch) => {
+								if (
+									!onUpdate ||
+									draft.pending ||
+									updateCapabilityState !== "enabled"
+								)
+									return;
+								const sentFrom = renameOpen.current;
+								putEditDraft(key, { ...draft, pending: true, error: null });
+								// subject and patch are this open's captured data, never the
+								// current picker or a refetched row. Completion is open-fenced.
+								onUpdate(subject, patch).then(
+									() => {
+										editDrafts.delete(key);
+										if (renameOpen.current === sentFrom) setDialog(null);
+									},
+									(failure: unknown) => {
+										putEditDraft(key, {
+											...draft,
+											pending: false,
+											error: editFailure(failure, patch.name ?? draft.name),
+										});
+									},
+								);
+							}}
+						/>
+					);
+				}
+				if (dialog.kind === "responder") {
+					/* Read-only in this build (see the dialog's header): it writes
+					   nothing, so it needs no pending/failure state here. */
+					const agentName =
+						selfPersonFor(subject.tenant_id)?.agent?.name?.trim() ||
+						// The reader's own chief of staff, unnamed: still a chief
+						// of staff, never "Unknown agent" (operator report, 2026-11-23).
+						t("ui.teamBridge.chief.fallback");
+					return (
+						<TeamBridgeResponderDialog
+							open
+							channelName={subject.name?.trim() ?? ""}
+							agentName={agentName}
+							onClose={() => setDialog(null)}
+						/>
+					);
+				}
 				if (dialog.kind === "rename") {
 					const kind = subject.kind === "group" ? "group" : "channel";
 					return (
@@ -6780,6 +6952,10 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const archive = useArchiveTeamBridgeConversation();
 	const rename = useRenameTeamBridgeConversation();
+	const update = useUpdateTeamBridgeConversation();
+	// TeamBridgeOwnedPage is keyed by account.token (account + authority epoch).
+	// Never persist metadata drafts to storage or carry them into another owner.
+	const metadataDrafts = useRef(new TeamBridgeEditDraftJournal());
 	const unarchive = useUnarchiveTeamBridgeConversation();
 	const deleteConversation = useDeleteTeamBridgeConversation();
 
@@ -7490,6 +7666,11 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_agent_notify",
 				)}
+				metadataDrafts={metadataDrafts.current}
+				updateCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_conversation_update",
+				)}
 				renameCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_conversation_rename",
@@ -7562,6 +7743,17 @@ const TeamBridgeOwnedPage: FC<{
 				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate(undefined);
+				}}
+				onUpdate={(conversation, patch) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return update.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						patch,
+					});
 				}}
 				onRename={(conversation, name) => {
 					if (!isCurrentOwner())

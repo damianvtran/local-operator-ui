@@ -8,6 +8,7 @@
 
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
+import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import {
 	Button,
 	DropdownMenu,
@@ -123,20 +124,13 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 
 	return (
 		<div
+			data-glass-region="canvas"
 			data-glass-split=""
-			className="panel-flush flex min-h-0 flex-1 overflow-hidden"
+			className="flex min-h-0 flex-1 overflow-hidden bg-surface"
 		>
 			{/* The sidebar itself is width:100% — the 280px lives here, and the
 			    pane must not shrink when the agent list has a long name in it. */}
-			{/*
-			 * THE ROSTER IS A PANEL: `AgentsSidebar`'s own root paints `surface` from
-			 * y0 and wears `panel-top-pad`, so neither this wrapper nor the shell has
-			 * to reserve a row above it. The page root's `panel-flush` is what lets
-			 * both columns start at y0; the content column pads itself below.
-			 *
-			 * The roster's `border-r` stays gone: the boundary beside the content is
-			 * the `surface`-over-`canvas` tone step (see `agents-sidebar.tsx`).
-			 */}
+			{/* The roster and detail clear the native lane inside their paint. */}
 			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
@@ -144,151 +138,151 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 				/>
 			</div>
 
-			{/* `grow` rather than `flex-1`: the content pane keeps an auto basis so
-			    it fills the space the sidebar leaves, and `overflow-hidden` is what
-			    keeps its scrolling inside the pane instead of the window. */}
-			<div
-				data-glass-region="canvas-content"
-				className="panel-top-pad h-full grow overflow-hidden"
-			>
-				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
-				    header sits in the same measured column as the settings below it,
-				    so the page title and the fields it heads share one left edge. */}
-				<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
-					<div className="mx-auto w-full max-w-4xl">
-						<PageHeader
-							title={t("ui.agents.navigation.legacy.title")}
-							icon={Bot}
-							subtitle={t("ui.agents.navigation.legacy.subtitle")}
-						>
-							{selectedAgent && (
-								<div className="flex items-center gap-2">
-									{/*
-									 * The two secondary actions collapse into a menu once the
-									 * header has less than 400px to work with. `PageHeader`
-									 * already wraps them onto a line of their own, and the
-									 * three buttons need about 360px side by side, so 400 is
-									 * the width below which wrapping stops being enough and
-									 * they would be clipped by the page's `overflow-hidden`.
-									 * The threshold is on the header's own width because the
-									 * app rail and the agent list between it and the window
-									 * edge both collapse independently of the viewport.
-									 *
-									 * These same two actions are already in the menu on every
-									 * row of the agent list, so folding them here repeats an
-									 * affordance the user has met rather than inventing one.
-									 */}
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												/*
-												 * Carries the tour tag as well as the wide button
-												 * does: exactly one of the two is rendered at any
-												 * width, and the tour resolves whichever the user
-												 * can actually see. Anchoring only the wide one
-												 * left the spotlight attached to a `display:none`
-												 * element for the whole 800-950px band the
-												 * window's own minWidth floors the app to.
-												 */
-												data-tour-tag="upload-to-hub-header-button"
-												variant="secondary"
-												size="icon"
-												aria-label={t(
-													"ui.agents.navigation.legacy.more_actions",
-												)}
-												className="@min-[400px]:hidden"
-											>
-												<Ellipsis aria-hidden="true" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end" className="min-w-45">
-											<DropdownMenuItem
-												disabled={exportAgentMutation.isPending}
-												onSelect={handleExportAgent}
-											>
-												<FileUp aria-hidden="true" />
-												<span>{t("ui.agents.navigation.legacy.export")}</span>
-											</DropdownMenuItem>
-											<DropdownMenuItem onSelect={handleOpenUploadDialog}>
-												<CloudUpload aria-hidden="true" />
-												<span>{t("ui.agents.navigation.legacy.upload")}</span>
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
+			{/* WorkspaceFrame owns the evenly padded canvas inset and glass layer;
+			    this column pays the remaining top clearance outside the scroller. */}
+			<WorkspaceFrame variant="full-height">
+				<div
+					data-workspace-safe-content=""
+					className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+				>
+					{/* The selected name (not the tab name) shares the form’s left edge. */}
+					<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
+						{selectedAgent ? (
+							<div className="mx-auto w-full max-w-4xl">
+								<PageHeader title={selectedAgent.name} icon={Bot}>
+									<div className="flex items-center gap-2">
+										{/*
+										 * The two secondary actions collapse into a menu once the
+										 * header has less than 400px to work with. `PageHeader`
+										 * already wraps them onto a line of their own, and the
+										 * three buttons need about 360px side by side, so 400 is
+										 * the width below which wrapping stops being enough and
+										 * they would be clipped by the page's `overflow-hidden`.
+										 * The threshold is on the header's own width because the
+										 * app rail and the agent list between it and the window
+										 * edge both collapse independently of the viewport.
+										 *
+										 * These same two actions are already in the menu on every
+										 * row of the agent list, so folding them here repeats an
+										 * affordance the user has met rather than inventing one.
+										 */}
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													/*
+													 * Carries the tour tag as well as the wide button
+													 * does: exactly one of the two is rendered at any
+													 * width, and the tour resolves whichever the user
+													 * can actually see. Anchoring only the wide one
+													 * left the spotlight attached to a `display:none`
+													 * element for the whole 800-950px band the
+													 * window's own minWidth floors the app to.
+													 */
+													data-tour-tag="upload-to-hub-header-button"
+													variant="secondary"
+													size="icon"
+													aria-label={t(
+														"ui.agents.navigation.legacy.more_actions",
+													)}
+													className="@min-[400px]:hidden"
+												>
+													<Ellipsis aria-hidden="true" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end" className="min-w-45">
+												<DropdownMenuItem
+													disabled={exportAgentMutation.isPending}
+													onSelect={handleExportAgent}
+												>
+													<FileUp aria-hidden="true" />
+													<span>{t("ui.agents.navigation.legacy.export")}</span>
+												</DropdownMenuItem>
+												<DropdownMenuItem onSelect={handleOpenUploadDialog}>
+													<CloudUpload aria-hidden="true" />
+													<span>{t("ui.agents.navigation.legacy.upload")}</span>
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
 
-									<Button
-										variant="secondary"
-										onClick={handleExportAgent}
-										disabled={exportAgentMutation.isPending}
-										className="hidden @min-[400px]:inline-flex"
-									>
-										<FileUp aria-hidden="true" />
-										{t("ui.agents.navigation.legacy.export")}
-									</Button>
-
-									<Button
-										data-tour-tag="upload-to-hub-header-button"
-										/*
-										 * A second, action-specific tag. The tour tag now sits
-										 * on two controls so the spotlight can find whichever
-										 * is visible, but they do different things: this one
-										 * opens the upload dialog, the overflow trigger opens
-										 * a menu. `click()` does not need visibility, so the
-										 * tour presses THIS one for the action and anchors to
-										 * the visible one for the highlight.
-										 */
-										data-tour-action="open-upload-dialog"
-										variant="secondary"
-										onClick={handleOpenUploadDialog}
-										className="hidden @min-[400px]:inline-flex"
-									>
-										<CloudUpload aria-hidden="true" />
-										{t("ui.agents.navigation.legacy.upload")}
-									</Button>
-
-									{/* The only tooltip here: it names the agent, which the
-								    button label cannot. */}
-									<Tooltip
-										content={t("ui.agents.navigation.legacy.chat_named", {
-											name:
-												selectedAgent.name ||
-												t("ui.agents.navigation.legacy.unnamed_agent"),
-										})}
-									>
 										<Button
-											variant="primary"
-											onClick={() => {
-												/*
-												 * THE DRAFT DOOR (issue #844): `/chat/<agent id>` had no non-session
-												 * fallback in the store, so this button always landed on the legacy-link
-												 * notice. `stageDraft({ kind: "agent", name })` then `/chat` is the door
-												 * the sidebar's "New chat with <name>" rows and the agent page use.
-												 */
-												useCanonicalSessionsStore.getState().stageDraft({
-													kind: "agent",
-													name: selectedAgent.name,
-												});
-												navigate("/chat");
-											}}
+											variant="secondary"
+											onClick={handleExportAgent}
+											disabled={exportAgentMutation.isPending}
+											className="hidden @min-[400px]:inline-flex"
 										>
-											<MessageSquare aria-hidden="true" />
-											{t("ui.agents.navigation.legacy.chat")}
+											<FileUp aria-hidden="true" />
+											{t("ui.agents.navigation.legacy.export")}
 										</Button>
-									</Tooltip>
-								</div>
-							)}
-						</PageHeader>
-					</div>
 
-					<div className="min-h-0 grow overflow-hidden">
-						<AgentSettings
-							selectedAgent={selectedAgent ?? null}
-							refetchAgent={refetchAgent}
-							initialSelectedAgentId={agentId}
-						/>
+										<Button
+											data-tour-tag="upload-to-hub-header-button"
+											/*
+											 * A second, action-specific tag. The tour tag now sits
+											 * on two controls so the spotlight can find whichever
+											 * is visible, but they do different things: this one
+											 * opens the upload dialog, the overflow trigger opens
+											 * a menu. `click()` does not need visibility, so the
+											 * tour presses THIS one for the action and anchors to
+											 * the visible one for the highlight.
+											 */
+											data-tour-action="open-upload-dialog"
+											variant="secondary"
+											onClick={handleOpenUploadDialog}
+											className="hidden @min-[400px]:inline-flex"
+										>
+											<CloudUpload aria-hidden="true" />
+											{t("ui.agents.navigation.legacy.upload")}
+										</Button>
+
+										{/* The only tooltip here: it names the agent, which the
+								    button label cannot. */}
+										<Tooltip
+											content={t("ui.agents.navigation.legacy.chat_named", {
+												name:
+													selectedAgent.name ||
+													t("ui.agents.navigation.legacy.unnamed_agent"),
+											})}
+										>
+											<Button
+												variant="primary"
+												onClick={() => {
+													/*
+													 * THE DRAFT DOOR (issue #844): `/chat/<agent id>` had no non-session
+													 * fallback in the store, so this button always landed on the legacy-link
+													 * notice. `stageDraft({ kind: "agent", name })` then `/chat` is the door
+													 * the sidebar's "New chat with <name>" rows and the agent page use.
+													 */
+													useCanonicalSessionsStore.getState().stageDraft({
+														kind: "agent",
+														name: selectedAgent.name,
+													});
+													navigate("/chat");
+												}}
+											>
+												<MessageSquare aria-hidden="true" />
+												{t("ui.agents.navigation.legacy.chat")}
+											</Button>
+										</Tooltip>
+									</div>
+								</PageHeader>
+							</div>
+						) : (
+							<PageHeader
+								variant="compact"
+								title={t("ui.agents.navigation.legacy.title")}
+							/>
+						)}
+
+						<div className="min-h-0 grow overflow-hidden">
+							<AgentSettings
+								selectedAgent={selectedAgent ?? null}
+								refetchAgent={refetchAgent}
+								initialSelectedAgentId={agentId}
+							/>
+						</div>
 					</div>
 				</div>
-			</div>
+			</WorkspaceFrame>
 
 			{/* Render the Upload Confirmation Dialog */}
 			{selectedAgent && (

@@ -6,12 +6,19 @@ import {
 	webUtils,
 } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
-import { readTelemetryArgument } from "../main/telemetry-launch";
+import {
+	readAppVersionArgument,
+	readTelemetryArgument,
+} from "../main/telemetry-launch";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import {
+	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
+	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+} from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -50,6 +57,7 @@ import {
 	type QwenVoiceStatus,
 	type QwenVoiceTake,
 } from "../shared/desktop-contract";
+import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
@@ -247,14 +255,17 @@ const api = {
 					ipcRenderer.removeListener("desktop-feed-frame", handler);
 				};
 			},
-			watchState: (onState: (state: { connected: boolean }) => void) => {
-				const handler = (_event: unknown, state: { connected: boolean }) =>
+			watchState: (
+				onState: (state: DesktopFeedState) => void,
+				includeWorkspaceEpoch?: boolean,
+			) => {
+				const handler = (_event: unknown, state: DesktopFeedState) =>
 					onState(state);
 				ipcRenderer.on("desktop-feed-state", handler);
 				// Ask for the CURRENT state as well as every transition: a subscriber
 				// that mounts after a reconnect would otherwise render "disconnected"
 				// until the next transition, which may never come on a healthy feed.
-				ipcRenderer.send("desktop-feed-watch");
+				ipcRenderer.send("desktop-feed-watch", includeWorkspaceEpoch === true);
 				return () => {
 					ipcRenderer.removeListener("desktop-feed-state", handler);
 				};
@@ -369,7 +380,12 @@ const api = {
 		},
 		stream: {
 			subscribe: (
-				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				args: {
+					sessionId: string;
+					epoch?: string;
+					afterSeq?: number;
+					inlineUi?: boolean;
+				},
 				// The contract's own type rather than a fourth transcription of the
 				// frame: a local copy is where a new field (here `status`, which
 				// carries a 404) gets dropped silently between main and the renderer.
@@ -456,6 +472,38 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/*
+	 * The installed app's version (`app.getVersion()` in main), read from the
+	 * same argv and for the same reason: the renderer registers it as PostHog's
+	 * `app_version` super property inside `init`, before its first event, and
+	 * only a synchronous source can be there in time (`APP_VERSION_ARG` in
+	 * `src/main/telemetry-launch.ts`). `null` when absent or malformed, and the
+	 * renderer then registers nothing.
+	 */
+	appVersion: readAppVersionArgument(process.argv),
+	/*
+	 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK (`shared/app-attention-queued-asks.ts`).
+	 *
+	 * The window is the only reader of the queued-ask index, and the feed frame for a
+	 * conversation carries no ask count, so the dock/tray projection can only know
+	 * this if the window says it. `report` is a claim, sent on change; `onResync` is
+	 * main asking for it again after a reset it could not let the window see.
+	 */
+	appAttention: {
+		reportQueuedAskSessions: (ids: readonly string[]): void => {
+			ipcRenderer.send(APP_ATTENTION_QUEUED_ASKS_CHANNEL, [...ids]);
+		},
+		onQueuedAskSessionsResync: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on(APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(
+					APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+					handler,
+				);
+			};
+		},
+	},
 	/**
 	 * The window chrome: the synchronous facts the shell lays out from, the report
 	 * the renderer sends back on every theme change, and the state main pushes.
@@ -1191,8 +1239,8 @@ const api = {
 		 * while the band was open). Main validates the shape rather than trusting it. */
 		closeTabs: (intent: unknown): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tabs", intent),
-		activateTab: (tabId: number): Promise<unknown> =>
-			ipcRenderer.invoke("browser-activate-tab", tabId),
+		activateTab: (tabId: number, trusted?: boolean): Promise<unknown> =>
+			ipcRenderer.invoke("browser-activate-tab", tabId, trusted),
 		addressHistory: (
 			request: AddressHistoryRequest,
 		): Promise<AddressHistoryResponse> =>
@@ -1336,38 +1384,11 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
-		/** "Return to agent" on a passkey custody notice (see
-		 * `extensions/passkey-custody.ts`). Ids and the click's `isTrusted` only. */
-		releasePasskeyCustody: (
-			tabId: number,
-			at: number,
-			trusted: boolean,
-		): Promise<unknown> =>
-			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
 		/** A sidebar notification row's click: bring the tab an agent is waiting
 		 * on the user in forward, with its held popups (`user-attention.ts`). The
 		 * ONLY path that does; `false` when the tab is gone. */
 		openUserAttention: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-open-user-attention", tabId),
-		/** The hold `{tabId, at}` ended: the renderer may give the user back the
-		 * view it saved when they opened that hold from its notification
-		 * (`passkey-custody-handoff.ts`). */
-		onPasskeyCustodyEnded: (
-			callback: (payload: { tabId: number; at: number }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; at?: unknown },
-			) => {
-				if (typeof payload?.tabId !== "number") return;
-				if (typeof payload.at !== "number") return;
-				callback({ tabId: payload.tabId, at: payload.at });
-			};
-			ipcRenderer.on("browser-passkey-custody-ended", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-passkey-custody-ended", handler);
-			};
-		},
 		/**
 		 * Answer the camera/microphone prompt. `trusted` is the click's
 		 * `event.isTrusted`; main refuses a decision without it, and the id is the

@@ -190,19 +190,11 @@ test("full screen hides the lane and the route band, out-ranking both of their s
 	assert.match(hide.body, /display:\s*none;/);
 	// `[a][b][c] :is(x)` is (0,4,0): attribute tests on the root plus the :is arg.
 	const hideSpec = (hide.prelude.match(/\[/g) ?? []).length - 1;
-	for (const show of blocks.filter(
+	const shows = blocks.filter(
 		(b) =>
 			/\[data-titlebar-lane\]|\[data-chrome-route-band\]/.test(b.prelude) &&
 			/display:\s*block;/.test(b.body),
-	)) {
-		for (const arm of show.prelude.split(/,(?![^(]*\))/)) {
-			const spec = (arm.match(/\[/g) ?? []).length;
-			assert.ok(
-				hideSpec > spec || (hideSpec === spec && hide.order > show.order),
-				`full-screen hide must win over "${arm.trim()}"`,
-			);
-		}
-	}
+	);
 	// And its lane/band arguments really are the elements those rules show.
 	for (const [label, attrs] of WINDOWED) {
 		const root = doc.documentElement;
@@ -217,5 +209,17 @@ test("full screen hides the lane and the route band, out-ranking both of their s
 			root.setAttribute(k, v);
 		const hits = doc.querySelectorAll(hide.prelude);
 		assert.equal(hits.length, 2, `${label}: both drag surfaces are hidden`);
+		for (const show of shows) {
+			// The caption show rule excludes fullscreen outright; compare
+			// specificity/order only for selector arms that really match.
+			for (const arm of show.prelude.split(/,(?![^(]*\))/)) {
+				if (!doc.querySelector(arm)) continue;
+				const spec = (arm.match(/\[/g) ?? []).length;
+				assert.ok(
+					hideSpec > spec || (hideSpec === spec && hide.order > show.order),
+					`full-screen hide must win over "${arm.trim()}"`,
+				);
+			}
+		}
 	}
 });

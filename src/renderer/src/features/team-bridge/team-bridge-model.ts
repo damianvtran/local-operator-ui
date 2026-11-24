@@ -616,6 +616,26 @@ export function canRenameConversation(
 	);
 }
 
+/** Reconcile ONLY canonical editable metadata, not membership or read position.
+ * Empty topics are omitted by the hub: a missing response topic is a clear,
+ * not permission to retain the old topic. Match both tenant and id.
+ */
+export function withConversationMetadata(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	tenantId: string,
+	served: { name?: string; topic?: string },
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			sameRow(row, conversationId, tenantId)
+				? { ...row, name: served.name ?? "", topic: served.topic ?? "" }
+				: row,
+		),
+	};
+}
+
 /** One row renamed in place on a cached page (the optimistic rename). */
 export function withConversationName(
 	page: TeamBridgeConversationList,
@@ -1880,6 +1900,38 @@ export function teamBridgeAgentSessionLabel(
 }
 
 /**
+ * The session line under an agent's author line, or null when it would add
+ * nothing.
+ *
+ * WHY (operator report, 2026-11-23). PR #2035 (cd00b6f) moved the agent's
+ * name off the author line onto this second line and fell back to "Unknown
+ * agent" when the leaf was absent. The core attaches `agent_session` only once
+ * the agent-server capability `team_bridge_agent_session_display` is live
+ * (agent-server #472, not live), so EVERY agent message read
+ * "Ben Tran / Unknown agent". The author line is the agent again (the rail's
+ * "Santa Claus (Ben Tran)"), so this line exists only to name a DIFFERENT
+ * session of that agent: absent, or the same name already shown (by
+ * `nameKey`), it renders nothing - never a placeholder.
+ *
+ * `shownNames` are the names the header already paints: the composed author
+ * label and the agent's own directory name (the label "Santa Claus (Ben Tran)"
+ * does not `nameKey`-match a session called "Santa Claus").
+ */
+export function teamBridgeSessionProvenanceLabel(
+	message: TeamBridgeMessage,
+	shownNames: readonly (string | null | undefined)[],
+): string | null {
+	const session = teamBridgeAgentSessionLabel(message);
+	if (session === null) return null;
+	const key = nameKey(session);
+	return shownNames.some(
+		(name) => typeof name === "string" && nameKey(name) === key,
+	)
+		? null
+		: session;
+}
+
+/**
  * Whether a sender can own a profile at all - a photo, a profile card, a DM.
  * Only a person or an agent is a directory member; an integration app or a
  * sender kind this build does not know never is, so the page refuses to look
@@ -2143,7 +2195,7 @@ export function unlistedMemberLabel(
  *   it would say less.
  *
  * NULL IS THE CALLER'S TO PAINT, as with `participantLabel`: the shared
- * "Unknown agent" / "Unknown person" copy, never an invented name.
+ * "Chief of staff" / "Unknown person" copy, never an invented name.
  */
 export function recipientLabel(
 	recipient: {
@@ -2185,7 +2237,7 @@ export type TeamBridgeSelf = { accountId: string; name: string };
  * agent is not the reader, so `self` never names an agent.
  *
  * NULL IS THE CALLER'S TO PAINT. The caller renders an "Unknown person" /
- * "Unknown agent" placeholder that is visibly not a name: inventing one here
+ * "Chief of staff" placeholder that is visibly not a name: inventing one here
  * is how "Member" reached the screen. `chiefLabel` is injected because the
  * composition is a catalogue string.
  *

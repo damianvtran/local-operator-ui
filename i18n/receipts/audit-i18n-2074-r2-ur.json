@@ -1,0 +1,87 @@
+{
+ "instance": "audit-i18n-2074-r2-ur",
+ "locale": "ur",
+ "audit_date": "2026-11-23",
+ "date": "2026-11-23",
+ "round": 2,
+ "auditor": {
+  "agent": "reviewer (lopdev team role, task audit2-2074-ur)",
+  "session": "fb5eff809456 (read from $LOCAL_OPERATOR_SCRATCHPAD path; not otherwise verified)",
+  "instance": "audit-i18n-2074-r2-ur",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session system header 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed"
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Independent read-only lopdev reviewer. Not the translator and not the round-1 auditor (separate session from 1b0e3d4350fd). Edited no repo file, posted nothing to GitHub, no MT service. Translator and both auditors may share the anthropic/claude-sonnet-5-5 family (not verifiable): independence is session-level, not model-level. Disclosed.",
+ "repo": "damianvtran/local-operator-ui",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+ "head": "0e7a2c48b47a7b6dfcc5d3bc3ef901d9050ff4fd",
+ "previous_head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+ "round1_receipt": {
+  "id": "audit-i18n-2074-ur",
+  "path": "/Users/bentran/.local-operator/sessions/1b0e3d4350fd/scratchpad/receipts/ur.json",
+  "verdict": "pass (0 blocker, 0 major, 1 minor M1, 1 nit N1)"
+ },
+ "hash_method": "sha256 of raw file bytes at head, as sha256File in scripts/i18n/ledger-check.mjs",
+ "diff_authority": "git diff e2e2e812e2 0e7a2c48b4 -- src/i18n/catalogues/ur/ui.chat.voice.json: exactly 2 values changed (replay, summary_static), both equal to the round-1 suggestions; nothing else. en catalogue and en context sidecar bytes unchanged between the two heads.",
+ "references": {
+  "style_guide": "local-operator origin/main i18n/style-guides/ur.md (آپ, respectful imperative, terse, Urdu vocabulary, no manual bidi controls)",
+  "shipped_terms": "ui.common.speech.speak_control.replay_speech \"آواز دوبارہ چلائیں\"; ui.chat.voice.play \"چلائیں\"; unmute \"آواز دوبارہ سنیں\"; spoken_part_note \"بلند آواز میں پڑھا گیا: صرف پہلا حصہ\"; summary_label/stopped/cut \"بلند آواز میں پڑھا گیا ...\""
+ },
+ "namespaces": {
+  "ui.chat.voice": {
+   "status": "passed",
+   "result": "clean",
+   "keys_total": 91,
+   "keys_audited": 2,
+   "keys": [
+    "ui.chat.voice.replay",
+    "ui.chat.voice.summary_static"
+   ],
+   "sha256": {
+    "en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+    "ur": "09f5fceedb38117ca0981a071a662fa2acc5aeb6450d60cbcdf9ea6b6ea061bb"
+   },
+   "context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+   "en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.chat.voice.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+   "findings": [],
+   "per_key": {
+    "ui.chat.voice.replay": {
+     "en": "Replay",
+     "ur": "دوبارہ چلائیں",
+     "verdict": "ok",
+     "note": "Resolves round-1 M1. Imperative آپ; parallels Play (چلائیں) and shipped replay_speech; no longer collides with unmute \"آواز دوبارہ سنیں\" in the same voice strip. 13 chars; frame 17-rtl-ur-spoken at this head shows it on the leading-edge-correct RTL side, one line."
+    },
+    "ui.chat.voice.summary_static": {
+     "en": "Spoken summary",
+     "ur": "بلند آواز کے لیے خلاصہ",
+     "verdict": "ok",
+     "note": "Resolves round-1 N1. Noun phrase \"summary for reading aloud\" matches the en note (written to be read aloud), joins the بلند آواز family, no tense claim (correct for a no-replay static label). 22 chars; fits one line."
+    }
+   }
+  }
+ },
+ "neighbour_check": {
+  "summary_stopped / summary_cut": "' · ' (U+00B7 between spaces) sits between two Urdu runs: neutral resolves RTL, no isolation needed; frame 17-rtl-ur-fallback-history shows 'ہے · ...' in correct order.",
+  "full_reply_link": "trailing U+2191 neutral at end of an RTL run lands on the visual left (end), as the en context wants ('Keep the arrow'); frame 17 history row shows the up-arrow chip at the correct side."
+ },
+ "mechanical_checks": {
+  "keyset_equal": true,
+  "count": 91,
+  "nfc_all": true,
+  "ascii_ellipsis": [],
+  "edge_or_double_space": [],
+  "cc_cf_cs": [],
+  "placeholders_changed": []
+ },
+ "not_verified": "Rendering judged from the PR's committed frames 17-rtl-ur-*; I did not re-render. No native-speaker sign-off claimed.",
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 0,
+  "NIT": 0
+ },
+ "verdict": "clean"
+}

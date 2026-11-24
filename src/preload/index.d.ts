@@ -82,6 +82,25 @@ declare global {
 			 */
 			telemetryEnabled: boolean;
 			/**
+			 * The installed app's version (`app.getVersion()`), from the window's
+			 * `additionalArguments` via the preload, so it is readable synchronously
+			 * before PostHog's first event. `null` outside an app window or when main
+			 * had no version-shaped value to send.
+			 */
+			appVersion: string | null;
+			/**
+			 * The window's claim about which conversations hold an open queued ask, and
+			 * main's request to send it again (`shared/app-attention-queued-asks.ts`).
+			 *
+			 * An `answer` status beside one of these ids is already counted by the
+			 * window's own ask badge, so app-main must not count it as a blocking gate
+			 * too; an `approval` stays a gate either way.
+			 */
+			appAttention: {
+				reportQueuedAskSessions: (ids: readonly string[]) => void;
+				onQueuedAskSessionsResync: (callback: () => void) => () => void;
+			};
+			/**
 			 * The window chrome, the same three calls the preload exposes.
 			 *
 			 * `facts` is a function rather than a value so the renderer reads it once, in
@@ -220,7 +239,7 @@ declare global {
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
-				activateTab: (tabId: number) => Promise<unknown>;
+				activateTab: (tabId: number, trusted?: boolean) => Promise<unknown>;
 				/** Local address suggestions. The expected tab is the one the field's
 				 * draft belongs to; main refuses a request for a tab that is no longer
 				 * active. */
@@ -363,22 +382,9 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
-				/** "Return to agent" on a passkey custody notice. `trusted` is the
-				 * click's `event.isTrusted`; main refuses a release without it. */
-				releasePasskeyCustody: (
-					tabId: number,
-					at: number,
-					trusted: boolean,
-				) => Promise<
-					{ ok: true; reloaded?: boolean } | { ok: false; reason: string }
-				>;
 				/** A sidebar notification row's click (`user-attention.ts`): the tab
 				 * becomes active and its held popups are presented. */
 				openUserAttention: (tabId: number) => Promise<unknown>;
-				/** The hold `{tabId, at}` ended (returned, or its tab closed). */
-				onPasskeyCustodyEnded: (
-					callback: (payload: { tabId: number; at: number }) => void,
-				) => () => void;
 				/** Live composite of an overlay-suppressed page (main's
 				 * `composite-bridge.ts`). Full BGRA frames; display-only. */
 				onCompositeFrame: (

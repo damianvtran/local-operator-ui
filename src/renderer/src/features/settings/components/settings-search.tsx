@@ -333,7 +333,13 @@ export const SettingsSearch = forwardRef<
 				}
 				return;
 			case "Escape":
-				event.preventDefault();
+				/*
+				 * Claim the press ONLY when there is something of this widget's to
+				 * undo. An empty field whose panel is closed is not an owner: with
+				 * `preventDefault` unconditional it claimed Escape forever, so the
+				 * keyboard reader never reached the page's own close (round 1: U3).
+				 */
+				if (query !== "" || open) event.preventDefault();
 				/*
 				 * CLEAR FIRST, CLOSE SECOND — one press does one thing.
 				 *
@@ -371,6 +377,9 @@ export const SettingsSearch = forwardRef<
 		<div
 			ref={rootRef}
 			className={cn("relative @container w-full", className)}
+			/* The page's Esc handler (`settings-escape.ts`) reads this widget's own
+			   text/open state: while it has either, Escape belongs to the search. */
+			data-settings-search=""
 			onBlur={(event) => {
 				const next = event.relatedTarget as Node | null;
 				// Focus that stayed inside the widget — the Clear button, most of

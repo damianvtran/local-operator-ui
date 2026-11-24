@@ -817,6 +817,51 @@ test("the 'More providers' summary names the hidden rows and counts the rest exa
 	);
 });
 
+/*
+ * THE NAMES ARE JOINED WITH THE LOCALE'S SEPARATOR (i18n census N3). The list
+ * used to be `parts.join(", ")`, so the Urdu onboarding read
+ * "xAI, OpenRouter, DeepSeek" with Latin commas inside an Arabic-script
+ * sentence, and the Chinese one with ASCII commas instead of "、". The
+ * catalogue owns the "and"; the code owns only the separator, and English must
+ * stay byte-identical.
+ */
+test("the 'More providers' names use the locale's list separator (en, ur, zh-CN)", () => {
+	const fixture = JSON.parse(
+		readFileSync("scripts/fixtures/auth-providers-first-run.json", "utf8"),
+	).providers;
+	const featured = new Set(["radient", "anthropic", "openai", "google"]);
+	const rest = { subscription: [], key: [], local: [] };
+	for (const provider of fixture) {
+		if (featured.has(provider.id)) continue;
+		if (provider.local) rest.local.push(provider);
+		else if (
+			provider.auth_methods.some(
+				(m) => m.kind === "browser" || m.kind === "device",
+			)
+		)
+			rest.subscription.push(provider);
+		else rest.key.push(provider);
+	}
+	const named = { ...rest, local: [] };
+	try {
+		setLocale("en");
+		assert.match(
+			moreProvidersSummary(named),
+			/^More providers: xAI, OpenRouter, DeepSeek and \d+ more$/,
+		);
+		setLocale("ur");
+		const ur = moreProvidersSummary(named);
+		assert.ok(ur.includes("xAI\u060C OpenRouter\u060C DeepSeek"), ur);
+		assert.doesNotMatch(ur, /, /, `no Latin comma in Urdu: ${ur}`);
+		setLocale("zh-CN");
+		const zh = moreProvidersSummary(named);
+		assert.ok(zh.includes("xAI\u3001OpenRouter\u3001DeepSeek"), zh);
+		assert.doesNotMatch(zh, /, /, `no Latin comma in Chinese: ${zh}`);
+	} finally {
+		setLocale("en");
+	}
+});
+
 // The shape pins above now follow typed keys; this pins the unchanged English promise too.
 test("provider extraction preserves the pinned control and verdict copy", () => {
 	const en = JSON.parse(

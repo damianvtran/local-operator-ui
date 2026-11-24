@@ -18,9 +18,11 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -100,6 +102,7 @@ import { formatDirectory } from "@shared/utils/path-utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -128,6 +131,7 @@ import {
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
+	confirmQueuedAsk,
 	createSendLock,
 	declineQueuedAsk,
 	dismissQueuedAsk,
@@ -171,6 +175,13 @@ import {
 	lockAnswerOutlived,
 	retryOfferedForFailureCode,
 } from "../composer-notice";
+import type { DeliveryMode } from "../composer-send-key";
+import {
+	BUSY_DEFAULT_STALE_TIME,
+	BUSY_DELIVERY_UNSUPPORTED_CODE,
+	busyDefaultFromSettings,
+	evaluateBusySend,
+} from "../composer-send-key";
 import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
@@ -224,6 +235,7 @@ import {
 	budgetCheckedSeam,
 	messageBudgetRefusal,
 } from "../utils/message-budget";
+import { sameWorkspaceTarget } from "../workspace-tabs-model";
 import { ChatContent } from "./chat-content";
 import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
 import { draftTargetChipShown } from "./chat-header-draft-target-model";
@@ -232,6 +244,7 @@ import {
 	headerHostKey,
 	headerIdentityControlsShown,
 } from "./chat-header-identity-model";
+import { ChatWorkspace } from "./chat-workspace";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type AidaWakeIdentity,
@@ -245,6 +258,8 @@ import {
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { useWorkspaceTabs } from "./use-workspace-tabs";
+import { WorkspaceTabs } from "./workspace-tabs";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 
@@ -323,7 +338,11 @@ function SessionPanel({
 	draftKey,
 	sessionId,
 	onStartNewChat,
+	workspaceTabs,
+	routeNotice,
 }: {
+	routeNotice: ReactNode;
+	workspaceTabs: (activeTitle: string) => ReactNode;
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
@@ -427,6 +446,7 @@ function SessionPanel({
 			 * answer is there.
 			 */
 			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+			inlineUi: desktopFeatureEnabled(panelCapabilities.data, "inline_ui"),
 			journalOrder: desktopFeatureEnabled(
 				panelCapabilities.data,
 				"journal_order",
@@ -1299,6 +1319,47 @@ function SessionPanel({
 		"input_mode",
 	);
 	/*
+	 * AND WHETHER THE HARNESS WILL CARRY A BUSY-SEND DELIVERY.
+	 *
+	 * The same negotiation shape as `inputModeEnabled` — and the wire field is
+	 * the same kind of optional metadata an older harness's `.strict()` schema
+	 * would refuse — so `delivery` rides the body only on a backend that
+	 * advertises `features.busy_delivery`. A busy send whose resolved mode the
+	 * backend cannot honour is refused below, never sent as steer.
+	 */
+	const busyDeliverySupported = desktopFeatureEnabled(
+		capabilities.data,
+		"busy_delivery",
+	);
+	/*
+	 * THE BUSY-SEND DEFAULT, READ AT SEND TIME from the shared settings query.
+	 *
+	 * The same `/v1/settings` projection Backend settings renders
+	 * (`desktopKeys.settings`), so a write made in the TUI reaches the desktop
+	 * at its next focus (the query refetches on window focus and is replaced
+	 * on a Backend-settings write): a stale read is one send behind, never
+	 * ambiguous. Read in `send`, not here, so the value asked about is the one
+	 * in force at the press; unloaded or absent reads `steer` (see
+	 * `busyDefaultFromSettings`).
+	 *
+	 * `BUSY_DEFAULT_STALE_TIME` (imported from `composer-send-key`, one value
+	 * the page and its test share) is the neighbours' freshness window
+	 * (`settings-page` and `speech-shortcuts-group` read the same projection):
+	 * the shared query without it would inherit the five-minute default and a
+	 * `delivery.busy_default` change made in the TUI or Backend settings
+	 * could sit unseen for minutes while sends resolve to `steer`.
+	 */
+	const busyDefaultQuery = useQuery({
+		queryKey: desktopKeys.settings,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled: desktopFeatureEnabled(capabilities.data, "settings"),
+		staleTime: BUSY_DEFAULT_STALE_TIME,
+	});
+	/** The busy-send default at render, for the composer's busy sentences. */
+	const busyDefaultMode = busyDefaultFromSettings(
+		busyDefaultQuery.data?.settings,
+	);
+	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
 	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
 	 * flight over a backend that CAN expand a mention, and the composer's sentence
@@ -2065,6 +2126,14 @@ function SessionPanel({
 		 * success path performs - that would yank the reader out of the chat they chose.
 		 */
 		options?: { originBound?: boolean },
+		/*
+		 * Which delivery mode the press selected, from the composer's send-key
+		 * predicate (`composer-send-key.ts`): the chord mode when the press was a
+		 * bound chord, `null` for plain Enter. Resolved against the settings
+		 * default below; `undefined` (the suggestion grid, a retry) is plain
+		 * Enter by construction.
+		 */
+		delivery?: DeliveryMode | null,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		/*
@@ -2681,6 +2750,34 @@ function SessionPanel({
 				}
 			}
 			/*
+			 * THE BUSY-SEND GATE, resolved AT THE PRESS beside `mode` (architect D11).
+			 * The default is the settings value in force NOW, not at render time, and
+			 * a resolved queue/both this backend cannot honour REFUSES here — before
+			 * any admission, with the draft kept and nothing sent as steer.
+			 *
+			 * `busy` reads `turnAliveRef`, not the render closure: `send` awaits the
+			 * stream and the admission seams before this point, so by the time the
+			 * gate answers the render that closed over `turnAlive` is stale — a turn
+			 * that ended inside the flight would still resolve a busy delivery.
+			 * `evaluateBusySend` is the page's assembly, extracted so a test drives
+			 * it for real rather than pinning it by regex (M2): refusing before
+			 * resolving is the seam's own order.
+			 */
+			const evaluation = evaluateBusySend({
+				chordDelivery: delivery ?? null,
+				settings: busyDefaultQuery.data?.settings,
+				busy: turnAliveRef.current,
+				busyDeliverySupported,
+			});
+			if (evaluation.refused) {
+				setSendError(SEND_FAILURE_COPY.deliveryUnsupported);
+				setSendErrorCode(BUSY_DELIVERY_UNSUPPORTED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const deliveryValue = evaluation.delivery;
+			/*
 			 * ONE COMMIT FOR THE PRESS (operator report, 2026-11-11: the transcript went
 			 * blank for a few frames after Send). The call's synchronous prefix marks
 			 * the draft `pending` - a store update, which React always commits
@@ -2704,16 +2801,30 @@ function SessionPanel({
 						attachments,
 						images,
 						...(files.length ? { files } : {}),
-						mode: turnAlive ? "steer" : "prompt",
+						mode: turnAliveRef.current ? "steer" : "prompt",
 						cwd,
 						/*
-						 * The capability gate, applied HERE rather than at the composer: this
+						 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
 						 * function already reads the capability map for the `@` affordance,
 						 * and one gate at the one seam every door passes is what keeps the
 						 * suggestion grid's own sends (which pass no `inputMode`) on the
 						 * legacy body by construction.
 						 */
 						inputMode: inputModeEnabled ? inputMode : undefined,
+						/*
+						 * Resolved above: present only for a busy send whose mode is not
+						 * steer on a backend that advertises `features.busy_delivery`
+						 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
+						 */
+						delivery: deliveryValue,
+						/*
+						 * The same press's mode for the transcript's waiting label, which is
+						 * true for a steer send too - it queues while the turn runs, it just
+						 * rides no field. Never on the wire: the store records it so
+						 * `busy-wait.ts` can name a queued row (`waitMode`'s note in
+						 * composer-send-key.ts).
+						 */
+						busyMode: evaluation.waitMode ?? undefined,
 					},
 					sessionId,
 					onEchoPainted,
@@ -3320,6 +3431,38 @@ function SessionPanel({
 		 * trace on one side and a stale frame on the other.
 		 */
 		if (outcome.status === "sent")
+			showSuccessToast(t("ui.notices.chat.answer_changed"));
+	};
+	/*
+	 * THE OPERATOR-CONFIRMED DOOR (`confirmQueuedAsk`, `src/main/ask-attest.ts`): the
+	 * same answer or change, sent only after the person confirms it on main's native
+	 * sheet, so core stamps it as the operator's and the dangerous-delete guard can
+	 * count it as consent. Same lock and outcome surface as its siblings; a cancelled
+	 * sheet is `refused` (nothing sent) and main's refusal is keyed copy in the outcome
+	 * line (`askAttestRefusalSentence`) - never a silent unconfirmed send.
+	 */
+	const confirmAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+		revise: boolean,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await confirmQueuedAsk(
+				{ taskId, answers, sessionId, revise, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome, revise && outcome.status === "sent");
+		if (revise && outcome.status === "sent")
 			showSuccessToast(t("ui.notices.chat.answer_changed"));
 	};
 	const declineAsk = async (taskId: string) => {
@@ -5082,38 +5225,44 @@ function SessionPanel({
 			 * of one message, and the failure furthest on screen from the control
 			 * that resolves it. `composerSendError` below carries all of it,
 			 * remedies included, to the one place the user is already looking. */}
-			{options && (
-				<div
-					className={cn(
-						"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
-					)}
-				>
-					{[
-						"model",
-						"agent",
-						"team",
-						"rename",
-						"resume",
-						"fork",
-						"new",
-						"settings",
-					].map((command) => (
-						<button
-							key={command}
-							type="button"
-							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
-							onClick={() => {
-								setOptions(false);
-								void dispatch({ name: command, args: "" });
-							}}
-						>
-							{optionsCommandLabel(command)}
-						</button>
-					))}
-				</div>
-			)}
 			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
+					workspaceTabs={workspaceTabs(title)}
+					workspaceNotice={
+						<>
+							{routeNotice}
+							{options && (
+								<div
+									className={cn(
+										"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
+									)}
+								>
+									{[
+										"model",
+										"agent",
+										"team",
+										"rename",
+										"resume",
+										"fork",
+										"new",
+										"settings",
+									].map((command) => (
+										<button
+											key={command}
+											type="button"
+											className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
+											onClick={() => {
+												setOptions(false);
+												void dispatch({ name: command, args: "" });
+											}}
+										>
+											{optionsCommandLabel(command)}
+										</button>
+									))}
+								</div>
+							)}
+						</>
+					}
 					activeTab={tab}
 					onTabChange={setTab}
 					onStartNewChat={onStartNewChat}
@@ -5536,6 +5685,7 @@ function SessionPanel({
 						 * the band's gate.
 						 */
 						turnAlive,
+						busyDefaultMode,
 						stopOutcome,
 						/*
 						 * The clock-withhold half of the disputed idle (U9): true while
@@ -5608,6 +5758,11 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						onConfirmAsk: (
+							taskId: string,
+							answers: Record<string, string[]>,
+							revise: boolean,
+						) => void confirmAsk(taskId, answers, revise),
 						/*
 						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
 						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body
@@ -5831,6 +5986,20 @@ export function ChatPage() {
 	// yields when a pick moved the view - can ask for the same key without keeping
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
+	const workspace = useWorkspaceTabs(
+		navigate,
+		() => stage(undefined, true),
+		desktopFeatureEnabled(capabilities.data, "desktop_feed"),
+	);
+	const workspaceActive = id
+		? ({ kind: "session", id } as const)
+		: draftKey
+			? ({ kind: "draft", id: draftKey } as const)
+			: undefined;
+	const workspaceActiveKey = workspace.tabs.find((tab) =>
+		sameWorkspaceTarget(tab.target, workspaceActive),
+	)?.key;
+	const workspaceTitles = useRef<Record<string, string>>({});
 	const identity = panelIdentityFor(draftKey, id);
 	// The panel's MOUNT key, which unlike `identity` survives the draft's own
 	// admission: remounting there repainted the echo the press had just painted
@@ -5845,61 +6014,23 @@ export function ChatPage() {
 				? null
 				: { key: mountKey, draftKey, sessionId: id };
 	}, [mountKey, draftKey, id]);
-	// The route-level sentence, when one shows; see the `role="alert"` note below.
+	// A failed route always speaks. Connection failures stand down when
+	// the strip or compatibility banner already owns the failure and Retry.
 	const routeSentence =
 		routeError ||
 		(error && !stripSpeaksConnection && !coveredByCompatibilityBanner
 			? error
 			: null);
+	// The shell consumes the OS clearance; ChatWorkspace fits tabs into
+	// that band when integrated. Put the route notice INSIDE the body, so
+	// it cannot push the tabs out of the native drag lane or add a second pad.
+	const routeNotice = routeSentence && (
+		<p role="alert" className="px-4 py-2 text-body-sm text-danger">
+			{routeSentence}
+		</p>
+	);
 	return (
-		/*
-		 * THE CHAT ROUTE IS A PANEL ROUTE (design round 1, D1).
-		 *
-		 * Every column on this route owns a ground that has to reach the window's
-		 * top edge: the conversation (`canvas`), whichever pane holds the right
-		 * slot (`elevated`) and the shell's 44px rail host. As an ordinary page
-		 * the route sat under `<main>`'s shell pad, so the whole row began at y32
-		 * and each slot occupant's own `panel-top-pad` padded a SECOND time - a
-		 * band in the strip above the dock and its first row 32px lower than the
-		 * conversation's. `panel-flush` cancels the shell pad, so the row starts
-		 * at y0 and the one pad each column wears is the only one: the
-		 * conversation column pads itself in `chat-content.tsx`, the occupants
-		 * already do. `flex-1` rather than `h-full`, as on every flush root: the
-		 * negative margin is absorbed by the grow, so the bottom 32px are not lost.
-		 */
-		<div className="panel-flush flex min-h-0 flex-1 flex-col">
-			{/*
-			 * ONE sentence above the panel: a legacy route that names no
-			 * conversation, or a store failure the composer does not own. A
-			 * switch no longer has a failure of its own to state here - the
-			 * target pane speaks for its own stream (see `openSession`).
-			 *
-			 * TWO FAILURES, ONE REGION, AND ONLY ONE OF THEM YIELDS (§F2, R11).
-			 *
-			 * `routeError` is a NAV fact - this conversation is not on this machine,
-			 * the route did not resolve - and the strip does not state it, so it always
-			 * renders. `error` is the store's catalogue failure, which for a dead
-			 * backend IS the connection fact the strip owns; while the strip speaks,
-			 * this half stands down so one press of Retry is not offered twice for one
-			 * root cause. AND WHERE THE STRIP IS SILENT BUT THE COMPATIBILITY BANNER IS
-			 * UP (QA round 1's Q-1), the banner owns the fact instead: the store's
-			 * sentence is the same incident the banner is stating, so this half stands
-			 * down to it as well.
-			 */}
-			{routeSentence && (
-				/*
-				 * `panel-top-pad` on a wrapper: the root is flush, so this sentence -
-				 * the route's first row whenever it shows - would otherwise sit under
-				 * the drag lane and the traffic lights. The pad is the wrapper's so the
-				 * sentence keeps its own `py-2`. The `New chat` arm below is reached
-				 * only beneath this sentence (see its note), so it needs no pad.
-				 */
-				<div className="panel-top-pad">
-					<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
-						{routeSentence}
-					</p>
-				</div>
-			)}
+		<div className="flex min-h-0 flex-1 flex-col">
 			{!enabled ? (
 				/*
 				 * A PANE-level state, presented as one: centred in the column, the shape the
@@ -5916,63 +6047,70 @@ export function ChatPage() {
 				 * sentence from being the pane's first 30 pixels, whatever the band does
 				 * (design round 1, D2).
 				 */
-				<div
-					className={cn(
-						"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
-						"text-body text-ink-muted",
-					)}
-				>
-					<p className={cn("text-center")}>
-						{/*
-						 * THE LOADING SENTENCE CARRIES THE REASSURANCE (task-17, U3).
-						 * This pane is the whole chat surface for the length of the
-						 * capabilities handshake, composer included, so a reader with a
-						 * conversation open and nowhere to type cannot tell "the app is
-						 * dialling its server" from "your conversation is gone". The
-						 * clause states the one fact true of the wait: the conversation
-						 * itself is untouched while the backend is being reached.
-						 */}
-						{capabilities.isLoading
-							? t("ui.chat.page_chrome.backend.connecting")
-							: capabilities.error
-								? userFacingMessage(
-										capabilities.error,
-										t("ui.chat.page_chrome.backend.no_answer"),
-									)
-								: (pairingSentence ??
-									t("ui.chat.page_chrome.backend.update_needed"))}
-					</p>
-					{offerRetry && (
-						<button
-							type="button"
-							className={cn("underline")}
-							onClick={() => void paneRetry()}
-						>
-							{t("ui.common.actions.retry")}
-						</button>
-					)}
-				</div>
+				<ChatWorkspace>
+					{routeNotice}
+					<div
+						className={cn(
+							"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+							"text-body text-ink-muted",
+						)}
+					>
+						<p className={cn("text-center")}>
+							{/*
+							 * THE LOADING SENTENCE CARRIES THE REASSURANCE (task-17, U3).
+							 * This pane is the whole chat surface for the length of the
+							 * capabilities handshake, composer included, so a reader with a
+							 * conversation open and nowhere to type cannot tell "the app is
+							 * dialling its server" from "your conversation is gone". The
+							 * clause states the one fact true of the wait: the conversation
+							 * itself is untouched while the backend is being reached.
+							 */}
+							{capabilities.isLoading
+								? t("ui.chat.page_chrome.backend.connecting")
+								: capabilities.error
+									? userFacingMessage(
+											capabilities.error,
+											t("ui.chat.page_chrome.backend.no_answer"),
+										)
+									: (pairingSentence ??
+										t("ui.chat.page_chrome.backend.update_needed"))}
+						</p>
+						{offerRetry && (
+							<button
+								type="button"
+								className={cn("underline")}
+								onClick={() => void paneRetry()}
+							>
+								{t("ui.common.actions.retry")}
+							</button>
+						)}
+					</div>
+				</ChatWorkspace>
 			) : identity ? (
-				<div
-					className={cn(
-						"min-h-0 flex-1",
-						/*
-						 * ONE PAD PER ROW. With the sentence above it this row starts below
-						 * the strip, so the columns inside it (the conversation, the slot's
-						 * pane) must not pad for the strip again: the sentence's wrapper
-						 * already consumed it. Zeroing the shell's published number here is
-						 * what keeps `panel-top-pad` meaning "the strip that is still above
-						 * me" rather than a second 32px band under the sentence.
-						 */
-						routeSentence && "[--panel-top-pad:0px]",
-					)}
-				>
+				<div className="min-h-0 flex-1">
 					<SessionPanel
 						key={mountKey}
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
 						onStartNewChat={startNewChatRoute}
+						routeNotice={routeNotice}
+						workspaceTabs={(activeTitle) => (
+							<WorkspaceTabs
+								activeKey={workspaceActiveKey}
+								activeTitle={activeTitle}
+								tabs={workspace.tabs}
+								autoClose={workspace.autoClose}
+								onAutoCloseChange={workspace.setAutoClose}
+								titles={workspaceTitles.current}
+								focusRequested={workspace.focusRequested}
+								onFocusHandled={workspace.focusHandled}
+								onOpen={(tab) => void workspace.select(tab)}
+								onClose={(tab) => void workspace.close(tab)}
+								onPin={workspace.pin}
+								onMove={workspace.move}
+							/>
+						)}
 					/>
 				</div>
 			) : (
@@ -5993,15 +6131,18 @@ export function ChatPage() {
 				 * control remains, without the deleted heading or its promise - the
 				 * affordance that state actually needs, and nothing else.
 				 */
-				<div className={cn("p-6")}>
-					<button
-						type="button"
-						className={cn("rounded-md border border-control px-3 py-2")}
-						onClick={() => stage(undefined, true)}
-					>
-						{t("ui.shell.sidebar_navigation.new_chat")}
-					</button>
-				</div>
+				<ChatWorkspace>
+					{routeNotice}
+					<div className={cn("p-6")}>
+						<button
+							type="button"
+							className={cn("rounded-md border border-control px-3 py-2")}
+							onClick={() => stage(undefined, true)}
+						>
+							{t("ui.shell.sidebar_navigation.new_chat")}
+						</button>
+					</div>
+				</ChatWorkspace>
 			)}
 		</div>
 	);

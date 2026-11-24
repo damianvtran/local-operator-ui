@@ -193,7 +193,10 @@ export const MeshList: FC<MeshListProps> = ({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pe-1">
+		<div
+			data-lo-pane-edge-cues=""
+			className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pe-1"
+		>
 			{/*
 			 * A segmented pair rather than Radix `Tabs`: these change the ORDER of one
 			 * list, they do not swap panels, and a `TabsTrigger` would point

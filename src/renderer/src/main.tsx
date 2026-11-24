@@ -13,6 +13,10 @@ import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
+import {
+	bridgeAppVersion,
+	registerAppVersion,
+} from "@shared/analytics/app-version";
 import { scrubCaptureResult } from "@shared/analytics/autocapture-privacy";
 import { registerProductEventClient } from "@shared/analytics/product-events";
 import { config, telemetryEnabled } from "@shared/config";
@@ -50,6 +54,18 @@ const posthogOptions: Partial<PostHogConfig> = {
 	 * other half is `USER_CONTENT_CLASS` on user-content regions.
 	 */
 	before_send: scrubCaptureResult,
+	/*
+	 * EVERY EVENT NAMES THE APP VERSION THAT SENT IT (2026-11-24). `$lib_version`
+	 * is posthog-js's version, identical across app releases, so without this a
+	 * shipped fix could not be told apart from the build before it in the data.
+	 * `loaded` runs synchronously inside `init` and BEFORE the initial pageview is
+	 * scheduled (posthog-js 1.235.6, `lib/src/posthog-core.js:504-520`), so the
+	 * very first `$pageview` carries `app_version` too. The value is main's
+	 * `app.getVersion()` via the preload bridge; why that route, and why a missing
+	 * one unregisters rather than registering a placeholder, is in
+	 * `shared/analytics/app-version.ts`.
+	 */
+	loaded: (client) => registerAppVersion(client, bridgeAppVersion()),
 	/*
 	 * Replay already masks every input by default; restated so a posthog-js
 	 * default change cannot unmask the composer. Text in user-content regions is

@@ -627,7 +627,9 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 						{t("ui.settings.notifications.load.loading")}
 					</div>
 				) : (
-					<ErrorBoundary fallbackRender={ListFallback}>
+					<ErrorBoundary
+						fallbackRender={(props) => <ListFallback {...props} />}
+					>
 						<NotificationSoundList
 							ref={listRef}
 							listing={listing}

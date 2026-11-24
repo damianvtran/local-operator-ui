@@ -1,0 +1,73 @@
+{
+	"instance": "voice-history-full-text-ru",
+	"locale": "ru",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.chat.voice",
+		"ui.chat.composer"
+	],
+	"auditor": {
+		"agent": "reviewer (lopdev team, audit-i18n-ru task)",
+		"session": "unknown — session id not exposed to this task; identify by task label audit-i18n-ru",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header 'Model: anthropic/claude-sonnet-5-5'); no provider fallback occurred this run.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only reviewer task session; authored and edited no catalogue value, ledger, sidecar or repo file. Not the translator session (translator was another session, anthropic/claude-sonnet-5-5, same model family but a separate session with no shared context). Read en values, en .context.json sidecars and ru values from the bytes on disk at a9161f63eb; no translation or MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2065",
+	"branch": "voice-history-full-text",
+	"head": "a9161f63eb48cc0932558543c7b61d5a3eed54ba",
+	"references": {
+		"glossary": "damianvtran/local-operator origin/main i18n/glossary.md (no entry for voice/said/talk/type)",
+		"style_guide": "damianvtran/local-operator origin/main i18n/style-guides/ru.md",
+		"shipped_terms": "ru ui.chat.voice.idle_caption «Скажите что-нибудь»; ui.chat.voice.empty_history «Пока ничего не сказано…»; byok_speech_failed «Голос не смог озвучить этот ответ»; byok_speech_rate_limited «…ответ не озвучен» (озвучить = speak a reply aloud, matches spoken_part_note «Озвучено»); ui.chat.composer.placeholder.idle «Спросите что угодно…» (imperative вы); sibling colon prefixes «Диктовка не удалась:», notice_elsewhere_prefix «Голос включён в разговоре:»."
+	},
+	"diff_audited": "git diff cd9d85f30d a9161f63eb for en and ru ui.chat.voice.json / ui.chat.composer.json: changed heard_label, said_label; added ui.chat.voice.spoken_part_note and ui.chat.composer.placeholder.voice; removed ui.chat.voice.cut_note. Matches the brief's list exactly.",
+	"scope_note": "All 4 changed/added keys audited in full; removed key checked. «Вы сказали:» / «Сказано:» — idiomatic lead-ins, ASCII colon with no preceding space per ru style guide (no typographic spacing before ':'), sentence case, followed by quoted transcript in LabelledCaption (voice-composer.tsx:681-695). «Озвучено: только начало» — idiomatic for 'Spoken aloud: first part only' («начало» rather than literal «первая часть»), neutral statement not a warning, does not imply missing text (per sidecar), «озвучено» consistent with shipped «озвучить/не озвучен», 23 chars, fits a one-line note beside a 12px icon. «Говорите или печатайте здесь» — imperative вы, matches register of placeholder.idle «Спросите что угодно», names both speak and type, no «Пожалуйста»/«!», 28 chars, fits composer placeholder. Parity: en/ru key sets identical in both namespaces (ui.chat.voice also identical order; ui.chat.composer key order differs between en and ru but that predates this PR and is not a defect), no placeholders/ICU in the four values, all ru files NFC, no Cc/Cf/bidi chars, no non-Cyrillic non-ASCII chars in the four values. Retired ui.chat.voice.cut_note: no occurrence in ru ui.chat.voice.json, ru ui.chat.composer.json, nor in src/ docs/ i18n/ (grep -rn cut_note empty) and keys.gen.ts carries spoken_part_note and placeholder.voice, not cut_note. No findings; zero minors or nits worth recording.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 3,
+			"keys": [
+				"ui.chat.voice.heard_label",
+				"ui.chat.voice.said_label",
+				"ui.chat.voice.spoken_part_note"
+			],
+			"sha256": {
+				"en": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+				"ru": "f124846953bc23cc4959d813137350250b50a974054e327cbeafa12761162902"
+			},
+			"context_sha256": "e1106acf56e0eb52432681804b8c109a2dbfdeec6406a0967c4358dbfe514a32",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.placeholder.voice"
+			],
+			"sha256": {
+				"en": "68e7108ce215c82f0f957bbfbd597594624500b9005f93a78744ed602e2eacc6",
+				"ru": "b5df0cef1e9d5835f63dfea055bc4a4eb22426d575cc7c3c878dabd75c4fbe09"
+			},
+			"context_sha256": "b7a0393c5bff2f114fb9ff3c32c74bb83fe3580a130f35287ec8fa4e382c40ea",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": []
+		}
+	},
+	"findings_total": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	}
+}

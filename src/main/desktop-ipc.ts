@@ -6,6 +6,7 @@ import {
 } from "electron";
 import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import {
+	DESKTOP_CONTRACT_REFUSAL_DETAIL,
 	type DesktopResponse,
 	desktopRequestSchema,
 } from "../shared/desktop-contract";
@@ -18,6 +19,12 @@ import {
 	LINK_PREVIEW_RESOLVE_CHANNEL,
 } from "../shared/link-preview";
 import { stampSnapshotSend } from "../shared/snapshot-receipt";
+import {
+	ASK_ATTEST_MAIN_OPS,
+	type AskAttestedAnswerRequest,
+	askAttestRefusal,
+	isAskAttestMainOp,
+} from "./ask-attest";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
@@ -356,6 +363,20 @@ export function registerDesktopIPC(
 		event: IpcMainInvokeEvent,
 		request: PairingMainRequest,
 	) => Promise<DesktopResponse>,
+	/**
+	 * Main's own attested ask answer (`ask-attest.ts` ASK_ATTEST_MAIN_OPS): the
+	 * native-sheet ceremony that attests an answer to the session's runtime and
+	 * then forwards it as an ordinary `sessions.answer`. Never forwarded as sent -
+	 * that would skip the sheet. Absent (a harness, an older wiring) means it is
+	 * refused here with the same 403 an unreachable listener answers, so the card
+	 * offers the unconfirmed send instead.
+	 *
+	 * APPENDED LAST for the reason `teamBridgeNotifier` gives.
+	 */
+	askAttest?: (
+		event: IpcMainInvokeEvent,
+		request: AskAttestedAnswerRequest,
+	) => Promise<DesktopResponse>,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -381,11 +402,22 @@ export function registerDesktopIPC(
 			if (!parsed.success || !MESH_PAIRING_MAIN_OPS.has(parsed.data.op))
 				return Promise.resolve({
 					status: 422,
-					body: { detail: "Invalid desktop operation." }, // i18n: ignore wire diagnostic, mirrors desktop-transport
+					body: { detail: DESKTOP_CONTRACT_REFUSAL_DETAIL },
 				});
 			return meshPairing
 				? meshPairing(event, parsed.data as PairingMainRequest)
 				: Promise.resolve(pairingAttestRefusal("listener_unavailable"));
+		}
+		if (isAskAttestMainOp(input)) {
+			const parsed = desktopRequestSchema.safeParse(input);
+			if (!parsed.success || !ASK_ATTEST_MAIN_OPS.has(parsed.data.op))
+				return Promise.resolve({
+					status: 422,
+					body: { detail: "Invalid desktop operation." }, // i18n: ignore wire diagnostic, mirrors desktop-transport
+				});
+			return askAttest
+				? askAttest(event, parsed.data as AskAttestedAnswerRequest)
+				: Promise.resolve(askAttestRefusal("listener_unavailable"));
 		}
 		const refusal = admitDesktopRequest?.(input);
 		if (refusal !== null && refusal !== undefined) return refusal;
@@ -660,6 +692,7 @@ export function registerDesktopIPC(
 				epoch?: unknown;
 				afterSeq?: unknown;
 				openFrame?: unknown;
+				inlineUi?: unknown;
 				journalOrder?: unknown;
 				orderIds?: unknown;
 				peerJournalSource?: unknown;
@@ -670,6 +703,7 @@ export function registerDesktopIPC(
 				(input.afterSeq !== undefined && typeof input.afterSeq !== "number") ||
 				(input.openFrame !== undefined &&
 					typeof input.openFrame !== "boolean") ||
+				(input.inlineUi !== undefined && typeof input.inlineUi !== "boolean") ||
 				(input.journalOrder !== undefined &&
 					typeof input.journalOrder !== "boolean") ||
 				(input.peerJournalSource !== undefined &&
@@ -692,6 +726,7 @@ export function registerDesktopIPC(
 					epoch: input.epoch as string | undefined,
 					afterSeq: input.afterSeq as number | undefined,
 					openFrame: input.openFrame as boolean | undefined,
+					inlineUi: input.inlineUi as boolean | undefined,
 					journalOrder: input.journalOrder as boolean | undefined,
 					orderIds: input.orderIds as string[] | undefined,
 					peerJournalSource: input.peerJournalSource as boolean | undefined,

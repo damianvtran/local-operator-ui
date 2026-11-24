@@ -428,6 +428,36 @@ test("the prewarm's flags come from the capabilities answer, not the last reques
 	assert.equal(r.calls.length, 2, "and that is exactly what the pane adopts");
 });
 
+test("inline UI capability changes cannot adopt a stream with a stale declaration", () => {
+	const r = rig();
+	prewarmSessionStream("warm-inline");
+	assert.equal(r.calls[0].inlineUi, undefined);
+	recordStreamCapabilityFlags({ inlineUi: true });
+	const dispose = subscribeDesktopStream(
+		{ sessionId: "warm-inline", inlineUi: true },
+		() => {},
+	);
+	assert.equal(r.calls.length, 2);
+	assert.equal(r.disposed[0], true);
+	assert.equal(r.calls[1].inlineUi, true);
+	dispose();
+	prewarmSessionStream("warm-inline");
+	assert.equal(r.calls[2].inlineUi, true);
+	recordStreamCapabilityFlags({ inlineUi: false });
+	const next = subscribeDesktopStream(
+		{ sessionId: "warm-inline", inlineUi: true },
+		() => {},
+	);
+	assert.equal(r.calls.length, 4);
+	assert.equal(r.disposed[2], true);
+	assert.equal(
+		r.calls[3].inlineUi,
+		undefined,
+		"recorded downgrade outranks the stale pane",
+	);
+	next();
+});
+
 test("a second click disposes the first prewarm", () => {
 	const r = rig();
 	prewarmSessionStream("s7");

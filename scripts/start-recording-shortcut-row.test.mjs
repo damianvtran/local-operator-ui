@@ -479,3 +479,39 @@ test("the primary row shows no Clear button without the clearable flag", async (
 		});
 	}
 });
+
+test("Escape in the start-recording recorder never reaches the page that holds it", async () => {
+	await mount({}, async (api) => {
+		const input = api.$('input[data-shortcut-action="keymap.start_recording"]');
+		assert.ok(input);
+		const heard = [];
+		const listener = (event) => heard.push(event.key);
+		api.window.document.addEventListener("keydown", listener);
+		try {
+			await act(async () => input.focus());
+			await act(async () => {
+				input.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Escape",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			/* The Settings page's Esc handler is an ancestor listener like this one. */
+			assert.deepEqual(
+				heard,
+				[],
+				"the recorder owns Escape; a page above it must not hear the press",
+			);
+			assert.deepEqual(
+				api.requests.filter((request) => request.op === "settings.edit"),
+				[],
+				"cancelling changes no binding",
+			);
+			assert.equal(input.value, "Ctrl+Shift+S");
+		} finally {
+			api.window.document.removeEventListener("keydown", listener);
+		}
+	});
+});

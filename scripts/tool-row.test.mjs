@@ -1935,7 +1935,10 @@ test("the transcript no longer renders a Writing row", () => {
  */
 const WIDTH_CAP_DECLARATION = /max-width\s*:\s*([^;}]+)/g;
 const CH_UNIT = /[\d.]+ch\b/g;
-const CELL_CAP_RULES = /\.lo-markdown th,\s*\.lo-markdown td\s*\{[^}]*\}/g;
+// Keep the exclusion on both cells: inline UI gets its own styling, and
+// `:where()` excludes it without increasing the markdown rule's specificity.
+const CELL_CAP_RULES =
+	/(?:^|(?<=[{}]))\s*\.lo-markdown th:where\(:not\(\[data-lo-inline-ui\] \*\)\),\s*\.lo-markdown td:where\(:not\(\[data-lo-inline-ui\] \*\)\)\s*\{[^}]*\}/g;
 const CELL_CAP_VALUE = /max-width\s*:\s*64ch/;
 const CELL_CAP_WORD_BREAK = /word-break\s*:\s*normal/;
 const CELL_CAP_OVERFLOW_WRAP = /overflow-wrap\s*:\s*break-word/;
@@ -3959,8 +3962,8 @@ test("the line, the hint and every control read the one pair", () => {
 	);
 	assert.match(
 		page,
-		/mode: turnAlive \? "steer" : "prompt",/,
-		"the send mode reads the pair",
+		/mode: turnAliveRef\.current \? "steer" : "prompt",/,
+		"the send mode reads the pair, through the ref the page refreshes after the awaits (busy delivery)",
 	);
 	// NOTHING may go back to the raw field - that is the blanking defect this
 	// pair exists to remove, in every one of its consumers.

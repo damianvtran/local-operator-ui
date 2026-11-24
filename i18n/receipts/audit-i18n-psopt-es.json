@@ -1,0 +1,131 @@
+{
+	"instance": "audit-i18n-psopt-es",
+	"locale": "es",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.projects (6 new keys)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-es)",
+		"session": "21a59ab0fa6d (session system header 'Session ID'; matches $LOCAL_OPERATOR_SCRATCHPAD path)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue/ledger, committed nothing, posted nothing to GitHub; only this receipt was written. Translator is a separate i18n-translator session; same model family possible and not verifiable: disclosed, so independence is session-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3",
+	"base_note": "7809ec934a3 is git merge-base HEAD origin/main; the local origin/main ref has since moved to c78604c41b29 and was not re-audited.",
+	"hash_method": "sha256 of whole-file bytes (ledger-rules.mjs sha256Hex); hashes.en/hashes.es are the role keys ledger-rules.mjs scopedHash() reads",
+	"hashes": {
+		"en": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"es": "bc32082d52a5decb6559183e09ee16a507631883b682bb229d6c2043418f31ad",
+		"en_context": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a"
+	},
+	"hash_paths": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"es": "src/i18n/catalogues/es/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (project -> proyecto; no tag/name/key entries)",
+		"style_guide": "local-operator@origin/main (1b011ed566f9; file last changed 4ee49c91543c) i18n/style-guides/es.md sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6: tu, neutral Spanish, sentence case, terse, Latin digits",
+		"shipped_terms": "es ui.projects: comma_separated_up_to_8_... 'Separadas por comas, hasta 8. Minúsculas, dígitos, guion bajo o guion.'; letters_digits_dot_underscore_or_dash_no_spaces 'Letras, dígitos, punto, guion bajo o guion; sin espacios.'; project_form_dialog.tags 'Etiquetas'. Sibling validators: ui.agents.detail.create.error_name_required 'Ponle un nombre al agente.', ui.agents.teams.create.error_name_required 'Ponle un nombre al equipo.', ui.settings.integrations...give_it_a_name 'Ponle un nombre.'"
+	},
+	"checks": [
+		{
+			"check": "key-set parity en vs es",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "diff is additions only",
+			"result": "PASS",
+			"detail": "vs 8b5ca519a1f and vs origin/main 7809ec934a3: 0 changed, 0 removed, exactly the 6 in-scope keys added"
+		},
+		{
+			"check": "NFC / code points",
+			"result": "PASS",
+			"detail": "all 6 NFC; non-ASCII only U+00ED, U+00F1, U+00FA (í ñ ú); no bidi controls (U+200E/F, U+202A-E, U+2066-9); no double spaces"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "none in en or es; no '{' in any of the 6 values"
+		},
+		{
+			"check": "CLDR plural need",
+			"result": "PASS",
+			"detail": "'de 1 a 24 caracteres' is a fixed literal range; 'caracteres' plural is grammatical for 24, no count variable, so no plural block needed"
+		},
+		{
+			"check": "grammar fidelity",
+			"result": "PASS",
+			"detail": "name /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/: start letter/digit, ASCII stated via 'sin tildes ni ñ', set letras/dígitos/punto/guion bajo/guion; tag /^[a-z0-9][a-z0-9_-]{0,23}$/: 'de 1 a 24' exact, minúsculas, no dot. Same omissions as en (64 max, tag first char)"
+		},
+		{
+			"check": "terminology consistency",
+			"result": "PASS",
+			"detail": "etiqueta(s), proyecto, nombre, dígito, guion bajo, guion, minúsculas identical to shipped es hints in the same file; same list order as letters_digits_dot_underscore_or_dash_no_spaces"
+		},
+		{
+			"check": "register",
+			"result": "PASS",
+			"detail": "tú imperative 'Ponle', identical pattern to agent/team/integration name_required; headings sentence case"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check, check-duplicates.mjs, context-parity.mjs exit 0; ledger-check.mjs exit 1 with es/ui.projects stale-hash rows as expected before this audit is assembled"
+		},
+		{
+			"check": "length (chars es/en)",
+			"result": "NOTE",
+			"detail": "name_grammar 121/88, tag_grammar 99/74 (+34-37%), name_required 28/24; no maxCells in sidecar ('may wrap under the field'); headings 7/7, 9/5, 5/5"
+		},
+		{
+			"check": "receipt parse",
+			"result": "PASS",
+			"detail": "ledger-rules.mjs deriveReceiptAudit() on this file's bytes with on-disk hashes, locale es, namespace ui.projects: accepted (see report)"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_grammar / tag_grammar",
+			"current": "… letras sin tildes ni ñ … / … minúsculas sin tildes ni ñ …",
+			"suggested": "optional: tag_grammar '… minúsculas (a-z, sin tildes ni ñ) …'; name_grammar may stay",
+			"reason": "'tildes' is the colloquial word for the acute accent; strictly ü, ç, à are also refused by the ASCII grammar. The common Spanish cases (á é í ó ú ñ) are named, so it reads natively and is accurate in practice. Acceptable as is."
+		},
+		{
+			"id": "I1",
+			"severity": "INFO",
+			"key": "ui.projects.project_edit_model.name_required / name_grammar",
+			"current": "'nombre' while the field label is 'Clave' (project_form_dialog.key)",
+			"suggested": "none for es; source-level choice",
+			"reason": "English has the same Key-label vs 'name' wording; es faithfully follows en and shipped 'Un nombre corto para la línea de trabajo'. Not counted; noted for the source owner."
+		}
+	],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: 'Ponle un nombre al proyecto.' tú imperative, identical pattern to agents/teams/integrations; I1 source note",
+		"ui.projects.project_edit_model.name_grammar": "ok with N1: start rule, ASCII restriction and character set exact; 'solo admiten' is the shipped wording of tools.error_grammar",
+		"ui.projects.project_edit_model.tag_grammar": "ok with N1: 'de 1 a 24 caracteres' exact digits and range; 'minúsculas' as in shipped tag hint; no dot, matching the regex",
+		"ui.projects.project_sheet_model.template_summary": "ok: 'Resumen', bare word, no markdown",
+		"ui.projects.project_sheet_model.template_goals": "ok: 'Objetivos' is the settled project-doc heading (over 'Metas'), bare word",
+		"ui.projects.project_sheet_model.template_notes": "ok: 'Notas', bare word"
+	},
+	"result": "clean-with-findings",
+	"status": "passed",
+	"status_note": "status 'passed' + result 'clean-with-findings' because ledger-rules.mjs receiptIdentity/deriveReceiptAudit accept only passed|changes_requested and clean|clean-with-findings; the fr receipt's 'passed-with-findings'/'findings' pair and path-keyed hashes would be refused."
+}

@@ -635,3 +635,29 @@ test("the section explains the browser's scope and why the app does not take tho
 		);
 	});
 });
+
+test("Escape in a recorder never reaches the page that holds it", async () => {
+	await mount(async (api) => {
+		const field = api.$(FIELD_SELECTOR("Console"));
+		const heard = [];
+		const listener = (event) => heard.push(event.key);
+		api.window.document.addEventListener("keydown", listener);
+		try {
+			act(() => field.focus());
+			pressKey(field, { key: "Escape" });
+			/*
+			 * The same press closes the Settings page one level up, whose Esc
+			 * handler is an ancestor listener exactly like this one. The recorder
+			 * cancels its capture and the press must stop there.
+			 */
+			assert.deepEqual(
+				heard,
+				[],
+				"the recorder owns Escape; a page above it must not hear the press",
+			);
+			assert.equal(field.value, "Ctrl+J", "cancelling changes no binding");
+		} finally {
+			api.window.document.removeEventListener("keydown", listener);
+		}
+	});
+});

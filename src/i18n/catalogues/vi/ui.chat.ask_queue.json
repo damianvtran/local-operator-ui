@@ -23,6 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "Câu hỏi đó đã được giải quyết, nên câu trả lời của bạn chưa được gửi.",
 	"ui.chat.ask_queue.refusal.busy": "Câu trả lời của bạn chưa được xác nhận. Tác nhân đang bận.",
 	"ui.chat.ask_queue.refusal.expired": "Câu hỏi này đã quá cũ để trả lời — hãy hỏi lại tác nhân.",
+	"ui.chat.ask_queue.refusal.not_addressable": "Câu trả lời của bạn chưa được gửi. Ứng dụng không thể chuyển câu trả lời sang dạng mà phiên này chấp nhận, nên không có gì rời khỏi thiết bị này.",
 	"ui.chat.ask_queue.response.answered": "Đã trả lời — đang chuyển (câu hỏi {askId})",
 	"ui.chat.ask_queue.response.declined": "Đã từ chối câu hỏi {askId} — tác nhân đã được báo",
 	"ui.chat.ask_queue.response.dismissed": "Bạn đã bỏ qua{hasVia, select, yes { ({via})} other {}} — {reason} (câu hỏi {askId})",

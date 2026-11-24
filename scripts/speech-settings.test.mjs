@@ -763,6 +763,9 @@ test("a node fallback still renders for the surfaces that only state something",
 	);
 });
 
+const PANEL_FALLBACK_ELEMENT =
+	/fallbackRender=\{\s*\(props\) =>\s*<PanelFallback \{\.\.\.props\} \/>\s*\}/;
+
 test("the shipped section wires the panel's reset, which no render can observe", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/settings/components/speech-section.tsx",
@@ -770,8 +773,8 @@ test("the shipped section wires the panel's reset, which no render can observe",
 	);
 	assert.match(
 		source,
-		/fallbackRender=\{PanelFallback\}/,
-		"the panel takes the render fallback, the only form that is handed `resetErrorBoundary`",
+		PANEL_FALLBACK_ELEMENT,
+		"render the hook-using PanelFallback as a component and forward the library's reset props",
 	);
 	assert.match(
 		source,

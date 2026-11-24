@@ -154,7 +154,7 @@ export interface BrowserTabStripProps {
 	 * `Waiting 2` here and chip [2] there are the same request by construction
 	 * (§5.2). */
 	waiting: Record<number, number>;
-	onActivate: (tabId: number) => void;
+	onActivate: (tabId: number, trusted?: boolean) => void;
 	/** Close one tab, and report whether the host's invoke was ACCEPTED (`false` is a
 	 * refusal). Only the caret restore reads the value — see the pending-close block.
 	 * `undefined` is the host saying it reports nothing, which the bounded wait's
@@ -1093,7 +1093,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			    to within a pixel rather than exactly. */}
 			<div
 				className={cn(
-					"@container/strip flex min-h-9 items-stretch gap-0 px-2 pt-1",
+					"@container/strip flex min-h-(--browser-tab-track-min) items-stretch gap-0 px-2 pt-1",
 				)}
 				data-tour-tag="browser-tab-strip-row"
 			>
@@ -1465,7 +1465,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											else return;
 											event.preventDefault();
 											event.stopPropagation();
-											onActivate(ordered[next].tabId);
+											onActivate(
+												ordered[next].tabId,
+												event.nativeEvent.isTrusted,
+											);
 											scrollerRef.current
 												?.querySelector<HTMLButtonElement>(
 													`[data-tab-id="${ordered[next].tabId}"] [role=tab]`,
@@ -1473,7 +1476,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												?.focus({ preventScroll: true });
 										}}
 										aria-selected={active}
-										onClick={() => onActivate(tab.tabId)}
+										onClick={(event) =>
+											onActivate(tab.tabId, event.nativeEvent.isTrusted)
+										}
 										/*
 										 * THE CLIP IS ON THE BUTTON, NOT ON THE ROW (review round 6, MAJOR 1). It
 										 * was on the row for one round, and the row is the notch's containing
@@ -1795,9 +1800,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									<button
 										type="button"
 										key={tab.tabId}
-										onClick={() => {
+										onClick={(event) => {
 											closeOverflow();
-											onActivate(tab.tabId);
+											onActivate(tab.tabId, event.nativeEvent.isTrusted);
 										}}
 										aria-current={tab.tabId === activeTabId}
 										data-tab-id={tab.tabId}

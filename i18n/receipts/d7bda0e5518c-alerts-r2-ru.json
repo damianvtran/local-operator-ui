@@ -1,0 +1,108 @@
+{
+  "auditor": "copy-reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d7bda0e5518c-alerts-r2-ru",
+  "date": "2026-11-21",
+  "locale": "ru",
+  "independence": "Independent radientdev copy-reviewer, session d7bda0e5518c; not coder/translator, authored no catalogue or ledger changes. Prior translator identity from PR #2027 and round-1 audit: coder fb402fa54071, anthropic/claude-opus-5-5.",
+  "model_provenance": {
+    "actual_model": "openai/gpt-6.1-sol",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback_reason": "provider failure: quota (runtime model-switch notice before substantive audit)"
+  },
+  "references": {
+    "glossary": "local-operator working filesystem at HEAD b42471d3935cb7e95d64428af27c32626665f4c0, i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "local-operator working filesystem at HEAD b42471d3935cb7e95d64428af27c32626665f4c0, i18n/style-guides/ru.md sha256:f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "previous_audit": "https://github.com/damianvtran/local-operator-ui/pull/2027#issuecomment-7066108738",
+    "previous_receipt": {
+      "path": "i18n/receipts/82b84532d1e1-alerts-r1-ru.json",
+      "sha256": "785349cac3fa07a3cf5a9bd2c80fa17bff019946588b0337ff18c53a6921977a"
+    }
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 2027,
+  "round": 2,
+  "head": "486661397af07f73df1ac7790765bf5fb45fb73a",
+  "input": {
+    "base": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+    "head": "486661397af07f73df1ac7790765bf5fb45fb73a",
+    "working_tree_catalogue_diff_sha256": "80b42a92647cdc99865f6973c9406afde33f07a60462b6803adfe547d83b3be4",
+    "diff_command": "git diff --binary HEAD -- 'src/i18n/catalogues/**'",
+    "note": "Frozen uncommitted catalogue overlay on local HEAD; not an approval of a pushed head or a merge authorization."
+  },
+  "scope": "Delta since f2e46b15: target changed keys plus all source/context-changed keys, prior C/T remediation, added resolved_at and removed fingerprint. Unchanged entries retain the round-1 audit; exact same-key source and target values checked. No full re-audit.",
+  "namespace": "ui.teamBridge.alerts",
+  "status": "passed",
+  "sha256": {
+    "en": "c0d56610a47183e6b9042acd71ae073c8e3f1809f5453121fa50135b9fd4574e",
+    "ru": "a317a7b110de3a31aeb14aec6c1dcf7f193f8b0ea263970cbd0f62be071c5659"
+  },
+  "context_sha256": "e1aa51a77e58012bdbefed7f8d32b93ca9654a86ef16671e3f8d5a216f23bb0a",
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.teamBridge.alerts.json",
+    "target": "src/i18n/catalogues/ru/ui.teamBridge.alerts.json",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.alerts.context.json"
+  },
+  "audited_keys": [
+    "ui.teamBridge.alerts.claim.taken_by",
+    "ui.teamBridge.alerts.claim.unreported",
+    "ui.teamBridge.alerts.resolved_at",
+    "ui.teamBridge.alerts.responder.description",
+    "ui.teamBridge.alerts.responder.severity_label",
+    "ui.teamBridge.alerts.responder.tier_detail",
+    "ui.teamBridge.alerts.responder.title",
+    "ui.teamBridge.alerts.responders",
+    "ui.teamBridge.alerts.review_ask",
+    "ui.teamBridge.alerts.severity"
+  ],
+  "removed_keys": [
+    "ui.teamBridge.alerts.fingerprint"
+  ],
+  "prior_findings": [
+    {
+      "id": "T-RU1",
+      "disposition": "fixed in frozen catalogue bytes; checked against prior exact finding"
+    },
+    {
+      "id": "T-RU2",
+      "disposition": "fixed in frozen catalogue bytes; checked against prior exact finding"
+    },
+    {
+      "id": "T-RU3",
+      "disposition": "fixed in frozen catalogue bytes; checked against prior exact finding"
+    }
+  ],
+  "findings": [],
+  "execution": {
+    "mechanical": "audit-mechanical.mjs: 34 keys per locale, ICU argument types/select arms/CLDR plural arms, NFC and no Cc/Cf controls: zero issues across 8 locales; 167 sample formatted strings.",
+    "copy_scan": "design-qa copy_scan.py on 8 source/context-delta projections: 111 candidate strings, 0 findings.",
+    "rtl": "real translate() bundled with existing esbuild, then fribidi --rtl --nopad --nobreak; T-UR1 confirmed on title and shipped notify.channel.",
+    "limits": "No locale screenshots, native UI fit, pseudo-localization or heavy suites run in this delta audit. Formatting samples are not rendered-frame proof."
+  },
+  "artifacts": {
+    "changed-strings.json": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/changed-strings.json",
+      "sha256": "99c7d820cf7161de763b59e3f8ce61f17cbd05e4fb773a9d7272a892dc867822"
+    },
+    "uncommitted-catalogues.diff": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/uncommitted-catalogues.diff",
+      "sha256": "80b42a92647cdc99865f6973c9406afde33f07a60462b6803adfe547d83b3be4"
+    },
+    "mechanical-results.json": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/mechanical-results.json",
+      "sha256": "cada30d0a799186fe5e19ce04bb8e51ac201130e04ce06e19842991130f6993a"
+    },
+    "sample-renders.json": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/sample-renders.json",
+      "sha256": "aafb76188e1b0e94fb98b92309a1c3ccb69277a5a496c126f1fdd3298ed07a76"
+    },
+    "copy-scan-current.json": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/copy-scan-current.json",
+      "sha256": "087cdaf570cbcc69924118437e1eb9638105579a54c269cc206c5fac694b696c"
+    },
+    "rtl-recheck.json": {
+      "path": "/Users/damian/.local-operator/sessions/d7bda0e5518c/scratchpad/rtl-recheck.json",
+      "sha256": "834250d8cdf2d745796e9153acfad7413ba66386819e5622233471a4676e16d4"
+    }
+  }
+}

@@ -26,6 +26,11 @@ import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import { t } from "../i18n/index";
 import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
+import {
+	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
+	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+	acceptQueuedAskReport,
+} from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -70,9 +75,16 @@ import {
 } from "../shared/window-glass";
 import { VOICE_PAGE_CHANNELS } from "../voice-page/channels";
 import { AppAttentionService } from "./app-attention-service";
+import { ATTEST_DEBUG_SWITCHES } from "./app-attest";
 import { createAppIconBadge } from "./app-icon-badge";
 import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
 import { applicationMenuLabels } from "./application-menu-labels";
+import {
+	ASK_ATTEST_PROBE_WORLD_ID,
+	type AskAnswerHost,
+	AskSheetLock,
+	attestAskAnswer,
+} from "./ask-attest";
 import { uploadAttachment } from "./attachment-upload";
 import {
 	BackendInstaller,
@@ -193,6 +205,7 @@ import {
 import { createQuitState } from "./quit-state";
 import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
+import { SessionNotificationAvatars } from "./session-notification-avatars";
 import {
 	SHELL_PATH_ANSWER_GRACE_MS,
 	SHELL_PATH_TIMEOUT_MS,
@@ -208,6 +221,7 @@ import { TeamBridgeNotificationImages } from "./team-bridge-notification-images"
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
+	appVersionArguments,
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -1942,9 +1956,20 @@ const devDriverWebPreferences =
  * bridge AND a non-blank key in the build it made) safe to hold. The two words
  * are the whole vocabulary, and they live in `./telemetry-launch`, which the
  * preload reads back out of its own argv.
+ *
+ * The app's version rides beside it (`appVersionArguments`), for the renderer
+ * to register as PostHog's `app_version` super property before its first
+ * event: `app.getVersion()` is the same value the About panel and the updater
+ * report, and argv is the only channel that reaches the renderer synchronously
+ * — see `APP_VERSION_ARG` for why the async `get-app-version` IPC cannot. A
+ * version without a version's shape is simply not written; the renderer then
+ * registers nothing rather than a bogus value.
  */
 const telemetryWebPreferences = {
-	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
+	additionalArguments: [
+		telemetryArgument(telemetryLaunch.enabled),
+		...appVersionArguments(app.getVersion()),
+	],
 };
 
 // Radient tokens and OAuth state used to live in an electron-store session
@@ -3499,6 +3524,23 @@ app
 			},
 			log: (line) => logger.info(line, LogFileType.BACKEND),
 		});
+		/*
+		 * The bound agent's picture on a session banner (operator request
+		 * 2026-11-23). Off until core advertises
+		 * `desktop_session_notification_avatar` on the backend-ready capability
+		 * read below, so an older core is never asked for a route it lacks and
+		 * its banners keep the app icon.
+		 */
+		let sessionNotificationAvatarAvailable = false;
+		const sessionNotificationAvatars = new SessionNotificationAvatars({
+			enabled: () => sessionNotificationAvatarAvailable,
+			request: (input) => backendService.requestDesktopMedia(input, null),
+			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
+			decode: (data) => {
+				const icon = nativeImage.createFromBuffer(Buffer.from(data));
+				return icon.isEmpty() ? undefined : icon;
+			},
+		});
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
@@ -3549,6 +3591,7 @@ app
 			// A clicked banner comes forward through this same raise policy, and its
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
+			{ images: sessionNotificationAvatars },
 		);
 		/*
 		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
@@ -3625,11 +3668,16 @@ app
 		// through the window in between.
 		backendService.onBackendReady(() => {
 			appAttention.reset();
+			// The reset dropped the window's queued-ask claim; only the window can answer
+			// it again (`shared/app-attention-queued-asks.ts`).
+			requestQueuedAskResync();
 			// Negotiate outside delivery. A restarted/older core drops all image
 			// eligibility until its own capability answers; never 404-probe per event.
 			notificationAvatarAvailable = false;
 			notificationEndpointAvatarAvailable = false;
 			notificationImages.clear();
+			sessionNotificationAvatarAvailable = false;
+			sessionNotificationAvatars.clear();
 			void backendService
 				.requestDesktop({ op: "capabilities" })
 				.then((response) => {
@@ -3645,6 +3693,10 @@ app
 					notificationEndpointAvatarAvailable =
 						Number(body?.result?.features?.team_bridge_endpoint_avatar ?? 0) >=
 						1;
+					sessionNotificationAvatarAvailable =
+						Number(
+							body?.result?.features?.desktop_session_notification_avatar ?? 0,
+						) >= 1;
 					// Gated on the capability reading TRUE after any backend-ready, not on a
 					// false -> true flip: this event cleared the cache just above, so the
 					// replay only refills what it emptied, and no path runs from cache
@@ -3746,6 +3798,10 @@ app
 				 */
 				qwenVoice.observeFrame(frame);
 				appAttention.observe(frame);
+				// An open frame replaces the epoch. Re-ask anyway: the window pushes on a
+				// change only, so a claim that drifted (a reload, a window that was closed
+				// when it changed) would otherwise stand until the next real change.
+				if (frame.type === "open") requestQueuedAskResync();
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -3777,7 +3833,10 @@ app
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
-				if (!state.connected) appAttention.reset();
+				if (!state.connected) {
+					appAttention.reset();
+					requestQueuedAskResync();
+				}
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -3796,12 +3855,73 @@ app
 		// A renderer that mounts after a reconnect asks for the CURRENT state, so a
 		// healthy feed does not have to produce a transition before the sidebar can
 		// stop saying "not connected".
-		ipcMain.on("desktop-feed-watch", () => {
+		ipcMain.on(
+			"desktop-feed-watch",
+			(event, includeWorkspaceEpoch?: boolean) => {
+				const window = mainWindow;
+				if (
+					!window ||
+					window.isDestroyed() ||
+					event.sender !== window.webContents
+				)
+					return;
+				const relay = backendService.getDesktopFeedRelay();
+				// An opt-in after open or a route remount needs the current epoch,
+				// not a second SSE connection or another set of session headlines.
+				window.webContents.send("desktop-feed-state", {
+					connected: relay.isConnected,
+					...(includeWorkspaceEpoch === true
+						? { workspaceEpoch: relay.workspaceEpoch }
+						: {}),
+				} satisfies DesktopFeedState);
+			},
+		);
+
+		/**
+		 * Main's request for the window's queued-ask claim (`shared/
+		 * app-attention-queued-asks.ts`). The window pushes on CHANGE only, so every
+		 * path that drops the claim main already holds owes this call; without it a
+		 * conversation whose queued ask did not change would read as needing the user
+		 * from the reset until the next change.
+		 */
+		function requestQueuedAskResync(): void {
 			const window = mainWindow;
 			if (!window || window.isDestroyed()) return;
-			window.webContents.send("desktop-feed-state", {
-				connected: backendService.getDesktopFeedRelay().isConnected,
-			});
+			window.webContents.send(APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL);
+		}
+
+		/*
+		 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK.
+		 *
+		 * The window is the only reader of the queued-ask index and a feed frame
+		 * carries no ask count, so the window tells main (`AppAttentionProjection`
+		 * then reads an `answer` status beside one of these ids as already counted).
+		 * The payload is re-validated HERE rather than trusted: this process never
+		 * believes a renderer shape, and the sender trust is the same pair every
+		 * neighbouring handler applies (`event.sender` and its MAIN FRAME - a report
+		 * can only mask a gate, so a subframe has no business pushing one).
+		 * `acceptQueuedAskReport` is the whole decision, tested in
+		 * `scripts/app-attention.test.mjs`. A refusal leaves the claim already held
+		 * alone - `null` is not "nobody has a queued ask" (`[]` is, and it must land).
+		 * Fire-and-forget on purpose: the report owes no reply, and main's answer is
+		 * the badge it already publishes.
+		 */
+		ipcMain.on(APP_ATTENTION_QUEUED_ASKS_CHANNEL, (event, payload: unknown) => {
+			const window = mainWindow;
+			const acceptance = acceptQueuedAskReport(
+				{
+					windowGone: !window || window.isDestroyed(),
+					senderIsMainWindow: !!window && event.sender === window.webContents,
+					senderIsMainFrame:
+						!!window && event.senderFrame === window.webContents.mainFrame,
+				},
+				payload,
+			);
+			if (!acceptance.apply) return;
+			appAttention.projection.setQueuedAskSessions(
+				acceptance.ids,
+				appAttention.projection.currentGeneration,
+			);
 		});
 
 		/*
@@ -4140,6 +4260,8 @@ app
 		 * first" - and every bump also burns that window's token outright.
 		 */
 		const meshPairingConfirmations = new MeshPairingConfirmations();
+		// The ONE ask-answer sheet (`ask-attest.ts`): never two at once.
+		const askSheetLock = new AskSheetLock();
 		const pairingDocumentGenerations = new WeakMap<
 			Electron.WebContents,
 			number
@@ -4349,6 +4471,106 @@ app
 				return pairingRequest.op === "pairings.confirm"
 					? confirmMeshPairing(pairingRequest, host)
 					: answerMeshPairing(pairingRequest, host);
+			},
+			/*
+			 * Main's own attested ask answer (`ask-attest.ts`): the shared click-
+			 * provenance gate (`app-attest.ts`), the isolated-world activation
+			 * pre-filter, main's own `asks.list` read, a window-modal native sheet
+			 * built from that read, then - on the sheet's confirm button only - the
+			 * attestation over `<config>/run/attest/<session_id>.sock` and the SAME
+			 * frozen answer forwarded as an ordinary `sessions.answer`. Only the main
+			 * window may confirm (the ask cards live there), so the sender is checked
+			 * against it alone, exactly as for the pairing card.
+			 */
+			async (event, askRequest) => {
+				const owner = mainWindow;
+				const admitted = () =>
+					owner !== null &&
+					!owner.isDestroyed() &&
+					isAdmittedSender(event, [{ window: owner, url: rendererUrl }]);
+				const host: AskAnswerHost = {
+					facts: () => ({
+						platform: process.platform,
+						packaged: app.isPackaged,
+						// argv plus any debug switch appended at runtime, as for pairing.
+						argv: [
+							...process.argv,
+							...ATTEST_DEBUG_SWITCHES.filter((name) =>
+								app.commandLine.hasSwitch(name.slice(2)),
+							),
+						],
+						// Refusal-only superset of both envs; see the pairing facts above.
+						env: refusalEnv(launchEnv, process.env),
+						windowMode: windowLaunch.mode,
+						window:
+							admitted() && owner
+								? {
+										visible: owner.isVisible(),
+										minimized: owner.isMinimized(),
+										focused: owner.isFocused(),
+										devToolsOpened: owner.webContents.isDevToolsOpened(),
+										debuggerAttached: owner.webContents.debugger.isAttached(),
+									}
+								: null,
+					}),
+					document: () => {
+						const frame = event.senderFrame;
+						if (!admitted() || !owner || !frame || frame.isDestroyed())
+							return null;
+						return {
+							webContentsId: event.sender.id,
+							processId: frame.processId,
+							frameToken: frame.frameToken,
+							generation: pairingDocumentGeneration(owner.webContents),
+						};
+					},
+					// Isolated world, `userGesture` false: see the pairing probe above.
+					userActivation: async () =>
+						owner !== null && !owner.isDestroyed()
+							? (await owner.webContents.executeJavaScriptInIsolatedWorld(
+									ASK_ATTEST_PROBE_WORLD_ID,
+									[{ code: "navigator.userActivation.isActive === true" }],
+									false,
+								)) === true
+							: false,
+					readAsks: () => sendDesktop({ op: "asks.list" }),
+					/*
+					 * The conversation the sheet names (security review round 1, S1), from
+					 * main's own catalogue read. Archived and temporary rows included so
+					 * any conversation that can hold an ask is found; a row past the page
+					 * still gets a sheet naming its session id.
+					 */
+					readSessions: () =>
+						sendDesktop({
+							op: "sessions.list",
+							limit: 500,
+							include_archived: true,
+							include_temporary: true,
+						}),
+					/*
+					 * The TRUSTED CONTROL, the pairing sheet's shape: window-modal,
+					 * button 0 confirms and is the ONLY approval; Cancel is both the
+					 * default and the cancel id, so a held Return and Escape dismiss.
+					 */
+					showSheet: async (sheet, signal) => {
+						if (owner === null || owner.isDestroyed()) return false;
+						const { response } = await dialog.showMessageBox(owner, {
+							type: "question",
+							buttons: [sheet.actionLabel, sheet.cancelLabel],
+							defaultId: 1,
+							cancelId: 1,
+							noLink: true,
+							message: sheet.message,
+							detail: sheet.detail,
+							signal,
+						});
+						return response === 0 && !signal.aborted;
+					},
+					sheet: askSheetLock,
+					configDir: () => quickSendConfigDir(),
+					forward: sendDesktop,
+				};
+				return attestAskAnswer(askRequest, host);
 			},
 		);
 		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {

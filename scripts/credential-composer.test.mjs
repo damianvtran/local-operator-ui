@@ -99,7 +99,10 @@ for (const [key, value] of Object.entries({
  * refetch forever and the process never exits.
  */
 Object.defineProperty(window.document, "visibilityState", { value: "hidden" });
-Object.defineProperty(window.document, "hidden", { value: true });
+Object.defineProperty(window.document, "hidden", {
+	configurable: true,
+	value: true,
+});
 
 /*
  * `window.matchMedia`, which jsdom does not implement at all.
@@ -255,6 +258,7 @@ const answer = (request) => {
 			features: { commands: 1, session_credential: 1 },
 		};
 	if (request.op === "commands.list") return { commands: commandRows };
+	if (request.op === "providers.list") return { providers: [] };
 	if (request.op === "sessions.credential") {
 		/*
 		 * THE RUNTIME'S OWN SHAPE, which is two envelopes deep and not one
@@ -527,6 +531,9 @@ async function mount({
 	 * what a populated pane has.
 	 */
 	messages = [{ id: "m", role: "system", timestamp: new Date(0) }],
+	noProvider = false,
+	noModel = false,
+	serverOffline = false,
 	keepWorld = false,
 	remount = false,
 	/*
@@ -648,6 +655,9 @@ async function mount({
 		conversationId,
 		sessionStatus,
 		unavailable,
+		noProvider,
+		noModel,
+		serverOffline,
 		secretAnswer,
 		secretAsk,
 		currentJobId,
@@ -768,6 +778,178 @@ const key = async (frame, keys) => {
 const type = async (frame, text) => {
 	for (const char of text) await key(frame, { key: char, text: char });
 };
+
+// Mount the shipped composer and use its real key/argument handlers. Only the
+// layout/intersection clock and backing canvas are simulated (jsdom has none).
+function horizonClock(t) {
+	t.after(async () => {
+		await act(async () => root?.unmount());
+		root = undefined;
+	});
+	const set = (target, key, value) => {
+		const initial = Object.getOwnPropertyDescriptor(target, key);
+		Object.defineProperty(target, key, { configurable: true, value });
+		t.after(() => {
+			if (initial) Object.defineProperty(target, key, initial);
+			else Reflect.deleteProperty(target, key);
+		});
+	};
+	const intersects = new Map();
+	const frames = new Map();
+	let id = 0;
+	let paints = 0;
+	set(window.document, "hidden", false);
+	set(window, "ResizeObserver", globalThis.ResizeObserver);
+	set(
+		window,
+		"IntersectionObserver",
+		class {
+			constructor(notify) {
+				this.notify = notify;
+			}
+			observe(target) {
+				this.target = target;
+				intersects.set(target, this.notify);
+			}
+			disconnect() {
+				intersects.delete(this.target);
+			}
+		},
+	);
+	set(window, "requestAnimationFrame", (run) => {
+		frames.set(++id, run);
+		return id;
+	});
+	set(window, "cancelAnimationFrame", (id) => frames.delete(id));
+	const proto = window.HTMLCanvasElement.prototype;
+	set(proto, "clientWidth", 900);
+	set(proto, "clientHeight", 240);
+	t.mock.method(proto, "getContext", () => ({
+		clearRect() {
+			paints++;
+		},
+		setTransform() {},
+		beginPath() {},
+		moveTo() {},
+		arc() {},
+		fill() {},
+	}));
+	return {
+		scene: () => window.document.querySelector(".new-chat-horizon__scene"),
+		paints: () => paints,
+		frames,
+		intersect(target, isIntersecting = true) {
+			const notify = intersects.get(target);
+			assert.ok(notify, "the rendered canvas has a motion controller");
+			notify([{ isIntersecting }]);
+		},
+		renderAt(now) {
+			assert.equal(frames.size, 1);
+			const [[current, run]] = frames;
+			frames.delete(current);
+			run(now);
+		},
+	};
+}
+
+for (const pressure of [false, true]) {
+	test(`the same draft stays settled after the slash argument picker (${pressure ? "pressure fallback" : "normal arrival"})`, async (t) => {
+		const clock = horizonClock(t);
+		const model = {
+			name: "model",
+			description: "Switch model; /model default saves it for new sessions",
+			destination: "session.model",
+			aliases: [],
+			arguments: "optional",
+			echo: false,
+			consumes_prompt: false,
+			execution: "owner",
+		};
+		const commands = [...COMMANDS, model];
+		const frame = await mount({
+			messages: [],
+			commands,
+			conversationId: "draft-horizon",
+		});
+		const initial = clock.scene();
+		assert.ok(initial);
+		clock.intersect(initial);
+		const now = window.performance.now();
+		if (pressure) {
+			for (const interval of [16, 49, 82, 115, 148])
+				clock.renderAt(now + interval);
+		} else clock.renderAt(now + 5000);
+		assert.equal(clock.frames.size, 0);
+		assert.equal(initial.dataset.loHorizonMotion, "still");
+
+		await act(async () => frame.textarea().focus());
+		await type(frame, "/model ");
+		const visibleScene = () =>
+			clock.scene()?.closest(".hidden") ? null : clock.scene();
+		assert.ok(!visibleScene(), "the argument roster owns the splash area");
+		const before = clock.paints();
+		const hidden = clock.scene();
+		if (hidden) {
+			assert.ok(hidden.closest("[data-lo-horizon-suppressed]"));
+			clock.intersect(hidden, false);
+		}
+		assert.equal(clock.paints(), before);
+		assert.equal(clock.frames.size, 0);
+		await key(frame, { key: "Escape" });
+		await settle();
+		const restored = visibleScene();
+		assert.ok(restored, "Escape gives the splash area back");
+		clock.intersect(restored);
+		assert.equal(clock.frames.size, 0, "dismissing the picker must not replay");
+		assert.ok(restored === initial, "the draft keeps its canvas owner");
+		assert.ok(!restored.closest("[data-lo-horizon-suppressed]"));
+		const move = new window.Event("pointermove");
+		Object.assign(move, { pointerType: "mouse", clientX: 600, clientY: 200 });
+		const paper = restored.closest("[data-lo-composer-splash]");
+		paper.getBoundingClientRect = () => ({
+			left: 0,
+			top: 0,
+			width: 900,
+			height: 400,
+		});
+		paper.dispatchEvent(move);
+		assert.equal(
+			clock.frames.size,
+			pressure ? 0 : 1,
+			"only the pressure fallback stays locked",
+		);
+
+		await mount({
+			messages: [],
+			commands,
+			conversationId: "draft-horizon-next",
+			keepWorld: true,
+		});
+		const fresh = clock.scene();
+		assert.ok(fresh);
+		assert.ok(fresh !== initial);
+		clock.intersect(fresh);
+		assert.equal(
+			clock.frames.size,
+			1,
+			"a different draft gets its own arrival",
+		);
+	});
+}
+
+for (const block of ["noModel", "serverOffline", "noProvider"]) {
+	test(`the mounted composer keeps blocked ${block} horizons quiet`, async (t) => {
+		const clock = horizonClock(t);
+		await mount({ messages: [], [block]: true });
+		const scene = clock.scene();
+		assert.ok(scene, "blocked empty panes still render the settled decoration");
+		clock.intersect(scene);
+		assert.equal(scene.dataset.loHorizonMotion, "still");
+		assert.equal(scene.hasAttribute("data-quiet"), block === "noProvider");
+		assert.equal(clock.frames.size, 0);
+		assert.ok(clock.paints() > 0);
+	});
+}
 
 /**
  * A paste, through the composer's own `onPaste` branch.

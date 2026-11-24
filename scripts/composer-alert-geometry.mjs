@@ -95,6 +95,7 @@ const CASES = [
 			"too-large",
 			"too-long",
 			"gone",
+			"delivery-unsupported",
 			"muted",
 			"edited-idle",
 			"delivered",
@@ -111,6 +112,7 @@ const CASES = [
 			"too-large",
 			"too-long",
 			"gone",
+			"delivery-unsupported",
 			"muted",
 			"edited-idle",
 			"delivered",
@@ -127,6 +129,7 @@ const CASES = [
 			"too-large",
 			"too-long",
 			"gone",
+			"delivery-unsupported",
 			"muted",
 			"edited-idle",
 			"delivered",
@@ -163,6 +166,7 @@ const BORDER_BASELINE = {
 	"too-large": "idle",
 	"too-long": "idle",
 	gone: "idle",
+	"delivery-unsupported": "idle",
 	muted: "idle",
 	delivered: "edited-idle",
 };
@@ -196,6 +200,7 @@ const ARM_CONTROLS = {
 	"too-large": { register: "danger", controls: ["Clear"] },
 	"too-long": { register: "danger", controls: ["Clear"] },
 	gone: { register: "danger", controls: ["Clear"] },
+	"delivery-unsupported": { register: "danger", controls: ["Clear"] },
 	muted: { register: "muted", controls: [] },
 	delivered: { register: "muted", controls: [] },
 };
@@ -220,6 +225,7 @@ const ARM_PHRASE = {
 	"too-large": "too large",
 	"too-long": "characters",
 	gone: "no longer exists",
+	"delivery-unsupported": "cannot change delivery while busy",
 	muted: "still sending",
 	delivered: "delivered",
 };

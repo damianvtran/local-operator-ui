@@ -238,7 +238,10 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 			</div>
 
 			{span && sections.dated.length > 0 ? (
-				<div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
+				<div
+					data-lo-pane-edge-cues="bottom"
+					className="min-h-0 flex-1 overflow-auto px-6 pb-6"
+				>
 					<div className="min-w-max">
 						<Axis
 							startMs={span.startMs}

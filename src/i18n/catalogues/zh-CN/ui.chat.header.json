@@ -1,4 +1,5 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": "闲置{minutes, number}分钟后关闭标签页",
 	"ui.chat.header.actions": "对话操作",
 	"ui.chat.header.archive_conversation": "归档对话",
 	"ui.chat.header.archived": "已归档",

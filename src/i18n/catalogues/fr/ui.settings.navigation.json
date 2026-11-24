@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "Paramètres du serveur",
 	"ui.settings.navigation.settings_sidebar.application_updates": "Mises à jour de l’application",
 	"ui.settings.navigation.settings_sidebar.account": "Compte",
-	"ui.settings.navigation.settings_page.retrying": "Nouvel essai"
+	"ui.settings.navigation.settings_page.retrying": "Nouvel essai",
+	"ui.settings.navigation.settings_page.close_settings": "Fermer les paramètres",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "Fermer (Esc)"
 }

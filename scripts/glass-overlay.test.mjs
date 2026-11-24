@@ -45,9 +45,60 @@ const CSS_PATH = "src/renderer/src/styles/index.css";
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 const CSS = read(CSS_PATH);
 const CSS_NO_COMMENTS = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+const CLEAR_OUTLET_BACKING =
+	/(?:^|,)\s*html\[data-glass\]\s+main\[data-workspace-outlet\]\[data-glass-region="canvas-backing"\]\s*\{[^}]*background-color: transparent;/m;
 const FLOORS = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
 );
+
+test("workspace glass leaves the sidebars unbacked and paints the inset only once", () => {
+	const adapter = read(
+		"src/renderer/src/features/chat/components/chat-workspace.tsx",
+	);
+	const primitive = read(
+		"src/renderer/src/shared/components/common/workspace-frame.tsx",
+	);
+	assert.match(adapter, /<WorkspaceFrame variant="chat">/);
+	assert.match(
+		primitive,
+		/variant === "chat" \|\| variant === "full-height"\s*\? "canvas-content"/,
+	);
+	const rule = (selector) => {
+		const body = CSS_NO_COMMENTS.split(`${selector} {`)[1]?.split("}")[0];
+		assert.ok(body, selector);
+		return body;
+	};
+	const shell = "[data-workspace-shell]:has([data-chat-workspace])";
+	assert.match(
+		rule(`html:not([data-glass]) ${shell}`),
+		/background-color: var\(--color-surface\)/,
+	);
+	assert.doesNotMatch(
+		CSS_NO_COMMENTS,
+		/\n\[data-workspace-shell\]:has\(\[data-chat-workspace\]\)\s*\{[^}]*background/,
+	);
+	assert.match(CSS_NO_COMMENTS, CLEAR_OUTLET_BACKING);
+	assert.match(
+		rule(".workspace-frame"),
+		/background-color: var\(--lo-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass] [data-glass-region="canvas-content"]'),
+		/background-color: var\(--lo-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="canvas"] [data-glass-region="canvas-content"]'),
+		/var\(--lo-glass-a-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="sidebar"] [data-glass-region="sidebar"]'),
+		/var\(--lo-glass-a-surface\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="sidebar"] [data-workspace-tabs]'),
+		/var\(--lo-glass-a-surface\)/,
+	);
+});
 
 const bundleOf = async (entry) => {
 	const bundle = await build({

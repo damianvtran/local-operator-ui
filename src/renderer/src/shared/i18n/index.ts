@@ -42,6 +42,7 @@ export {
 	formatTime,
 	I18N_FEATURE,
 	LANGUAGE_SETTING_KEY,
+	listSeparator,
 	registerCatalogue,
 	resolveLocale,
 	setLocale,

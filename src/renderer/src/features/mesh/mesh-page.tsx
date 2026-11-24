@@ -46,7 +46,6 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { Network } from "lucide-react";
 import { type FC, useCallback, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { t } from "../../../../i18n/messages";
@@ -436,11 +435,6 @@ export const MeshSurface: FC<{
 
 	return (
 		/*
-		 * `gap-6`: this page's blocks are component-tier apart, and `PageHeader` no
-		 * longer ships its own outer margin (branding § 5's "the container owns the
-		 * gap").
-		 */
-		/*
 		 * `overflow-y-auto` IS LOAD-BEARING (UX round 2, U7). The approvals tray sits
 		 * above these blocks and grows with its content - a gloss list and a
 		 * consequence line per waiting record. The parent slot is `overflow: hidden`,
@@ -451,12 +445,12 @@ export const MeshSurface: FC<{
 		 * stays reachable - and `min-h` on the canvas block below keeps it from
 		 * collapsing instead of merely being reachable.
 		 */
-		<div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6">
-			<PageHeader
-				title={t("ui.mesh.mesh_page.mesh")}
-				icon={Network}
-				subtitle={t("ui.mesh.mesh_page.devices_this_app_is_paired_with_and")}
-			>
+		<div
+			data-lo-pane-edge-cues=""
+			className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6"
+		>
+			<PageHeader variant="compact" title={t("ui.mesh.mesh_page.mesh")} />
+			{(checking || state.kind === "ready" || state.kind === "loading") && (
 				<div className="flex items-center gap-4">
 					{/*
 					 * `<output>` IS the semantic element for a status region (it carries
@@ -479,7 +473,7 @@ export const MeshSurface: FC<{
 					 * THE PRESENTATION CHOICE IS SHOWN ONLY WHEN THERE IS SOMETHING TO
 					 * PRESENT. A control that switches between two views of nothing is a
 					 * control that does nothing - and the empty and error states have nothing,
-					 * so the header carries the sentence and no toggle (caught in the first
+					 * so the empty state explains why rather than offering a toggle (caught in the first
 					 * capture, where the virgin frame offered `Canvas | List` over an empty
 					 * panel).
 					 *
@@ -489,7 +483,7 @@ export const MeshSurface: FC<{
 					 * edge appeared 60px further left. Disabled is the same width and the same
 					 * place, so landing moves only the content below it.
 					 * control that does nothing - and the empty and error states have
-					 * nothing, so the header carries the sentence and no toggle (caught in
+					 * nothing, so the empty state explains why rather than offering a toggle (caught in
 					 * the first capture, where the virgin frame offered `Canvas | List` over
 					 * an empty panel).
 					 */}
@@ -531,7 +525,7 @@ export const MeshSurface: FC<{
 						</fieldset>
 					)}
 				</div>
-			</PageHeader>
+			)}
 
 			{/*
 			 * THE APPROVALS RENDER FIRST, above every state block below, because a

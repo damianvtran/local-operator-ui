@@ -1,0 +1,137 @@
+{
+	"instance": "audit-i18n-psopt-fr",
+	"locale": "fr",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.projects (6 new keys)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-fr)",
+		"session": "333bdb7e8537 (session ID from this session's system header)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue, ledger or other repo file, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family possible, not verifiable: independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3366709245e71881455b89692d4801 (origin/main has since moved to c78604c41b2; fr/ui.projects.json is unchanged between 7809ec934a3 and 8b5ca519a1f)",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File); keys 'en'/'fr' are the ones ledger-rules.mjs scopedHash reads",
+	"hashes": {
+		"en": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"fr": "a97eb21e1986c6581e1d51313cc61b896c8295ce9c30d5a2e60167dc2dd06697",
+		"en_context": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a"
+	},
+	"hash_files": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"fr": "src/i18n/catalogues/fr/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9, file last changed 60d8584eab6e) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7; identical bytes at translator rev 1b011ed566f9. 'project' -> projet; no tag/key/summary/goal entries",
+		"style_guide": "local-operator@origin/main (file last changed 0f8e3d101116) i18n/style-guides/fr.md sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7; identical at 1b011ed566f9: vous, sentence case, U+202F before : ; ! ?, apostrophe U+2019",
+		"shipped_terms": "same file: project_form_dialog.key / project_editors.key 'Clé'; tags 'Étiquettes'; hint letters_digits_dot_underscore_or_dash_no_spaces 'Lettres, chiffres, point, tiret bas ou tiret ; sans espaces.'; tag hint 'Lettres minuscules, chiffres, tiret bas ou tiret.'; titles_are_at_most 'Les titres sont limités à …'; placeholder a_short_name_for_the_workstream 'Un nom court pour le flux de travail'"
+	},
+	"checks": [
+		{
+			"check": "JSON validity",
+			"result": "PASS",
+			"detail": "node JSON.parse of fr/ui.projects.json ok"
+		},
+		{
+			"check": "key-set parity en vs fr",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "diff is additions only",
+			"result": "PASS",
+			"detail": "8b5ca519a1f..10c0c83a272: 6 keys added, exactly the 6 in scope; no existing fr value differs from 8b5ca519a1f or 7809ec934a3"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "no braces in en or fr values; none expected"
+		},
+		{
+			"check": "CLDR plural",
+			"result": "PASS",
+			"detail": "no count variable; '1 à 24 caractères' is literal and grammatical (plural agrees with the range), so no ICU plural needed"
+		},
+		{
+			"check": "NFC / code points / bidi",
+			"result": "PASS",
+			"detail": "all 6 NFC; non-ASCII only U+202F, U+00E0, U+00E8, U+00E9; no U+200E/F, U+202A-E, U+2066-9; no double spaces"
+		},
+		{
+			"check": "French punctuation",
+			"result": "PASS",
+			"detail": "tag_grammar ':' preceded by U+202F (verified by code point); no other : ; ! ? in the 6 values"
+		},
+		{
+			"check": "ASCII-only grammar fidelity",
+			"result": "PASS",
+			"detail": "name_grammar 'lettres sans accent' and tag_grammar 'lettres minuscules sans accent' state the [A-Za-z]/[a-z] ASCII restriction; 'ne contiennent que' matches the closed character class; range 'de 1 à 24' exact, digits kept per context note"
+		},
+		{
+			"check": "terminology consistency",
+			"result": "PASS",
+			"detail": "étiquette(s), tiret bas / tiret, chiffres, projet all match existing in-file usage and glossary"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "check-duplicates ok; context-parity ok; ledger-check reports fr/ui.projects stale hashes, expected until this audit is assembled"
+		},
+		{
+			"check": "length (chars fr/en)",
+			"result": "NOTE",
+			"detail": "name_grammar 151/88, tag_grammar 104/74, name_required 24/24, headings 6/7, 9/5, 5/5. Validation sentences render under the field and may wrap per context; headings sit on their own line. Not rendered here; unmeasured"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 3
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_grammar",
+			"current": "Les noms commencent par une lettre ou un chiffre et ne contiennent que des lettres sans accent, des chiffres, des points, des tirets bas ou des tirets.",
+			"suggested": "Le nom doit commencer par une lettre ou un chiffre et ne contenir que des lettres sans accent, des chiffres, des points, des tirets bas ou des tirets.",
+			"reason": "Descriptive plural 'Les noms commencent par' mirrors English 'Names start with'; prescriptive singular 'Le nom doit…' is the more usual French validation phrasing. Current text is correct and matches the file's own descriptive pattern ('Les titres sont limités à…'), so optional."
+		},
+		{
+			"id": "N2",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_required",
+			"current": "Donnez un nom au projet.",
+			"suggested": "No fr change; source-level: if English ever says 'key' (field label 'Key'/'Clé'), use 'Donnez une clé au projet.' / 'La clé doit commencer…'.",
+			"reason": "Both name_* errors show under a field labelled 'Clé' but say 'nom'. This faithfully mirrors the English source ('Key' label, 'name' error), and the fr placeholder 'Un nom court…' bridges it, so not a translation defect."
+		},
+		{
+			"id": "N3",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.tag_grammar",
+			"current": "Les étiquettes font de 1 à 24 caractères : lettres minuscules sans accent, chiffres, tiret bas ou tiret.",
+			"suggested": "No fr change now; if English adds the first-character rule: '… tiret bas ou tiret, en commençant par une lettre ou un chiffre.'",
+			"reason": "/^[a-z0-9][a-z0-9_-]{0,23}$/ forbids a leading '_' or '-'; the English source omits this and fr faithfully omits it too. Source-level gap, not gating."
+		}
+	],
+	"per_key": {
+		"ui.projects.project_sheet_model.template_summary": "ok: 'Résumé' natural section heading, no markdown, sentence case",
+		"ui.projects.project_sheet_model.template_goals": "ok: 'Objectifs' idiomatic for project goals",
+		"ui.projects.project_sheet_model.template_notes": "ok: 'Notes' is the native French word, not an untranslated leftover",
+		"ui.projects.project_edit_model.name_required": "N2 (source-level); 'Donnez un nom au projet.' vous imperative, no blame, per style guide",
+		"ui.projects.project_edit_model.name_grammar": "N1; meaning exact, 'sans accent' makes the ASCII restriction explicit, terms match the existing hint",
+		"ui.projects.project_edit_model.tag_grammar": "N3 (source-level); exact 1-24 range, U+202F before ':', terms match the tag hint"
+	},
+	"result": "clean-with-findings",
+	"status": "passed"
+}

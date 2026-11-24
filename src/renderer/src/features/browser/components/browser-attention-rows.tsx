@@ -2,7 +2,6 @@ import {
 	consentClickTarget,
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
-import { shellCustodyHandoffs } from "@shared/browser-passkey-custody-handoff";
 /**
  * The sidebar's browser notifications: one row per thing an agent's browser tab
  * is waiting on the user for.
@@ -34,7 +33,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { AppWindow, KeyRound, ShieldQuestion } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useBrowserAttention } from "../hooks/use-browser-attention";
 import { requesterLabel } from "./browser-consent-request";
 
@@ -178,26 +177,13 @@ export const BrowserAttentionRows: FC = () => {
 		(state) => state.setBrowserPaneOpen,
 	);
 	const navigate = useNavigate();
-	const { pathname } = useLocation();
 	if (rows.length === 0) return null;
 
 	const open = (row: BrowserAttentionRow) =>
 		openBrowserAttention(row, {
 			target: (sessionId) => consentClickTarget(sessionId, sessions),
-			currentView: () => {
-				const store = useCanonicalSessionsStore.getState();
-				return {
-					pathname,
-					activeSessionId: store.activeSessionId ?? null,
-					activeDraftKey: store.activeDraftKey ?? null,
-					browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
-				};
-			},
-			beginCustodyHandoff: (hold, target, current) => {
-				shellCustodyHandoffs.begin(hold, target, current);
-			},
 			// An older main (or a missing bridge) answers nothing: treat that as
-			// "not opened" so no handoff is recorded for a tab nobody brought up.
+			// "not opened", so the view does not move to a tab nobody brought up.
 			openTab: async (tabId) =>
 				(await window.api?.browser?.openUserAttention?.(tabId)) === true,
 			noteConsent: noteConsentAttention,

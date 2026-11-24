@@ -1,0 +1,28 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "54a1cbb43a38-windowglass-vi",
+	"date": "2026-11-23",
+	"locale": "vi",
+	"independence": "Independent i18n auditor, round 1 (lopdev task session 54a1cbb43a38, team role \"task\" briefed as translation auditor); not the translator (lopdev task jobs b9bc0efe26db/420b24d3f1dc briefed as i18n-translator, anthropic/claude-opus-5-5, notes 8e3f5025b34a scratchpad n4/translator-vi.md + translator-vi-addendum.md). Same model family as the translator: disclosed. Read only worktree bytes at c78604c41b29+uncommitted catalogue edits; edited no repo file.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/vi.md",
+		"shipped_terms": "src/i18n/catalogues/{en,vi}/*.json at c78604c41b29+worktree (183 vi value files counted: 'menu' 158 occurrences vs 'trình đơn' 0; standalone 'tab' 150; popup concept shipped as 'cửa sổ bật lên' in ui.browser.extensions.details_no_options/details_no_ui; 'thẻ' used for cards incl. this namespace's intensity_description; 'Cửa sổ' = ui.shell.menubar.window and window_glass.label 'Cửa sổ trong mờ')"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": null,
+	"head": "c78604c41b29+worktree",
+	"round": 1,
+	"scope": "ui.settings.appearance.window_glass material segment labels in vi. git diff vs HEAD changes exactly 3 value lines: material_window 'Window'→'Cửa sổ', material_popover 'Popover'→'Khung bật lên', material_tabbed 'Tabbed'→'Dạng tab'; no other line changed. Whole 28-key file read against en + en .context.json. Judged: material_menu 'Menu' kept as established vi loanword — ACCEPTED (158 shipped uses vs 0 'trình đơn'; same term vi platform UIs use; context note allows platform loanwords). 'tab' in 'Dạng tab' — ACCEPTED (150 shipped standalone uses, e.g. ui.browser.chrome 'Nhân bản tab'; native 'thẻ' already means card in this namespace, so 'Dạng thẻ' would mislead; 'Dạng' makes the adjective a natural noun phrase). 'Khung bật lên' — ACCEPTED: native, neutral noun; diverges deliberately from shipped 'cửa sổ bật lên' (extension popup, different concept) so it does not repeat the sibling 'Cửa sổ' segment; avoids bare 'Bật lên' (reads as 'turn on'). material_mica 'Mica' / material_acrylic 'Acrylic' are manager-named exceptions (Microsoft product names per en context). All six segments mutually distinct. Pre-existing, out-of-namespace, non-gating observation: ui.browser.browser_passkey_notice.not_allowed uses 'thẻ' for browser tab while its sibling .message uses 'tab'. Mechanical: key set = en (28), no placeholders in en or vi, file NFC, no Cc/Cf in any value; only Menu/Mica/Acrylic remain byte-identical to en, each a justified exception.",
+	"namespace": "ui.settings.appearance.window_glass",
+	"status": "passed",
+	"head_verdict": "clean",
+	"sha256": {
+		"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+		"vi": "0e44f3c667fea488dcbe5ff17753e4635b90ac1d33d3025c068957367c50199a"
+	},
+	"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+	"findings": [],
+	"resolved": []
+}

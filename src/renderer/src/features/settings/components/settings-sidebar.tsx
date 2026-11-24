@@ -302,12 +302,16 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				"ui.settings.navigation.settings_sidebar.settings_sections",
 			)}
 			data-glass-region="page-sidebar"
-			className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"
+			data-workspace-safe-content=""
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of
 			    space under the final group. */}
-			<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-2 py-4">
+			<div
+				data-lo-pane-edge-cues=""
+				className="flex flex-1 flex-col gap-6 overflow-y-auto px-2 py-4"
+			>
 				{SECTION_GROUPS.map((group) => {
 					const groupSections = sections.filter((s) =>
 						group.ids.includes(s.id),

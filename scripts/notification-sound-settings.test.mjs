@@ -693,6 +693,20 @@ const addFiles = async (container, files) => {
 
 /* ------------------------------------------------------------- the tests */
 
+const LIST_FALLBACK_ELEMENT =
+	/fallbackRender=\{\s*\(props\) =>\s*<ListFallback \{\.\.\.props\} \/>\s*\}/;
+
+test("the shipped list mounts its hook-using error fallback as a component", () => {
+	assert.match(
+		readFileSync(
+			"src/renderer/src/features/settings/components/notifications-section.tsx",
+			"utf8",
+		),
+		LIST_FALLBACK_ELEMENT,
+		"render the hook-using ListFallback as a component and forward the library's reset props",
+	);
+});
+
 test("first load renders the list and plays nothing", async (t) => {
 	const daemon = makeDaemon();
 	const { container } = await mount(t, daemon);

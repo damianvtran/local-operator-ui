@@ -505,7 +505,7 @@ const CURRENT = [
 		what: "the entity row's disclosure control",
 		file: SIDEBAR,
 		expression: () =>
-			expressionAfterWithin(SIDEBAR, "data-entity>", "data-disclosure"),
+			expressionAfterWithin(SIDEBAR, "const history = (", "data-disclosure"),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
 		notCurrent: { revealArmed: true, staged: false },
@@ -1041,7 +1041,10 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// EIGHTEEN (PR #1828): the entity row's profile-proposal badge, a
 				// control inside the row's box guarded `!staged` and resolved by its own
 				// `CURRENT` entry above, exactly like the pin control beside it.
-				"hover:bg-row-hover": 18,
+				// MINUS ONE (design round 7, D1): the legacy Agents/Teams disclosure
+				// heading (`heading()`) is gone - the sidebar draws the shared
+				// `sectionLabel` on every route - and its toggle carried one.
+				"hover:bg-row-hover": 17,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own

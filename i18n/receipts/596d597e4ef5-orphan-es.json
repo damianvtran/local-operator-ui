@@ -1,0 +1,83 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "es",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"session": "596d597e4ef5",
+	"instance": "596d597e4ef5-orphan-es",
+	"model": "anthropic/claude-opus-5-5",
+	"model_fallback": null,
+	"independence": "Did not translate these values. Translator: lopdev coder ui-orphan-asks (session 80b895d3749f, job 13b3649f66b3, anthropic/claude-opus-5-5 per manager 6c40250c9a97 subagent roster and that session's transcript). Same model as the translator: session independence only, single-model audit disclosed. Read committed bytes at 7fee39456a7a via git archive; edited no PR worktree.",
+	"date": "2026-11-24",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2082,
+	"head": "7fee39456a7a",
+	"base": "c78604c41b29",
+	"translator": {
+		"agent": "lopdev coder (ui-orphan-asks)",
+		"model": "anthropic/claude-opus-5-5",
+		"instance": "80b895d3749f",
+		"keys": "the 7 keys UI #2082 adds: ui.notifications.{source.conversation_deleted,toast.nothing_to_dismiss,detail.deleted.ask,detail.deleted.update,detail.deleted.open_tip,detail.deleted.send_withheld} and ui.chat.ask_answer.conversation_deleted"
+	},
+	"references": {
+		"glossary": "damianvtran/local-operator@e835f2ee61d5 i18n/glossary.md",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@e835f2ee61d5 i18n/style-guides/es.md",
+		"style_guide_sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+		"button_labels": "ui.chat.asks.decline, ui.notifications.row.dismiss, ui.notifications.detail.dismiss, ui.chat.asks.dismiss.trigger (the controls these sentences name)"
+	},
+	"scope": "Delta audit of the 7 keys UI #2082 adds (6 in ui.notifications, 1 in ui.chat.ask_answer), read against en value + en .context.json, glossary, locale style guide and the button labels the sentences name. Other values byte-identical to base c78604c41b29 and carried from the prior receipts, not re-read.",
+	"checks": {
+		"mechanical": "Key parity with en; no placeholders/ICU in the new keys; NFC; no Cc/Cf (no bidi controls) in any new value; fr U+202F before ':'; zh-CN full-width punctuation; ur Arabic-script text with ۔ full stops and no embedded Latin, so no isolation needed."
+	},
+	"limitations": [
+		"No rendered fit or Urdu shaping proof; linguistic delta audit only."
+	],
+	"status": "passed",
+	"namespaces": {
+		"ui.notifications": {
+			"status": "passed",
+			"keys_audited": 6,
+			"audited_keys": [
+				"ui.notifications.detail.deleted.ask",
+				"ui.notifications.detail.deleted.open_tip",
+				"ui.notifications.detail.deleted.send_withheld",
+				"ui.notifications.detail.deleted.update",
+				"ui.notifications.source.conversation_deleted",
+				"ui.notifications.toast.nothing_to_dismiss"
+			],
+			"sha256": {
+				"en": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+				"es": "9ce800335e8db29900ef8912987a369a73009c2812250f74074d05627d2b400a",
+				"context": "40af3f3d807f81ec0bf1dc54674e480a904f8d88922dfe8e952e7448ff2efcef"
+			},
+			"final_values": {
+				"ui.notifications.detail.deleted.ask": "Esta conversación se eliminó, así que no se puede responder a esta consulta. Recházala o descártala para quitarla.",
+				"ui.notifications.detail.deleted.open_tip": "Esta conversación se eliminó",
+				"ui.notifications.detail.deleted.send_withheld": "No se pueden enviar respuestas: la conversación que hizo la consulta se eliminó.",
+				"ui.notifications.detail.deleted.update": "Esta conversación se eliminó. Aún puedes descartar esta actualización.",
+				"ui.notifications.source.conversation_deleted": "Conversación eliminada",
+				"ui.notifications.toast.nothing_to_dismiss": "No hay nada que descartar. Las consultas abiertas se mantienen hasta que las respondas, rechaces o descartes."
+			},
+			"findings": []
+		},
+		"ui.chat.ask_answer": {
+			"status": "passed",
+			"keys_audited": 1,
+			"audited_keys": [
+				"ui.chat.ask_answer.conversation_deleted"
+			],
+			"sha256": {
+				"en": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+				"es": "556a33a7f1eea4f659f467c1fc36682dddffe55ec80b02248ac7da43db432009",
+				"context": "cb16065bf8cb3da6a11ec8a913f2d7fe9a1d2dc31e1e41130f4879154af91c6c"
+			},
+			"final_values": {
+				"ui.chat.ask_answer.conversation_deleted": "La conversación de esta consulta se eliminó, así que ya no admite respuestas. Recházala o descártala."
+			},
+			"findings": []
+		}
+	},
+	"agent_note": "lopdev coder role briefed as independent i18n auditor (task i18n-audit-orphan, job a978d8140d96)"
+}

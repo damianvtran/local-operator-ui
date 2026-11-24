@@ -26,10 +26,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/user-attention";',
-			'export { PasskeyCustody } from "./src/main/browser/extensions/passkey-custody";',
 			'export { effectivePresentation } from "./src/main/browser/popups";',
 			'export * from "./src/renderer/src/shared/browser-user-attention";',
-			'export { CustodyHandoffs } from "./src/renderer/src/shared/browser-passkey-custody-handoff";',
 			'export { consentClickTarget } from "./src/renderer/src/shared/browser-consent-attention";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -45,9 +43,7 @@ const bundle = await build({
 });
 const {
 	attentionArrivals,
-	CustodyHandoffs,
 	HeldPopups,
-	PasskeyCustody,
 	browserAttentionRows,
 	consentClickTarget,
 	createCustodyAttention,
@@ -87,40 +83,25 @@ function rig({ active = 7, tabs = [1, 7] } = {}) {
 
 // ---- main: the passkey custody hold ----------------------------------------
 
-test("passkey hold arrival: the tab is NOT activated and nothing is raised; the projection is re-published", () => {
+test("a passkey request arrival: the tab is NOT activated and nothing is raised; the projection is re-published", () => {
 	const { attention, calls, state } = rig();
-	const custody = new PasskeyCustody({
-		now: () => 500,
-		log: () => {},
-		onBegin: (view) => attention.onBegin(view),
-		onEnd: (view) => attention.onEnd(view),
-	});
-	assert.equal(
-		custody.admit({
-			webContentsId: 10,
-			tabId: 1,
-			url: PROMPT,
-			isInstalled: () => true,
-			frame: GONE,
-		}),
-		true,
-		"the agent is still locked out and the prompt admitted",
-	);
+	// A pending request is RECORDED and projected; it never arrives as a view
+	// steal (operator requirement, 2026-11-23). The old passkey WAITING row and
+	// the "paused on this tab" copy are gone with the tab lock
+	// (`extensions/auth-request.ts`), so this module is driven by the request view
+	// and nothing else.
+	attention.onBegin({ tabId: 1, at: 500 });
 	assert.deepEqual(
 		calls,
 		[["clearNotice", 1], ["changed"]],
 		"a stale notice band is cleared (R1) and the projection refreshed — nothing else",
 	);
 	assert.equal(state.active, 7, "the user's browser tab did not move");
-	assert.deepEqual(
-		custody.views(),
-		[{ tabId: 1, at: 500, providerId: ONEPASSWORD }],
-		"the hold is listed for the sidebar row",
-	);
-	assert.equal(custody.isHeld(10), true, "and the agent keeps waiting");
+	// A PASSIVE autofill card is not a request: nothing records it, so nothing can
+	// reach this module for it (see `scripts/auth-request.test.mjs`).
 });
 
-test("passkey hold: the row's click activates the tab; Return to agent gives the user's tab back", () => {
+test("passkey hold: the row's click activates the tab; the hold ending gives the user's tab back", () => {
 	const { attention, calls, state } = rig();
 	attention.onBegin({ tabId: 1, at: 5 });
 	attention.userOpened(1);
@@ -349,20 +330,8 @@ function shell(
 	{ opened = true } = {},
 ) {
 	const calls = [];
-	const handoffs = new CustodyHandoffs();
-	const view = {
-		pathname: "/settings",
-		activeSessionId: "session:b",
-		activeDraftKey: null,
-		browserPaneOpen: false,
-	};
 	const deps = {
 		target: (sessionId) => consentClickTarget(sessionId, sessions),
-		currentView: () => view,
-		beginCustodyHandoff: (hold, target, current) => {
-			calls.push(["handoff", hold.tabId, hold.at]);
-			handoffs.begin(hold, target, current);
-		},
 		openTab: async (tabId) => {
 			calls.push(["openTab", tabId]);
 			return opened;
@@ -372,32 +341,21 @@ function shell(
 		setBrowserPaneOpen: (open) => calls.push(["pane", open]),
 		navigate: (path) => calls.push(["navigate", path]),
 	};
-	return { calls, deps, handoffs, view };
+	return { calls, deps };
 }
 
 test("click: a passkey row lands on its conversation's browser pane with the held tab in front", async () => {
 	const [passkey] = browserAttentionRows(state, 1_000);
-	const { calls, deps, handoffs, view } = shell();
+	const { calls, deps } = shell();
 	await openBrowserAttention(passkey, deps);
+	// No custody handoff is recorded any more (review N1: nothing in main ends
+	// one, so a recorded handoff could never give anything back).
 	assert.deepEqual(calls, [
 		["openTab", 1],
-		["handoff", 1, 10],
 		["session", "session:a"],
 		["pane", true],
 		["navigate", "/chat"],
 	]);
-	// The hold ends with the user still where the click put them: their view
-	// comes back, because this trip was theirs to answer the prompt.
-	const landed = {
-		pathname: "/chat",
-		activeSessionId: "session:a",
-		activeDraftKey: null,
-		browserPaneOpen: true,
-	};
-	assert.deepEqual(handoffs.end({ tabId: 1, at: 10 }, landed), {
-		session: view.activeSessionId,
-		navigate: "/settings",
-	});
 });
 
 test("click: a popup row on a tab no conversation owns lands on the browser route and presents the popup", async () => {
@@ -425,22 +383,9 @@ test("click: a site-access row names the request for the approvals card, and ope
 test("click on a hold that ended meanwhile: main answers false, so nothing is recorded and the view stays (R2)", async () => {
 	const [passkey, popup] = browserAttentionRows(state, 1_000);
 	for (const row of [passkey, popup]) {
-		const { calls, deps, handoffs } = shell(undefined, { opened: false });
+		const { calls, deps } = shell(undefined, { opened: false });
 		await openBrowserAttention(row, deps);
 		assert.deepEqual(calls, [["openTab", row.tabId]], `${row.kind}: no move`);
-		assert.equal(
-			handoffs.end(
-				{ tabId: row.tabId, at: row.at },
-				{
-					pathname: "/settings",
-					activeSessionId: "session:b",
-					activeDraftKey: null,
-					browserPaneOpen: false,
-				},
-			),
-			null,
-			"no handoff entry was left behind",
-		);
 	}
 });
 
@@ -462,36 +407,21 @@ test("live region: the first look announces nothing; later arrivals are announce
 	);
 });
 
-test("a hold nobody opened gives nothing back when it ends", () => {
-	const handoffs = new CustodyHandoffs();
-	assert.equal(
-		handoffs.end(
-			{ tabId: 1, at: 10 },
-			{
-				pathname: "/chat",
-				activeSessionId: "session:a",
-				activeDraftKey: null,
-				browserPaneOpen: true,
-			},
-		),
-		null,
-	);
-});
-
 test("source: the shell no longer navigates on a hold's arrival, and the rows are in the sidebar", () => {
+	// The custody give-back is gone with custody (review N1): no listener for
+	// an event main never sends, no handoff module, no preload bridge.
 	const app = read("src/renderer/src/app.tsx");
-	const custody = app.slice(
-		app.indexOf("const pathnameRef = useRef(pathname);"),
-	);
-	const effect = custody.slice(
-		0,
-		custody.indexOf("}, [navigate, setActiveSession, setBrowserPaneOpen]);"),
-	);
-	assert.match(effect, /onPasskeyCustodyEnded/);
+	assert.doesNotMatch(app, /onPasskeyCustodyEnded|shellCustodyHandoffs/);
 	assert.doesNotMatch(
-		effect,
-		/\.begin\(/,
-		"only the row's click records a handoff",
+		read("src/preload/index.ts"),
+		/browser-passkey-custody-ended|onPasskeyCustodyEnded/,
+	);
+	assert.doesNotMatch(read("src/preload/index.d.ts"), /onPasskeyCustodyEnded/);
+	assert.doesNotMatch(
+		read(
+			"src/renderer/src/features/browser/components/browser-attention-rows.tsx",
+		),
+		/beginCustodyHandoff|custody-handoff/,
 	);
 	const sidebar = read(
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",

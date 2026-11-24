@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.radient_account": "Учётная запись Radient",
 	"ui.settings.navigation.settings_sidebar.settings_sections": "Разделы настроек",
 	"ui.settings.navigation.settings_sidebar.speech_voicing": "Озвучивание",
-	"ui.settings.navigation.settings_sidebar.system": "Система"
+	"ui.settings.navigation.settings_sidebar.system": "Система",
+	"ui.settings.navigation.settings_page.close_settings": "Закрыть настройки",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "Закрыть (Esc)"
 }

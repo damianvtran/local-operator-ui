@@ -219,7 +219,9 @@ function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 			recipientLabel(
 				{ kind: "agent", label: line.agent, ownerLabel: line.owner },
 				DELIVERY_CHIEF_LABELS,
-			) ?? t("ui.teamBridge.sender.unknown_agent"),
+				// Every recipient here is a chief of staff: unnamed, it reads as
+				// one, never "Unknown agent" (operator report, 2026-11-23).
+			) ?? t("ui.teamBridge.chief.fallback"),
 	};
 	if (line.kind === "pending") {
 		return t("ui.teamBridge.delivery.pending", params);

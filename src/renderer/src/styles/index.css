@@ -16,14 +16,23 @@
 		opacity: 1;
 	}
 }
-.lo-transcript-arrival {
-	animation: lo-transcript-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
-}
-@media (prefers-reduced-motion: reduce) {
-	.lo-transcript-arrival {
-		animation: none;
+/* Inline prose starts higher than a passive row: 0.8 clears 4.5:1 for the
+ * 59 generated theme ink/surface pairs on their solid-surface model. Both
+ * keep final geometry and use the global Reduce Motion cap. */
+@keyframes lo-stream-ink {
+	from {
+		opacity: var(--lo-stream-ink-from, 0.55);
 	}
+	to {
+		opacity: 1;
+	}
+}
+.lo-stream-ink {
+	--lo-stream-ink-from: 0.8;
+}
+.lo-stream-ink,
+.lo-transcript-arrival {
+	animation: lo-stream-ink var(--duration-fast) var(--ease-out-quart);
 }
 
 /* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
@@ -598,6 +607,182 @@
 	height: var(--chrome-strip-h);
 }
 
+/* An ordinary route body starts after platform clearance. Full-height split
+ * routes paint through it; each pane clears the lane inside its ground.
+ * Logical margins give the same gutter beside either rail in RTL.
+ * Clip only this frame's corners, not its descendant scroll model: unlike
+ * overflow:hidden, clip cannot become a sticky band's scroll container. */
+main[data-workspace-outlet] {
+	background-color: var(--lo-surface);
+}
+html[data-glass] main[data-workspace-outlet],
+html[data-glass]
+	main[data-workspace-outlet][data-glass-region="canvas-backing"] {
+	background-color: transparent;
+}
+.workspace-frame-shell {
+	--workspace-frame-gutter: 8px;
+	--workspace-frame-block-start: 0px;
+	--workspace-frame-block-end: var(--workspace-frame-gutter);
+	--workspace-frame-radius: 10px;
+	display: grid;
+	grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.workspace-frame {
+	grid-area: 1 / 1;
+	margin-inline: var(--workspace-frame-gutter);
+	margin-block-start: var(--workspace-frame-block-start);
+	margin-block-end: var(--workspace-frame-block-end);
+	border-radius: var(--workspace-frame-radius);
+	overflow: clip;
+	background-color: var(--lo-canvas);
+}
+
+/* Split routes sit beside a full-height secondary sidebar: the content inset
+ * gets even 8px gutters on all four sides instead of touching y0 or bottom. */
+[data-workspace-frame-full-height] {
+	--workspace-frame-block-start: var(--workspace-frame-gutter);
+	--workspace-frame-block-end: var(--workspace-frame-gutter);
+}
+main[data-workspace-outlet][data-workspace-full-height] {
+	/* Use the same height as the trailing drag lane. The inherited panel pad
+	 * already covers macOS, leading WCO and fullscreen. */
+	--workspace-safe-top: max(
+		var(--panel-top-pad, 0px),
+		var(--chrome-route-band-h, 0px)
+	);
+	position: relative;
+	padding-block-start: 0;
+}
+[data-workspace-full-height] [data-workspace-safe-content] {
+	/* Apply this to the painted column, not to its scroller: scrolling and
+	 * focus reveal must not carry controls under native chrome. Full-height
+	 * secondary sidebars reach y0 and pay the full safe-top clearance. */
+	padding-block-start: var(--workspace-safe-top);
+}
+[data-workspace-frame-full-height] [data-workspace-safe-content] {
+	/* Inside a full-height inset frame, the top gutter already consumes
+	 * --workspace-frame-block-start; subtract it so the inner scroller starts at
+	 * the same safe-top line without double-stacking gutter and clearance. */
+	padding-block-start: max(
+		0px,
+		calc(
+			var(--workspace-safe-top, 0px) -
+			var(--workspace-frame-block-start, 0px)
+		)
+	);
+}
+main[data-workspace-full-height] > [data-chrome-route-band] {
+	/* Trailing WCO keeps its drag target, but it no longer displaces the paint.
+	 * The lane and band gates below stay complementary. */
+	position: absolute;
+	inset: 0 0 auto;
+	z-index: 10;
+}
+
+/* Bare window material made the gutter read as a dark border. Carry the
+ * shell/tab ground around the opening, not under it: a full backing would
+ * double up the canvas, split pages and pane glass. The path follows the
+ * same gutter, block-start/end and radius as the frame (equal inline edges
+ * in LTR and RTL), using two opposite-wound subpaths with evenodd so both
+ * block-start: 0px (ordinary/chat/browser) and block-start: 8px (split inset)
+ * cut cleanly without a slit. The two grid items share a cell without changing
+ * the body's containing block, clipping or native Browser bounds. Without
+ * shape() leave it clear. */
+@supports (clip-path: shape(from 0 0, line to 100% 100%, close)) {
+	.workspace-frame-shell::before {
+		--gutter-and-radius: calc(
+			var(--workspace-frame-gutter) +
+			var(--workspace-frame-radius)
+		);
+		--block-start-and-radius: calc(
+			var(--workspace-frame-block-start) +
+			var(--workspace-frame-radius)
+		);
+		--block-end-and-radius: calc(
+			var(--workspace-frame-block-end) +
+			var(--workspace-frame-radius)
+		);
+		content: "";
+		grid-area: 1 / 1;
+		pointer-events: none;
+		background-color: var(--lo-surface);
+		clip-path: shape(
+			evenodd from 0 0,
+			hline to 100%,
+			vline to 100%,
+			hline to 0,
+			close,
+			move to var(--gutter-and-radius) var(--workspace-frame-block-start),
+			arc to var(--workspace-frame-gutter) var(--block-start-and-radius) of
+				var(--workspace-frame-radius),
+			vline to calc(100% - var(--block-end-and-radius)),
+			arc to var(--gutter-and-radius)
+				calc(100% - var(--workspace-frame-block-end)) of
+				var(--workspace-frame-radius),
+			hline to calc(100% - var(--gutter-and-radius)),
+			arc to calc(100% - var(--workspace-frame-gutter))
+				calc(100% - var(--block-end-and-radius)) of
+				var(--workspace-frame-radius),
+			vline to var(--block-start-and-radius),
+			arc to calc(100% - var(--gutter-and-radius))
+				var(--workspace-frame-block-start) of var(--workspace-frame-radius),
+			close
+		);
+	}
+	/*
+	 * THE BAND ABOVE AN ORDINARY INSET (design round 7, D2): the outlet's 32px
+	 * clearance, painted in the same role as the gutters around the opening
+	 * so the frame reads inset on all four sides instead of floating under a
+	 * strip of bare window material. In flow and net-zero (height and negative
+	 * margin are the same `panel-top-pad` length), so the frame keeps y32 and
+	 * the route body moves nothing. Inside this @supports for the same reason
+	 * as the gutter: without shape() neither is painted, so they cannot
+	 * disagree. Its glass paint is the `.workspace-frame-shell::before` rule's
+	 * selector list below, so the two cannot drift either.
+	 */
+	[data-workspace-top-band] {
+		flex: none;
+		height: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+		margin-block-start: calc(
+			-1 *
+			var(--panel-top-pad, var(--chrome-strip-h, 0px))
+		);
+		background-color: var(--lo-surface);
+	}
+	/* Windows/Linux trailing caption buttons put the clearance in this in-flow
+	 * band instead (the pad above is then 0), so it takes the same paint on an
+	 * ordinary route; on a full-height route it is an overlay and stays clear. */
+	main[data-workspace-outlet]:not([data-workspace-full-height])
+		> [data-chrome-route-band] {
+		background-color: var(--lo-surface);
+	}
+}
+
+/* A native WebContentsView is rectangular and intercepts pointer input
+ * outside a DOM clip. Insetting both coordinates by .3r places even its
+ * four corners inside the common circle: sqrt(2) * .7r < r. Round bounds
+ * inward again when reporting them to Electron; no native view covers the
+ * gutter, even when the dock disappears and it reaches the trailing corners. */
+.workspace-frame[data-workspace-browser] {
+	padding: calc(var(--workspace-frame-radius) * 0.3);
+	background-color: var(--lo-elevated);
+}
+/* Keep the frame in place while the Browser chunk loads. The tab strip's
+ * floor is one spacing-9 row plus its 1px rule; the URL band is fixed. */
+:root {
+	--browser-tab-track-min: calc(var(--spacing) * 9);
+	--browser-address-row-h: 37px;
+}
+[data-browser-route-pending-chrome] {
+	min-height: calc(
+		var(--panel-top-pad, 0px) +
+		var(--browser-tab-track-min) +
+		1px +
+		var(--browser-address-row-h)
+	);
+}
+
 /*
  * THE PANEL TOP CONTRACT, AS TWO UTILITIES AND ONE VARIABLE.
  *
@@ -609,6 +794,10 @@
  * gradient band - a reserved row that could only paint a MIRROR of the
  * columns' grounds and was wrong the moment a panel started inside the route
  * (the Library dock, the right slot, the canvas tabs).
+ *
+ * That edge-to-edge rule still applies to genuine chrome and legacy routes.
+ * An inset workspace instead starts under the lane, so `main` takes this
+ * same pad once and nested route columns never cancel or reapply it.
  *
  * `--panel-top-pad` is the shell's statement of how far the OS's controls
  * reach into the window. It is set on the content column for EVERY route
@@ -734,16 +923,19 @@
  * attribute in a layout effect, before the first paint). Do not re-add the strip
  * height here: under a lane it is 32px of nothing on every non-chat route.
  */
-[data-chrome-mode="integrated"][data-chrome-platform="win"]:not(
-		[data-chrome-leading="true"]
-	)
-	[data-chrome-route-band],
-[data-chrome-mode="integrated"][data-chrome-platform="linux"]:not(
-		[data-chrome-leading="true"]
-	)
+[data-chrome-mode="integrated"]:is(
+		[data-chrome-platform="win"],
+		[data-chrome-platform="linux"]
+	):not([data-chrome-leading="true"], [data-chrome-fullscreen="true"]) {
+	--chrome-route-band-h: env(titlebar-area-height, 0px);
+}
+[data-chrome-mode="integrated"]:is(
+		[data-chrome-platform="win"],
+		[data-chrome-platform="linux"]
+	):not([data-chrome-leading="true"], [data-chrome-fullscreen="true"])
 	[data-chrome-route-band] {
 	display: block;
-	height: env(titlebar-area-height, 0px);
+	height: var(--chrome-route-band-h);
 	-webkit-app-region: drag;
 }
 
@@ -1046,11 +1238,12 @@
  * copy of the block (a second fade length or colour would be a second edge
  * grammar in the same window).
  *
- * THE EDIT FOOTER OPTS THE PANE OUT. It is `sticky bottom-0` INSIDE the scroller,
- * so a bottom mask would dim the Save button itself. The page cannot know whether a
- * pane is in edit mode (that is the detail component's own state), so the opt-out
- * is a `:has()` on the footer's marker rather than a prop threaded up and back;
- * Electron's Chromium supports it.
+ * THE EDIT FOOTER AND ASK ACTIONS BAR OPT THE PANE OUT. Both are `sticky bottom-0`
+ * INSIDE the scroller, so a bottom mask would dim Save or Send answer itself.
+ * The host page cannot know whether a pane is in edit mode or showing a live
+ * ask card (that is the child component's own state), so the opt-out is a
+ * `:has()` on those markers rather than a prop threaded up and back; Electron's
+ * Chromium supports it.
  */
 [data-lo-sidebar-edge-cues],
 [data-lo-pane-edge-cues] {
@@ -1065,7 +1258,7 @@
 	);
 }
 
-[data-lo-pane-edge-cues]:has([data-lo-pane-footer]) {
+[data-lo-pane-edge-cues]:has([data-lo-pane-footer], [data-lo-ask-actions]) {
 	mask-image: none;
 }
 
@@ -1077,6 +1270,14 @@
 		animation-fill-mode: both;
 		animation-timeline: scroll(self), scroll(self);
 		animation-range: 0 24px, calc(100% - 24px) 100%;
+	}
+
+	/* Scrollers carrying `sticky top-0` section headers opt into bottom-only
+	 * fade so pinned headers stay full-contrast while scrolling. */
+	[data-lo-pane-edge-cues="bottom"] {
+		animation-name: sidebar-bottom-cue;
+		animation-timeline: scroll(self);
+		animation-range: calc(100% - 24px) 100%;
 	}
 
 	@keyframes sidebar-top-cue {
@@ -2292,10 +2493,10 @@ html [data-lo-ask-list]:focus-visible {
  *
  * THE BACKING. With any glass on, `body`, `#app` and the `<main>` ground cannot
  * stay the opaque `canvas`: it would sit between the material and everything
- * translucent. `<main>` therefore paints the content column's ground itself -
- * opaque `canvas` when the canvas is not covered, `canvas` at its alpha when it
- * is - and the page grounds inside it (`data-glass-region="canvas"`) go clear so
- * ONE alpha applies. Surfaces and panes inside `<main>` use the NET alpha
+ * translucent. The route frame (legacy routes: `<main>`) paints the body ground
+ * once: opaque `canvas` when not covered, its alpha otherwise. Ordinary page
+ * grounds inside it (`data-glass-region="canvas"`) go clear under Full app.
+ * Surfaces and panes inside the backing use the existing NET alpha
  * (`--lo-glass-in-*`) so the stack lands on the target, and clamp at 0 rather than
  * ever going more see-through than the floor.
  */
@@ -2304,10 +2505,18 @@ html[data-glass] body,
 html[data-glass] #app {
 	background-color: transparent;
 }
-html[data-glass] main[data-glass-region="canvas-backing"] {
+html[data-glass]
+	:is(
+		main,
+		:where([data-workspace-frame])
+	)[data-glass-region="canvas-backing"] {
 	background-color: var(--lo-canvas);
 }
-html[data-glass~="canvas"] main[data-glass-region="canvas-backing"] {
+html[data-glass~="canvas"]
+	:is(
+		main,
+		:where([data-workspace-frame])
+	)[data-glass-region="canvas-backing"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
@@ -2365,8 +2574,15 @@ html[data-glass~="sidebar"] [data-glass-region="page-sidebar"] {
 		transparent
 	);
 }
+/* Only a direct split route replaces the inset's wash. A nested tool/pane
+ * must not clear it, nor may a split React has hidden behind its Suspense
+ * fallback. The legacy main selector still serves the flush routes. */
 html[data-glass]
 	main[data-glass-region="canvas-backing"]:has([data-glass-split]),
+html
+	[data-workspace-frame][data-glass-region="canvas-backing"]:has(
+		> [data-glass-split]
+	):not(:has(> [data-workspace-route-pending])),
 html[data-glass] [data-glass-split] {
 	background-color: transparent;
 }
@@ -2389,7 +2605,7 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 	);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]:not([data-glass-split]) {
 	background-color: color-mix(
 		in srgb,
@@ -2404,7 +2620,7 @@ html[data-glass]:not([data-glass~="pane"])
 	background-color: var(--lo-elevated);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"][data-glass-split] {
 	background-color: color-mix(
 		in srgb,
@@ -2417,7 +2633,7 @@ html[data-glass~="pane"]
  * by order, so no descendant can compound a second alpha over its outer pane. */
 html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"],
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-region="pane"] {
 	background-color: transparent;
@@ -2480,7 +2696,9 @@ html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
 html[data-glass~="sidebar"] [data-glass-region="sidebar"],
 html[data-glass~="sidebar"] [data-glass-region="page-sidebar"],
 html[data-glass~="canvas"] [data-glass-region="canvas"],
-html[data-glass~="canvas"] main[data-glass-region="canvas-backing"],
+html[data-glass~="canvas"] [data-glass-region="canvas-content"],
+html[data-glass~="canvas"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
 html[data-glass~="canvas"] [data-glass-region="panel"],
 html[data-glass~="pane"] [data-glass-region="pane"] {
 	--color-row-hover: color-mix(
@@ -2529,7 +2747,11 @@ html[data-glass~="sidebar"]
 html[data-glass~="canvas"]
 	:is(
 		[data-glass-region="canvas"],
-		main[data-glass-region="canvas-backing"],
+		[data-glass-region="canvas-content"],
+		:is(
+				main,
+				:where([data-workspace-frame])
+			)[data-glass-region="canvas-backing"],
 		[data-glass-region="panel"]
 	)
 	[data-glass-placeholder],
@@ -2545,7 +2767,11 @@ html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
 	[data-glass-region="panel"]
@@ -2567,7 +2793,11 @@ html[data-glass~="pane"]
 		:where([data-glass-region="chrome"])
 	),
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
 		:where([data-glass-region="chrome"])
 	),
@@ -2598,7 +2828,11 @@ html[data-glass~="sidebar"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
@@ -2759,7 +2993,11 @@ html[data-glass~="canvas"] [data-glass-state="running"] {
  * distinguished by the attribute's value so a call site says which it is.
  */
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"][data-glass-well="clear"],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -2777,7 +3015,11 @@ html[data-glass~="pane"]
  * that selector to every `bg-surface` div.
  */
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-surface"][data-glass-well],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -2828,7 +3070,7 @@ html[data-glass~="sidebar"]
 	background: linear-gradient(
 			90deg,
 			transparent,
-			rgb(255 255 255 / 26%) 34% 61%,
+			rgb(255 255 255 / var(--composer-dock-shelf-gloss, 26%)) 34% 61%,
 			transparent
 		)
 		14% top / 55% 1px no-repeat,
@@ -2872,12 +3114,15 @@ html[data-glass~="sidebar"]
 	background-image: linear-gradient(
 			90deg,
 			transparent,
-			rgb(255 255 255 / 60%) 36% 60%,
+			rgb(255 255 255 / var(--composer-dock-editor-gloss, 60%)) 36% 60%,
 			transparent
 		),
 		linear-gradient(
 			180deg,
-			light-dark(rgb(60 71 99 / 6%), rgb(255 255 255 / 4%)),
+			light-dark(
+				rgb(60 71 99 / var(--composer-dock-light-wash, 6%)),
+				rgb(255 255 255 / var(--composer-dock-dark-wash, 4%))
+			),
 			transparent 38px
 		);
 	background-position: 9% top, center top;
@@ -3074,10 +3319,10 @@ html[data-glass~="pane"] [data-glass-region="composer"] {
  * own rule stays as the separation. The "glass chrome field" contract context
  * is retired with the layer; the tab row now models the shipped stack.
  *
- * THE BAND PAINTS ONLY OVER A LIVE PAGE (`data-glass-chrome-live`); without
- * one, the bars go CLEAR and the route host's pane rung is the only ground, so
- * the loading, error and empty states keep the paint they were designed on
- * instead of stacking a band over the role fills their utilities still carry.
+ * The LIVE route's outer band (`data-glass-chrome-live`) uses surface alpha.
+ * Without a page the outer band uses the same elevated alpha as the adjacent
+ * inset; nested tracks stay clear. Neither paints beneath the other, and the
+ * inset keeps its backdrop behind the safe edges of the rectangular view.
  * The first version of this gate left those fills at alpha 1.0 (review round
  * 2, F2); clearing them is what makes the state coherent.
  *
@@ -3116,10 +3361,33 @@ html[data-glass~="pane"]
 	[data-glass-region="chrome"] {
 	background-color: transparent;
 }
-html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
-	[data-glass-region="pane"][data-glass-split][data-glass-chrome-live] {
+/* The route host is only an ownership scope: its chrome and inset are
+ * separate siblings, never alpha painted over a backing. The pane-hosted
+ * Browser still uses its original enclosing pane ground. */
+html[data-glass]
+	[data-browser-route-shell][data-glass-split][data-glass-region="pane"] {
 	background-color: transparent;
+}
+html[data-glass~="pane"]
+	[data-browser-route-shell]
+	> [data-browser-route-chrome],
+html[data-glass~="pane"] [data-browser-route-pending-chrome],
+html[data-glass~="pane"]
+	[data-workspace-frame][data-workspace-browser][data-glass-region="pane"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+}
+html[data-glass~="pane"]
+	[data-browser-route-shell][data-glass-chrome-live]
+	> [data-browser-route-chrome] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
 }
 
 /*
@@ -3193,13 +3461,13 @@ html[data-glass]
  * there, which is what the state model says a hover is. Off glass nothing changes.
  */
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="clear"] {
 	background-color: transparent;
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="band"] {
 	background-color: color-mix(
@@ -3343,7 +3611,7 @@ html[data-glass~="pane"]
  * model understated the very property the note exists to describe. Quote the frame.
  */
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="band-backdrop"],
 html[data-glass~="canvas"]
@@ -3419,7 +3687,7 @@ html[data-glass~="canvas"]
 	backdrop-filter: blur(12px);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[role="tablist"]
 	:is([class~="bg-surface"], [class~="bg-sunken"], [class~="bg-elevated"]) {
@@ -3461,7 +3729,7 @@ html[data-glass~="pane"]
 	);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	:is(
 		[class~="hover:bg-surface"],
@@ -3480,7 +3748,7 @@ html[data-glass~="pane"]
  * pane rule translates needs the same answer.
  *
  * GATED ON THE VEIL, NOT ON THE PANE. Round 1 repeated the pane rule's structural
- * keys (`main[data-glass-region="canvas-backing"]`), and that scope was wrong: the
+ * keys (`:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]`), and that scope was wrong: the
  * veil is canvas-gated and NOT main-scoped, while the FLEET asks drawer's pane is a
  * SIBLING of `<main>` (the raw-alpha pane rule above names it). In that mount the
  * card was veiled - `hover:bg-sunken` painted an opaque slab over it - and this
@@ -3511,7 +3779,7 @@ html[data-glass~="canvas"]
 		[class~="hover:bg-elevated"]
 	):hover,
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-block]
 	:is(
@@ -3935,4 +4203,247 @@ input[data-colour-hue]::-moz-range-thumb {
 	border: 2px solid var(--lo-ink);
 	border-radius: 50%;
 	background: var(--lo-elevated);
+}
+
+/* Shared inset. One plane per job, without new seams.
+ * The composer keeps its existing ground and role tokens; only its containing
+ * working plane moves. The native drag lane stays a sibling on the shell. */
+html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
+	background-color: var(--color-surface);
+}
+/* WorkspaceFrame owns the geometry. Keep only Chat's internal pane
+ * seams quiet; the shell owns its rail joins (including adjacent Fleet Asks). */
+[data-workspace-inset] [data-panel-edge] {
+	display: none;
+}
+[data-workspace-inset] > [data-chat-region="header"] {
+	/* With the normal 8px gutter the first tab and frame share an edge.
+	 * The selector's glyph already sits 4px into its button, so pay only
+	 * the other half of the tab label's 8px inset here. */
+	padding-inline-start: 4px;
+	padding-inline-end: 12px;
+}
+[data-workspace-inset] {
+	/* Chat's pane occupants also mount in flush hosts. Inside the framed
+	 * workspace, their shared clearance is already above the tabs. */
+	--panel-top-pad: 0px;
+}
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-workspace-inset]
+	[data-glass-region="canvas"],
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-workspace-inset]
+	:not([data-lo-floating])
+	> [data-glass-region="pane"] {
+	background: transparent;
+}
+[data-workspace-inset] .chrome-reserve-trailing {
+	display: none;
+}
+/* Keep the nested dock's geometry; soften the two specular ridges and the
+ * wide frosted wash rather than adding a perimeter to separate its layers. */
+[data-workspace-inset] .composer-dock {
+	--composer-dock-shelf-gloss: 12%;
+	--composer-dock-editor-gloss: 25%;
+	--composer-dock-light-wash: 3%;
+	--composer-dock-dark-wash: 2%;
+}
+[data-workspace-inset] .composer-dock::before {
+	opacity: 0.65;
+}
+
+/* Leave the actual buttons, menus, titles and focus targets where React owns
+ * them; the inset takes away their paint, never their hit areas. */
+/*
+ * THE SIDEBAR'S ROWS ARE KEYED OFF THE SIDEBAR, NOT THE CHAT ROUTE (design
+ * round 7, D1). These sidebar selectors used to sit under
+ * `[data-workspace-shell]:has([data-chat-workspace])`, so the same sidebar drew
+ * filled current rows and pill buttons everywhere but Chat. They now apply in
+ * the shell on every route; only the panel rail - which only Chat mounts - keeps
+ * the Chat gate. `scripts/chat-sidebar-route-invariant.test.mjs` holds this.
+ */
+[data-workspace-inset]
+	> [data-chat-region="header"]
+	button:not([data-lo-floating] *),
+[data-workspace-shell]:has([data-chat-workspace]) [data-panel-rail-item],
+[data-workspace-shell]
+	:is(
+		[data-sidebar-band],
+		[data-entity],
+		[data-workspace-launcher],
+		[data-session-row]
+	)
+	button:not([data-lo-floating] *) {
+	background: transparent;
+	border-width: 0;
+	box-shadow: none;
+}
+[data-workspace-shell]
+	:is(
+		[data-session-row]:not([data-dragging]),
+		[data-temporary-row] > [data-chat-row][aria-current="page"],
+		[data-workspace-current]:not([data-dragging]),
+		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
+		[data-workspace-launcher] [data-entity] > div:first-child
+	) {
+	background: transparent;
+}
+[data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
+[data-workspace-launcher] button:focus-visible,
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-panel-rail-item]:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -2px;
+}
+
+[data-workspace-tabs] {
+	display: flex;
+	align-items: center;
+	min-height: 32px;
+	gap: 4px;
+	padding-inline: 8px;
+}
+/* The strip and exposed gutter continue the sidebar's raw ground. The strip
+ * also needs that ground for its unfilled ellipsis over native material. */
+html[data-glass~="sidebar"] .workspace-frame-shell::before,
+html[data-glass~="sidebar"] [data-workspace-top-band],
+html[data-glass~="sidebar"]
+	main[data-workspace-outlet]:not([data-workspace-full-height])
+	> [data-chrome-route-band],
+html[data-glass~="sidebar"] [data-workspace-tabs] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
+}
+/* Reuse the shell's existing top strip rather than paying for a second row.
+ * The OS buttons are physical, so keep their clearances physical in RTL too. */
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-workspace-tabs] {
+	--workspace-left-column: var(--workspace-sidebar-w, 0px);
+	--workspace-right-column: var(--panel-rail-w, 0px);
+	position: relative;
+	z-index: 31;
+	margin-block-start: calc(-1 * var(--panel-top-pad, 0px));
+	min-height: max(32px, var(--panel-top-pad, 0px), var(--chrome-inset-end-h));
+	padding-left: max(
+		8px,
+		calc(var(--chrome-inset-start) - var(--workspace-left-column))
+	);
+	padding-right: max(
+		8px,
+		calc(var(--chrome-inset-end) - var(--workspace-right-column))
+	);
+}
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-workspace-tabs]:dir(rtl) {
+	--workspace-left-column: var(--panel-rail-w, 0px);
+	--workspace-right-column: var(--workspace-sidebar-w, 0px);
+}
+[data-workspace-tab-spacer] {
+	align-self: stretch;
+	flex: 1 0 32px;
+}
+/* Separate scrollports keep the regular lane from carrying pins away. Only
+ * interactive lanes opt out of native dragging; the remainder is the handle. */
+[data-workspace-pinned],
+[data-workspace-regular] {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+[data-workspace-pinned]:has(+ [data-workspace-regular]) {
+	max-width: 50%;
+}
+[data-workspace-tab] {
+	--workspace-tab-fill: color-mix(
+		in oklab,
+		var(--color-canvas) 48%,
+		var(--color-surface)
+	);
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	max-width: min(218px, 100%);
+	flex: 0 0 auto;
+	color: var(--color-ink-muted);
+}
+/* In the 32px lane, a 28px tab already leaves 2px outside its hit box.
+ * Inset only the paint by another 2px per edge for 4px of visible air,
+ * without growing the no-drag scrollports or touching the button targets. */
+[data-workspace-tab]::before {
+	content: "";
+	position: absolute;
+	z-index: -1;
+	inset-block: 2px;
+	inset-inline: 0;
+	border-radius: 5px;
+	background: var(--workspace-tab-fill);
+	pointer-events: none;
+}
+[data-workspace-tab][data-active] {
+	--workspace-tab-fill: color-mix(
+		in oklab,
+		var(--color-row-selected) 44%,
+		var(--color-surface)
+	);
+	color: var(--color-ink);
+}
+[data-workspace-tab][data-active] > button[aria-current] {
+	font-weight: 500;
+}
+[data-workspace-tabs] button:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -2px;
+}
+[data-workspace-tabs] button:not(:disabled):hover {
+	color: var(--color-ink);
+}
+
+/* The canonical scroller runs flex-column-reverse. On its existing timeline
+ * the bottom edge is the start (latest), the top edge is the end (oldest). A
+ * non-overflowing timeline has no sample, so both registered lengths stay 0. */
+@property --lo-workspace-bottom-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+[data-workspace-inset] [data-lo-canonical-transcript] {
+	mask-image: linear-gradient(
+		to bottom,
+		transparent,
+		black var(--lo-transcript-top-fade),
+		black calc(100% - var(--lo-workspace-bottom-fade)),
+		transparent
+	);
+}
+@supports (animation-timeline: scroll(self)) {
+	[data-workspace-inset] [data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade, workspace-transcript-bottom-fade;
+		animation-timeline: scroll(self), scroll(self);
+		animation-range: calc(100% - 24px) 100%, 0px 24px;
+	}
+	@keyframes workspace-transcript-bottom-fade {
+		from {
+			--lo-workspace-bottom-fade: 0px;
+		}
+		to {
+			--lo-workspace-bottom-fade: 24px;
+		}
+	}
+}
+[data-workspace-inset] [data-lo-canonical-transcript]:has(:focus-visible) {
+	mask-image: none;
+}
+
+/* Groups share the sidebar's existing 16px step, whether nested in the roster
+ * or next to whole regions. Hidden groups do not leave their own margin. */
+.sidebar-section-stack > :not(:last-child) {
+	margin-block-end: calc(var(--spacing) * 4);
 }

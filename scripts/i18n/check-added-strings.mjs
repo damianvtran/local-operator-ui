@@ -2,7 +2,7 @@
 /**
  * Fail-closed, base-aware guard for literal UI copy outside the original
  * JSX-text/literal-attribute inventory. It deliberately has NO baseline: only
- * findings whose literal starts on an added diff line fail, while the existing
+ * direct-syntax findings whose literal starts on an added diff line fail, while the existing
  * shrink-only ratchet continues to govern the old shapes and historical debt.
  * There is still no stored list of accepted text: what follows is provenance,
  * proven per literal and at check time, from the comparison base's own tree.
@@ -62,6 +62,11 @@
  *     takes the shape instead — new copy of it cannot land, and the historical
  *     occurrences stay a stated gap rather than a silent one.
  *
+ *   - same-file imported React primitive state initializers and direct setter
+ *     arguments reaching existing copy sinks, including const setter aliases.
+ *     These fail when a literal, sink or alias path line is added and deliberately
+ *     do not use raw-token RESTORED evidence: old protocol text is not old copy.
+ *
  * This is a static sink check, not a claim about arbitrary runtime or server
  * text. Dynamic values, non-copy property names, and calls such as `t()` do not
  * expose a static literal to flag. Technical copy still needs the same narrow
@@ -91,7 +96,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SyntaxKind } from "typescript/unstable/ast";
+import { NodeFlags, SyntaxKind } from "typescript/unstable/ast";
 
 import {
 	ALLOWLIST,
@@ -584,6 +589,212 @@ function nearestCopyDeclaration(identifier) {
 }
 
 /**
+ * Same-file React primitive state reaching existing copy slots. The snapshot's
+ * symbols, not identifier spellings, preserve closure identity and distinguish
+ * destructured shadows. This is deliberately not runtime dataflow: calls other
+ * than imported React useState, mutable/property carriers, lazy initializers and
+ * functional updaters remain opaque. Reuse the caller's checker; a failed query
+ * must throw rather than quietly remove admission coverage.
+ */
+export function findStateCopyCandidates(sourceFile, checker) {
+	const identifiers = [];
+	const declarations = [];
+	const calls = [];
+	const imports = [];
+	const sinks = [];
+	const visit = (node) => {
+		if (node.kind === SyntaxKind.Identifier) identifiers.push(node);
+		if (node.kind === SyntaxKind.VariableDeclaration) declarations.push(node);
+		if (node.kind === SyntaxKind.CallExpression) calls.push(node);
+		if (
+			node.kind === SyntaxKind.ImportDeclaration &&
+			node.moduleSpecifier.text === "react"
+		)
+			imports.push(node);
+		if (
+			node.kind === SyntaxKind.PropertyAssignment &&
+			COPY_PROPERTIES.has(propertyName(node.name))
+		)
+			sinks.push(node.initializer);
+		if (
+			node.kind === SyntaxKind.JsxAttribute &&
+			COPY_ATTRIBUTES.has(node.name.text) &&
+			node.initializer?.kind === SyntaxKind.JsxExpression &&
+			node.initializer.expression
+		)
+			sinks.push(node.initializer.expression);
+		if (
+			node.kind === SyntaxKind.JsxExpression &&
+			node.parent?.kind !== SyntaxKind.JsxAttribute &&
+			node.expression
+		)
+			sinks.push(node.expression);
+		node.forEachChild(visit);
+	};
+	visit(sourceFile);
+	const symbols = checker.getSymbolAtLocation(identifiers);
+	if (!Array.isArray(symbols) || symbols.length !== identifiers.length)
+		throw new Error("Incomplete state-copy symbol lookup");
+	const byNode = new Map(
+		identifiers.map((node, index) => [node, symbols[index]?.id]),
+	);
+	const symbol = (node) => byNode.get(node);
+	const hooks = new Set();
+	const namespaces = new Set();
+	for (const node of imports) {
+		const clause = node.importClause;
+		if (clause?.isTypeOnly) continue;
+		if (clause?.name) namespaces.add(symbol(clause.name));
+		const bindings = clause?.namedBindings;
+		if (bindings?.kind === SyntaxKind.NamespaceImport)
+			namespaces.add(symbol(bindings.name));
+		if (bindings?.kind === SyntaxKind.NamedImports) {
+			for (const specifier of bindings.elements) {
+				if (
+					!specifier.isTypeOnly &&
+					(specifier.propertyName ?? specifier.name).text === "useState"
+				)
+					hooks.add(symbol(specifier.name));
+			}
+		}
+	}
+	// Undefined is not a binding: unresolved names must never match each other.
+	hooks.delete(undefined);
+	namespaces.delete(undefined);
+	const isHook = (callee) =>
+		callee.kind === SyntaxKind.Identifier
+			? hooks.has(symbol(callee))
+			: callee.kind === SyntaxKind.PropertyAccessExpression &&
+				callee.name.text === "useState" &&
+				namespaces.has(symbol(callee.expression));
+	const states = new Map();
+	const aliases = new Map();
+	for (const declaration of declarations) {
+		const initializer = declaration.initializer;
+		if (
+			declaration.name.kind === SyntaxKind.Identifier &&
+			initializer?.kind === SyntaxKind.Identifier &&
+			declaration.parent.flags & NodeFlags.Const
+		) {
+			const id = symbol(declaration.name);
+			const target = symbol(initializer);
+			if (id !== undefined && target !== undefined)
+				aliases.set(id, { target, node: declaration });
+		}
+		if (
+			declaration.name.kind !== SyntaxKind.ArrayBindingPattern ||
+			declaration.name.elements.length !== 2 ||
+			initializer?.kind !== SyntaxKind.CallExpression ||
+			!isHook(initializer.expression)
+		)
+			continue;
+		const [value, setter] = declaration.name.elements;
+		/* An elided slot (`const [, setX] = useState(0)`) comes back from the TS
+		 * API as a BindingElement with NO `name`, so `name?.kind` is required:
+		 * a bare `.kind` crashed the whole checker (exit 2) on valid code. A
+		 * state value that is never bound cannot reach a sink, so skipping the
+		 * declaration loses no candidate. */
+		if (
+			value.kind !== SyntaxKind.BindingElement ||
+			setter.kind !== SyntaxKind.BindingElement ||
+			value.name?.kind !== SyntaxKind.Identifier ||
+			setter.name?.kind !== SyntaxKind.Identifier ||
+			value.dotDotDotToken ||
+			setter.dotDotDotToken ||
+			value.initializer ||
+			setter.initializer
+		)
+			continue;
+		const valueId = symbol(value.name);
+		const setterId = symbol(setter.name);
+		if (valueId === undefined || setterId === undefined)
+			throw new Error("Missing React state binding symbol");
+		states.set(valueId, {
+			setterId,
+			initializer: initializer.arguments[0],
+			writes: [],
+		});
+	}
+	const setters = new Map(
+		[...states.values()].map((state) => [state.setterId, state]),
+	);
+	for (const call of calls) {
+		if (call.expression.kind !== SyntaxKind.Identifier || !call.arguments[0])
+			continue;
+		let id = symbol(call.expression);
+		const pathNodes = [];
+		const visited = new Set();
+		while (aliases.has(id) && !visited.has(id)) {
+			visited.add(id);
+			const alias = aliases.get(id);
+			pathNodes.push(alias.node);
+			id = alias.target;
+		}
+		const state = setters.get(id);
+		if (state) state.writes.push({ expression: call.arguments[0], pathNodes });
+	}
+	const candidates = [];
+	const output = (node, sink) => {
+		if (node.kind === SyntaxKind.Identifier) {
+			const state = states.get(symbol(node));
+			if (!state) return;
+			const origins = [
+				{
+					expression: state.initializer,
+					kind: "state:initializer",
+					pathNodes: [],
+				},
+				...state.writes.map((write) => ({ ...write, kind: "state:setter" })),
+			];
+			for (const origin of origins) {
+				if (!origin.expression) continue;
+				for (const literal of staticTextNodes(origin.expression))
+					candidates.push({
+						literal,
+						sink,
+						kind: origin.kind,
+						pathNodes: origin.pathNodes,
+					});
+			}
+			return;
+		}
+		switch (node.kind) {
+			case SyntaxKind.ParenthesizedExpression:
+			case SyntaxKind.AsExpression:
+			case SyntaxKind.SatisfiesExpression:
+			case SyntaxKind.NonNullExpression:
+				output(node.expression, sink);
+				break;
+			case SyntaxKind.ConditionalExpression:
+				output(node.whenTrue, sink);
+				output(node.whenFalse, sink);
+				break;
+			case SyntaxKind.TemplateExpression:
+				for (const span of node.templateSpans) output(span.expression, sink);
+				break;
+			case SyntaxKind.BinaryExpression: {
+				const operator = node.operatorToken.kind;
+				if (operator === SyntaxKind.AmpersandAmpersandToken)
+					output(node.right, sink);
+				if (
+					[
+						SyntaxKind.PlusToken,
+						SyntaxKind.BarBarToken,
+						SyntaxKind.QuestionQuestionToken,
+					].includes(operator)
+				) {
+					output(node.left, sink);
+					output(node.right, sink);
+				}
+				break;
+			}
+		}
+	};
+	for (const sink of sinks) output(sink, sink);
+	return candidates;
+}
+
+/**
  * Find the additional copy shapes in one parsed file. `addedLines === null`
  * means a new/untracked file, for which every finding is new by construction.
  *
@@ -597,7 +808,7 @@ function nearestCopyDeclaration(identifier) {
 export function findAddedCopyViolations(
 	sourceFile,
 	addedLines,
-	{ templateSinks = false, restore } = {},
+	{ templateSinks = false, restore, stateCandidates = [] } = {},
 ) {
 	const pragmas = pragmaCoveredLines(sourceFile);
 	const findings = [];
@@ -779,6 +990,29 @@ export function findAddedCopyViolations(
 		node.forEachChild(visit);
 	};
 	visit(sourceFile);
+	// Raw-token equality cannot prove an old technical value was already copy.
+	// State paths therefore never use record()'s RESTORED shortcut.
+	const stateSeen = new Set();
+	for (const { literal, sink, kind, pathNodes } of stateCandidates) {
+		const text = collapse(literal.text);
+		if (!LETTER_RE.test(text) || exempt(literal)) continue;
+		const path = [literal, sink, ...pathNodes];
+		let addedLine;
+		for (const node of path) {
+			const [start, end] = lineSpan(sourceFile, node);
+			for (let line = start; line <= end; line++) {
+				if (isAdded(line)) {
+					addedLine = line;
+					break;
+				}
+			}
+			if (addedLine !== undefined) break;
+		}
+		const key = `${literal.getStart(sourceFile)}:${kind}`;
+		if (addedLine === undefined || stateSeen.has(key)) continue;
+		stateSeen.add(key);
+		findings.push({ line: addedLine, kind, text });
+	}
 	return findings.sort(
 		(a, b) => a.line - b.line || a.kind.localeCompare(b.kind),
 	);
@@ -909,6 +1143,9 @@ export function runAddedCheck({
 					/* The template sinks are the ratchet's stated boundary, so they
 					 * follow the SAME surface the ratchet's data shapes do. */
 					templateSinks: onDataShapeSurface(rel),
+					stateCandidates: onDataShapeSurface(rel)
+						? findStateCopyCandidates(sourceFile, project.checker)
+						: [],
 					restore: restoreTester,
 				},
 			)) {

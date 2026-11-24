@@ -24,6 +24,8 @@ import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
 import { TeamBridgeMessageLinkPreviews } from "./link-preview/team-bridge-message-link-previews";
 import { useMessageMentions } from "./mentions/use-message-mentions";
+import { TeamBridgeAlertCardContainer } from "./team-bridge-alert-card";
+import { teamBridgeAlertCard } from "./team-bridge-alert-model";
 import {
 	type TeamBridgeArrivalIdentity,
 	teamBridgeArrivalStreamKey,
@@ -99,7 +101,7 @@ import { useTimelineWindow } from "./use-team-bridge-timeline-window";
  *
  * NULL MEANS UNKNOWN, AND LOOKS IT. When nothing names the sender (directory
  * still loading or failed, a member who left, the legacy "Member" label the
- * hub stored), the row says "Unknown person" / "Unknown agent" in a muted
+ * hub stored), the row says "Unknown person" / "Chief of staff" in a muted
  * italic with a neutral glyph. An initial avatar under a plausible word is what
  * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
@@ -434,8 +436,10 @@ export const TeamBridgeMessageList: FC<{
 	const firstUnreadId = chronological(unseen)[0]?.id;
 	const eventLabel: TeamBridgeEventLabel = (party) =>
 		labelFor(party) ??
+		/* An agent on Team Bridge is a chief of staff: unnamed, it is still
+		   that, never "Unknown agent" (operator report, 2026-11-23). */
 		(party.kind === "agent"
-			? t("ui.teamBridge.sender.unknown_agent")
+			? t("ui.teamBridge.chief.fallback")
 			: t("ui.teamBridge.sender.unknown_person"));
 	/*
 	 * ANCHORS COME FROM SERVER ROWS ONLY (review round 5, M1). A local row carries a
@@ -511,14 +515,14 @@ export const TeamBridgeMessageList: FC<{
 							 messages" always shows its author, as Slack and Discord do
 						  (agent review round 1, m1). */
 					continuation={item.continuation && item.message.id !== firstUnreadId}
-					/* The owner line must not use the directory's chief-of-staff
-					   alias. Resolve as a human with NO stored alias fallback; the
-					   trusted roster/self account may still name the owner. */
-					label={labelFor(
-						teamBridgeSenderPresentation(item.message) === "agent"
-							? { ...item.message.sender, kind: "human", display_label: "" }
-							: item.message.sender,
-					)}
+					/* THE AGENT IS THE AUTHOR (operator report, 2026-11-23). An
+					   agent row is named exactly as the rail's Chiefs row names it -
+					   "Santa Claus (Ben Tran)" via `participantLabel` - with the
+					   owner as the secondary part. PR #2035 resolved agents as their
+					   human owner here ("Ben Tran") and moved the agent's name to a
+					   session line the core does not populate yet, so every agent
+					   message read as the human's. */
+					label={labelFor(item.message.sender)}
 					member={profileFor?.(item.message.sender)}
 					profileFor={profileFor}
 					onMessagePerson={onMessagePerson}
@@ -1134,10 +1138,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const generic = app || presentation === "unknown";
 	const known = generic
 		? storedLabel(message.sender.display_label)
-		: agent
-			? (storedLabel(callerMember?.display_label ?? "") ??
-				storedLabel(callerLabel ?? ""))
-			: callerLabel;
+		: callerLabel;
 	const member = generic ? undefined : callerMember;
 	const label =
 		known ??
@@ -1145,7 +1146,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 			? t("ui.teamBridge.sender.unknown_app")
 			: presentation === "unknown"
 				? t("ui.teamBridge.sender.unknown_sender")
-				: t("ui.teamBridge.sender.unknown_person"));
+				: agent
+					? /* A chief of staff nobody could name is still a chief of
+						   staff: "Chief of staff", never "Unknown agent" (operator
+						   report, 2026-11-23). */
+						t("ui.teamBridge.chief.fallback")
+					: t("ui.teamBridge.sender.unknown_person"));
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
 	const clock = valid
@@ -1164,6 +1170,65 @@ const MessageRowView: FC<MessageRowProps> = ({
 			(!agent || member.agent),
 	);
 	const messagePerson = () => onMessagePerson?.(message.sender);
+	/*
+	 * AN ALERT ROOT IS A CARD (Team Integrations RFC §10 item 4). Only an
+	 * integration-origin root carrying `alert_meta` qualifies; its deterministic
+	 * body still renders through the one prose renderer, inside the card.
+	 */
+	const alertCard = teamBridgeAlertCard(message);
+	const bodyNode: ReactNode =
+		message.body === null ||
+		(decoration?.withheldCopy !== undefined &&
+			message.body.trim() === "" &&
+			(message.attachments?.length ?? 0) === 0 &&
+			decoration.attachments === undefined) ? (
+			<p className="text-[14px] text-ink-dim italic">
+				{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
+			</p>
+		) : message.body.trim() === "" &&
+			((message.attachments?.length ?? 0) > 0 ||
+				decoration?.attachments !== undefined) ? null : (
+			/* An image-only message has an empty body: no empty prose block. */
+			/*
+			 * PENDING IS A COLOUR, NOT A FADE (design round 1, D3). The clock at
+			 * `opacity-50` measured 2.15:1 light / 2.52:1 dark - under the floor for
+			 * 11-12px text - and `docs/branding.md` says a state changes ink, never
+			 * opacity. The BODY carries it instead, in `ink-muted` (8.67:1 light,
+			 * 7.85:1 dark), which also survives a continuation row where the clock
+			 * only shows on hover. It returns to `ink` in one transition on confirm.
+			 */
+			/*
+			 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
+			 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
+			 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
+			 * `@layer utilities` - so an unlayered rule wins no matter what order the
+			 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
+			 * pending row (measured `rgb(56,58,66)`), which is why the state was
+			 * invisible. The value is driven on the row instead, scoped to it: the
+			 * stylesheet keeps styling every other markdown surface in the app.
+			 */
+			<InlineDataBody
+				body={message.body}
+				renderText={(text) => (
+					<TeamBridgeMarkdown
+						/* `transition-colors` is restored rather than the comment rewritten: the
+						   comment describes a settle, and no rule on `.lo-markdown` competes with a
+						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
+						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
+						   not read as motion, which is what a 150 ms colour fade gives. */
+						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+						style={{
+							...(delivery?.status === "pending"
+								? { "--md-ink": "var(--lo-ink-muted)" }
+								: {}),
+						}}
+						mentions={mentionRuns}
+					>
+						{text}
+					</TeamBridgeMarkdown>
+				)}
+			/>
+		);
 	const avatar = member ? (
 		<TeamBridgeProfileCard
 			member={member}
@@ -1376,7 +1441,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 						{decoration?.badge}
 					</div>
 				)}
-				{!continuation && <TeamBridgeSenderProvenance message={message} />}
+				{!continuation && (
+					<TeamBridgeSenderProvenance
+						message={message}
+						shownNames={[label, member?.agent?.name]}
+					/>
+				)}
 				{continuation && decoration?.badge && (
 					<div className="flex pb-0.5">{decoration.badge}</div>
 				)}
@@ -1384,57 +1454,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 				    rather than rendering an empty row. A caller with its own absence
 				    copy (the audit) gets the same placeholder for a BLANK body with
 				    nothing attached; see `withheldCopy`. */}
-				{message.body === null ||
-				(decoration?.withheldCopy !== undefined &&
-					message.body.trim() === "" &&
-					(message.attachments?.length ?? 0) === 0 &&
-					decoration.attachments === undefined) ? (
-					<p className="text-[14px] text-ink-dim italic">
-						{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
-					</p>
-				) : message.body.trim() === "" &&
-					((message.attachments?.length ?? 0) > 0 ||
-						decoration?.attachments !== undefined) ? null : (
-					/* An image-only message has an empty body: no empty prose block. */
-					/*
-					 * PENDING IS A COLOUR, NOT A FADE (design round 1, D3). The clock at
-					 * `opacity-50` measured 2.15:1 light / 2.52:1 dark - under the floor for
-					 * 11-12px text - and `docs/branding.md` says a state changes ink, never
-					 * opacity. The BODY carries it instead, in `ink-muted` (8.67:1 light,
-					 * 7.85:1 dark), which also survives a continuation row where the clock
-					 * only shows on hover. It returns to `ink` in one transition on confirm.
-					 */
-					/*
-					 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
-					 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
-					 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
-					 * `@layer utilities` - so an unlayered rule wins no matter what order the
-					 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
-					 * pending row (measured `rgb(56,58,66)`), which is why the state was
-					 * invisible. The value is driven on the row instead, scoped to it: the
-					 * stylesheet keeps styling every other markdown surface in the app.
-					 */
-					<InlineDataBody
-						body={message.body}
-						renderText={(text) => (
-							<TeamBridgeMarkdown
-								/* `transition-colors` is restored rather than the comment rewritten: the
-						   comment describes a settle, and no rule on `.lo-markdown` competes with a
-						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
-						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
-						   not read as motion, which is what a 150 ms colour fade gives. */
-								className="team-bridge-message-body text-[14px] transition-colors duration-fast"
-								style={{
-									...(delivery?.status === "pending"
-										? { "--md-ink": "var(--lo-ink-muted)" }
-										: {}),
-								}}
-								mentions={mentionRuns}
-							>
-								{text}
-							</TeamBridgeMarkdown>
-						)}
+				{alertCard ? (
+					<TeamBridgeAlertCardContainer
+						card={alertCard}
+						locale={locale}
+						body={bodyNode}
 					/>
+				) : (
+					bodyNode
 				)}
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when
@@ -1451,7 +1478,10 @@ const MessageRowView: FC<MessageRowProps> = ({
 				    account this subtree was rendered under as their receipt - the value
 				    the attachment route below already carries, never a default. A null
 				    body is a withheld message, and nothing withheld is previewed. */}
-				{message.body !== null && (
+				{/* No unfurls on an app's post (RFC S-35): vendor text is written by
+				    whoever can influence a monitor, and a preview would fetch and
+				    dress up a URL nobody chose. The card draws only verified hosts. */}
+				{message.body !== null && !app && (
 					<TeamBridgeMessageLinkPreviews
 						body={message.body}
 						expectedAccountId={accountId}

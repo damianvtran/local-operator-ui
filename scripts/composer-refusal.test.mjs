@@ -494,7 +494,13 @@ test("the key handler refuses the keystroke BEFORE its Enter branch", () => {
 	const bodyEnd = source.indexOf("handleKeyDown(event);", from);
 	const body = source.slice(from, bodyEnd);
 	const guard = body.indexOf("if (isInputDisabled) return;");
-	const enter = body.indexOf('event.key === "Enter"');
+	/*
+	 * THE ENTER BRANCH, via the one predicate since S2. The handler no longer
+	 * writes `event.key === "Enter"` — `sendKeyOf` is the branch — so the pin
+	 * looks for the predicate call. The order the pin exists for is unchanged:
+	 * the refusal stands before the branch that sends.
+	 */
+	const enter = body.indexOf("sendKeyOf(");
 	assert.notEqual(
 		guard,
 		-1,

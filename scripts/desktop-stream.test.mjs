@@ -332,13 +332,21 @@ test("the open-frame flag rides the subscribe only on the renderer's own `true` 
 	try {
 		const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
 		for (const openFrame of [true, false, undefined, "1"]) {
-			relay.subscribe({ sessionId: SESSION, openFrame }, () => {});
+			relay.subscribe(
+				{ sessionId: SESSION, openFrame, inlineUi: openFrame },
+				() => {},
+			);
 			await sleep(40);
 		}
 		assert.deepEqual(
 			urls.map((url) => url.includes("open_frame=1")),
 			[true, false, false, false],
 			"only the literal `true` asks for the open frame",
+		);
+		assert.deepEqual(
+			urls.map((url) => new URL(url).searchParams.get("inline_ui")),
+			["1", null, null, null],
+			"legacy and invalid flags do not alter the SSE query",
 		);
 		assert.ok(
 			urls.every((url) => url.includes("frontend_replace=1")),

@@ -2700,10 +2700,16 @@ test("one rule decides what the same message means, and the composer keeps no se
 		"src/renderer/src/shared/hooks/use-message-input.ts",
 		"utf8",
 	);
+	/*
+	 * WHITESPACE-TOLERANT since the busy-delivery slice (S2): the hook's
+	 * `handleSubmit` gained an options parameter, and the formatter reflowed
+	 * this statement across lines. The pin is about the READS, not the layout,
+	 * so it matches the two fragments rather than one formatting.
+	 */
 	assert.match(
 		hook,
-		/const staged = conversationId \? stagedPayloadOf\(conversationId\) : undefined;/,
-		"the submit no longer reads its payload from the row that holds it, so what it sends and what it shows can disagree",
+		/const staged = conversationId\s*\? stagedPayloadOf\(conversationId\)\s*: undefined;/,
+		"the submit no longer reads its payload from the following the row that holds it, so what it sends and what it shows can disagree",
 	);
 	assert.match(
 		hook,
@@ -5745,7 +5751,10 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 	);
 });
 
-test("the user's echo fades INTO position once; every other arriving row stays ink only (operator request, 2026-11-11)", () => {
+const RE_TRANSCRIPT_ROW_ARRIVAL =
+	/entered\.current &&\s*record\.kind !== "assistant" &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/;
+
+test("the user's echo rises once; passive rows fade in and assistant parents never animate", () => {
 	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
 	const rule = (selector) => {
 		const at = css.indexOf(`${selector} {`);
@@ -5783,15 +5792,18 @@ test("the user's echo fades INTO position once; every other arriving row stays i
 		css.indexOf(".lo-transcript-arrival {"),
 	);
 	assert.doesNotMatch(plain, /transform/);
-	// Only a USER row takes the rise, and the class is fixed at mount (`entered`
-	// is a ref read once), so owner coalescing cannot replay it.
+	// Only a user row rises. Passive rows fade in, but an assistant parent
+	// must never fade: that would dim text already painted while the fresh ink
+	// animates below it. The mount ref prevents owner coalescing from replaying
+	// the entrance; transcript-arrival-cold-open.test.mjs exercises the DOM.
 	const row = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
 	assert.match(
 		row,
-		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
+		RE_TRANSCRIPT_ROW_ARRIVAL,
+		"users rise, passive arrivals fade, and assistant parents receive neither class",
 	);
 	assert.match(row, /const entered = useRef\(enter\);/);
 });
@@ -5825,9 +5837,11 @@ test("a new chat's first send changes the header once: no pencil jump, no skelet
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
 	// (a) The pencil's 20px box is held, aria-hidden, until the pencil mounts.
+	// Not in a workspace tab (PR #2043): rename lives in the actions menu there,
+	// so no pencil will ever mount and the box is not held.
 	assert.match(
 		header,
-		/\) : renameSlotReserved \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
+		/\) : renameSlotReserved && !titleInWorkspaceTab \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
 	);
 	assert.match(
 		page,
@@ -5895,4 +5909,125 @@ test("the transcript column's collapse flip never transitions, so reduced motion
 		/ref=\{containerRef\}\s*data-lo-canonical-transcript=\{true\}/,
 		"the attribute the sheet keys the list on is the scroller's own",
 	);
+});
+
+/**
+ * THE LOCAL HORIZON'S FRONTIER IS CAPTURED WHEN A PAGE ARRIVES (PR #2069,
+ * agent review round 1, R1/R2; operator report 2026-11-23, "I can't see any
+ * local messages past 21 hours, everything past that point is all remote").
+ *
+ * The sidebar withholds non-running remote rows at or below `head.frontierMs`.
+ * Two ways that bound broke when it was read from the live rows instead:
+ * touching the frontier conversation jumped its clock to now and hid every
+ * remote row (R2), and an all-active page (core's active band sorts first
+ * whatever its age) put the bound far in the past (R1). Both are store facts,
+ * so they are pinned on the store's own answers here.
+ */
+test("the catalogue frontier is captured per page, skips the active band and survives a touch", async () => {
+	reset();
+	const NOW = 1_800_000_000;
+	const wire = (id, hoursAgo, extra = {}) => ({
+		id,
+		name: id,
+		mtime: NOW - hoursAgo * 3600,
+		created_at: NOW - hoursAgo * 3600 - 60,
+		locality: "local",
+		...extra,
+	});
+	store.setState({
+		catalogueActivityHead: true,
+		head: {
+			tailIds: [],
+			pageIds: [],
+			nextCursor: null,
+			tailCursor: null,
+			tailStarted: false,
+			frontierMs: null,
+			complete: false,
+			loading: false,
+			error: null,
+			at: 0,
+		},
+	});
+	// Page one: an old unread completion leads (core's active band), then idle
+	// rows 1h..3h, then a pinned off_page extra and a remote row.
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [
+			wire("unseen-old", 300, { active: true, status: { code: "complete" } }),
+			wire("idle-1", 1),
+			wire("idle-2", 2),
+			wire("idle-3", 3),
+			wire("pinned-old", 400, { pinned: true }),
+			wire("peer", 500, { locality: "remote", owner_device: "peer-1" }),
+		],
+		truncated: true,
+		next_cursor: "cursor-1",
+	});
+	await store.getState().fetchSessions(50);
+	assert.equal(
+		store.getState().head.frontierMs,
+		(NOW - 3 * 3600) * 1000,
+		"the frontier is the page's last IDLE local row: active, pinned and remote rows are skipped",
+	);
+
+	// R2: the frontier conversation is touched (a live upsert moves its clock
+	// to now). The captured frontier must not follow it.
+	store.setState((state) => ({
+		sessions: state.sessions.map((row) =>
+			row.session_id === "idle-3" ? { ...row, updated_at: NOW } : row,
+		),
+	}));
+	assert.equal(
+		store.getState().head.frontierMs,
+		(NOW - 3 * 3600) * 1000,
+		"touching the frontier row does not move the horizon to now",
+	);
+
+	// R1: a tail page made only of active-band rows carries no bound, so the
+	// deeper-page frontier stays the last one that did.
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [
+			wire("attached-old", 900, { active: true }),
+			wire("unseen-older", 950, { active: true }),
+		],
+		next_cursor: "cursor-2",
+	});
+	await store.getState().fetchCatalogueTail();
+	assert.equal(store.getState().head.frontierMs, (NOW - 3 * 3600) * 1000);
+
+	// An idle tail page moves the frontier deeper, and a later page-one answer
+	// (the poll) cannot move it back: it follows `tailCursor`'s seeding rule.
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [wire("idle-40", 40), wire("idle-41", 41)],
+		next_cursor: "cursor-3",
+	});
+	await store.getState().fetchCatalogueTail();
+	assert.equal(store.getState().head.frontierMs, (NOW - 41 * 3600) * 1000);
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [wire("idle-3", 0), wire("idle-1", 1)],
+		truncated: true,
+		next_cursor: "cursor-1",
+	});
+	await store.getState().fetchSessions(50);
+	assert.equal(
+		store.getState().head.frontierMs,
+		(NOW - 41 * 3600) * 1000,
+		"a page-one poll after an extension keeps the deeper frontier",
+	);
+
+	// A head page that is ALL active band bounds nothing.
+	store.setState((state) => ({
+		head: { ...state.head, tailStarted: false, frontierMs: 1 },
+	}));
+	globalThis.__canonicalRequest = async () => ({
+		sessions: [
+			wire("busy", 0, { active: true, status: { code: "busy" } }),
+			wire("unseen", 200, { active: true }),
+		],
+		truncated: true,
+		next_cursor: "cursor-1",
+	});
+	await store.getState().fetchSessions(50);
+	assert.equal(store.getState().head.frontierMs, null);
+	store.setState({ catalogueActivityHead: false });
 });

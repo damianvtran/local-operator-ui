@@ -29,8 +29,10 @@ import {
 	LogOut,
 	MoreHorizontal,
 	Pencil,
+	ShieldCheck,
 	UserPlus,
 	Users,
+	Webhook,
 } from "lucide-react";
 import { type FC, Fragment, type ReactNode } from "react";
 import type { TeamBridgeNotify } from "../../../../shared/team-bridge-contract";
@@ -86,6 +88,10 @@ export type TeamBridgeConversationMenuHandlers = {
 	onAgentNotifyChange?: (notify: TeamBridgeNotify) => void;
 	onViewMembers?: () => void;
 	onAddMembers?: () => void;
+	/** Opens the console's integrations page (org owner/admin only). */
+	onManageApps?: () => void;
+	/** Opens the read-only Responder dialog for the reader's own agent. */
+	onResponder?: () => void;
 	/** Opens the rename dialog (only offered with `can_administer`). */
 	onRename?: () => void;
 	onJoin?: () => void;
@@ -188,12 +194,35 @@ export const TeamBridgeConversationMenuItems: FC<{
 						onSelect={handlers.onAddMembers}
 					/>
 				);
+			case "manage_apps":
+				return (
+					<ActionRow
+						testId={item.id}
+						icon={<Webhook size={16} aria-hidden="true" />}
+						label={t("ui.teamBridge.alerts.apps.menu")}
+						onSelect={handlers.onManageApps}
+					/>
+				);
+			case "responder":
+				return (
+					<ActionRow
+						testId={item.id}
+						icon={<ShieldCheck size={16} aria-hidden="true" />}
+						label={t("ui.teamBridge.alerts.responder.menu")}
+						onSelect={handlers.onResponder}
+					/>
+				);
 			case "rename":
 				return (
 					<ActionRow
 						testId={item.id}
 						icon={<Pencil size={16} aria-hidden="true" />}
-						label={t("ui.teamBridge.rename.menu", { kind: item.kind })}
+						label={t(
+							item.edit
+								? "ui.teamBridge.edit.menu"
+								: "ui.teamBridge.rename.menu",
+							{ kind: item.kind },
+						)}
 						onSelect={handlers.onRename}
 					/>
 				);

@@ -43,7 +43,6 @@ import {
 } from "@shared/hooks/use-recording-shortcut";
 import { subscribeLocale } from "@shared/i18n";
 import {
-	END_EDIT_KEYS,
 	MODIFIER_ONLY_KEYS,
 	NAVIGATION_KEYS,
 	chordFromEvent,
@@ -52,6 +51,7 @@ import {
 	captureRefusal,
 	chordGlyph,
 	effectiveChord,
+	isSendAction,
 } from "@shared/keymap/keymap-chord";
 import {
 	KEYMAP_ACTIONS,
@@ -90,6 +90,31 @@ const rowLabel = (action: KeymapAction): string => {
 			return t("ui.settings.shortcuts.row.code_review");
 		case "panel.projects":
 			return t("ui.settings.shortcuts.row.linked_projects");
+		case "composer.send_steer":
+			return t("ui.settings.shortcuts.action.send_steer");
+		case "composer.send_queue":
+			return t("ui.settings.shortcuts.action.send_queue");
+		case "composer.send_both":
+			return t("ui.settings.shortcuts.action.send_both");
+	}
+};
+
+/**
+ * The send row's one-line help: which mode the key selects. The backend rows
+ * carry the same three sentences as their audited helps; the desktop rows
+ * print the short half, because the backend help's terminal caveat does not
+ * apply to a desktop key.
+ */
+const rowHelp = (action: KeymapAction): string | null => {
+	switch (action.id) {
+		case "composer.send_steer":
+			return t("ui.settings.shortcuts.row_help.send_steer");
+		case "composer.send_queue":
+			return t("ui.settings.shortcuts.row_help.send_queue");
+		case "composer.send_both":
+			return t("ui.settings.shortcuts.row_help.send_both");
+		default:
+			return null;
 	}
 };
 
@@ -163,6 +188,13 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 	const platform = useMemo(rendererPlatform, []);
 	const effective = effectiveChord(action.id, bindings);
 	const label = rowLabel(action);
+	const help = rowHelp(action);
+	// Reset after Clear on a row whose default is unbound does nothing visible:
+	// the override is already the no-chord state it restores to. The button
+	// would reappear and vanish with no change in between.
+	const showReset =
+		override !== undefined &&
+		!(action.defaultChord === null && override === null);
 	return (
 		<div
 			data-search-row={`keyboard.${action.id}`}
@@ -176,6 +208,13 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 				<Input
 					id={fieldId}
 					readOnly
+					/*
+					 * The chord cap reads left-to-right in every locale: on a
+					 * right-to-left surface the glyph `⌘Enter` would otherwise
+					 * reorder to `Enter⌘`, so the direction is pinned to `ltr`
+					 * here rather than inherited from the page.
+					 */
+					dir="ltr"
 					value={
 						effective === null
 							? t(
@@ -194,6 +233,9 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					 * even after a wording pass.
 					 */
 					data-shortcut-action={action.id}
+					/* Marked for the page's Esc handler (`settings-escape.ts`): the recorder
+					   owns a press that cancels it, and the field stops the bubble below. */
+					data-shortcut-recorder=""
 					ref={fieldRef}
 					className={cn(
 						"w-52",
@@ -221,8 +263,30 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						 * the caret to `<body>` and the next Tab restarted at the top of the
 						 * page, while blur-and-refocus would re-arm the recording and make
 						 * Escape a visible no-op. The next captured key re-arms the cue.
+						 * A bare Enter ends the edit on every row — including the send
+						 * rows, where Enter is the plain send and a bare press can never be
+						 * "the chord this row answers". Only a MODIFIED Enter reaches the
+						 * recorder below, where the send rows accept it and the panel rows
+						 * hear the Sending-rows sentence (`panel_enter`).
 						 */
-						if (END_EDIT_KEYS.has(event.key)) {
+						if (
+							event.key === "Escape" ||
+							event.key === "Esc" ||
+							(event.key === "Enter" &&
+								!event.ctrlKey &&
+								!event.metaKey &&
+								!event.altKey &&
+								!event.shiftKey)
+						) {
+							/*
+							 * ESC STOPS HERE (the page's close handler is an ancestor). The press is
+							 * the recorder's cancel, not a request to leave Settings - and Enter,
+							 * which also ends the edit, is left to bubble because it is still the
+							 * composer's plain send elsewhere in the page.
+							 */
+							if (event.key === "Escape" || event.key === "Esc") {
+								event.stopPropagation();
+							}
 							setRecording(false);
 							setRefusal(null);
 							return;
@@ -309,7 +373,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						{t("ui.settings.shortcuts.keyboard_shortcuts_section.clear")}
 					</Button>
 				)}
-				{override !== undefined && (
+				{showReset && (
 					<Button
 						variant="secondary"
 						size="sm"
@@ -326,11 +390,14 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					</Button>
 				)}
 			</div>
+			{help !== null && <span className="text-meta text-ink-dim">{help}</span>}
 			{recording && (
 				<span className="text-meta text-ink-dim">
-					{t(
-						"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
-					)}
+					{isSendAction(action.id)
+						? t("ui.settings.shortcuts.capture.send_prompt")
+						: t(
+								"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
+							)}
 				</span>
 			)}
 			{refusal !== null && (
@@ -385,9 +452,26 @@ export const KeyboardShortcutsSection: FC<{
 					{t("ui.settings.shortcuts.category.panels")}
 				</h3>
 				<div className="flex flex-col gap-4">
-					{KEYMAP_ACTIONS.map((action) => (
+					{KEYMAP_ACTIONS.filter((a) => a.scope === "app").map((action) => (
 						<ShortcutRow key={action.id} action={action} />
 					))}
+				</div>
+				<div className="flex flex-col gap-4 pt-2">
+					<div className="flex flex-col gap-1">
+						<h3 className="text-body-sm font-medium text-ink">
+							{t("ui.settings.shortcuts.category.sending")}
+						</h3>
+						<p className="max-w-2xl text-body-sm text-ink-muted">
+							{t("ui.settings.shortcuts.category.sending_description")}
+						</p>
+					</div>
+					<div className="flex flex-col gap-4">
+						{KEYMAP_ACTIONS.filter((a) => a.scope === "composer").map(
+							(action) => (
+								<ShortcutRow key={action.id} action={action} />
+							),
+						)}
+					</div>
 				</div>
 			</div>
 		</SettingsSection>

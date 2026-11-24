@@ -89,6 +89,30 @@ const bundle = await build({
 	 * module graph reads it while it is being evaluated.
 	 */
 	define: { "import.meta.env": "globalThis.__RIG_ENV__" },
+	plugins: [
+		{
+			// `use-message-input` reads `shortcutBindings` off the preferences store
+			// (the send chords). Its theme import pulls in MUI, whose directory import
+			// Node's ESM loader refuses from a bundle that leaves packages external;
+			// the shipped initial state is empty, so every action dispatches on its
+			// registry default. Same stub as echo-delivery.test.mjs.
+			name: "ui-preferences-stub",
+			setup(builder) {
+				builder.onResolve(
+					{ filter: /^@shared\/store\/ui-preferences-store$/ },
+					() => ({ path: "ui-preferences", namespace: "ui-preferences-stub" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "ui-preferences-stub" },
+					() => ({
+						contents: `const state = { shortcutBindings: {} };
+export const useUiPreferencesStore = { getState: () => state, subscribe: () => () => {} };`,
+						loader: "js",
+					}),
+				);
+			},
+		},
+	],
 	write: false,
 });
 const bundlePath = new URL(

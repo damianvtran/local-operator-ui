@@ -1,0 +1,231 @@
+{
+	"ui.chat.ask_attest.action.confirm": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button on an ask card, beside the primary Send answer, that sends the answer only after a native confirmation so it counts as the person's own approval",
+		"tone": "names the outcome (confirm, then send); ends with an ellipsis because a confirmation follows; never the word 'operator'"
+	},
+	"ui.chat.ask_attest.action.confirm_change": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "the same button on the change-answer row: changes the recorded answer only after a native confirmation",
+		"tone": "ends with an ellipsis because a confirmation follows"
+	},
+	"ui.chat.ask_attest.action.confirming": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "the confirm button's label while the native confirmation sheet is open",
+		"tone": "progress; short; ends with an ellipsis"
+	},
+	"ui.chat.ask_attest.action.hint": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "one quiet line under an ask card's buttons explaining that only a confirmed answer counts as approval for deleting or moving files",
+		"tone": "plain 'you' voice; one sentence; no word 'operator'"
+	},
+	"ui.chat.ask_attest.refusal.answer_unconfirmed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. Where the sentence names a button, use that button's own translated label (action.confirm without its ellipsis; ui.chat.asks.send_answer) in the locale's quote marks.",
+		"placeholders": {},
+		"role": "inline message on the change row when the recorded answer was sent without confirming: a confirmed change cannot make it count",
+		"tone": "what happened, then what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.busy": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the agent was busy and did not take the confirmed answer",
+		"tone": "what happened, then what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.changed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the question changed or closed during confirmation",
+		"tone": "what happened, what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.devtools": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when DevTools or a debugger was open during confirmation",
+		"tone": "an instruction; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.expired": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the question expired before the person confirmed; it cannot be answered any more",
+		"tone": "what happened; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.not_consent_bearing": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. Where the sentence names a button, use that button's own translated label (action.confirm without its ellipsis; ui.chat.asks.send_answer) in the locale's quote marks.",
+		"placeholders": {},
+		"role": "inline message when the answer WAS sent but was not recorded as confirmed, so it will not count as approval",
+		"tone": "what happened, then what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.not_eligible": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when this build or launch can never confirm answers; points to answering in the terminal running the conversation",
+		"tone": "leads with what works; says an unconfirmed send will not count as approval; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.not_running": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message under an ask card when the confirmation could not reach the conversation because it is not running",
+		"tone": "leads with what works; says an unconfirmed send will not count as approval; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.refused": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the conversation rejected the confirmation",
+		"tone": "leads with what works; says an unconfirmed send will not count as approval; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.retry": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "generic inline message when the confirmation did not complete",
+		"tone": "short; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.secret": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. Where the sentence names a button, use that button's own translated label (action.confirm without its ellipsis; ui.chat.asks.send_answer) in the locale's quote marks.",
+		"placeholders": {},
+		"role": "inline message when the answer includes a hidden (secret) value, which the confirmation cannot show",
+		"tone": "what happened, then what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.sheet_open": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when another confirmation sheet is already open",
+		"tone": "an instruction; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.too_long": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when typed text is too long to show in full on the confirmation sheet",
+		"tone": "what happened, then what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.window": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the window was hidden or unfocused during confirmation",
+		"tone": "an instruction; ends with a full stop"
+	},
+	"ui.chat.ask_attest.sheet.agent": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"agent": "the agent's name"
+		},
+		"role": "line on the confirmation sheet naming the agent that asked the question",
+		"tone": "a label then the name"
+	},
+	"ui.chat.ask_attest.sheet.answer_line": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"question": "the agent's question text",
+			"answer": "the chosen answer(s)"
+		},
+		"role": "one line pair in the confirmation sheet: the agent's question, then the chosen answer on a new line after an arrow",
+		"tone": "keep the line break and the arrow"
+	},
+	"ui.chat.ask_attest.sheet.button.cancel": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "the sheet's cancel button",
+		"tone": "one verb"
+	},
+	"ui.chat.ask_attest.sheet.button.change": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. Cancel is deliberately the sheet's default button (Return and Escape cancel), as on the pairing sheet.",
+		"placeholders": {},
+		"role": "the sheet's confirm button when changing an answer: repeats the sheet question's verb",
+		"tone": "short verb phrase; matches ui.chat.asks.change_answer"
+	},
+	"ui.chat.ask_attest.sheet.button.send": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. Cancel is deliberately the sheet's default button (Return and Escape cancel), as on the pairing sheet.",
+		"placeholders": {},
+		"role": "the sheet's confirm button when sending an answer: repeats the sheet question's verb",
+		"tone": "one verb"
+	},
+	"ui.chat.ask_attest.sheet.consent_note": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "last paragraph of the confirmation sheet explaining what confirming means",
+		"tone": "plain, reassuring; ends with a full stop"
+	},
+	"ui.chat.ask_attest.sheet.conversation": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"title": "the conversation's title",
+			"session": "the 12-character session id"
+		},
+		"role": "first line on the confirmation sheet naming the conversation the answer is for",
+		"tone": "a label, the title, then the session id in parentheses"
+	},
+	"ui.chat.ask_attest.sheet.conversation_untitled": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"session": "the 12-character session id"
+		},
+		"role": "first line on the confirmation sheet when the conversation has no title",
+		"tone": "a label then the session id"
+	},
+	"ui.chat.ask_attest.sheet.message_respond": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "title of the macOS confirmation sheet shown before an answer to an agent's question is sent as the operator's own",
+		"tone": "a short yes/no question"
+	},
+	"ui.chat.ask_attest.sheet.message_revise": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "title of the macOS confirmation sheet shown before a changed answer replaces the operator's earlier one",
+		"tone": "a short yes/no question"
+	},
+	"ui.chat.ask_attest.sheet.no_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "shown when a question carries no answer value",
+		"tone": "short, in parentheses"
+	},
+	"ui.chat.ask_attest.sheet.secret_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "shown instead of a secret answer so it never appears on screen",
+		"tone": "short, in parentheses"
+	},
+	"ui.chat.ask_attest.sheet.typed_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"value": "the text the operator typed"
+		},
+		"role": "wraps an answer the operator typed themselves (not one of the offered options) in quotation marks",
+		"tone": "use the locale's quotation marks"
+	}
+}

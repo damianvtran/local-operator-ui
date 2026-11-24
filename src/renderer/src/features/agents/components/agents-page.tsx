@@ -66,6 +66,7 @@ import {
 	pendingProposalsByRecord,
 } from "@shared/api/local-operator/profile-proposals";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
+import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import {
 	Alert,
 	AlertDescription,
@@ -929,7 +930,17 @@ export function AgentsPage() {
 		return (
 			<Suspense
 				fallback={
-					<p className="p-6 text-body">{t("ui.agents.pages.loading_saved")}</p>
+					<WorkspaceFrame variant="full-height">
+						<div
+							data-workspace-route-pending=""
+							data-workspace-safe-content=""
+							className="min-h-0 flex-1"
+						>
+							<p className="p-6 text-body">
+								{t("ui.agents.pages.loading_saved")}
+							</p>
+						</div>
+					</WorkspaceFrame>
 				}
 			>
 				<LegacyAgentsPage />
@@ -958,9 +969,11 @@ export function AgentsPage() {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			/* A full-height panel: `canvas` from y0, the two columns pad themselves. */
-			className="panel-flush flex min-h-0 flex-1 bg-canvas text-ink"
+			/* Roster stays full-height on surface beside the evenly inset detail frame. */
+			className="flex min-h-0 flex-1 overflow-hidden bg-surface text-ink"
 		>
+			{/* Outside the roster so narrow detail still has its page heading. */}
+			<h1 className="sr-only">{t("ui.agents.pages.heading")}</h1>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
 			 *
@@ -978,291 +991,291 @@ export function AgentsPage() {
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
 				data-glass-region="page-sidebar"
-				/*
-				 * `panel-top-pad` + the lateral/bottom 16px the old `p-4` supplied;
-				 * the heading's own `pt-4` restores the 16px step the `p-4` gave it
-				 * above the strip, so the roster's first row keeps its measured y.
-				 */
-				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
+				data-workspace-safe-content=""
+				className="flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
-				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
-
-				{/*
-				 * ABOVE THE TABS, SO IT IS ON EVERY TAB: a proposal for a team must be
-				 * visible from the Agents tab (the operator's case), and Review switches
-				 * to the right tab and record itself.
-				 */}
-				<PendingApprovalsSummary
-					proposals={waiting}
-					currentProposalId={params.get("proposal")}
-					/*
-					 * Without `skill_library` there is no Skills tab or pane to review a
-					 * skill proposal in (R5/U2/D2): the row stays (the nav badge counts
-					 * it, so the summary must too) but says to update instead of Review.
-					 */
-					reviewable={(proposal) => proposal.kind !== "skill" || skillsOffered}
-					onReview={(proposal) =>
-						requestGo({
-							kind: proposal.kind,
-							name: proposal.name,
-							proposal: proposal.id,
-						})
-					}
-				/>
-
-				{/*
-				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
-				 * tabs, search and scope are one control stack, so they sit closer to each
-				 * other than to the list below and the button beneath it. Each is
-				 * full-width, so their right edges are one line.
-				 */}
-				<div className="space-y-2">
-					<Tabs
-						value={skillMode ? "skill" : teamMode ? "team" : "agent"}
-						onValueChange={(next) =>
+				<div className="flex min-h-0 flex-1 flex-col gap-3 pt-4">
+					{/*
+					 * ABOVE THE TABS, SO IT IS ON EVERY TAB: a proposal for a team must be
+					 * visible from the Agents tab (the operator's case), and Review switches
+					 * to the right tab and record itself.
+					 */}
+					<PendingApprovalsSummary
+						proposals={waiting}
+						currentProposalId={params.get("proposal")}
+						/*
+						 * Without `skill_library` there is no Skills tab or pane to review a
+						 * skill proposal in (R5/U2/D2): the row stays (the nav badge counts
+						 * it, so the summary must too) but says to update instead of Review.
+						 */
+						reviewable={(proposal) =>
+							proposal.kind !== "skill" || skillsOffered
+						}
+						onReview={(proposal) =>
 							requestGo({
-								kind: next as "agent" | "team" | "skill",
-								name: null,
+								kind: proposal.kind,
+								name: proposal.name,
+								proposal: proposal.id,
 							})
 						}
-					>
-						<TabsList
-							aria-label={t("ui.agents.pages.browse_aria")}
-							className="w-full"
-						>
-							<BrowseTab
-								value="agent"
-								testId="agents-tab"
-								icon={<Bot className="size-3.5" />}
-								label={t("ui.agents.pages.tab.agents")}
-								count={profiles.data?.length ?? null}
-								waiting={waitingByKind.agent}
-								compact={skillsOffered || waitingByKind.skill > 0}
-							/>
-							<BrowseTab
-								value="team"
-								testId="teams-tab"
-								icon={<Users className="size-3.5" />}
-								label={t("ui.agents.pages.tab.teams")}
-								count={teams.data?.length ?? null}
-								waiting={waitingByKind.team}
-								compact={skillsOffered || waitingByKind.skill > 0}
-							/>
-							{/*
-							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
-							 * (`skill_library`). Absent, the strip is the two-tab strip it
-							 * always was and the page sends no skill request. Same trigger
-							 * as its siblings (`BrowseTab`), so all three fit the 256 px
-							 * column by one rule rather than the new one being the odd one.
-							 */}
-							{/* A disabled Skills tab still accounts for waiting skill proposals on
-							 * legacy cores: tab counts reconcile with the summary, but no
-							 * unusable navigation is offered (R5/U2/D2). */}
-							{skillsOffered || waitingByKind.skill > 0 ? (
-								<BrowseTab
-									value="skill"
-									testId="skills-tab"
-									disabled={!skillsOffered}
-									noPanel
-									compact
-									icon={<Sparkles className="size-3.5" />}
-									label={t("ui.agents.skills.tab")}
-									count={skills.library.data ? skills.cards.length : null}
-									waiting={waitingByKind.skill}
-								/>
-							) : null}
-						</TabsList>
-					</Tabs>
+					/>
 
-					<div className="relative">
-						<Search
-							aria-hidden="true"
-							className="pointer-events-none absolute top-2 start-2 size-4 text-ink-dim"
-						/>
-						<Input
-							className="ps-8"
-							type="search"
-							aria-label={
-								skillMode
-									? t("ui.agents.skills.search_aria")
-									: t("ui.agents.pages.search_aria")
+					{/*
+					 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
+					 * tabs, search and scope are one control stack, so they sit closer to each
+					 * other than to the list below and the button beneath it. Each is
+					 * full-width, so their right edges are one line.
+					 */}
+					<div className="space-y-2">
+						<Tabs
+							value={skillMode ? "skill" : teamMode ? "team" : "agent"}
+							onValueChange={(next) =>
+								requestGo({
+									kind: next as "agent" | "team" | "skill",
+									name: null,
+								})
 							}
-							placeholder={
-								skillMode
-									? t("ui.agents.skills.search")
+						>
+							<TabsList
+								aria-label={t("ui.agents.pages.browse_aria")}
+								className="w-full"
+							>
+								<BrowseTab
+									value="agent"
+									testId="agents-tab"
+									icon={<Bot className="size-3.5" />}
+									label={t("ui.agents.pages.tab.agents")}
+									count={profiles.data?.length ?? null}
+									waiting={waitingByKind.agent}
+									compact={skillsOffered || waitingByKind.skill > 0}
+								/>
+								<BrowseTab
+									value="team"
+									testId="teams-tab"
+									icon={<Users className="size-3.5" />}
+									label={t("ui.agents.pages.tab.teams")}
+									count={teams.data?.length ?? null}
+									waiting={waitingByKind.team}
+									compact={skillsOffered || waitingByKind.skill > 0}
+								/>
+								{/*
+								 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
+								 * (`skill_library`). Absent, the strip is the two-tab strip it
+								 * always was and the page sends no skill request. Same trigger
+								 * as its siblings (`BrowseTab`), so all three fit the 256 px
+								 * column by one rule rather than the new one being the odd one.
+								 */}
+								{/* A disabled Skills tab still accounts for waiting skill proposals on
+								 * legacy cores: tab counts reconcile with the summary, but no
+								 * unusable navigation is offered (R5/U2/D2). */}
+								{skillsOffered || waitingByKind.skill > 0 ? (
+									<BrowseTab
+										value="skill"
+										testId="skills-tab"
+										disabled={!skillsOffered}
+										noPanel
+										compact
+										icon={<Sparkles className="size-3.5" />}
+										label={t("ui.agents.skills.tab")}
+										count={skills.library.data ? skills.cards.length : null}
+										waiting={waitingByKind.skill}
+									/>
+								) : null}
+							</TabsList>
+						</Tabs>
+
+						<div className="relative">
+							<Search
+								aria-hidden="true"
+								className="pointer-events-none absolute top-2 start-2 size-4 text-ink-dim"
+							/>
+							<Input
+								className="ps-8"
+								type="search"
+								aria-label={
+									skillMode
+										? t("ui.agents.skills.search_aria")
+										: t("ui.agents.pages.search_aria")
+								}
+								placeholder={
+									skillMode
+										? t("ui.agents.skills.search")
+										: teamMode
+											? t("ui.agents.pages.search.teams")
+											: t("ui.agents.pages.search.agents")
+								}
+								value={search}
+								onChange={(event) => setSearch(event.target.value)}
+							/>
+						</div>
+
+						{/*
+						 * The scope axis for this page is WHO OWNS the definition — on-device
+						 * versus shipped — where the hub's is where it lives. Same register, same
+						 * meaning of "showing", which is what makes the two read as one system.
+						 * Teams have no `source` on the wire, so the control is the agents' alone
+						 * rather than a chip row that does nothing.
+						 */}
+						{!teamMode && !skillMode && profiles.data ? (
+							<fieldset className="m-0 min-w-0 border-0 p-0">
+								<legend className="sr-only">
+									{t("ui.agents.pages.scope_legend")}
+								</legend>
+								{/*
+								 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
+								 * and pushed the segments' right edge in from the tabs' and the search's.
+								 * The legend keeps the group's accessible name, and `aria-pressed` on
+								 * each segment keeps its state, so nothing a screen reader had is lost;
+								 * the segments are the visible words. `flex-1` makes the group span the
+								 * column like its two siblings.
+								 */}
+								<div
+									data-glass-well=""
+									className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+								>
+									{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
+										<Button
+											key={value}
+											variant="ghost"
+											size="sm"
+											aria-pressed={scope === value}
+											onClick={() => setScope(value)}
+											className={cn("flex-1", scope === value && rowCurrent)}
+										>
+											{t(SCOPE_LABEL[value])}
+										</Button>
+									))}
+								</div>
+							</fieldset>
+						) : null}
+						{/*
+						 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
+						 * `fieldset` + glass well + `aria-pressed` segments in the same place.
+						 * Four segments, not six: Other tool and Project appear under All and
+						 * the search box matches their source word, and a fifth segment would
+						 * not fit the 256 px column. The labels ARE the row's source words.
+						 */}
+						{skillMode && skills.library.data ? (
+							<fieldset className="m-0 min-w-0 border-0 p-0">
+								<legend className="sr-only">
+									{t("ui.agents.skills.scope_legend")}
+								</legend>
+								<div
+									data-glass-well=""
+									className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+								>
+									{SKILL_SCOPES.map((value) => (
+										<Button
+											key={value}
+											variant="ghost"
+											size="sm"
+											aria-pressed={skillScope === value}
+											data-testid={`skills-scope-${value}`}
+											onClick={() => setSkillScope(value)}
+											className={cn(
+												"flex-1",
+												skillScope === value && rowCurrent,
+											)}
+										>
+											{t(SKILL_SCOPE_LABEL[value])}
+										</Button>
+									))}
+								</div>
+							</fieldset>
+						) : null}
+					</div>
+
+					{/* The roster: a listbox, so arrow keys move between rows (U12). */}
+					<div
+						/*
+						 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
+						 * so rows dissolve into the footer instead of being sliced at it.
+						 */
+						data-lo-pane-edge-cues
+						/*
+						 * `min-h-32` IS THE ROSTER'S FLOOR (PR #2026 round 1, D1/U3): the
+						 * pending-approvals summary above shrinks (its list scrolls inside it)
+						 * before this region drops below ~3 rows, so at the 600 px window
+						 * minimum the roster and the footer button stay on screen.
+						 */
+						className="min-h-32 flex-1 overflow-y-auto"
+					>
+						{skillMode ? (
+							<SkillsRosterBody
+								loading={skills.library.isLoading}
+								failed={Boolean(skills.library.error)}
+								cards={skillRows}
+								total={skills.cards.length}
+								search={search}
+								scope={skillScope}
+								selected={selected}
+								join={skills.join}
+								marked={
+									new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+								}
+								pending={waitingFor("skill")}
+								onOpen={(rowName) => openRecord(waitingFor("skill"), rowName)}
+							/>
+						) : listError ? null : !profiles.data && !teams.data ? (
+							<RosterSkeleton />
+						) : rows.length === 0 ? (
+							<p className="px-1 py-2 text-body-sm text-ink-muted">
+								{search
+									? t("ui.agents.pages.empty.search", { query: search })
 									: teamMode
-										? t("ui.agents.pages.search.teams")
-										: t("ui.agents.pages.search.agents")
-							}
-							value={search}
-							onChange={(event) => setSearch(event.target.value)}
-						/>
+										? t("ui.agents.pages.empty.teams")
+										: t(EMPTY_BY_SCOPE[scope])}
+							</p>
+						) : (
+							<Roster
+								rows={rows}
+								name={creating ? null : selected}
+								teamMode={teamMode}
+								printName={printName}
+								marked={
+									new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+								}
+								/*
+								 * THROUGH THE GUARD, never straight to the route: a dirty draft on the
+								 * row being left has to be asked about (D1/U1/Q1), and the pane is
+								 * keyed by record, so the navigation IS the discard.
+								 */
+								pending={waitingFor(teamMode ? "team" : "agent")}
+								onOpen={(rowName) =>
+									openRecord(waitingFor(teamMode ? "team" : "agent"), rowName)
+								}
+							/>
+						)}
+						{/*
+						 * Pending proposals for a name the roster does not have yet, under
+						 * the roster the Agents badge leads to (F4/U-F4, U6).
+						 */}
+						{skillMode || listError || !rosterNames ? null : (
+							<ProposedNewGroup
+								kind={teamMode ? "team" : "agent"}
+								existing={rosterNames}
+								selected={creating ? null : selected}
+								enabled={proposalsEnabled}
+								onOpen={(rowName) => requestGo({ name: rowName })}
+							/>
+						)}
 					</div>
 
 					{/*
-					 * The scope axis for this page is WHO OWNS the definition — on-device
-					 * versus shipped — where the hub's is where it lives. Same register, same
-					 * meaning of "showing", which is what makes the two read as one system.
-					 * Teams have no `source` on the wire, so the control is the agents' alone
-					 * rather than a chip row that does nothing.
+					 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
+					 * affordance, not a boxed button - a bordered secondary was the heaviest
+					 * object in the column for a secondary job.
 					 */}
-					{!teamMode && !skillMode && profiles.data ? (
-						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">
-								{t("ui.agents.pages.scope_legend")}
-							</legend>
-							{/*
-							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
-							 * and pushed the segments' right edge in from the tabs' and the search's.
-							 * The legend keeps the group's accessible name, and `aria-pressed` on
-							 * each segment keeps its state, so nothing a screen reader had is lost;
-							 * the segments are the visible words. `flex-1` makes the group span the
-							 * column like its two siblings.
-							 */}
-							<div
-								data-glass-well=""
-								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
-							>
-								{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
-									<Button
-										key={value}
-										variant="ghost"
-										size="sm"
-										aria-pressed={scope === value}
-										onClick={() => setScope(value)}
-										className={cn("flex-1", scope === value && rowCurrent)}
-									>
-										{t(SCOPE_LABEL[value])}
-									</Button>
-								))}
-							</div>
-						</fieldset>
-					) : null}
-					{/*
-					 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
-					 * `fieldset` + glass well + `aria-pressed` segments in the same place.
-					 * Four segments, not six: Other tool and Project appear under All and
-					 * the search box matches their source word, and a fifth segment would
-					 * not fit the 256 px column. The labels ARE the row's source words.
-					 */}
-					{skillMode && skills.library.data ? (
-						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">
-								{t("ui.agents.skills.scope_legend")}
-							</legend>
-							<div
-								data-glass-well=""
-								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
-							>
-								{SKILL_SCOPES.map((value) => (
-									<Button
-										key={value}
-										variant="ghost"
-										size="sm"
-										aria-pressed={skillScope === value}
-										data-testid={`skills-scope-${value}`}
-										onClick={() => setSkillScope(value)}
-										className={cn("flex-1", skillScope === value && rowCurrent)}
-									>
-										{t(SKILL_SCOPE_LABEL[value])}
-									</Button>
-								))}
-							</div>
-						</fieldset>
-					) : null}
+					<AddManuallyButton
+						teamMode={teamMode}
+						// `hidden` (display:none) on the Skills tab: there is nothing to add by
+						// hand until U2, and a class rather than a conditional keeps this block
+						// byte-identical to the Agents/Teams one it shares.
+						className={cn(skillMode && "hidden")}
+						disabled={!catalogueEnabled}
+						onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
+					/>
 				</div>
-
-				{/* The roster: a listbox, so arrow keys move between rows (U12). */}
-				<div
-					/*
-					 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
-					 * so rows dissolve into the footer instead of being sliced at it.
-					 */
-					data-lo-pane-edge-cues
-					/*
-					 * `min-h-32` IS THE ROSTER'S FLOOR (PR #2026 round 1, D1/U3): the
-					 * pending-approvals summary above shrinks (its list scrolls inside it)
-					 * before this region drops below ~3 rows, so at the 600 px window
-					 * minimum the roster and the footer button stay on screen.
-					 */
-					className="min-h-32 flex-1 overflow-y-auto"
-				>
-					{skillMode ? (
-						<SkillsRosterBody
-							loading={skills.library.isLoading}
-							failed={Boolean(skills.library.error)}
-							cards={skillRows}
-							total={skills.cards.length}
-							search={search}
-							scope={skillScope}
-							selected={selected}
-							join={skills.join}
-							marked={
-								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
-							}
-							pending={waitingFor("skill")}
-							onOpen={(rowName) => openRecord(waitingFor("skill"), rowName)}
-						/>
-					) : listError ? null : !profiles.data && !teams.data ? (
-						<RosterSkeleton />
-					) : rows.length === 0 ? (
-						<p className="px-1 py-2 text-body-sm text-ink-muted">
-							{search
-								? t("ui.agents.pages.empty.search", { query: search })
-								: teamMode
-									? t("ui.agents.pages.empty.teams")
-									: t(EMPTY_BY_SCOPE[scope])}
-						</p>
-					) : (
-						<Roster
-							rows={rows}
-							name={creating ? null : selected}
-							teamMode={teamMode}
-							printName={printName}
-							marked={
-								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
-							}
-							/*
-							 * THROUGH THE GUARD, never straight to the route: a dirty draft on the
-							 * row being left has to be asked about (D1/U1/Q1), and the pane is
-							 * keyed by record, so the navigation IS the discard.
-							 */
-							pending={waitingFor(teamMode ? "team" : "agent")}
-							onOpen={(rowName) =>
-								openRecord(waitingFor(teamMode ? "team" : "agent"), rowName)
-							}
-						/>
-					)}
-					{/*
-					 * Pending proposals for a name the roster does not have yet, under
-					 * the roster the Agents badge leads to (F4/U-F4, U6).
-					 */}
-					{skillMode || listError || !rosterNames ? null : (
-						<ProposedNewGroup
-							kind={teamMode ? "team" : "agent"}
-							existing={rosterNames}
-							selected={creating ? null : selected}
-							enabled={proposalsEnabled}
-							onOpen={(rowName) => requestGo({ name: rowName })}
-						/>
-					)}
-				</div>
-
-				{/*
-				 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
-				 * affordance, not a boxed button - a bordered secondary was the heaviest
-				 * object in the column for a secondary job.
-				 */}
-				<AddManuallyButton
-					teamMode={teamMode}
-					// `hidden` (display:none) on the Skills tab: there is nothing to add by
-					// hand until U2, and a class rather than a conditional keeps this block
-					// byte-identical to the Agents/Teams one it shares.
-					className={cn(skillMode && "hidden")}
-					disabled={!catalogueEnabled}
-					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
-				/>
 			</aside>
 
 			{/*
@@ -1271,540 +1284,547 @@ export function AgentsPage() {
 			 * slot exists in every state (design § 4.3: a strip that pushes the detail
 			 * pane when it appears is the jank the design calls out).
 			 */}
-			<main
-				data-glass-region="canvas-content"
-				className="panel-top-pad flex min-w-0 flex-1 flex-col"
-			>
-				{/*
-				 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM
-				 * of this scroller, and a bottom padding under it left a 24px band where
-				 * the sections kept scrolling through beneath the bar (measured in the
-				 * edit-mode frames). The footer supplies the spacing instead.
-				 */}
-				{/*
-				 * THE WAY BACK AT NARROW WIDTHS (design review round 1, D6 / UX U5).
-				 * Below 1000 px the roster is `display:none` while a definition is open,
-				 * and the pane's only controls were New chat / Edit / Duplicate / Ask —
-				 * there was no Back at all, so the sole exit was the rail's icon, which
-				 * lands on the empty pane rather than the list. Escape does the same thing
-				 * for the keyboard (see the page's own handler).
-				 */}
-				{selected || creating ? (
-					<div className="flex shrink-0 items-center border-hairline border-b px-4 py-2 min-[1000px]:hidden">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => requestGo({ name: null })}
-						>
-							<ArrowLeft className="size-4 rtl:-scale-x-100" />
-							{t("ui.agents.pages.back_to_list")}
-						</Button>
-					</div>
-				) : null}
-				<div
-					/*
-					 * THE PANE'S SCROLLER, NAMED FOR THE EVIDENCE RIG. The class control
-					 * sits below the fold at the narrow widths the design round asked for, and
-					 * a frame has to park this element at its end to contain the section it is
-					 * captioned with - a `scrollTo` cannot reach it, because the pane is too
-					 * short to bring the section to the top. A class selector would have been
-					 * a second way to name the region the rig reads, which is what the other
-					 * `data-*` hooks exist to avoid.
-					 */
-					data-agents-pane
-					/*
-					 * THE LAST CONTROL FOCUSED IN THE PANE, for the discard bar to give focus
-					 * back to (see `barReturnFocus`). `onFocus` bubbles in React, so one
-					 * handler here sees every field, select and button of the open form; the
-					 * bar and the dock are outside this element, so they never overwrite it.
-					 */
-					onFocus={(event) => {
-						if (event.target instanceof HTMLElement)
-							paneLastFocus.current = event.target;
-					}}
-					/*
-					 * THE FADE AT THE DOCK'S EDGE (design spec s6.3). The scroller used to end
-					 * in a hard cut against the composer, slicing a heading in half. The
-					 * sidebar's 24 px scroll-driven mask answers the same problem and is
-					 * element-agnostic (`index.css`), so the pane takes the same attribute
-					 * rather than growing a second fade.
-					 */
-					data-lo-pane-edge-cues
-					className={cn(
-						"min-h-0 flex-1 overflow-auto",
-						/*
-						 * THE 24 PX EDGE, BY ARITHMETIC. The hero is un-padded: it is its own
-						 * column, and the band inside `MessageInput` is the only inset on its
-						 * box. Every other state is a scroller with a classic 8 px scrollbar, so
-						 * `px-4` (16) plus the 8 px gutter reserved on BOTH edges is 24 - the
-						 * transcript's own sum (`chat-measure.ts`) - and the detail column and
-						 * the docked box then have the same content width, so `CHAT_MEASURE`'s
-						 * 750 px gate and 810 cap resolve identically in both. Do not "fix" the
-						 * 16: with an overlay scrollbar (the capture rig's) the gutter is 0 and
-						 * the edge reads 16, which is the rig, not the page.
-						 *
-						 * NO BOTTOM PADDING: the edit footer sticks to the scroller's foot, and a
-						 * padding under it left a band where sections scrolled through beneath
-						 * the bar. The status row above the box is the breathing room.
-						 *
-						 * SCROLL PADDING INSTEAD, SIZED FROM THE FOOTER (UX review round 1 U1).
-						 * Focus and `scrollIntoView` treat the sticky footer as part of the
-						 * viewport, so a control behind it was never scrolled into view. The
-						 * footer publishes its own height as `--lo-pane-footer-h` (`EditFooter`);
-						 * the `calc` is INVALID when the property is absent, which computes to
-						 * `auto`, so a read view gets no padding without a conditional here. The
-						 * 4 px is the focus ring's offset-and-width, so the ring clears the bar.
-						 *
-						 * AND THE FOOTER'S CUE BAND (`--lo-pane-footer-cue-h`, `index.css`): the
-						 * 24 px fade above the bar is painted OVER the content, so a control that
-						 * `nearest` left flush on the bar sat inside it with its focus ring at
-						 * 1.2:1 (QA round 3 Q2 / design round 3 D1). Counting the band as outside
-						 * the viewport lands every focus scroll - Add member after each add, Tab
-						 * into a member row - above it. It is scroll padding, not content
-						 * padding: the page's note above still holds, nothing is added under the
-						 * bar.
-						 */
-						showsEmptyPane
-							? undefined
-							: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+var(--lo-pane-footer-cue-h)+4px)] [scrollbar-gutter:stable_both-edges]",
-					)}
+			<WorkspaceFrame variant="full-height">
+				<main
+					data-workspace-safe-content=""
+					className="flex min-h-0 min-w-0 flex-1 flex-col"
 				>
-					{showsEmptyPane ? (
-						<EmptyPane
-							teamMode={teamMode}
-							run={run}
-							onAddManually={() =>
-								requestGo({ create: teamMode ? "team" : "agent" })
-							}
-						/>
-					) : (
+					{/*
+					 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM
+					 * of this scroller, and a bottom padding under it left a 24px band where
+					 * the sections kept scrolling through beneath the bar (measured in the
+					 * edit-mode frames). The footer supplies the spacing instead.
+					 */}
+					{/*
+					 * THE WAY BACK AT NARROW WIDTHS (design review round 1, D6 / UX U5).
+					 * Below 1000 px the roster is `display:none` while a definition is open,
+					 * and the pane's only controls were New chat / Edit / Duplicate / Ask —
+					 * there was no Back at all, so the sole exit was the rail's icon, which
+					 * lands on the empty pane rather than the list. Escape does the same thing
+					 * for the keyboard (see the page's own handler).
+					 */}
+					{selected || creating ? (
+						<div className="flex shrink-0 items-center border-hairline border-b px-4 py-2 min-[1000px]:hidden">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => requestGo({ name: null })}
+							>
+								<ArrowLeft className="size-4 rtl:-scale-x-100" />
+								{t("ui.agents.pages.back_to_list")}
+							</Button>
+						</div>
+					) : null}
+					<div
 						/*
-						 * ONE WRAPPER FOR EVERY NON-HERO STATE: the capability alert, a failed
-						 * read, the skeleton, the hub panel and the detail all sit in the same
-						 * `CHAT_COLUMN_CONTAINER` > `CHAT_MEASURE` chain as the docked box, so
-						 * their left and right edges ARE the box's (design spec D2/D3). Nothing
-						 * below this line sets horizontal padding, margin or a max-width.
+						 * THE PANE'S SCROLLER, NAMED FOR THE EVIDENCE RIG. The class control
+						 * sits below the fold at the narrow widths the design round asked for, and
+						 * a frame has to park this element at its end to contain the section it is
+						 * captioned with - a `scrollTo` cannot reach it, because the pane is too
+						 * short to bring the section to the top. A class selector would have been
+						 * a second way to name the region the rig reads, which is what the other
+						 * `data-*` hooks exist to avoid.
 						 */
-						<div className={CHAT_COLUMN_CONTAINER}>
-							<div className={CHAT_MEASURE}>
-								{skillMode ? (
-									/*
-									 * THE SKILLS PANE: a failed list read, a prompt, or the open
-									 * skill. No composer is docked below it (U3), and no create
-									 * form exists (U2), so the ladder is shorter than the
-									 * definitions' and shares none of their dirty-draft state.
-									 */
-									skills.library.error ? (
-										<div ref={listRetryFocus.holder}>
-											<PaneError
-												title={t("ui.agents.skills.error.title")}
-												what={
-													skills.library.error instanceof Error &&
-													skills.library.error.message
-														? skills.library.error.message
-														: t("ui.agents.skills.error.what_fallback")
-												}
-												meaning={t("ui.agents.skills.error.meaning")}
-												onRetry={() => {
-													listRetryFocus.onPress();
-													void skills.library.refetch();
-												}}
-												retrying={skills.library.isFetching}
-												retryLabel={t("ui.common.actions.retry")}
-												retryingLabel={t("ui.agents.skills.retrying")}
+						data-agents-pane
+						/*
+						 * THE LAST CONTROL FOCUSED IN THE PANE, for the discard bar to give focus
+						 * back to (see `barReturnFocus`). `onFocus` bubbles in React, so one
+						 * handler here sees every field, select and button of the open form; the
+						 * bar and the dock are outside this element, so they never overwrite it.
+						 */
+						onFocus={(event) => {
+							if (event.target instanceof HTMLElement)
+								paneLastFocus.current = event.target;
+						}}
+						/*
+						 * THE FADE AT THE DOCK'S EDGE (design spec s6.3). The scroller used to end
+						 * in a hard cut against the composer, slicing a heading in half. The
+						 * sidebar's 24 px scroll-driven mask answers the same problem and is
+						 * element-agnostic (`index.css`), so the pane takes the same attribute
+						 * rather than growing a second fade.
+						 */
+						data-lo-pane-edge-cues
+						className={cn(
+							"min-h-0 flex-1 overflow-auto",
+							/*
+							 * THE 24 PX EDGE, BY ARITHMETIC. The hero is un-padded: it is its own
+							 * column, and the band inside `MessageInput` is the only inset on its
+							 * box. Every other state is a scroller with a classic 8 px scrollbar, so
+							 * `px-4` (16) plus the 8 px gutter reserved on BOTH edges is 24 - the
+							 * transcript's own sum (`chat-measure.ts`) - and the detail column and
+							 * the docked box then have the same content width, so `CHAT_MEASURE`'s
+							 * 750 px gate and 810 cap resolve identically in both. Do not "fix" the
+							 * 16: with an overlay scrollbar (the capture rig's) the gutter is 0 and
+							 * the edge reads 16, which is the rig, not the page.
+							 *
+							 * NO BOTTOM PADDING: the edit footer sticks to the scroller's foot, and a
+							 * padding under it left a band where sections scrolled through beneath
+							 * the bar. The status row above the box is the breathing room.
+							 *
+							 * SCROLL PADDING INSTEAD, SIZED FROM THE FOOTER (UX review round 1 U1).
+							 * Focus and `scrollIntoView` treat the sticky footer as part of the
+							 * viewport, so a control behind it was never scrolled into view. The
+							 * footer publishes its own height as `--lo-pane-footer-h` (`EditFooter`);
+							 * the `calc` is INVALID when the property is absent, which computes to
+							 * `auto`, so a read view gets no padding without a conditional here. The
+							 * 4 px is the focus ring's offset-and-width, so the ring clears the bar.
+							 *
+							 * AND THE FOOTER'S CUE BAND (`--lo-pane-footer-cue-h`, `index.css`): the
+							 * 24 px fade above the bar is painted OVER the content, so a control that
+							 * `nearest` left flush on the bar sat inside it with its focus ring at
+							 * 1.2:1 (QA round 3 Q2 / design round 3 D1). Counting the band as outside
+							 * the viewport lands every focus scroll - Add member after each add, Tab
+							 * into a member row - above it. It is scroll padding, not content
+							 * padding: the page's note above still holds, nothing is added under the
+							 * bar.
+							 */
+							showsEmptyPane
+								? undefined
+								: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+var(--lo-pane-footer-cue-h)+4px)] [scrollbar-gutter:stable_both-edges]",
+						)}
+					>
+						{showsEmptyPane ? (
+							<EmptyPane
+								teamMode={teamMode}
+								run={run}
+								onAddManually={() =>
+									requestGo({ create: teamMode ? "team" : "agent" })
+								}
+							/>
+						) : (
+							/*
+							 * ONE WRAPPER FOR EVERY NON-HERO STATE: the capability alert, a failed
+							 * read, the skeleton, the hub panel and the detail all sit in the same
+							 * `CHAT_COLUMN_CONTAINER` > `CHAT_MEASURE` chain as the docked box, so
+							 * their left and right edges ARE the box's (design spec D2/D3). Nothing
+							 * below this line sets horizontal padding, margin or a max-width.
+							 */
+							<div className={CHAT_COLUMN_CONTAINER}>
+								<div className={CHAT_MEASURE}>
+									{skillMode ? (
+										/*
+										 * THE SKILLS PANE: a failed list read, a prompt, or the open
+										 * skill. No composer is docked below it (U3), and no create
+										 * form exists (U2), so the ladder is shorter than the
+										 * definitions' and shares none of their dirty-draft state.
+										 */
+										skills.library.error ? (
+											<div ref={listRetryFocus.holder}>
+												<PaneError
+													title={t("ui.agents.skills.error.title")}
+													what={
+														skills.library.error instanceof Error &&
+														skills.library.error.message
+															? skills.library.error.message
+															: t("ui.agents.skills.error.what_fallback")
+													}
+													meaning={t("ui.agents.skills.error.meaning")}
+													onRetry={() => {
+														listRetryFocus.onPress();
+														void skills.library.refetch();
+													}}
+													retrying={skills.library.isFetching}
+													retryLabel={t("ui.common.actions.retry")}
+													retryingLabel={t("ui.agents.skills.retrying")}
+												/>
+											</div>
+										) : selected && selectedIsProposedNewSkill ? (
+											<ProposedNewPane
+												kind="skill"
+												name={selected}
+												proposalId={params.get("proposal")}
+												reveal={proposalReveal}
 											/>
-										</div>
-									) : selected && selectedIsProposedNewSkill ? (
+										) : selected ? (
+											<SkillDetail
+												key={selected}
+												name={selected}
+												card={openSkillCard}
+												join={skills.join}
+												detail={skillDetail}
+												onRetry={() => void skillDetail.refetch()}
+												writesEnabled={skillWritesEnabled}
+												askEnabled={skillRunEnabled}
+												onDirtyChange={reportDirty}
+												/*
+												 * THE AGENTS' HUB PANEL, for a hub skill only (spec §3.4):
+												 * Subscribe / Auto-push, Check now, Preview incoming changes and
+												 * Preview publish, each with its own eligibility. Matched by the
+												 * link's local name, as the agent pane matches by its own.
+												 */
+												belowHeader={
+													openSkillCard?.source === "hub" ? (
+														hubPane(
+															"skill",
+															selected,
+															undefined,
+															openSkillCard.installed,
+														)
+													) : (
+														<ProfileProposalPanel
+															key={`proposal:skill:${selected}`}
+															kind="skill"
+															name={selected}
+															enabled={desktopFeatureEnabled(
+																capabilities.data,
+																"profile_proposals",
+															)}
+															proposalId={params.get("proposal")}
+															reveal={proposalReveal}
+														/>
+													)
+												}
+												onAsk={(skillName) => {
+													askForChange(
+														run,
+														{ kind: "skill", name: skillName },
+														configSeedPrompt({
+															kind: "skill",
+															name: skillName,
+														}),
+													);
+													setSkillAskFocus((count) => count + 1);
+												}}
+												hubSignedIn={isAuthenticated}
+												downloadEnabled={desktopFeatureEnabled(
+													capabilities.data,
+													"hub_skills",
+												)}
+												onRemoved={(skillName, stays) => {
+													/*
+													 * A HUB COPY'S ROW STAYS, AS "NOT INSTALLED" (UX r1 U5): the link
+													 * survives the removal, so the pane stays on it - its Download is
+													 * the obvious way back - and focus goes to the pane's heading
+													 * (the menu that asked has closed).
+													 */
+													if (stays) {
+														requestAnimationFrame(() =>
+															document
+																.querySelector<HTMLElement>(
+																	'[data-testid="skill-detail"] h2',
+																)
+																?.focus(),
+														);
+														return;
+													}
+													/*
+													 * FOCUS GOES TO THE NEXT ROW (spec §3.2): the closing handoff
+													 * below focuses the row that was open, which is gone, so the
+													 * neighbour that took its place is named instead.
+													 */
+													const index = skillRows.findIndex(
+														(card) => card.name === skillName,
+													);
+													previousSkill.current =
+														skillRows[index + 1]?.name ??
+														skillRows[index - 1]?.name ??
+														null;
+													go({ name: null });
+												}}
+											/>
+										) : skills.library.isLoading ||
+											skills.cards.length === 0 ? null : (
+											/*
+											 * NOTHING while the list is loading or empty (design D4): "Select
+											 * a skill" invites a choice among rows that are not there.
+											 */
+											<p
+												className="text-body-sm text-ink-muted"
+												data-testid="skills-select-prompt"
+											>
+												{/* Still true without `skill_write`, so it stays there. */}
+												{skillWritesEnabled
+													? t("ui.agents.skills.select_prompt_editable")
+													: t("ui.agents.skills.select_prompt")}
+											</p>
+										)
+									) : !catalogueEnabled ? (
+										/*
+										 * THREE STATES, THREE TITLES. While the capabilities read is in flight
+										 * the page used to shout "needs a newer backend" over a body that said
+										 * "Connecting…" — a fault the body denied (design review round 1, D7).
+										 * Connecting is neutral; only an ANSWERED `false` is a version claim.
+										 */
+										<Alert
+											variant={capabilities.isLoading ? "neutral" : "warning"}
+											className="max-w-xl"
+										>
+											<AlertTitle>
+												{capabilities.isLoading
+													? t("ui.agents.pages.backend.connecting")
+													: capabilities.error
+														? t("ui.agents.pages.backend.unreachable")
+														: t("ui.agents.pages.backend.upgrade_heading")}
+											</AlertTitle>
+											<AlertDescription>
+												{capabilities.isLoading
+													? t("ui.agents.pages.backend.loading_capabilities")
+													: capabilities.error
+														? capabilities.error.message
+														: t("ui.agents.pages.backend.upgrade_body")}
+											</AlertDescription>
+										</Alert>
+									) : listError ? (
+										<PaneError
+											title={
+												teamMode
+													? t("ui.agents.detail.read_state.list_failed_teams")
+													: t("ui.agents.detail.read_state.list_failed_agents")
+											}
+											what={
+												listError instanceof Error
+													? listError.message
+													: t("ui.agents.detail.read_state.request_failed")
+											}
+											meaning={t(
+												"ui.agents.detail.read_state.list_failed_meaning",
+											)}
+											onRetry={refreshAll}
+											retrying={profiles.isFetching || teams.isFetching}
+										/>
+									) : selected && detailLoading ? (
+										/* A skeleton shaped like the pane, never a blanket "Select a
+						   definition" while something is on its way (D4). */
+										<DetailSkeleton />
+									) : selected && detailError && selectedIsProposedNew ? (
 										<ProposedNewPane
-											kind="skill"
+											kind={teamMode ? "team" : "agent"}
 											name={selected}
 											proposalId={params.get("proposal")}
 											reveal={proposalReveal}
 										/>
-									) : selected ? (
-										<SkillDetail
-											key={selected}
+									) : selected && detailError ? (
+										<MissingDefinitionError
 											name={selected}
-											card={openSkillCard}
-											join={skills.join}
-											detail={skillDetail}
-											onRetry={() => void skillDetail.refetch()}
-											writesEnabled={skillWritesEnabled}
-											askEnabled={skillRunEnabled}
-											onDirtyChange={reportDirty}
-											/*
-											 * THE AGENTS' HUB PANEL, for a hub skill only (spec §3.4):
-											 * Subscribe / Auto-push, Check now, Preview incoming changes and
-											 * Preview publish, each with its own eligibility. Matched by the
-											 * link's local name, as the agent pane matches by its own.
-											 */
-											belowHeader={
-												openSkillCard?.source === "hub" ? (
-													hubPane(
-														"skill",
-														selected,
-														undefined,
-														openSkillCard.installed,
-													)
-												) : (
-													<ProfileProposalPanel
-														key={`proposal:skill:${selected}`}
-														kind="skill"
-														name={selected}
-														enabled={desktopFeatureEnabled(
-															capabilities.data,
-															"profile_proposals",
-														)}
-														proposalId={params.get("proposal")}
-														reveal={proposalReveal}
-													/>
-												)
+											error={detailError}
+											onRetry={() => {
+												void profileDetail.refetch();
+												void teamDetail.refetch();
+											}}
+											retrying={
+												profileDetail.isFetching || teamDetail.isFetching
 											}
-											onAsk={(skillName) => {
+										/>
+									) : creating && teamMode ? (
+										/*
+										 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
+										 * two panes share a component with the read/edit panes below, so React
+										 * reconciled one INTO the other and a "New team" form opened holding
+										 * the last team that was merely VIEWED — name, manager and members —
+										 * while the same reuse let a dirty draft ride a roster click onto the
+										 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
+										 * each record its own instance.
+										 */
+										<TeamDetail
+											key="team:create"
+											agents={profiles.data}
+											teams={teams.data}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onCancelCreate={() => go({ name: null })}
+											onOpenAgent={(agentName) =>
+												requestGo({ kind: "agent", name: agentName })
+											}
+											onAskAgent={(prompt) => {
 												askForChange(
 													run,
-													{ kind: "skill", name: skillName },
-													configSeedPrompt({ kind: "skill", name: skillName }),
+													{ kind: "team", name: name ?? "" },
+													prompt,
 												);
-												setSkillAskFocus((count) => count + 1);
-											}}
-											hubSignedIn={isAuthenticated}
-											downloadEnabled={desktopFeatureEnabled(
-												capabilities.data,
-												"hub_skills",
-											)}
-											onRemoved={(skillName, stays) => {
-												/*
-												 * A HUB COPY'S ROW STAYS, AS "NOT INSTALLED" (UX r1 U5): the link
-												 * survives the removal, so the pane stays on it - its Download is
-												 * the obvious way back - and focus goes to the pane's heading
-												 * (the menu that asked has closed).
-												 */
-												if (stays) {
-													requestAnimationFrame(() =>
-														document
-															.querySelector<HTMLElement>(
-																'[data-testid="skill-detail"] h2',
-															)
-															?.focus(),
-													);
-													return;
-												}
-												/*
-												 * FOCUS GOES TO THE NEXT ROW (spec §3.2): the closing handoff
-												 * below focuses the row that was open, which is gone, so the
-												 * neighbour that took its place is named instead.
-												 */
-												const index = skillRows.findIndex(
-													(card) => card.name === skillName,
-												);
-												previousSkill.current =
-													skillRows[index + 1]?.name ??
-													skillRows[index - 1]?.name ??
-													null;
-												go({ name: null });
 											}}
 										/>
-									) : skills.library.isLoading ||
-										skills.cards.length === 0 ? null : (
+									) : creating && duplicateOf && duplicateDetail.isLoading ? (
 										/*
-										 * NOTHING while the list is loading or empty (design D4): "Select
-										 * a skill" invites a choice among rows that are not there.
+										 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
+										 * draft once, on mount, so a form mounted before the duplicate's own read
+										 * landed would keep the empty instructions it was born with.
 										 */
-										<p
-											className="text-body-sm text-ink-muted"
-											data-testid="skills-select-prompt"
-										>
-											{/* Still true without `skill_write`, so it stays there. */}
-											{skillWritesEnabled
-												? t("ui.agents.skills.select_prompt_editable")
-												: t("ui.agents.skills.select_prompt")}
-										</p>
-									)
-								) : !catalogueEnabled ? (
-									/*
-									 * THREE STATES, THREE TITLES. While the capabilities read is in flight
-									 * the page used to shout "needs a newer backend" over a body that said
-									 * "Connecting…" — a fault the body denied (design review round 1, D7).
-									 * Connecting is neutral; only an ANSWERED `false` is a version claim.
-									 */
-									<Alert
-										variant={capabilities.isLoading ? "neutral" : "warning"}
-										className="max-w-xl"
-									>
-										<AlertTitle>
-											{capabilities.isLoading
-												? t("ui.agents.pages.backend.connecting")
-												: capabilities.error
-													? t("ui.agents.pages.backend.unreachable")
-													: t("ui.agents.pages.backend.upgrade_heading")}
-										</AlertTitle>
-										<AlertDescription>
-											{capabilities.isLoading
-												? t("ui.agents.pages.backend.loading_capabilities")
-												: capabilities.error
-													? capabilities.error.message
-													: t("ui.agents.pages.backend.upgrade_body")}
-										</AlertDescription>
-									</Alert>
-								) : listError ? (
-									<PaneError
-										title={
-											teamMode
-												? t("ui.agents.detail.read_state.list_failed_teams")
-												: t("ui.agents.detail.read_state.list_failed_agents")
-										}
-										what={
-											listError instanceof Error
-												? listError.message
-												: t("ui.agents.detail.read_state.request_failed")
-										}
-										meaning={t(
-											"ui.agents.detail.read_state.list_failed_meaning",
-										)}
-										onRetry={refreshAll}
-										retrying={profiles.isFetching || teams.isFetching}
-									/>
-								) : selected && detailLoading ? (
-									/* A skeleton shaped like the pane, never a blanket "Select a
-						   definition" while something is on its way (D4). */
-									<DetailSkeleton />
-								) : selected && detailError && selectedIsProposedNew ? (
-									<ProposedNewPane
-										kind={teamMode ? "team" : "agent"}
-										name={selected}
-										proposalId={params.get("proposal")}
-										reveal={proposalReveal}
-									/>
-								) : selected && detailError ? (
-									<MissingDefinitionError
-										name={selected}
-										error={detailError}
-										onRetry={() => {
-											void profileDetail.refetch();
-											void teamDetail.refetch();
-										}}
-										retrying={profileDetail.isFetching || teamDetail.isFetching}
-									/>
-								) : creating && teamMode ? (
-									/*
-									 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
-									 * two panes share a component with the read/edit panes below, so React
-									 * reconciled one INTO the other and a "New team" form opened holding
-									 * the last team that was merely VIEWED — name, manager and members —
-									 * while the same reuse let a dirty draft ride a roster click onto the
-									 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
-									 * each record its own instance.
-									 */
-									<TeamDetail
-										key="team:create"
-										agents={profiles.data}
-										teams={teams.data}
-										askEnabled={run.enabled}
-										onDirtyChange={reportDirty}
-										onSaved={(savedName) => {
-											void refreshAll();
-											go({ name: savedName });
-										}}
-										onCancelCreate={() => go({ name: null })}
-										onOpenAgent={(agentName) =>
-											requestGo({ kind: "agent", name: agentName })
-										}
-										onAskAgent={(prompt) => {
-											askForChange(
-												run,
-												{ kind: "team", name: name ?? "" },
-												prompt,
-											);
-										}}
-									/>
-								) : creating && duplicateOf && duplicateDetail.isLoading ? (
-									/*
-									 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
-									 * draft once, on mount, so a form mounted before the duplicate's own read
-									 * landed would keep the empty instructions it was born with.
-									 */
-									<DetailSkeleton />
-								) : creating ? (
-									<AgentCreate
-										key="agent:create"
-										initial={duplicateDetail.data ?? null}
-										takenNames={(profiles.data ?? []).map((row) => row.name)}
-										effortTiers={effortTiers}
-										onDirtyChange={reportDirty}
-										onSaved={(savedName) => {
-											void refreshAll();
-											go({ name: savedName });
-										}}
-										onCancel={() => go({ name: null })}
-									/>
-								) : teamMode && teamDetail.data ? (
-									<TeamDetail
-										key={teamEditorIdentity(teamDetail.data)}
-										team={teamDetail.data}
-										agents={profiles.data}
-										teams={teams.data}
-										askEnabled={run.enabled}
-										onDirtyChange={reportDirty}
-										belowHeader={hubPane(
-											"team",
-											teamDetail.data.name,
-											teamDetail.data.id,
-										)}
-										onSaved={(savedName) => {
-											void refreshAll();
-											go({ name: savedName });
-										}}
-										onOpenAgent={(agentName) =>
-											requestGo({ kind: "agent", name: agentName })
-										}
-										onAskAgent={(prompt) => {
-											askForChange(
-												run,
-												{ kind: "team", name: teamDetail.data?.name ?? "" },
-												prompt,
-											);
-										}}
-									/>
-								) : !teamMode && profileDetail.data ? (
-									<AgentDetail
-										key={profileEditorIdentity(profileDetail.data)}
-										profile={profileDetail.data}
-										displayedName={printName(profileDetail.data.name)}
-										classNotice={
-											classNotice?.name === profileDetail.data.name
-												? classNotice.copy
-												: null
-										}
-										onClassNotice={(copy) =>
-											setClassNotice(
-												copy ? { name: profileDetail.data.name, copy } : null,
-											)
-										}
-										teams={teams.data}
-										effortTiers={effortTiers}
-										askEnabled={run.enabled}
-										openPictureEditor={pictureEditRequested}
-										onDirtyChange={reportDirty}
-										belowHeader={hubPane(
-											"agent",
-											profileDetail.data.name,
-											profileDetail.data.agent_id ?? undefined,
-										)}
-										onSaved={(savedName) => {
-											void refreshAll();
-											go({ name: savedName });
-										}}
-										onDuplicate={(profile) =>
-											requestGo({ create: "agent", duplicate: profile.name })
-										}
-										onOpenTeam={(teamName) =>
-											requestGo({ kind: "team", name: teamName })
-										}
-										onAskAgent={(prompt) => {
-											askForChange(
-												run,
-												{
-													kind: "agent",
-													name: profileDetail.data?.name ?? "",
-												},
-												prompt,
-											);
-										}}
-									/>
-								) : selected ? (
-									<Skeleton className="h-6 w-40" />
-								) : null}
+										<DetailSkeleton />
+									) : creating ? (
+										<AgentCreate
+											key="agent:create"
+											initial={duplicateDetail.data ?? null}
+											takenNames={(profiles.data ?? []).map((row) => row.name)}
+											effortTiers={effortTiers}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onCancel={() => go({ name: null })}
+										/>
+									) : teamMode && teamDetail.data ? (
+										<TeamDetail
+											key={teamEditorIdentity(teamDetail.data)}
+											team={teamDetail.data}
+											agents={profiles.data}
+											teams={teams.data}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											belowHeader={hubPane(
+												"team",
+												teamDetail.data.name,
+												teamDetail.data.id,
+											)}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onOpenAgent={(agentName) =>
+												requestGo({ kind: "agent", name: agentName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{ kind: "team", name: teamDetail.data?.name ?? "" },
+													prompt,
+												);
+											}}
+										/>
+									) : !teamMode && profileDetail.data ? (
+										<AgentDetail
+											key={profileEditorIdentity(profileDetail.data)}
+											profile={profileDetail.data}
+											displayedName={printName(profileDetail.data.name)}
+											classNotice={
+												classNotice?.name === profileDetail.data.name
+													? classNotice.copy
+													: null
+											}
+											onClassNotice={(copy) =>
+												setClassNotice(
+													copy ? { name: profileDetail.data.name, copy } : null,
+												)
+											}
+											teams={teams.data}
+											effortTiers={effortTiers}
+											askEnabled={run.enabled}
+											openPictureEditor={pictureEditRequested}
+											onDirtyChange={reportDirty}
+											belowHeader={hubPane(
+												"agent",
+												profileDetail.data.name,
+												profileDetail.data.agent_id ?? undefined,
+											)}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onDuplicate={(profile) =>
+												requestGo({ create: "agent", duplicate: profile.name })
+											}
+											onOpenTeam={(teamName) =>
+												requestGo({ kind: "team", name: teamName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{
+														kind: "agent",
+														name: profileDetail.data?.name ?? "",
+													},
+													prompt,
+												);
+											}}
+										/>
+									) : selected ? (
+										<Skeleton className="h-6 w-40" />
+									) : null}
+								</div>
 							</div>
+						)}
+					</div>
+					{/*
+					 * THE QUESTION A DIRTY DRAFT EARNS, asked in the pane that owns it:
+					 * every roster click, tab switch and "Add manually" lands here first when
+					 * an edit is unsaved (D1/U1/Q1), with the same words the edit footer uses.
+					 */}
+					{pendingNav ? (
+						<div
+							className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
+							role="alertdialog"
+							aria-label={t("ui.agents.detail.action.discard_question")}
+						>
+							<span className="text-body-sm text-ink">
+								{teamMode
+									? t("ui.agents.pages.discard_bar.team")
+									: t("ui.agents.pages.discard_bar.agent")}
+							</span>
+							<Button
+								variant="danger"
+								onClick={() => {
+									// The pane unmounts on navigation, so its report goes with it;
+									// clearing it here would be a second way to say the same thing.
+									setDirtyIdentity(null);
+									go(pendingNav);
+								}}
+							>
+								{t("ui.agents.detail.action.discard_changes")}
+							</Button>
+							<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
+								{t("ui.agents.detail.action.keep_editing")}
+							</Button>
+						</div>
+					) : null}
+					{/*
+					 * THE DOCKED COMPOSER, ONLY WHERE THE HERO IS NOT (D3/U2/Q8). The empty
+					 * pane already leads with one, and rendering both put two textareas, two
+					 * `aria-live` strips and two Stop buttons on screen with DUPLICATE ids —
+					 * so `<label for>` bound to the first only and a screen reader read every
+					 * state change twice. One composer, one placement.
+					 */}
+					{showsEmptyPane ? null : (
+						/*
+						 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
+						 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
+						 * vertical padding, and the box's step of lightness on `canvas` is the
+						 * separation a `border-t` used to draw (design spec D1: this wrapper was
+						 * the first of three nested frames). The status row sits in flow above
+						 * the box at a fixed 28 px, so there is no overlay to reserve room for -
+						 * which is what the old `stripHeight` padding on the scroller did.
+						 *
+						 * NOR A GROUND: it inherits `<WorkspaceFrame variant="full-height">`'s
+						 * canvas-content ground, like the band inside `MessageInput`. Under Full app glass that region is
+						 * translucent canvas (`index.css`), and an own `bg-canvas` here painted an
+						 * opaque block over it - the composer stood out as a flat, darker band
+						 * beneath the glass detail column (operator report, 2026-11-20). Without
+						 * glass both are `canvas`, which is why it only showed under glass. The
+						 * dock sits outside the scroller, so nothing scrolls beneath it to hide.
+						 */
+						<div className="shrink-0">
+							<ConfigComposer
+								run={run}
+								/*
+								 * ON THE SKILLS TAB THE BOX ONLY EVER NAMES A SKILL: an Agents target
+								 * left in the store is cleared by the selection effect, and this keeps
+								 * a frame between the two from naming it here.
+								 */
+								about={
+									skillMode
+										? run.about?.kind === "skill"
+											? run.about
+											: null
+										: run.about
+								}
+								onClearAbout={() => run.setAbout(null)}
+								skill={skillMode}
+								focusToken={skillMode ? skillAskFocus : 0}
+								blockedReason={
+									editDirty
+										? t("ui.agents.pages.blocked_edit")
+										: skillMode && skillGate !== null
+											? t(SKILL_GATE_KEY[skillGate])
+											: null
+								}
+							/>
 						</div>
 					)}
-				</div>
-				{/*
-				 * THE QUESTION A DIRTY DRAFT EARNS, asked in the pane that owns it:
-				 * every roster click, tab switch and "Add manually" lands here first when
-				 * an edit is unsaved (D1/U1/Q1), with the same words the edit footer uses.
-				 */}
-				{pendingNav ? (
-					<div
-						className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
-						role="alertdialog"
-						aria-label={t("ui.agents.detail.action.discard_question")}
-					>
-						<span className="text-body-sm text-ink">
-							{teamMode
-								? t("ui.agents.pages.discard_bar.team")
-								: t("ui.agents.pages.discard_bar.agent")}
-						</span>
-						<Button
-							variant="danger"
-							onClick={() => {
-								// The pane unmounts on navigation, so its report goes with it;
-								// clearing it here would be a second way to say the same thing.
-								setDirtyIdentity(null);
-								go(pendingNav);
-							}}
-						>
-							{t("ui.agents.detail.action.discard_changes")}
-						</Button>
-						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
-							{t("ui.agents.detail.action.keep_editing")}
-						</Button>
-					</div>
-				) : null}
-				{/*
-				 * THE DOCKED COMPOSER, ONLY WHERE THE HERO IS NOT (D3/U2/Q8). The empty
-				 * pane already leads with one, and rendering both put two textareas, two
-				 * `aria-live` strips and two Stop buttons on screen with DUPLICATE ids —
-				 * so `<label for>` bound to the first only and a screen reader read every
-				 * state change twice. One composer, one placement.
-				 */}
-				{showsEmptyPane ? null : (
-					/*
-					 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
-					 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
-					 * vertical padding, and the box's step of lightness on `canvas` is the
-					 * separation a `border-t` used to draw (design spec D1: this wrapper was
-					 * the first of three nested frames). The status row sits in flow above
-					 * the box at a fixed 28 px, so there is no overlay to reserve room for -
-					 * which is what the old `stripHeight` padding on the scroller did.
-					 *
-					 * NOR A GROUND: it inherits `<main data-glass-region="canvas-content">`'s,
-					 * like the band inside `MessageInput`. Under Full app glass that region is
-					 * translucent canvas (`index.css`), and an own `bg-canvas` here painted an
-					 * opaque block over it - the composer stood out as a flat, darker band
-					 * beneath the glass detail column (operator report, 2026-11-20). Without
-					 * glass both are `canvas`, which is why it only showed under glass. The
-					 * dock sits outside the scroller, so nothing scrolls beneath it to hide.
-					 */
-					<div className="shrink-0">
-						<ConfigComposer
-							run={run}
-							/*
-							 * ON THE SKILLS TAB THE BOX ONLY EVER NAMES A SKILL: an Agents target
-							 * left in the store is cleared by the selection effect, and this keeps
-							 * a frame between the two from naming it here.
-							 */
-							about={
-								skillMode
-									? run.about?.kind === "skill"
-										? run.about
-										: null
-									: run.about
-							}
-							onClearAbout={() => run.setAbout(null)}
-							skill={skillMode}
-							focusToken={skillMode ? skillAskFocus : 0}
-							blockedReason={
-								editDirty
-									? t("ui.agents.pages.blocked_edit")
-									: skillMode && skillGate !== null
-										? t(SKILL_GATE_KEY[skillGate])
-										: null
-							}
-						/>
-					</div>
-				)}
-			</main>
+				</main>
+			</WorkspaceFrame>
 		</div>
 	);
 }

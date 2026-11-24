@@ -57,6 +57,10 @@ globalThis.localStorage = {
 
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+// D1: the foot label's wiring (see the case that reads them).
+const RE_FOOT_LABEL_STEP_WHEN_FETCHING =
+	/page\.remaining > 0 && !pressFetchesTail\s*\?\s*pageReveal\(/;
+const RE_FOOT_FETCH_DECISION = /const pressFetchesTail = shouldFetchTail\(/;
 
 /*
  * THE WIRING PATTERN the section-press source read below matches: the transition
@@ -73,13 +77,16 @@ const SECTION_PRESS_WIRING = /toggleSectionDisclosure\([^)]*Boolean\(query\)/;
  * reads as the finding it answers rather than as a pattern.
  */
 /** The grown heading's two channels and the one sentence behind both (U1/D1). */
-const GROWN_HINT_TITLE = /title=\{grownHint \?\? undefined\}/;
-const GROWN_HINT_DESCRIBED_BY =
-	/aria-describedby=\{grownHint \? sectionGrownHintId\(key\) : undefined\}/;
-const GROWN_HINT_PREDICATE =
-	/const grownHint = sectionIsGrown\(sectionCaps\[key\]\)/;
-const GROWN_HINT_ELEMENT =
-	/<span id=\{sectionGrownHintId\(key\)\} className="sr-only">/;
+/*
+ * THE GROWN HINT NOW RIDES ON THE SECTION FOOT ONLY (design round 7, D1). The
+ * legacy disclosure heading that also carried it (`title` + `aria-describedby`)
+ * was drawn only off Chat; the sidebar now draws the shared `sectionLabel` on
+ * every route, and the foot - the press that grew the section - is the one
+ * control left to carry the sentence.
+ */
+const GROWN_HINT_FOOT =
+	/title=\{\s*sectionIsGrown\(cap\)\s*\? `\$\{footName\} - \$\{SECTION_GROWN_HINT\}`\s*: footName\s*\}/;
+const LEGACY_HEADING_HINT = /aria-describedby=\{grownHint/;
 /**
  * The section foot's walk stamp, ANCHORED TO A LINE OF ITS OWN: the comment above
  * the attribute names `[data-chat-row]` while explaining why the foot joins the
@@ -102,8 +109,10 @@ const FOCUS_APPLIES = /target\?\.focus\(\)/;
  * source-string pin cannot see a gate that keeps its text but not its meaning - the
  * round-2 form passed this pattern while being inert in the state U2 measured.
  */
+// `true`: the Agents section has no disclosure on any route since design round
+// 7's D1, so it is always open for the field's purposes.
 const ROSTER_FIELD_WIRED =
-	/const rosterFilterShown = rosterFieldShown\(\s*isOpen\("agents", true\),\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
+	/const rosterFilterShown = rosterFieldShown\(\s*true,\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
 /** The copy contract on the hint itself (U1/D1). */
 const HINT_NAMES_GESTURE = /collapse/i;
 const HINT_NAMES_COST = /reopen/i;
@@ -167,6 +176,10 @@ const {
 	pageMoreLabel,
 	pageOrder,
 	pageRows,
+	localHorizonMs,
+	pageFrontierMs,
+	shouldFetchTail,
+	withholdPastHorizon,
 	parseSidebarView,
 	groupRows,
 	sectionRows,
@@ -788,27 +801,17 @@ test("the grown hint's id is keyed, so two sections cannot describe each other",
 	assert.match(sectionGrownHintId("agents"), HINT_ID_KEYED);
 });
 
-test("a grown heading carries the reset on both channels, from one sentence", () => {
+test("a grown section carries the reset on its foot, from one sentence", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	assert.match(
 		source,
-		GROWN_HINT_TITLE,
-		"the grown heading has no pointer channel for the reset (U1/D1)",
+		GROWN_HINT_FOOT,
+		"the grown section's foot has no pointer channel for the reset (U1/D1)",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		source,
-		GROWN_HINT_DESCRIBED_BY,
-		"the grown heading describes itself to no screen reader (U1/D1)",
-	);
-	assert.match(
-		source,
-		GROWN_HINT_PREDICATE,
-		"the hint is not read from the same map `cappedRows` slices rows with",
-	);
-	assert.match(
-		source,
-		GROWN_HINT_ELEMENT,
-		"no element carries the sentence the heading points at",
+		LEGACY_HEADING_HINT,
+		"the route-gated legacy heading is back (design round 7, D1)",
 	);
 	assert.ok(
 		!source.includes("Collapse to restore the compact list"),
@@ -1064,6 +1067,350 @@ test("invariant 1: the viewed conversation is on screen past the page's end", ()
 		rows.slice(0, 10).map((entry) => entry.session_id),
 		"the page behind it is unchanged",
 	);
+});
+
+/*
+ * THE LOCAL HORIZON (operator report 2026-11-23: "I can't see any local messages
+ * past 21 hours, everything past that point is all remote"). The daemon pages the
+ * LOCAL catalogue (50 rows, then 50 per tail extension) but sends every peer row
+ * at once, so an arrangement over the union drew a wall of remote rows below the
+ * oldest local row the client happened to hold. `sidebarPage` mirrors the
+ * component's pipeline (`chat-sidebar.tsx`: horizon -> `pageOrder` -> `pageRows`)
+ * so these cases drive the same composition the sidebar draws.
+ */
+const local = (id, hoursAgo, extra = {}) => ({
+	...row(id, SECONDS(hoursAgo)),
+	created_at: SECONDS(hoursAgo + 1),
+	locality: "local",
+	...extra,
+});
+const remote = (id, hoursAgo, extra = {}) => ({
+	...row(id, SECONDS(hoursAgo)),
+	created_at: SECONDS(hoursAgo + 1),
+	locality: "remote",
+	owner_device: "peer-1",
+	...extra,
+});
+const sidebarPage = (
+	rows,
+	listing,
+	loads,
+	{ basis = "active", currentId } = {},
+) => {
+	/*
+	 * The store captures the frontier when each page ARRIVES (`head.frontierMs`);
+	 * a fixture that names its listing ids stands for those pages, read in order.
+	 * A fixture that passes `frontierMs` states the captured value directly.
+	 */
+	const byId = new Map(rows.map((entry) => [entry.session_id, entry]));
+	const horizon = localHorizonMs({
+		complete: listing.complete,
+		order: listing.order,
+		frontierMs:
+			"frontierMs" in listing
+				? listing.frontierMs
+				: pageFrontierMs(
+						(listing.listingIds ?? [])
+							.map((id) => byId.get(id))
+							.filter(Boolean),
+					),
+	});
+	const reachable = withholdPastHorizon(rows, horizon, basis);
+	const arranged = pageOrder(reachable.rows, "active-first", basis);
+	return {
+		horizon,
+		arranged,
+		page: pageRows(arranged, {
+			limit: pageLimit(loads),
+			currentId,
+			withheld: reachable.withheld,
+		}),
+	};
+};
+/* 50 local rows read (1h..50h), 100 remote rows spanning 0.5h..199.5h. */
+const horizonFixture = () => {
+	const locals = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index + 1}`, index + 1),
+	);
+	const remotes = Array.from({ length: 100 }, (_, index) =>
+		remote(`r${index}`, index * 2 + 0.5),
+	);
+	return { locals, remotes };
+};
+
+test("local horizon: no drawn remote row is older than an unloaded local row (2026-11-23 report)", () => {
+	const { locals, remotes } = horizonFixture();
+	const rows = [...locals, ...remotes];
+	const listing = {
+		complete: false,
+		order: "activity",
+		listingIds: [...locals, ...remotes].map((entry) => entry.session_id),
+	};
+	const { horizon, arranged, page } = sidebarPage(rows, listing, 3);
+	assert.equal(
+		horizon,
+		SECONDS(50) * 1000,
+		"the frontier is the last local row read",
+	);
+	for (const drawn of page.rows) {
+		if (drawn.locality !== "remote") continue;
+		assert.ok(
+			drawn.updated_at * 1000 > horizon,
+			`${drawn.session_id} (${drawn.updated_at}) is drawn below the local horizon`,
+		);
+	}
+	assert.equal(
+		page.rows.filter((entry) => entry.locality === "local").length,
+		50,
+		"every local row read is drawn at rung 100",
+	);
+	assert.equal(
+		arranged.length,
+		75,
+		"50 local + the 25 remote rows newer than 50h",
+	);
+	assert.equal(
+		page.remaining,
+		0,
+		"withheld rows are not counted as revealable",
+	);
+
+	/* The tail page arrives: 50 more local rows, 51h..100h. */
+	const more = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index + 51}`, index + 51),
+	);
+	const grown = sidebarPage(
+		[...rows, ...more],
+		{
+			...listing,
+			listingIds: [
+				...listing.listingIds,
+				...more.map((entry) => entry.session_id),
+			],
+		},
+		4,
+	);
+	assert.equal(grown.horizon, SECONDS(100) * 1000);
+	assert.deepEqual(
+		grown.page.rows.slice(0, page.rows.length).map((entry) => entry.session_id),
+		page.rows.map((entry) => entry.session_id),
+		"loading more only appends: nothing already drawn re-arranges",
+	);
+	const ids = grown.page.rows.map((entry) => entry.session_id);
+	assert.ok(
+		ids.indexOf("l51") < ids.indexOf("r26") &&
+			ids.indexOf("r25") < ids.indexOf("l51"),
+		"local and remote rows interleave by the clock past the old horizon",
+	);
+});
+
+test("local horizon: a complete listing withholds nothing", () => {
+	const { locals, remotes } = horizonFixture();
+	const { horizon, arranged } = sidebarPage(
+		[...locals, ...remotes],
+		{
+			complete: true,
+			order: "activity",
+			listingIds: locals.map((entry) => entry.session_id),
+		},
+		3,
+	);
+	assert.equal(horizon, null);
+	assert.equal(arranged.length, 150);
+});
+
+test("local horizon: the frontier is the LAST idle local row a page carried, skipping pinned, running, core-active and remote rows", () => {
+	const rows = [
+		local("stale-active", 500, { active: true }), // active_first: leads the page whatever its age
+		local("a", 2),
+		local("b", 9),
+		local("unseen-old", 350, { active: true, status: { code: "complete" } }), // R1: core-active, not running
+		local("attached-old", 360, { active: true }), // R1: core-active (`attached`)
+		local("pinned-old", 400, { pinned: true }), // off_page extra
+		local("running-old", 300, { status: { code: "busy" } }), // off_page extra
+		remote("peer", 700),
+	];
+	assert.equal(
+		pageFrontierMs(rows),
+		SECONDS(9) * 1000,
+		"neither the active band nor the extras lower the horizon",
+	);
+	assert.equal(
+		localHorizonMs({ complete: false, order: "activity", frontierMs: null }),
+		Number.POSITIVE_INFINITY,
+		"no frontier read: withhold every non-running remote",
+	);
+	assert.equal(
+		localHorizonMs({ complete: true, order: "activity", frontierMs: null }),
+		null,
+		"a complete listing has no horizon",
+	);
+});
+
+/*
+ * R1 (agent review round 1): core's active band is wider than "running" -
+ * unread completions and `attached` runtimes sort first whatever their age. A
+ * page made only of those rows bounds nothing, so before this fix its last row
+ * put the horizon ~197h back and 39 of 40 remote rows were drawn above unloaded
+ * idle locals at 2h and 30h.
+ */
+test("local horizon: an all-active page withholds every non-running remote (R1)", () => {
+	const actives = Array.from({ length: 50 }, (_, index) =>
+		local(`act${index}`, 1 + index * 4, {
+			active: true,
+			status: { code: index % 2 ? "complete" : "idle" },
+		}),
+	);
+	const remotes = Array.from({ length: 40 }, (_, index) =>
+		remote(`r${index}`, 3 + index * 5),
+	);
+	const live = remote("r-live", 150, { status: { code: "busy" } });
+	const { horizon, page } = sidebarPage(
+		[...actives, ...remotes, live],
+		{
+			complete: false,
+			order: "activity",
+			listingIds: actives.map((entry) => entry.session_id),
+		},
+		6,
+	);
+	assert.equal(horizon, Number.POSITIVE_INFINITY);
+	assert.deepEqual(
+		page.rows
+			.filter((entry) => entry.locality === "remote")
+			.map((entry) => entry.session_id),
+		["r-live"],
+		"only the running remote row draws while idle locals are unloaded",
+	);
+});
+
+/*
+ * R2 (agent review round 1): the horizon is the frontier's clock AT READ TIME.
+ * Touching that conversation moves its live clock to now; read live, every
+ * remote row vanished (30 drawn -> 0). The captured value does not move.
+ */
+test("local horizon: touching the frontier conversation does not hide the remote rows (R2)", () => {
+	const locals = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index}`, index + 1),
+	);
+	const remotes = Array.from({ length: 30 }, (_, index) =>
+		remote(`r${index}`, index + 0.5),
+	);
+	const captured = pageFrontierMs(locals);
+	assert.equal(captured, SECONDS(50) * 1000);
+	const listing = { complete: false, order: "activity", frontierMs: captured };
+	const drawnRemotes = (rows) =>
+		sidebarPage(rows, listing, 6).page.rows.filter(
+			(entry) => entry.locality === "remote",
+		).length;
+	const before = drawnRemotes([...locals, ...remotes]);
+	const touched = locals.map((entry) =>
+		entry.session_id === "l49" ? { ...entry, updated_at: SECONDS(0) } : entry,
+	);
+	assert.equal(before, 30);
+	assert.equal(drawnRemotes([...touched, ...remotes]), 30);
+});
+
+/*
+ * R3 (agent review round 1): the older `rank` order bounds births within a
+ * tier, not activity, so it carries no usable horizon - every non-running
+ * remote is withheld until the listing completes.
+ */
+test("local horizon: a rank-ordered listing withholds every non-running remote (R3)", () => {
+	assert.equal(
+		localHorizonMs({
+			complete: false,
+			order: "rank",
+			frontierMs: SECONDS(10) * 1000,
+		}),
+		Number.POSITIVE_INFINITY,
+	);
+	assert.equal(
+		localHorizonMs({ complete: true, order: "rank", frontierMs: null }),
+		null,
+	);
+});
+
+/*
+ * R4 (agent review round 1): the foot's fetch condition. It counts the rows the
+ * page can DRAW - 300 held-but-withheld remote rows once kept the cursor from
+ * ever being followed - and needs paging plus a cursor.
+ */
+test("the foot follows the cursor when the next rung outruns the drawable rows (R4)", () => {
+	const base = { groupPaging: true, tailCursor: "c1" };
+	// Rung 3 asks for 100; 50 locals + 25 drawable remotes (300 withheld).
+	assert.equal(shouldFetchTail({ ...base, next: 3, drawable: 75 }), true);
+	assert.equal(
+		shouldFetchTail({ ...base, next: 3, drawable: 375 }),
+		false,
+		"counting the withheld rows is the bug: no fetch",
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, next: 3, drawable: pageLimit(3) }),
+		false,
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, tailCursor: null, next: 3, drawable: 0 }),
+		false,
+		"no cursor: nothing to follow",
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, groupPaging: false, next: 3, drawable: 0 }),
+		false,
+	);
+});
+
+/*
+ * D1 (design round 1): when the press also fetches, the label counts the
+ * rung's step - the next local page fills it - not the drawable remainder
+ * ("Show 23 more chats" drew 50). Asserted on the source, the shape this file
+ * uses for JSX-level wiring.
+ */
+test("the foot's label counts the rung's step when the press fetches (D1)", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(source, RE_FOOT_LABEL_STEP_WHEN_FETCHING);
+	assert.match(source, RE_FOOT_FETCH_DECISION);
+});
+
+test("local horizon: a running remote row is never withheld, and a viewed withheld row is lifted", () => {
+	const { locals, remotes } = horizonFixture();
+	const live = remote("r-live", 150, { status: { code: "busy" } });
+	const rows = [...locals, ...remotes, live];
+	const listing = {
+		complete: false,
+		order: "activity",
+		listingIds: locals.map((entry) => entry.session_id),
+	};
+	const { page } = sidebarPage(rows, listing, 0, { currentId: "r90" });
+	const ids = page.rows.map((entry) => entry.session_id);
+	assert.ok(
+		ids.includes("r-live"),
+		"live work is never behind the horizon (A1)",
+	);
+	assert.equal(page.lifted, true);
+	assert.equal(ids[0], "r90", "the viewed remote row leads, outside the order");
+	assert.equal(ids.filter((id) => id === "r90").length, 1);
+});
+
+test("local horizon: the created basis compares each remote birth against the frontier's activity", () => {
+	const { locals, remotes } = horizonFixture();
+	const { page } = sidebarPage(
+		[...locals, ...remotes],
+		{
+			complete: false,
+			order: "activity",
+			listingIds: locals.map((entry) => entry.session_id),
+		},
+		3,
+		{ basis: "created" },
+	);
+	for (const drawn of page.rows) {
+		if (drawn.locality !== "remote") continue;
+		assert.ok(
+			drawn.created_at > SECONDS(50),
+			`${drawn.session_id} drawn below the horizon`,
+		);
+	}
 });
 
 test("invariant 1: a viewed conversation inside the page is not lifted", () => {
@@ -1903,7 +2250,10 @@ test("the AGENTS/TEAMS region draws each entity row behind the view's own gate",
 		 * guards is the `isSectionShown` call beside it, so the anchor is the CALL
 		 * (whitespace-tolerant) rather than one spelling of its arguments.
 		 */
-		const at = source.search(new RegExp(`heading\\(\\s*"${key}"`));
+		// The shared `sectionLabel` heading since design round 7's D1.
+		const at = source.search(
+			new RegExp(`sectionLabel\\(\\s*t\\(SIDEBAR_SECTION_LABEL\\.${key}\\)`),
+		);
 		assert.ok(at > 0, `the ${key} section's heading call is gone`);
 		const window = source.slice(Math.max(0, at - 600), at);
 		assert.ok(

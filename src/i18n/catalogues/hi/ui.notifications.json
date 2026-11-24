@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "विवरण देखें",
 	"ui.notifications.drawer.view_details_for": "विवरण देखें: {title}",
 	"ui.notifications.drawer.back": "अपडेट पर वापस जाएँ",
-	"ui.notifications.drawer.open_in_notifications": "सूचनाओं में खोलें"
+	"ui.notifications.drawer.open_in_notifications": "सूचनाओं में खोलें",
+	"ui.notifications.source.conversation_deleted": "बातचीत मिटा दी गई",
+	"ui.notifications.toast.nothing_to_dismiss": "हटाने के लिए कुछ नहीं है। खुले सवाल तब तक रहते हैं जब तक आप उनका जवाब न दें, उन्हें अस्वीकार न करें या हटा न दें।",
+	"ui.notifications.detail.deleted.ask": "यह बातचीत मिटा दी गई है, इसलिए इस सवाल का जवाब नहीं दिया जा सकता। इसे साफ़ करने के लिए अस्वीकार करें या हटाएँ।",
+	"ui.notifications.detail.deleted.update": "यह बातचीत मिटा दी गई है। आप अब भी यह अपडेट हटा सकते हैं।",
+	"ui.notifications.detail.deleted.open_tip": "यह बातचीत मिटा दी गई है",
+	"ui.notifications.detail.deleted.send_withheld": "जवाब नहीं भेजा जा सकता: सवाल पूछने वाली बातचीत मिटा दी गई है।"
 }

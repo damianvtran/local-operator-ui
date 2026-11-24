@@ -603,6 +603,12 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		[
+			{ op: "sessions.get", sessionId, inlineUi: true },
+			`/${sessionId}?inline_ui=1`,
+			"GET",
+			undefined,
+		],
 		/*
 		 * THE OPEN-FRAME FLAG, AT THE ONE HOP THAT BUILDS THE QUERY (agent review
 		 * round 1, F6). With `open_frame=1` the backend counts `limit` in PAINTABLE
@@ -625,8 +631,9 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 100,
 				beforeId: "entry-1",
 				openFrame: true,
+				inlineUi: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
+			`/${sessionId}/history?inline_ui=1&limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
 			undefined,
 		],
@@ -657,6 +664,24 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			`/${sessionId}/messages`,
 			"POST",
 			{ request_id: requestId, text: "hello", images: [], mode: "steer" },
+		],
+		[
+			{
+				op: "sessions.message",
+				sessionId,
+				requestId,
+				text: "hello",
+				inlineUi: true,
+			},
+			`/${sessionId}/messages`,
+			"POST",
+			{
+				request_id: requestId,
+				text: "hello",
+				images: [],
+				mode: "prompt",
+				inline_ui: true,
+			},
 		],
 		[
 			{
@@ -3730,11 +3755,17 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 			journalOrder: true,
 			orderIds: ["a"],
 			peerJournalSource: true,
+			inlineUi: true,
 		}),
 		{ streamId: "stream-1" },
 	);
 	assert.equal(seen[0].peerJournalSource, true);
 	assert.equal(seen[0].journalOrder, true);
+	assert.equal(seen[0].inlineUi, true);
+	assert.throws(
+		() => subscribe(event, { sessionId: "aaaaaaaaaaaa", inlineUi: "1" }),
+		/Invalid stream subscription/,
+	);
 	assert.throws(
 		() =>
 			subscribe(event, { sessionId: "aaaaaaaaaaaa", peerJournalSource: "1" }),

@@ -358,6 +358,19 @@ export class PasskeyNotices {
 	}
 
 	/**
+	 * The notice for `tabId` only while it describes a request still PENDING in
+	 * the page, or null. A `not-allowed` notice is retained for its recovery
+	 * copy after the page's `credentials.get()` already rejected, so nothing is
+	 * waiting on a person any more: counting it as a live request would turn a
+	 * later passive autofill card into a ceremony (notice, close/navigate
+	 * refusals) on evidence that is already over (review B5).
+	 */
+	pendingFor(tabId: number): PasskeyNoticeView | null {
+		const notice = this.viewFor(tabId);
+		return notice && !notice.outcome ? notice : null;
+	}
+
+	/**
 	 * Tabs whose "Continue in your own tab" is between the click and the new
 	 * tab existing (review R1/Q1). The check-then-dismiss in
 	 * `continuePasskeyNoticeInUserTab` spans an await (the host waits for the

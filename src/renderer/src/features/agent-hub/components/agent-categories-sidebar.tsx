@@ -116,7 +116,10 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 			   a ground rather than a border, and it is the ground the two row roles are
 			   authored against. See the `CategoryItem` docstring above for the
 			   measurement that moved it. */
-		<div className="flex h-full flex-col overflow-y-auto">
+		<div
+			data-lo-pane-edge-cues=""
+			className="flex h-full flex-col overflow-y-auto"
+		>
 			<h2 className="mb-2 px-3 font-medium text-ink-dim text-meta">
 				{t("ui.hub.taxonomy.heading")}
 			</h2>
