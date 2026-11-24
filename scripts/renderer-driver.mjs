@@ -33144,9 +33144,17 @@ async function sceneSettingsTabs(cdp) {
 	})()`);
 	check(
 		"the focused panel draws no outline ring",
-		/* `outline-style: none` is what suppresses a ring; `outline-width` still
-		   reports the global rule's 2px and paints nothing. */
-		ring?.focused === true && ring.outlineStyle === "none",
+		/*
+		 * `focusVisible` is the PRECONDITION, not decoration: the escape exists
+		 * because Chromium treats a scripted `.focus()` after keyboard input as
+		 * `:focus-visible`, so a run that never enters that state would pass this
+		 * check with the escape removed (review round 4, MINOR). `outline-style`
+		 * is what suppresses the ring; `outline-width` still reports the global
+		 * rule's 2px and paints nothing.
+		 */
+		ring?.focused === true &&
+			ring.focusVisible === true &&
+			ring.outlineStyle === "none",
 		JSON.stringify(ring),
 	);
 	await capture("settings-tabs-rail-focus-dark");
