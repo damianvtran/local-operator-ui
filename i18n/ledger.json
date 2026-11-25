@@ -19750,30 +19750,30 @@
 			"locale": "fr",
 			"namespace": "ui.chat.pickers",
 			"source_sha256": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37",
-			"target_sha256": "049c348748930a00a7823cc0654c798b76eb4dbeb695b9a34e09510805dce81a",
+			"target_sha256": "583bb55a2a0433391309fa06c3cf4158d26bac5fdb4c22343427b07db548b4ff",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (translator / openrouter/moonshotai/kimi-k3.1-pro / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). PR #1753 keyed chat census strings: translators are recorded locale-wide and relayed, not verified, and are not attributed per namespace; see docs/i18n/census-key-literals-provenance.md."
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "6ff7a7a1f3b4-ui1753-fr",
+					"instance": "3fa87ceefd4f-residual5-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
-					"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
-					"scope": "the 8 keys this PR added to ui.chat.pickers (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-fr.json",
+					"receipt_sha256": "dbba9f7e272d1dada9d85e237540c295e3459292655e2ea3eb4bd5f6f20fb691",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -20004,6 +20004,30 @@
 							"receipt": "i18n/receipts/f94d5f6de05b-u1664m1-fr.json",
 							"receipt_sha256": "73a9a864e5b4e1dc80b146bfa0784ebd44c50da12242693acdee3908fcffff08",
 							"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fc24432940fa342e87f169992f8f9bf00d2d73a06ee654a29a62b547bcb6be37",
+					"target_sha256": "049c348748930a00a7823cc0654c798b76eb4dbeb695b9a34e09510805dce81a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "6ff7a7a1f3b4-ui1753-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
+							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
+							"scope": "the 8 keys this PR added to ui.chat.pickers (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -72961,29 +72985,30 @@
 			"locale": "vi",
 			"namespace": "ui.agents.settings",
 			"source_sha256": "f4986042519a58d3e8574412360c58e16c3503878f90a1c4ef5907346f424c35",
-			"target_sha256": "dd63b4c53392f87f89e70f89d8e37084fc049cddb4ac0562f30cb5593bf1c95a",
+			"target_sha256": "d60dd6b97f723480d8da53019357ba4e647f9cab3f97f0da66b4c319dfd6a522",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-30",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "a6863c51919d-vi",
+					"instance": "3fa87ceefd4f-residual5-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a6863c51919d-vi.json",
-					"receipt_sha256": "bede64dec58dd63bccc4d1eb5c703982ea075b8e47bee87a6d96a72326eb6bae",
-					"scope": "ui.agents.settings: new key profile_picture_error_save (4fdb14a610); 7 earlier profile_picture keys re-confirmed byte-identical to dcf4dd5c5a. Whole-file hashes bound.",
-					"note": "Independent audit of the profile picture save-error string; see retention record profile-picture-save-error-20261030. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-vi.json",
+					"receipt_sha256": "8c65275c19d356e664f3e8a56c1d76c8864d7d254f3192f976a07ab690fbfb61",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -73080,6 +73105,30 @@
 							"receipt_sha256": "e268a94de3bb0bcdb36c0c7d4a54a9e3cbbbc46b191e1cbd41286e5a538d0940",
 							"scope": "ui.agents.settings: the 7 profile-picture keys added in 26c1dde39f (delta audit); other 63 keys byte-identical to parent. Whole-file hashes bound.",
 							"note": "Independent delta audit of the agent profile picture strings; see the retention record. No rendered-fit or native-reader claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f4986042519a58d3e8574412360c58e16c3503878f90a1c4ef5907346f424c35",
+					"target_sha256": "dd63b4c53392f87f89e70f89d8e37084fc049cddb4ac0562f30cb5593bf1c95a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "a6863c51919d-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a6863c51919d-vi.json",
+							"receipt_sha256": "bede64dec58dd63bccc4d1eb5c703982ea075b8e47bee87a6d96a72326eb6bae",
+							"scope": "ui.agents.settings: new key profile_picture_error_save (4fdb14a610); 7 earlier profile_picture keys re-confirmed byte-identical to dcf4dd5c5a. Whole-file hashes bound.",
+							"note": "Independent audit of the profile picture save-error string; see retention record profile-picture-save-error-20261030. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -128785,30 +128834,30 @@
 			"locale": "fr",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "fc7548876124d2cb7c5d6a009ef1ba2d2960dbf9cd212a04db41d8491a9daf24",
+			"target_sha256": "3b2ec909ab9ed31fb57d34e50f9f3372b98288e8dedfb528e9221a4c6e7b8e73",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "350ecfa493e1-pr1987-bedrock-fr",
+					"instance": "3fa87ceefd4f-residual5-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json",
-					"receipt_sha256": "4de1b3f62b80839b2f62329686b5e633a7f9a8ba5191392dd72408f26699afaa",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-fr.json",
+					"receipt_sha256": "dbba9f7e272d1dada9d85e237540c295e3459292655e2ea3eb4bd5f6f20fb691",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -128836,6 +128885,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "fc7548876124d2cb7c5d6a009ef1ba2d2960dbf9cd212a04db41d8491a9daf24",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "350ecfa493e1-pr1987-bedrock-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json",
+							"receipt_sha256": "4de1b3f62b80839b2f62329686b5e633a7f9a8ba5191392dd72408f26699afaa",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -128843,30 +128916,30 @@
 			"locale": "es",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "fdbe7cd5c3c6b7cee4432fce09a808fcc9e0c6eb28054c20d53c415986678df0",
+			"target_sha256": "7dbf707dff6e684571d83cf2da652d90f254152d66308fef532bcec570f1eb89",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean-with-findings",
-					"instance": "350ecfa493e1-pr1987-bedrock-es",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "3fa87ceefd4f-residual5-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json",
-					"receipt_sha256": "da5d2c14cbed99c6ded11c7dabfb6f27c83e9a797edf8538c9c4c0edef775861",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-es.json",
+					"receipt_sha256": "9dc94e1cbec1f3214210ab28cb1feeab309c48eee79cf4df6e4c2e66a4d2e2dd",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -128894,6 +128967,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "fdbe7cd5c3c6b7cee4432fce09a808fcc9e0c6eb28054c20d53c415986678df0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "350ecfa493e1-pr1987-bedrock-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json",
+							"receipt_sha256": "da5d2c14cbed99c6ded11c7dabfb6f27c83e9a797edf8538c9c4c0edef775861",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -128901,30 +128998,30 @@
 			"locale": "zh-CN",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "f068ab4c902198fccb91fa47dd917c1b538c272185f71100c0250f18f2b9bfef",
+			"target_sha256": "bd9b139f64a29f4ea92466cbb4111db6a400a1bef8a416480ed880d0786402e3",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "350ecfa493e1-pr1987-bedrock-zh-cn",
+					"instance": "3fa87ceefd4f-residual5-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json",
-					"receipt_sha256": "ccfa956072d4da07954a80126c0a6bf45ec69e7319580317965982a313b6b010",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-zh-cn.json",
+					"receipt_sha256": "c96394e84c508c829003af09d71e5b89de923de4470efbbcf4e2bed65e08ad83",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -128952,6 +129049,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "f068ab4c902198fccb91fa47dd917c1b538c272185f71100c0250f18f2b9bfef",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "350ecfa493e1-pr1987-bedrock-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json",
+							"receipt_sha256": "ccfa956072d4da07954a80126c0a6bf45ec69e7319580317965982a313b6b010",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -128959,30 +129080,30 @@
 			"locale": "ru",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "c28362272b29d4d808041f3988723c1437522d65ccffe9cc25ca0d57a4eed6fa",
+			"target_sha256": "fa7db54dfd6bd17b715caaba43117f9c8a2a98f99bc61cb8d4c74300b1cfbb90",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean-with-findings",
-					"instance": "350ecfa493e1-pr1987-bedrock-ru",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "3fa87ceefd4f-residual5-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json",
-					"receipt_sha256": "c68ea498105e7657468f8d0546824d6d48b2a90808bf5165638d812b47a95598",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-ru.json",
+					"receipt_sha256": "279221da1f649af8b394b706e5d60d46886f7735c5550bed5ad51e8b2857f53b",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -129010,6 +129131,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "c28362272b29d4d808041f3988723c1437522d65ccffe9cc25ca0d57a4eed6fa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "350ecfa493e1-pr1987-bedrock-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json",
+							"receipt_sha256": "c68ea498105e7657468f8d0546824d6d48b2a90808bf5165638d812b47a95598",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -129017,30 +129162,30 @@
 			"locale": "vi",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "023e137e071baad300f76768b88fbb5c0f3affee31717e741500ecb1aef11967",
+			"target_sha256": "b4c584909c3ed9c9ec4d19ae213d8b600b314a2a4695a6c4ef0741c0d82f537a",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean-with-findings",
-					"instance": "350ecfa493e1-pr1987-bedrock-vi",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "3fa87ceefd4f-residual5-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 5,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json",
-					"receipt_sha256": "28fbe5ade49db199bfd854c6c84505bc78006bf1fa84efa8e5437ef933b1e58e",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-vi.json",
+					"receipt_sha256": "8c65275c19d356e664f3e8a56c1d76c8864d7d254f3192f976a07ab690fbfb61",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -129068,6 +129213,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "023e137e071baad300f76768b88fbb5c0f3affee31717e741500ecb1aef11967",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "350ecfa493e1-pr1987-bedrock-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json",
+							"receipt_sha256": "28fbe5ade49db199bfd854c6c84505bc78006bf1fa84efa8e5437ef933b1e58e",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -129075,30 +129244,30 @@
 			"locale": "ur",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "fc30c1b5643f57686ecd00b9a1f9cdcc05f22ff3ea449894381119d880f51012",
+			"target_sha256": "efe79ae014733312e3bc26fbdb868dce22247349128d5fd072c1fcb78ba2d358",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean-with-findings",
-					"instance": "350ecfa493e1-pr1987-bedrock-ur",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "3fa87ceefd4f-residual5-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json",
-					"receipt_sha256": "3dc1caa613cb64956add8ae10d63b703ddaf9ef111626e596722c3cf09c77e65",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-ur.json",
+					"receipt_sha256": "1e2687992eb31b5db7a78dde5cdcb668673d3836522bc92f574c9ae1d6f769a9",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -129126,6 +129295,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "fc30c1b5643f57686ecd00b9a1f9cdcc05f22ff3ea449894381119d880f51012",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "350ecfa493e1-pr1987-bedrock-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json",
+							"receipt_sha256": "3dc1caa613cb64956add8ae10d63b703ddaf9ef111626e596722c3cf09c77e65",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -129133,30 +129326,30 @@
 			"locale": "hi",
 			"namespace": "ui.providers.bedrock",
 			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
-			"target_sha256": "2ff14964af97a5251d5ce3a259dbcf91bd3ff6803909ae74858eb764946b4a91",
+			"target_sha256": "710a45a6b1864627f744d0b7d1b40fa2b307a312b30cf4ed249902bf4ad44c5e",
 			"translator": {
 				"agent": "task",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-19",
-				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json"
+				"date": "2026-11-24",
+				"note": "i18n-catalogue-residual-5: Local Operator task subagent session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean-with-findings",
-					"instance": "350ecfa493e1-pr1987-bedrock-hi",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "3fa87ceefd4f-residual5-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json",
-					"receipt_sha256": "7934123d8e91e031a00fcdceb12f11c544329fc10d6c5c61946a1b2084564f9e",
-					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
-					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json; minors fixed by auditor, nits deferred"
+					"receipt": "i18n/receipts/3fa87ceefd4f-residual5-hi.json",
+					"receipt_sha256": "4bc8694a9b6b12945882896cae16a7ef5543e26ccfcb790ab985e81a50694f0a",
+					"scope": "i18n-catalogue-residual-5: values still identical to English on 6323d5f7d505",
+					"note": "i18n-auditor session 3fa87ceefd4f; assigned openai/gpt-6.2-sol, quota failure, all verdicts from anthropic/claude-opus-5-5"
 				}
 			],
 			"status": "audited",
@@ -129181,6 +129374,30 @@
 							"receipt_sha256": "225dd76cae27cbee5bccb8bff7256517846358f20026d06b2f67521dc40e63ef",
 							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
 							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-hi.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+					"target_sha256": "2ff14964af97a5251d5ce3a259dbcf91bd3ff6803909ae74858eb764946b4a91",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "350ecfa493e1-pr1987-bedrock-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json",
+							"receipt_sha256": "7934123d8e91e031a00fcdceb12f11c544329fc10d6c5c61946a1b2084564f9e",
+							"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+							"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json; minors fixed by auditor, nits deferred"
 						}
 					],
 					"status": "audited"

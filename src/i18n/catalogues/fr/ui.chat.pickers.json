@@ -499,7 +499,7 @@
 	"ui.chat.pickers.session_report_model.tool_schemas": "Schémas des outils",
 	"ui.chat.pickers.session_report_model.knowledge_skills": "Connaissances / compétences",
 	"ui.chat.pickers.session_report_model.tool_results": "Résultats des outils",
-	"ui.chat.pickers.session_report_model.images_est": "Images (est.)",
+	"ui.chat.pickers.session_report_model.images_est": "Images (estimation)",
 	"ui.chat.pickers.session_report_model.without_a_tracked_basis": "Sans base suivie",
 	"ui.chat.pickers.session_report_model.spend_by_basis_own": "Dépense par base (propre)",
 	"ui.chat.pickers.session_report_model.spend_by_basis": "Dépense par base",

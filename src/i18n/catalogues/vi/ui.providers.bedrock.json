@@ -23,7 +23,7 @@
 	"ui.providers.bedrock.error_region_invalid": "Amazon Bedrock không khả dụng ở khu vực đó",
 	"ui.providers.bedrock.how_to_connect": "Cách kết nối với Amazon Bedrock",
 	"ui.providers.bedrock.kind_assume_role": "Vai trò được đảm nhận",
-	"ui.providers.bedrock.kind_login": "AWS login",
+	"ui.providers.bedrock.kind_login": "Đăng nhập AWS",
 	"ui.providers.bedrock.kind_other": "Khác",
 	"ui.providers.bedrock.kind_process": "Tiến trình thông tin xác thực",
 	"ui.providers.bedrock.kind_sso": "SSO",
