@@ -2145,7 +2145,6 @@ export const ModelPicker: FC<PickerContext> = ({
 			emptyAction={
 				emptyOffersConnect ? (
 					<Button
-						data-picker-hover=""
 						variant="secondary"
 						size="sm"
 						type="button"

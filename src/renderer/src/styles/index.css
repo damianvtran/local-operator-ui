@@ -3156,51 +3156,126 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 /* The anchored Model/Effort paper borrows the elevated role's relative
  * luminance, not its hue (some themes have strongly colored grounds). Equal
  * linear-sRGB channels make the paper neutral without filtering its accents.
- * Keep the brightest stop at that role and lower the resting tone slightly:
- * hover can brighten even on a near-white theme without costing dark contrast.
+ * Keep the brightest stop at that role and lower the resting tone slightly.
  * As on the composer, the short 1px gleam doesn't draw a perimeter. */
 [data-quick-picker][data-picker-placement="anchored"] {
-	--picker-hover-fill: color(
+	--picker-wash: color(
 		from var(--lo-elevated) srgb-linear
 			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
 			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
 			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
 	);
-	background-color: light-dark(
-		color-mix(in srgb, var(--picker-hover-fill), black 3%),
-		color-mix(in srgb, var(--picker-hover-fill), black 12%)
+	--picker-paper: light-dark(
+		color-mix(in srgb, var(--picker-wash), black 3%),
+		color-mix(in srgb, var(--picker-wash), black 12%)
 	);
+	/* Near-white paper has no headroom to brighten perceptibly. Reverse the
+	 * hover step there rather than drawing an outline to make it visible. */
+	--picker-pointer: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 10%),
+		color-mix(in srgb, var(--picker-paper), white 9%)
+	);
+	--picker-active: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 13%),
+		color-mix(in srgb, var(--picker-paper), white 12%)
+	);
+	--picker-well: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 4%),
+		color-mix(in srgb, var(--picker-paper), black 22%)
+	);
+	/* Equal linear channels are luminance. Solve (lighter + .05) /
+	 * (darker + .05) = 3.15 against the well in light themes and the paper
+	 * in dark themes, so the single inset stroke clears 3:1 on both sides. */
+	--picker-focus: light-dark(
+		color(
+			from var(--picker-well) srgb-linear calc((r + 0.05) / 3.15 - 0.05)
+				calc((g + 0.05) / 3.15 - 0.05) calc((b + 0.05) / 3.15 - 0.05)
+		),
+		color(
+			from var(--picker-paper) srgb-linear calc(3.15 * (r + 0.05) - 0.05)
+				calc(3.15 * (g + 0.05) - 0.05) calc(3.15 * (b + 0.05) - 0.05)
+		)
+	);
+	background-color: var(--picker-paper);
 	background-image: linear-gradient(
 			90deg,
 			transparent,
 			light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 17%)) 36% 60%,
 			transparent
-		), linear-gradient(180deg, var(--picker-hover-fill), transparent 38px);
+		), linear-gradient(180deg, var(--picker-wash), transparent 38px);
 	background-position: 9% top, center top;
 	background-size: 61% 1px, 100% 100%;
 	background-repeat: no-repeat;
 }
 
-/* Pointer feedback is a brightness step, not an accent state. Keep the
- * existing structural edge legible even where the fill step is subtle. */
+/* A lead mark names the keyboard target, the existing check names the
+ * current value, and the spinner names the pending operation. None needs a
+ * perimeter. Keep the real focus outline on the combobox or Effort list. */
 [data-quick-picker][data-picker-placement="anchored"]
-	[role="option"][data-hovered="true"]:not(
-		[aria-selected="true"],
-		[aria-disabled="true"]
-	) {
-	background-color: var(--picker-hover-fill);
+	[role="option"]:is([aria-selected="true"], [data-picked="true"]) {
+	background-color: var(--picker-active);
+}
+
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"][aria-selected="true"] {
+	position: relative;
+}
+
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"][aria-selected="true"]::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 2px;
+	inset-block: 0;
+	margin-block: auto;
+	block-size: 0.875rem;
+	border-inline-start: 2px solid var(--color-ink-muted);
+	border-radius: 999px;
+	pointer-events: none;
+}
+
+[data-quick-picker="model"][data-picker-placement="anchored"] [data-lo-input] {
+	background-color: var(--picker-well);
+}
+
+[data-quick-picker="model"][data-picker-placement="anchored"]
+	[data-lo-input]:focus-visible,
+[data-quick-picker="effort"][data-picker-placement="anchored"]
+	[role="listbox"]:focus-visible {
+	outline-width: 1px;
+	outline-color: var(--picker-focus);
+}
+
+/* The Effort ring sits in the paper gutter, not over the brighter row fill. */
+[data-quick-picker="effort"][data-picker-placement="anchored"]
+	[role="listbox"]:focus-visible {
+	outline-offset: 1px;
+}
+
+[data-model-list-continues] {
+	mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
 }
 
 @media (hover: hover) {
 	[data-quick-picker][data-picker-placement="anchored"]
+		[role="option"][data-hovered="true"]:not(
+			[aria-selected="true"],
+			[aria-disabled="true"],
+			[data-picked="true"]
+		),
+	[data-quick-picker][data-picker-placement="anchored"]
 		[data-picker-hover]:enabled:hover:not(:active) {
-		background-color: var(--picker-hover-fill);
+		background-color: var(--picker-pointer);
 	}
 }
 
 @media (forced-colors: active) {
 	[data-quick-picker][data-picker-placement="anchored"] {
 		background-image: none;
+	}
+
+	[data-model-list-continues] {
+		mask-image: none;
 	}
 }
 

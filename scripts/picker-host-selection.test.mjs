@@ -704,7 +704,7 @@ const effortRows = [
 	{ value: "high", label: "High" },
 ];
 
-test("only an anchored quick picker opts out of the popover's glass", () => {
+test("only an anchored quick picker uses solid paper and local row tones", () => {
 	for (const kind of ["model", "effort"]) {
 		const props = {
 			open: true,
@@ -712,6 +712,7 @@ test("only an anchored quick picker opts out of the popover's glass", () => {
 			title: kind,
 			options: effortRows,
 			onPick() {},
+			toolbar: createElement("span", { "data-test-toolbar": "" }),
 		};
 		const view = mount({ ...props, quick: { kind } });
 		try {
@@ -719,6 +720,13 @@ test("only an anchored quick picker opts out of the popover's glass", () => {
 				document.querySelector(`[data-quick-picker="${kind}"]`);
 			assert.equal(panel().dataset.pickerPlacement, "fallback");
 			assert.ok(panel().classList.contains("lo-dialog-surface"));
+			const toolbar = () =>
+				panel().querySelector("[data-test-toolbar]").parentElement;
+			const selected = () =>
+				panel().querySelector('[role="option"][aria-selected="true"]');
+			assert.ok(toolbar().classList.contains("divider-inset"));
+			assert.ok(selected().classList.contains("bg-sunken"));
+			assert.ok(selected().classList.contains("outline-control"));
 
 			const anchor = document.createElement("button");
 			// jsdom has no layout. Supply the visible chip rect that the host
@@ -731,6 +739,29 @@ test("only an anchored quick picker opts out of the popover's glass", () => {
 			assert.ok(panel().hasAttribute("data-lo-floating"));
 			assert.ok(!panel().hasAttribute("data-glass-overlay"));
 			assert.ok(panel().classList.contains("shadow-overlay"));
+			assert.ok(!toolbar().classList.contains("divider-inset"));
+			assert.ok(!selected().classList.contains("bg-sunken"));
+			assert.ok(!selected().classList.contains("outline-control"));
+
+			// jsdom supplies no browser layout; exercise the real scroll listener
+			// with the measured inputs it reads. Only the cut-off Model list (not
+			// the footer or Effort's focused ladder) gets the continuation mask.
+			const list = panel().querySelector('[role="listbox"]');
+			const continues = () => list.hasAttribute("data-model-list-continues");
+			Object.defineProperties(list, {
+				scrollHeight: { value: 240 },
+				clientHeight: { value: 150 },
+			});
+			const scrollTo = (top) =>
+				act(() => {
+					list.scrollTop = top;
+					list.dispatchEvent(new Event("scroll"));
+				});
+			assert.equal(continues(), false);
+			scrollTo(0);
+			assert.equal(continues(), kind === "model");
+			scrollTo(90);
+			assert.equal(continues(), false);
 		} finally {
 			view.unmount();
 		}
