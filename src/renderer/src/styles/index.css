@@ -3200,19 +3200,20 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	--lo-floating-panel-wash: var(--picker-wash);
 }
 
-/* Share the finish, not the ground. A popover already owns its elevated fill,
- * glass alpha/blur and one overlay shadow. The panel fill is at least half
- * elevated, so mix elevated halfway toward white (light) or black (dark):
- * the tint stays on the side of the composited ground away from the ink.
- * An ink wash spent the last bit of muted-text contrast on clear glass and
- * darkened light paper under its gleam. Keep only a trace of this tone so it
- * grades the material rather than painting a solid plate.
- * glass-overlay.test.mjs composites this wash over the actual panel fill. */
+/* Share the finish, not the ground. The translucent panel keeps its own fill,
+ * blur and shadow. Near-white paper has no room for a visible brightening:
+ * leave its top edge neutral and grade the paper immediately below it. Dark
+ * paper takes the same palette tint as a lift. Fade within one spacing unit
+ * so the wash stops before a compact header's pt-1 line box (Team/Agent have
+ * the panel's p-1 as well). A long ink wash spent the last bit of muted-text
+ * contrast on clear glass. Only opt in a panel with that text/icon clearance. */
 [data-lo-floating-finish] {
-	--lo-floating-panel-wash: color-mix(
-		in srgb,
-		color-mix(in srgb, var(--lo-elevated), light-dark(white, black)) 3%,
-		transparent
+	--lo-floating-panel-wash: color-mix(in srgb, var(--lo-ink) 3%, transparent);
+	--lo-floating-panel-gradient: linear-gradient(
+		180deg in srgb,
+		light-dark(transparent, var(--lo-floating-panel-wash)) 0.0625rem,
+		var(--lo-floating-panel-wash) 0.125rem,
+		transparent 0.25rem
 	);
 }
 
@@ -3223,7 +3224,11 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 			transparent,
 			light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 17%)) 36% 60%,
 			transparent
-		), linear-gradient(180deg, var(--lo-floating-panel-wash), transparent 38px);
+		),
+		var(
+			--lo-floating-panel-gradient,
+			linear-gradient(180deg, var(--lo-floating-panel-wash), transparent 38px)
+		);
 	background-position: 9% top, center top;
 	background-size: 61% 1px, 100% 100%;
 	background-repeat: no-repeat;
