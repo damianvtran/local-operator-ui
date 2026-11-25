@@ -2,6 +2,7 @@ import {
 	HealthApi,
 	type HealthCheckResponse,
 } from "@shared/api/local-operator";
+import { CombinedUpdateTrigger } from "@shared/components/common/combined-update-dialog";
 import { Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { t } from "@shared/i18n";
@@ -352,6 +353,7 @@ export const AppUpdatesSection: FC = () => {
 					)}
 				</InfoGrid>
 
+				<CombinedUpdateTrigger className="w-full" settings />
 				<AppUpdates appVersion={appVersion} />
 			</div>
 		</SettingsSection>

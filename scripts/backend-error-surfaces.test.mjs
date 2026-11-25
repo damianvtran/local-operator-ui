@@ -191,6 +191,7 @@ globalThis.window = {
 			onUpdateNpxAvailable: () => () => undefined,
 			onUpdateProgress: () => () => undefined,
 			quitAndInstall: () => () => undefined,
+			installCombinedUpdate: async () => ({ status: "offer_changed" }),
 			quitForUpdateInstall: () => () => undefined,
 			moveToApplications: () => () => undefined,
 			updateBackend: async () => true,

@@ -454,6 +454,7 @@ const UPDATER_STUB = {
 	updateBackend: async () => false,
 	downloadUpdate: async () => [],
 	quitAndInstall: () => {},
+	installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 	quitForUpdateInstall: async () => true,
 	moveToApplications: async () => true,
 	getLastInstallAttempt: async () => null,

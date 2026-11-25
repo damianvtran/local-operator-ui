@@ -159,6 +159,8 @@ type StoryWorld = {
 	numbers: MachineNumbers;
 	/** Fired on `backend-update-available` when present, instead of the default. */
 	offer?: Record<string, unknown>;
+	appOffer?: UpdateInfo;
+	combinedResult?: "server_failed" | "app_install_failed";
 	/** Fired on `backend-update-not-available` when present. */
 	skew?: Record<string, unknown>;
 	/**
@@ -178,10 +180,13 @@ const scriptedUpdater = ({
 	verdict,
 	numbers,
 	offer,
+	appOffer,
+	combinedResult,
 	skew,
 	lastInstallAttempt,
 }: StoryWorld) => {
 	const appCurrent: Array<(info: UpdateInfo) => void> = [];
+	const appOffered: Array<(info: UpdateInfo) => void> = [];
 	const serverOffered: Array<ServerOfferListener> = [];
 	const serverNotAvailable: Array<(info: Record<string, unknown>) => void> = [];
 	const hold = <T,>(sink: T[], listener: T) => {
@@ -203,6 +208,9 @@ const scriptedUpdater = ({
 			 * carries the offer. A channel whose verdict is anything else stays
 			 * silent here rather than being scripted to say the opposite.
 			 */
+			if (appOffer && verdict.app === "available") {
+				for (const listener of [...appOffered]) listener(appOffer);
+			}
 			if (verdict.app === "current") {
 				for (const listener of [...appCurrent]) {
 					listener({ version: numbers.app } as UpdateInfo);
@@ -237,10 +245,21 @@ const scriptedUpdater = ({
 		updateBackend: async () => false,
 		downloadUpdate: async () => [],
 		quitAndInstall: async () => true,
+		installCombinedUpdate: async (targets: {
+			app: string;
+			server: string;
+		}) => ({
+			status:
+				targets.app === appOffer?.version &&
+				targets.server === offer?.latestVersion
+					? (combinedResult ?? "offer_changed")
+					: "offer_changed",
+		}),
 		quitForUpdateInstall: async () => true,
 		moveToApplications: async () => true,
 		getLastInstallAttempt: async () => lastInstallAttempt ?? null,
-		onUpdateAvailable: noop,
+		onUpdateAvailable: (callback: (info: UpdateInfo) => void) =>
+			hold(appOffered, callback),
 		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) =>
 			hold(appCurrent, callback),
 		onUpdateDevMode: noop,
@@ -508,6 +527,9 @@ const meta = {
 				numbers: (context.parameters.numbers ??
 					REPORTED_MACHINE) as MachineNumbers,
 				offer: context.parameters.offer as Record<string, unknown> | undefined,
+				appOffer: context.parameters.appOffer as UpdateInfo | undefined,
+				combinedResult: context.parameters
+					.combinedResult as StoryWorld["combinedResult"],
 				skew: context.parameters.skew as Record<string, unknown> | undefined,
 				lastInstallAttempt: context.parameters.lastInstallAttempt as
 					| Record<string, unknown>
@@ -537,6 +559,49 @@ type Story = StoryObj<typeof meta>;
  */
 export const ServerUpdateOffered: Story = {
 	render: () => <ReportFrame expect="Server update available" />,
+};
+
+const combinedWorld = {
+	verdict: {
+		app: "available",
+		server: "available",
+		affirmation: null,
+	} satisfies UpdateCheckVerdict,
+	appOffer: {
+		version: "0.23.0",
+		releaseNotes:
+			"<h3>Desktop improvements</h3><ul><li>Search keeps its filters when you return.</li><li>Settings load faster.</li></ul>",
+	},
+	offer: {
+		currentVersion: INSTALLED_SERVER,
+		latestVersion: PUBLISHED_SERVER,
+		combinedInstallable: true,
+		canManageUpdate: true,
+		restartable: true,
+		appOwnedEnvironment: true,
+		manual: true,
+		releaseNotes: {
+			version: PUBLISHED_SERVER,
+			summary: "Detached sessions keep running when the server reconnects.",
+			url: "https://github.com/damianvtran/local-operator/releases",
+		},
+	},
+};
+
+// The fixture hands the actual app-root notice two production-shaped offers;
+// confirmation never invokes a real updater and names both expected targets.
+export const CombinedUpdateOffered: Story = {
+	parameters: { ...combinedWorld, combinedResult: "server_failed" },
+	render: () => <ReportFrame expect="Install all updates" />,
+};
+
+export const CombinedUpdateWithoutServerNotes: Story = {
+	parameters: {
+		...combinedWorld,
+		offer: { ...combinedWorld.offer, releaseNotes: null },
+		combinedResult: "app_install_failed",
+	},
+	render: () => <ReportFrame expect="Install all updates" />,
 };
 
 /**

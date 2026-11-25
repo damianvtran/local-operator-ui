@@ -56,6 +56,7 @@ const createEmptyUpdaterMethods = () => {
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
+			installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 			quitForUpdateInstall: async () => true,
 			moveToApplications: async () => ({ ok: true as const }),
 			onUpdateDevMode: () => () => {},
@@ -108,6 +109,7 @@ const mockUpdaterApi = () => {
 		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
+		installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 		quitForUpdateInstall: async () => true,
 		moveToApplications: async () => ({ ok: true as const }),
 		onUpdateDevMode: (callback: (message: string) => void) => {

@@ -79,8 +79,12 @@ const ROOT = process.cwd();
 const listeners = new Map();
 const removed = [];
 const registered = [];
+const invoked = [];
 const ipcRenderer = {
-	invoke: async () => undefined,
+	invoke: async (...args) => {
+		invoked.push(args);
+		return { status: "server_failed" };
+	},
 	send: () => {},
 	on: (channel, handler) => {
 		const set = listeners.get(channel) ?? new Set();
@@ -186,6 +190,14 @@ assert.ok(
 const UPDATER_SURFACE = Object.keys(api.updater).sort();
 
 /* ------------------------------------------------- the method, driven for real */
+
+test("combined update forwards the exact reviewed pair once and returns main's partial failure", async () => {
+	const targets = { app: "0.71.0", server: "0.69.5" };
+	assert.deepEqual(await api.updater.installCombinedUpdate(targets), {
+		status: "server_failed",
+	});
+	assert.deepEqual(invoked.splice(0), [["install-combined-update", targets]]);
+});
 
 test("the preload exposes the whole updater surface, method by method", () => {
 	for (const name of UPDATER_SURFACE) {

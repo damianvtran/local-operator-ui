@@ -523,6 +523,7 @@ const updater = {
 	},
 	getLastInstallAttempt: async () => null,
 	quitAndInstall: async () => false,
+	installCombinedUpdate: async () => ({ status: "offer_changed" }),
 	quitForUpdateInstall: async () => {},
 	moveToApplications: async () => {},
 	downloadUpdate: async () => [],

@@ -42,6 +42,11 @@ import {
 import { formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
+import {
+	CombinedUpdateDialog,
+	CombinedUpdateTrigger,
+	useCombinedUpdateSurface,
+} from "./combined-update-dialog";
 import { PanelDetails } from "./panel-details";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
@@ -225,6 +230,7 @@ type BackendUpdateInfo = {
 	latestVersion: string;
 	updateCommand: string;
 	canManageUpdate?: boolean;
+	combinedInstallable?: boolean;
 	/**
 	 * Whether the install IS one of the app's own.
 	 *
@@ -1697,6 +1703,52 @@ export const UpdateNotification = ({
 	>(null);
 	const [installSucceeded, setInstallSucceeded] = useState<string | null>(null);
 
+	const setCombinedOffer = useCombinedUpdateSurface((state) => state.setOffer);
+	useEffect(() => {
+		if (
+			!window.api?.updater?.installCombinedUpdate ||
+			!updateInfo ||
+			!(updateAvailable || updateDownloaded) ||
+			!backendUpdateAvailable ||
+			!backendUpdateInfo?.combinedInstallable ||
+			downloading ||
+			installing ||
+			updatingBackend
+		) {
+			setCombinedOffer(null);
+			return;
+		}
+		const appNotes =
+			typeof updateInfo.releaseNotes === "string"
+				? updateInfo.releaseNotes
+				: updateInfo.releaseNotes?.find(
+						(notes) => notes.version === updateInfo.version,
+					)?.note;
+		setCombinedOffer({
+			targets: {
+				app: updateInfo.version,
+				server: backendUpdateInfo.latestVersion,
+			},
+			appNotes: appNotes?.trim() || null,
+			serverNotes:
+				notesForOffer(
+					backendUpdateInfo.releaseNotes,
+					backendUpdateInfo.latestVersion,
+				)?.summary ?? null,
+		});
+	}, [
+		backendUpdateAvailable,
+		backendUpdateInfo,
+		downloading,
+		installing,
+		setCombinedOffer,
+		updateAvailable,
+		updateDownloaded,
+		updateInfo,
+		updatingBackend,
+	]);
+	useEffect(() => () => setCombinedOffer(null), [setCombinedOffer]);
+
 	// Install refusals, an install that never completed, and an install that is
 	// still running. Kept apart from each other because only one of them is a
 	// failure, and only one of them has an install still to save.
@@ -3118,6 +3170,7 @@ export const UpdateNotification = ({
 	 */
 	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
 		<>
+			<CombinedUpdateDialog />
 			{panel}
 			{/* The update that just landed sits beside whichever surface is up, and
 			    independent of the error slot: an install is not a state of the update
@@ -3782,6 +3835,7 @@ export const UpdateNotification = ({
 							>
 								{t("ui.common.updates.update_notification.update_later")}
 							</Button>
+							<CombinedUpdateTrigger />
 							<Button
 								variant="primary"
 								size="sm"
@@ -4447,6 +4501,7 @@ export const UpdateNotification = ({
 							>
 								{t("ui.common.updates.update_notification.update_later")}
 							</Button>
+							<CombinedUpdateTrigger />
 							<Button
 								variant="primary"
 								size="sm"

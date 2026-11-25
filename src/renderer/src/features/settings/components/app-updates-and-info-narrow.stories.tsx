@@ -79,6 +79,7 @@ const updaterStub = () => ({
 	updateBackend: async () => ({}),
 	downloadUpdate: async () => ({}),
 	quitAndInstall: async () => ({}),
+	installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 	quitForUpdateInstall: async () => ({}),
 	moveToApplications: async () => ({}),
 	onUpdateAvailable: () => () => {},
