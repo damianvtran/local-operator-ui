@@ -755,18 +755,14 @@ test("anchored Model relies on native scrolling through search updates and dismi
 		"addEventListener",
 	);
 	const observedLists = new Set();
-	t.mock.method(
-		globalThis,
-		"ResizeObserver",
-		class {
-			observe(node) {
-				if (node.getAttribute("role") === "listbox") observedLists.add(this);
-			}
-			disconnect() {
-				observedLists.delete(this);
-			}
-		},
-	);
+	// Spy on the jsdom stub's instance methods: Node's method-mock constructor
+	// proxy delegates `new` to the original implementation, not the replacement.
+	t.mock.method(ResizeObserver.prototype, "observe", function (node) {
+		if (node.getAttribute("role") === "listbox") observedLists.add(this);
+	});
+	t.mock.method(ResizeObserver.prototype, "disconnect", function () {
+		observedLists.delete(this);
+	});
 
 	const anchor = document.createElement("button");
 	anchor.getClientRects = () => [new dom.window.DOMRect(10, 10, 20, 20)];
@@ -785,9 +781,14 @@ test("anchored Model relies on native scrolling through search updates and dismi
 	const observerCounts = [];
 	try {
 		document.body.append(anchor);
-		view.render(props);
+		// Radix mounts the portal after the host's opening layout effect. Let
+		// the catalogue finish loading inside the mounted portal so that the
+		// visible-rows transition attaches the keyboard-reveal observer.
+		view.render({ ...props, loading: true });
 		const panel = document.querySelector('[data-quick-picker="model"]');
 		assert.equal(panel.dataset.pickerPlacement, "anchored");
+		assert.equal(panel.querySelector('[role="listbox"]'), null);
+		view.render(props);
 		const input = panel.querySelector('[role="combobox"]');
 		list = panel.querySelector('[role="listbox"]');
 		assert.ok(list.classList.contains("overflow-y-auto"));
