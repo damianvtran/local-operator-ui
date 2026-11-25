@@ -3252,10 +3252,6 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	outline-offset: 1px;
 }
 
-[data-model-list-continues] {
-	mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
-}
-
 @media (hover: hover) {
 	[data-quick-picker][data-picker-placement="anchored"]
 		[role="option"][data-hovered="true"]:not(
@@ -3272,10 +3268,6 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 @media (forced-colors: active) {
 	[data-quick-picker][data-picker-placement="anchored"] {
 		background-image: none;
-	}
-
-	[data-model-list-continues] {
-		mask-image: none;
 	}
 }
 

@@ -1050,8 +1050,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// effects racing over the same state.
 	const [list, dispatch] = useReducer(pickerListReducer, PICKER_LIST_INITIAL);
 	const inputRef = useRef<HTMLInputElement>(null);
-	// The attachment callback writes this ref on both mount and cleanup.
-	const listRef = useRef<HTMLDivElement | null>(null);
+	const listRef = useRef<HTMLDivElement>(null);
 
 	/*
 	 * Whether the body overflows, and whether there is content below the current
@@ -1218,40 +1217,6 @@ export const PickerHost: FC<PickerHostProps> = ({
 		return [...groups.entries()];
 	}, [filtered]);
 	const ordered = useMemo(() => grouped.flatMap(([, rows]) => rows), [grouped]);
-	const [modelListContinues, setModelListContinues] = useState(false);
-	const attachList = useCallback(
-		(box: HTMLDivElement | null) => {
-			listRef.current = box;
-			if (!box || !anchor || !isModel) return;
-			// Treat a cut-off row, not the footer, as the scroll cue. Retract the
-			// fade at the end (within scrollHeight's rounding error) so the last
-			// row reads at full strength. Effort's focus outline stays unmasked.
-			const measure = () => {
-				setModelListContinues(
-					box.scrollHeight - box.clientHeight - box.scrollTop > 1,
-				);
-			};
-			measure();
-			box.addEventListener("scroll", measure, { passive: true });
-			const observer =
-				typeof ResizeObserver === "undefined"
-					? undefined
-					: new ResizeObserver(measure);
-			observer?.observe(box);
-			for (const [index] of grouped.entries()) {
-				const child = box.children[index];
-				if (child) observer?.observe(child);
-			}
-			return () => {
-				listRef.current = null;
-				box.removeEventListener("scroll", measure);
-				observer?.disconnect();
-			};
-		},
-		// A new group set means new observed children, even if the frame has
-		// stayed the same height through a catalogue refresh or filter.
-		[anchor, isModel, grouped],
-	);
 
 	/**
 	 * The row Enter would pick, by name.
@@ -1851,10 +1816,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 							)
 						) : (
 							<div
-								ref={attachList}
-								data-model-list-continues={
-									isModel && !!anchor && modelListContinues ? "" : undefined
-								}
+								ref={listRef}
 								id={listId}
 								/* biome-ignore lint/a11y/useSemanticElements: rich command rows need a listbox, not a native select. */
 								role="listbox"
@@ -1884,6 +1846,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 								// hover left over from somewhere else can never read as the
 								// keyboard's selection (design D2).
 								onMouseLeave={clearHovered}
+								// Let the native scrollbar signal overflow; a mask also dims the
+								// keyboard target when it lands at the bottom of the scrollport.
 								className={cn(
 									"overflow-y-auto",
 									isQuick

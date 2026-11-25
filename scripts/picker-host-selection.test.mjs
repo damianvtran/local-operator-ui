@@ -742,30 +742,102 @@ test("only an anchored quick picker uses solid paper and local row tones", () =>
 			assert.ok(!toolbar().classList.contains("divider-inset"));
 			assert.ok(!selected().classList.contains("bg-sunken"));
 			assert.ok(!selected().classList.contains("outline-control"));
-
-			// jsdom supplies no browser layout; exercise the real scroll listener
-			// with the measured inputs it reads. Only the cut-off Model list (not
-			// the footer or Effort's focused ladder) gets the continuation mask.
-			const list = panel().querySelector('[role="listbox"]');
-			const continues = () => list.hasAttribute("data-model-list-continues");
-			Object.defineProperties(list, {
-				scrollHeight: { value: 240 },
-				clientHeight: { value: 150 },
-			});
-			const scrollTo = (top) =>
-				act(() => {
-					list.scrollTop = top;
-					list.dispatchEvent(new Event("scroll"));
-				});
-			assert.equal(continues(), false);
-			scrollTo(0);
-			assert.equal(continues(), kind === "model");
-			scrollTo(90);
-			assert.equal(continues(), false);
 		} finally {
 			view.unmount();
 		}
 	}
+});
+
+test("anchored Model relies on native scrolling through search updates and dismissal", async (t) => {
+	const errors = t.mock.method(console, "error");
+	const listeners = t.mock.method(
+		dom.window.EventTarget.prototype,
+		"addEventListener",
+	);
+	const observedLists = new Set();
+	t.mock.method(
+		globalThis,
+		"ResizeObserver",
+		class {
+			observe(node) {
+				if (node.getAttribute("role") === "listbox") observedLists.add(this);
+			}
+			disconnect() {
+				observedLists.delete(this);
+			}
+		},
+	);
+
+	const anchor = document.createElement("button");
+	anchor.getClientRects = () => [new dom.window.DOMRect(10, 10, 20, 20)];
+	let dismissals = 0;
+	const props = {
+		open: true,
+		onClose: () => dismissals++,
+		title: "Model",
+		options: effortRows,
+		onPick() {},
+		quick: { kind: "model", anchor },
+	};
+	const view = mount({ ...props, open: false });
+	let list;
+	let masked;
+	const observerCounts = [];
+	try {
+		document.body.append(anchor);
+		view.render(props);
+		const panel = document.querySelector('[data-quick-picker="model"]');
+		assert.equal(panel.dataset.pickerPlacement, "anchored");
+		const input = panel.querySelector('[role="combobox"]');
+		list = panel.querySelector('[role="listbox"]');
+		assert.ok(list.classList.contains("overflow-y-auto"));
+		// jsdom cannot lay out rows. Supply overflow metrics and dispatch the
+		// event that previously opted the whole scrollport into a glyph mask.
+		Object.defineProperties(list, {
+			scrollHeight: { value: 240 },
+			clientHeight: { value: 150 },
+		});
+		act(() => list.dispatchEvent(new Event("scroll")));
+		masked = list.hasAttribute("data-model-list-continues");
+
+		// Search replaces groups. Only the existing keyboard-reveal observer
+		// should survive each update, and none should survive dismissal.
+		for (const [query, count] of [
+			["high", 2],
+			["medium", 1],
+			["", 4],
+		]) {
+			await type(input, query);
+			assert.equal(list.querySelectorAll('[role="option"]').length, count);
+			observerCounts.push(observedLists.size);
+		}
+		key(input, "Escape");
+		assert.equal(dismissals, 1);
+		view.render({ ...props, open: false });
+		assert.equal(document.querySelector('[role="listbox"]'), null);
+	} finally {
+		view.unmount();
+	}
+	assert.deepEqual(
+		{
+			masked,
+			scrollRegistrations: listeners.mock.calls.filter(
+				(call) => call.this === list && call.arguments[0] === "scroll",
+			).length,
+			observerCounts,
+			observersAfterUnmount: observedLists.size,
+			refWarnings: errors.mock.calls.filter((call) =>
+				String(call.arguments[0]).includes("callback ref"),
+			).length,
+		},
+		{
+			masked: false,
+			scrollRegistrations: 0,
+			observerCounts: [1, 1, 1],
+			observersAfterUnmount: 0,
+			refWarnings: 0,
+		},
+	);
 });
 
 test("quick effort is a focused ladder without search, and keys act on its announced row", () => {
