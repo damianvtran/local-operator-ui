@@ -4335,14 +4335,26 @@ export const BlockingSecretGate: Story = {
  * previous bridge on unmount, so the rest of this file keeps its own. The
  * knobs put the real connected picker in each state: `mode` is the live mode
  * the backend reports (`unknown` = null, a cold session), `latencyMs` holds
- * every press in flight (the pending row), `refuse` makes the owner refuse.
+ * every press in flight, `refuse` makes the owner refuse, and `partial` applies
+ * the mode live but does not save it for resume. Width is the chat pane width,
+ * so the real dock's computed container width determines its breakpoints.
  */
 const APPROVALS_STORY_SESSION = "a1b2c3d4e5f6";
-type ApprovalsStoryArgs = { mode: string; latencyMs: number; refuse: string };
+type ApprovalsStoryArgs = {
+	mode: string;
+	latencyMs: number;
+	refuse: string;
+	partial: boolean;
+	width: number;
+	running: boolean;
+};
 const ApprovalsPickerHarness = ({
 	mode,
 	latencyMs,
 	refuse,
+	partial,
+	width,
+	running,
 }: ApprovalsStoryArgs) => {
 	// Installed in a state initializer, not an effect, so the bridge exists
 	// before the picker's first read is issued during the first commit.
@@ -4394,8 +4406,8 @@ const ApprovalsPickerHarness = ({
 							command: request.command,
 							result: {
 								kind: "notice",
-								text: `tool approvals: ${request.args}`,
-								data: {},
+								text: `tool approvals: ${request.args}${partial ? " — applied for this session but NOT saved for resume (PermissionError)" : ""}`,
+								data: { ok: true, approval_saved_for_resume: !partial },
 							},
 						});
 					default:
@@ -4412,23 +4424,39 @@ const ApprovalsPickerHarness = ({
 	useEffect(() => restore, [restore]);
 	return (
 		<div className="relative flex h-screen flex-col justify-end gap-3 bg-canvas p-6">
-			<MessageInput
-				isLoading={false}
-				messages={NONEMPTY}
-				conversationId={APPROVALS_STORY_SESSION}
-				cwd="~"
-				// `onCommand` makes the model/effort readings openable, so they render
-				// as the icon-and-chevron selectors the picker sits beside in the app.
-				sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
-				paneHasSession
-				onSendMessage={async () => true}
-			/>
+			<div
+				className="@container/chatcol"
+				style={{ width: width || undefined, maxWidth: "100%" }}
+			>
+				<MessageInput
+					isLoading={false}
+					isSmallView={width > 0 && width < 550}
+					messages={NONEMPTY}
+					conversationId={APPROVALS_STORY_SESSION}
+					cwd="~"
+					// `onCommand` makes the model/effort readings openable, so they render
+					// as the icon-and-chevron selectors the picker sits beside in the app.
+					sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+					paneHasSession
+					onSendMessage={async () => true}
+					canonicalStop={
+						running ? { active: true, onStop: () => {} } : undefined
+					}
+				/>
+			</div>
 		</div>
 	);
 };
 
 export const ApprovalsPicker: Story = {
-	args: { mode: "auto", latencyMs: 0, refuse: "" },
+	args: {
+		mode: "auto",
+		latencyMs: 0,
+		refuse: "",
+		partial: false,
+		width: 0,
+		running: false,
+	},
 	render: (args) => (
 		<ApprovalsPickerHarness {...(args as ApprovalsStoryArgs)} />
 	),

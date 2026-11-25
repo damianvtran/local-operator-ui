@@ -32,7 +32,9 @@ const Row = ({ children }: { children: ReactNode }) => (
 	<div className="flex h-screen flex-col justify-end bg-canvas p-6">
 		<div className="composer-dock w-[560px]">
 			<div className="composer-dock-editor bg-elevated">
-				<div className="composer-dock-rail">{children}</div>
+				<div className="composer-dock-rail">
+					<div className="composer-dock-pickers">{children}</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -89,7 +91,7 @@ export const OpenAsk: Story = {
 	render: () => <Picker mode="ask" defaultMode="ask" initiallyOpen />,
 };
 
-/** A session override of an Ask default: the provenance line says so. */
+/** The live mode and default are separate readings, not provenance claims. */
 export const OpenAuto: Story = {
 	render: () => <Picker mode="auto" defaultMode="ask" initiallyOpen />,
 };
@@ -115,6 +117,7 @@ export const Refused: Story = {
 			mode="ask"
 			initiallyOpen
 			notice={{
+				scope: "session",
 				kind: "refused",
 				detail: "this conversation holds a teammate's message",
 			}}
@@ -122,17 +125,17 @@ export const Refused: Story = {
 	),
 };
 
-/** All sessions: the default saved, this conversation refused - both halves. */
-export const DefaultSavedSessionRefused: Story = {
+/** The session changed live, but resuming it will not keep the change. */
+export const LiveAppliedNotSavedForResume: Story = {
 	render: () => (
 		<Picker
-			mode="ask"
-			defaultMode="auto"
+			mode="auto"
 			initiallyOpen
 			notice={{
-				kind: "default-only",
-				mode: "auto",
-				detail: "operator consent required",
+				scope: "session",
+				kind: "not-saved-for-resume",
+				detail:
+					"tool approvals: auto — every tool runs without asking (this session) — applied for this session but NOT saved for resume (PermissionError)",
 			}}
 		/>
 	),

@@ -50,7 +50,7 @@ const bundle = await build({
 		contents: [
 			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
-			'export { ApprovalModePickerView, approvalModeFrom, approvalChoiceTarget, approvalChoiceIsNoop, approvalPickerProvenance, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode";',
+			'export { ApprovalModePickerView, approvalModeFrom, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -78,9 +78,6 @@ const { renderToStaticMarkup } = await import("react-dom/server");
 const {
 	ApprovalModePickerView,
 	approvalModeFrom,
-	approvalChoiceTarget,
-	approvalChoiceIsNoop,
-	approvalPickerProvenance,
 	approvalModeKey,
 	invalidateApprovalMode,
 	runApprovalEscape,
@@ -308,49 +305,6 @@ test("the all-sessions handle saves the default, then moves this conversation", 
 	assert.deepEqual(refused, {
 		kind: "unchanged",
 		detail: "tool_approval_mode is managed by another account",
-	});
-});
-
-test("the all-sessions Ask arm mirrors Auto: default first, then this conversation", async () => {
-	const calls = [];
-	const notice = {
-		outcome: { kind: "notice", text: "tool approvals: ask", data: {} },
-		result: { tone: "success", text: "tool approvals: ask" },
-	};
-	const saved = await runApprovalEscape("all-ask", {
-		editDefault: async (value) => {
-			calls.push(["settings.edit", value]);
-			return { key: "tool_approval_mode", value };
-		},
-		runCommand: async (...args) => {
-			calls.push(["sessions.command", ...args]);
-			return notice;
-		},
-	});
-	assert.deepEqual(calls, [
-		["settings.edit", "ask"],
-		["sessions.command", "approvals", "ask"],
-	]);
-	assert.deepEqual(saved, { kind: "saved" });
-	// A stored value other than the one asked for is not a save.
-	const wrong = await runApprovalEscape("all-ask", {
-		runCommand: async () => {
-			throw new Error("must not run");
-		},
-		editDefault: async () => ({ key: "tool_approval_mode", value: "auto" }),
-	});
-	assert.deepEqual(wrong, { kind: "unchanged", detail: "auto" });
-	// Default saved, live refused: the partial state, never a whole success.
-	const partial = await runApprovalEscape("all-ask", {
-		editDefault: async (value) => ({ key: "tool_approval_mode", value }),
-		runCommand: async () => ({
-			outcome: { kind: "block", text: "the owner is reconnecting" },
-			result: { tone: "error", text: "the owner is reconnecting" },
-		}),
-	});
-	assert.deepEqual(partial, {
-		kind: "default-only",
-		detail: "the owner is reconnecting",
 	});
 });
 
@@ -763,47 +717,11 @@ test("the card says guardrails and dangerous-delete review still apply in auto",
 	);
 });
 
-test("the picker reads only the backend's row and maps each choice to its route", () => {
+test("the picker accepts only the backend's known mode values", () => {
 	assert.equal(approvalModeFrom("auto"), "auto");
 	assert.equal(approvalModeFrom("ask"), "ask");
 	assert.equal(approvalModeFrom(undefined), null);
 	assert.equal(approvalModeFrom("yolo"), null);
-	assert.equal(
-		approvalChoiceTarget({ scope: "session", mode: "auto" }),
-		"session",
-	);
-	assert.equal(approvalChoiceTarget({ scope: "session", mode: "ask" }), "ask");
-	assert.equal(approvalChoiceTarget({ scope: "all", mode: "auto" }), "all");
-	assert.equal(approvalChoiceTarget({ scope: "all", mode: "ask" }), "all-ask");
-	assert.equal(
-		approvalChoiceIsNoop({ scope: "session", mode: "ask" }, "ask", null),
-		true,
-	);
-	assert.equal(
-		approvalChoiceIsNoop({ scope: "session", mode: "auto" }, null, null),
-		false,
-		"an unknown mode is never a no-op",
-	);
-	assert.equal(
-		approvalChoiceIsNoop({ scope: "all", mode: "ask" }, "ask", "auto"),
-		false,
-	);
-	assert.equal(
-		approvalChoiceIsNoop({ scope: "all", mode: "ask" }, "auto", "ask"),
-		false,
-		"the live half still moves",
-	);
-	assert.equal(
-		approvalChoiceIsNoop({ scope: "all", mode: "ask" }, "ask", "ask"),
-		true,
-	);
-	// Provenance only where it is a fact: a differing pair is an override.
-	assert.match(
-		approvalPickerProvenance("auto", "ask"),
-		/Auto — session override; global Ask/,
-	);
-	assert.equal(approvalPickerProvenance("auto", "auto"), null);
-	assert.equal(approvalPickerProvenance(null, "ask"), null);
 });
 
 test("the trigger renders in every mode, including unknown, and never as a switch", () => {

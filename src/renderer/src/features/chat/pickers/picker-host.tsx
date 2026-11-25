@@ -1542,11 +1542,11 @@ export const PickerHost: FC<PickerHostProps> = ({
 			(target instanceof Node && anchor?.contains(target)) ||
 			(sibling &&
 				anchor
-					?.closest(".composer-dock-pickers, [data-lo-session-strip]")
+					?.closest(".composer-dock-picker-host, [data-lo-session-strip]")
 					?.contains(sibling))
 		) {
-			// The owning strip handles its own toggle/retarget. Dismissing on the
-			// pointer-down would compete with the adjacent chip's click intent.
+			// The owning strip handles its own toggle/retarget. The rail's outer
+			// group also contains Approvals, which opens its own popover instead.
 			event.preventDefault();
 			return;
 		}

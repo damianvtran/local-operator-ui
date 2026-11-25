@@ -3165,7 +3165,7 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	gap: var(--spacing);
 }
 
-.composer-dock-pickers:empty {
+.composer-dock-pickers:has(> .composer-dock-picker-host:empty:only-child) {
 	display: none;
 }
 
@@ -3220,12 +3220,13 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 		column-gap: 0;
 	}
 
-	.composer-dock-pickers > :is([data-composer-picker], .composer-dock-effort) {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> :is([data-composer-picker], .composer-dock-effort) {
 		min-inline-size: 0;
 		flex-shrink: 1;
 	}
 
-	.composer-dock-pickers
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
 		> :is([data-composer-picker], .composer-dock-effort)
 		> span {
 		min-inline-size: 0;
@@ -3238,20 +3239,25 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 /* At the pane floor the model can still be identified by its accessible
  * name and tooltip. Keep distinct buttons alongside the recording trio. */
 @container composer-dock (width <= 180px) {
-	.composer-dock-pickers > [data-composer-picker] {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker] {
 		flex: 0 1 auto;
 		padding-inline: var(--spacing);
 	}
 
-	.composer-dock-pickers > [data-composer-picker] > svg:first-child {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker]
+		> :is(svg, .approval-mode-trigger-spinner):first-child {
 		display: block;
 	}
 
-	.composer-dock-pickers > [data-composer-picker] > :not(svg:first-child) {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker]
+		> :not(:is(svg, .approval-mode-trigger-spinner):first-child) {
 		display: none;
 	}
 
-	.composer-dock-pickers > :not(button) {
+	.composer-dock-picker-host > :not(button) {
 		overflow: hidden;
 		white-space: nowrap;
 	}

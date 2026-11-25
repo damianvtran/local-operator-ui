@@ -91,6 +91,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 import {
+	approvalDefaultKey,
 	invalidateApprovalMode,
 	useApprovalMode,
 } from "../../session-status/approval-mode";
@@ -103,15 +104,8 @@ import {
  * card offers "Always ask", which sends `approvals ask` through the same owner
  * route. `ask` is the runtime's canonical token (`serving.py:_approvals_slash`
  * accepts `ask`/`on`/`prompt`; `desktop_catalogues.py` lists `auto`/`ask`).
- *
- * `all-ask` is the all-sessions arm's mirror, added for the composer's approvals
- * picker (operator request 2026-11-25: "set for this session, all sessions"):
- * a picker that can make Auto the default but not Ask would be the same
- * one-way door the card's "Always ask" exists to close. It follows the `all`
- * arm exactly - default first, then this conversation - with the same partial
- * state when only the first half lands. The card itself never sends it.
  */
-export type ApprovalEscapeTarget = "session" | "all" | "ask" | "all-ask";
+export type ApprovalEscapeTarget = "session" | "all" | "ask";
 
 /**
  * The effective approval modes the policy line can name. `""` is the core's
@@ -229,12 +223,14 @@ const NO_GATE_NOTICE = "exec uses its original headless approval gate";
  * tightening direction (`ask`) reads its receipt by the same rule: a notice is
  * the mode change, anything else is a refusal whose text is the detail.
  */
-async function setLiveGate(
-	ports: ApprovalEscapePorts,
-	mode: "auto" | "ask" = "auto",
-): Promise<{ ok: true } | { ok: false; detail: string }> {
+export async function setLiveApprovalMode(
+	runCommand: ApprovalEscapePorts["runCommand"],
+	mode: "auto" | "ask",
+): Promise<
+	{ ok: true; notSavedForResume?: string } | { ok: false; detail: string }
+> {
 	try {
-		const run = await ports.runCommand("approvals", mode);
+		const run = await runCommand("approvals", mode);
 		const reported =
 			run.outcome && "text" in run.outcome ? run.outcome.text : run.result.text;
 		const text = reported.trim() || run.result.text;
@@ -251,14 +247,18 @@ async function setLiveGate(
 		 * anything the owner chose to report without changing the mode; both are
 		 * refusals for the same reason.
 		 */
-		const receiptOk =
-			run.outcome && "data" in run.outcome ? run.outcome.data?.ok : undefined;
+		const receipt =
+			run.outcome && "data" in run.outcome ? run.outcome.data : undefined;
 		if (
 			run.outcome?.kind === "notice" &&
-			receiptOk !== false &&
+			receipt?.ok !== false &&
 			!text.startsWith(NO_GATE_NOTICE)
 		) {
-			return { ok: true };
+			// Core states both halves in the receipt text. A missing field on an
+			// older runtime is not evidence that saving for resume failed.
+			return receipt?.approval_saved_for_resume === false
+				? { ok: true, notSavedForResume: text }
+				: { ok: true };
 		}
 		return { ok: false, detail: dropOurFailurePrefix(text) };
 	} catch (error) {
@@ -283,27 +283,30 @@ export async function runApprovalEscape(
 	ports: ApprovalEscapePorts,
 ): Promise<ApprovalEscapeOutcome> {
 	if (target === "session" || target === "ask") {
-		const live = await setLiveGate(ports, target === "ask" ? "ask" : "auto");
+		// The pending card still reports the live gate's result, as before.
+		const live = await setLiveApprovalMode(
+			ports.runCommand,
+			target === "ask" ? "ask" : "auto",
+		);
 		return live.ok
 			? { kind: "saved" }
 			: { kind: "unchanged", detail: live.detail };
 	}
-	const mode = target === "all-ask" ? "ask" : "auto";
 	try {
-		const saved = await ports.editDefault(mode);
+		const saved = await ports.editDefault("auto");
 		/*
 		 * NEVER CLAIM A SAVE THE BACKEND DID NOT REPORT. The route resolves with
 		 * the stored row; a value other than the one asked for is the fact that
 		 * this press did not take, and painting it as saved would be the one lie
 		 * this component exists to avoid.
 		 */
-		if (saved.value !== mode) {
+		if (saved.value !== "auto") {
 			return { kind: "unchanged", detail: String(saved.value) };
 		}
 	} catch (error) {
 		return { kind: "unchanged", detail: errorText(error) };
 	}
-	const live = await setLiveGate(ports, mode);
+	const live = await setLiveApprovalMode(ports.runCommand, "auto");
 	return live.ok
 		? { kind: "saved" }
 		: { kind: "default-only", detail: live.detail };
@@ -852,8 +855,11 @@ export const ApprovalEscape = ({
 							: { kind: "refused", detail: outcome.detail },
 				);
 			} finally {
-				// The composer's approval chip repaints from the backend, not the press.
+				// The composer repaints from the backend, not the press. The card's
+				// combined action can save the default even if the live call refuses.
 				invalidateApprovalMode(client, sessionId);
+				if (which === "all")
+					void client.invalidateQueries({ queryKey: approvalDefaultKey });
 				inFlight.current = false;
 				setTarget(null);
 			}

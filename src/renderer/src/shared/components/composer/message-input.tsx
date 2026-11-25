@@ -10779,27 +10779,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									</span>
 								</Tooltip>
 
-								<div
-									className="composer-dock-pickers"
-									ref={setComposerPickerHost}
-								/>
-								{/*
-								 * THE APPROVALS PICKER, right of the model and effort selectors and
-								 * in their style (operator request 2026-11-25). A SIBLING after the
-								 * portal host rather than a portal into it: the host's children are
-								 * appended in mount order, so a late-mounting effort reading would
-								 * land after this one and swap the visual and Tab order. Mounted
-								 * where the model/effort readings are (a pane that supplies
-								 * `sessionStatus`) and only for a live session - a draft has no
-								 * runtime gate to report or set - but NOT gated on the status
-								 * snapshot having arrived: a session whose readings are still
-								 * pending can have its mode set (see `approval-mode.tsx`).
-								 */}
-								{slashSessionId && sessionStatus && !sessionStatus.draft ? (
-									<ErrorBoundary fallback={null}>
-										<ApprovalModePicker sessionId={slashSessionId} />
-									</ErrorBoundary>
-								) : null}
+								<div className="composer-dock-pickers">
+									{/* Keep one flex group, but a separate portal target so a
+									    late-mounted reading never appends after Approvals in Tab order. */}
+									<div
+										className="composer-dock-picker-host contents"
+										ref={setComposerPickerHost}
+									/>
+									{slashSessionId && sessionStatus && !sessionStatus.draft ? (
+										<ErrorBoundary fallback={null}>
+											<ApprovalModePicker sessionId={slashSessionId} />
+										</ErrorBoundary>
+									) : null}
+								</div>
 								<div
 									data-lo-composer-controls={true}
 									onFocus={() => {
