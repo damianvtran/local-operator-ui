@@ -56,6 +56,7 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { queryClient } from "@shared/api/query-client";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -125,6 +126,7 @@ import {
 	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
+import { invalidateApprovalMode } from "../session-status/approval-mode-chip";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
 import {
@@ -1698,6 +1700,13 @@ export function useSlashDispatch({
 					args: commandArgs,
 				});
 				const result = receipt.result;
+				/*
+				 * A typed or picked `/approvals <mode>` moves the mode the composer's
+				 * approval chip shows; its receipt is prose, so the chip re-reads the
+				 * entity row instead of parsing it (operator request 2026-11-24).
+				 */
+				if (spec.name === "approvals" && commandArgs)
+					invalidateApprovalMode(queryClient, sessionId);
 				if (isNativeAction(result)) {
 					const action: NativeDesktopAction = result;
 					const target = DESTINATIONS[action.destination];

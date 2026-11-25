@@ -4981,10 +4981,17 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.chip.label": { mode: string };
+	"ui.chat.approval.chip.switch_to_ask": undefined;
+	"ui.chat.approval.chip.switch_to_auto": undefined;
+	"ui.chat.approval.escape.always_ask": undefined;
+	"ui.chat.approval.escape.always_ask_scope": undefined;
+	"ui.chat.approval.escape.ask_saved": undefined;
 	"ui.chat.approval.escape.bridge_latched": undefined;
 	"ui.chat.approval.escape.default_saved": undefined;
 	"ui.chat.approval.escape.default_saved_session_failed": { detail: string };
 	"ui.chat.approval.escape.global_default": { mode: string };
+	"ui.chat.approval.escape.guardrails_note": undefined;
 	"ui.chat.approval.escape.not_changed": undefined;
 	"ui.chat.approval.escape.pinned_run": { mode: string };
 	"ui.chat.approval.escape.session_override": { mode: string };
