@@ -2942,6 +2942,24 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		env: /env:\s*pythonChildEnv\(\{/,
 		why: "the supervisor that spawns the backend and reaps it; its cache goes to this process's own temp scratch and never under the run's config root, which the backend reads for its serve records",
 	},
+	{
+		file: "scripts/verify-signed-update.test.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "the host python building a real `venv` fixture that the pre-split inerting test then rewrites; it is a real interpreter writing a tree, so its environment is stated rather than inherited",
+	},
+	{
+		file: "scripts/verify-signed-update.test.mjs",
+		name: "spawnSync",
+		/*
+		 * #2: the first spawnSync in the file runs `process.execPath` (node) and
+		 * names no python, so the scan still counts it ahead of this one.
+		 */
+		index: 2,
+		env: /env:\s*pythonChildEnv\(\)/,
+		why: "launches the inerted venv's python and expects ENOENT; if the inerting regressed it would start a real interpreter, so it states its environment too",
+	},
 ];
 
 /**

@@ -22,6 +22,7 @@ import {
 	makePreSplitVenvInert,
 	resolveIncumbentRuntime,
 } from "./incumbent-runtime.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 // Published legacy bundles predate checkoutSeedNames. Keep their paths
 // independent so a manifest swap cannot move the fixture with the resolver.
@@ -148,7 +149,13 @@ test(
 		const venv = join(root, "Application Support", "local-operator-venv");
 		// Create actual CPython config and links. Use the test host Python, not a
 		// staged bundle, to exercise the reconstruction without a signed artifact.
-		execFileSync("python3", ["-B", "-m", "venv", "--without-pip", venv]);
+		// The host python is a real interpreter, so it gets a stated environment
+		// rather than the ambient one: an inherited PYTHONPYCACHEPREFIX/PYTHONHOME
+		// would decide where `venv` writes bytecode or which stdlib it builds from
+		// (see scripts/python-child-env.mjs for the incident behind the rule).
+		execFileSync("python3", ["-B", "-m", "venv", "--without-pip", venv], {
+			env: pythonChildEnv(),
+		});
 		makePreSplitVenvInert(venv, legacy);
 		const config = join(venv, "pyvenv.cfg");
 		const fields = readFileSync(config, "utf8").split("\n");
@@ -165,11 +172,14 @@ test(
 		// A new bundle may repopulate the same seed path; it cannot revive this venv.
 		installInterpreter(seed);
 		const originalHash = hashPreSplitVenv(venv);
-		const launch = spawnSync(join(bin, "python3"), [
-			"-I",
-			"-c",
-			"import webbrowser",
-		]);
+		// Expected to fail with ENOENT (the inert venv's links dangle), but if the
+		// inerting ever regressed this WOULD start a real interpreter, so it states
+		// its environment like any other python spawn.
+		const launch = spawnSync(
+			join(bin, "python3"),
+			["-I", "-c", "import webbrowser"],
+			{ env: pythonChildEnv() },
+		);
 		assert.equal(launch.error?.code, "ENOENT");
 		assert.equal(hashPreSplitVenv(venv), originalHash);
 		appendFileSync(config, "# candidate mutation\n");
