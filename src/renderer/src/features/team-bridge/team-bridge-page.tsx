@@ -340,7 +340,6 @@ import {
 	type TeamBridgeQuickView,
 	type TeamBridgeScrollAnchor,
 	type TeamBridgeViewMemory,
-	readLastScope,
 	readViewMemory,
 	rememberedScroll,
 	rememberedThread,
@@ -5688,19 +5687,15 @@ const TeamBridgeOwnedPage: FC<{
 		[messageLinkCarry],
 	);
 	/*
-	 * THE READER'S LAST SCOPE seeds the first paint, synchronously, so a
-	 * multi-organization account lands where it left off rather than on the union
-	 * and then correcting. "Last" is the scope they were LOOKING AT when they left
-	 * (`team-bridge-view-memory`), else their last switcher pick. The stored value
-	 * only decides this page's START: `resolveOpeningScope` still validates it
-	 * against the authoritative organization list, and only an explicit switcher pick
-	 * writes the preference.
+	 * Only an explicit switcher pick survives as a startup preference. View
+	 * history also records automatic landings (including the old home default),
+	 * so it can restore a conversation only after the opening scope is resolved.
+	 * `resolveOpeningScope` still checks the pick against the authoritative list.
 	 */
 	const storedScope = useMemo(() => {
 		const storage = browserDraftStorage();
 		return storage && accountId
-			? (readLastScope(storage, accountId) ??
-					readScopePreference(storage, accountId))
+			? readScopePreference(storage, accountId)
 			: undefined;
 	}, [accountId]);
 	/*

@@ -16,9 +16,10 @@
  * as the page's opening path (`TeamBridgePage`), so the watcher warms exactly
  * the entry the page's timeline then adopts:
  *
- *   1. scope: `readLastScope ?? readScopePreference`, validated by
+ *   1. scope: the explicit `readScopePreference`, validated by
  *      `resolveOpeningScope` against the organizations (page: `storedScope`,
- *      `scope` initialiser and the adoption effect);
+ *      `scope` initialiser and the adoption effect). Passive view history can
+ *      include an old automatic home landing, so it does not choose a scope;
  *   2. rows: `snapshotForScope` then `visibleConversationRows` (page:
  *      `openingSnapshot` -> `conversations` -> `visibleConversations`);
  *   3. landing: the remembered view for that scope (`readViewMemory`),
@@ -55,7 +56,6 @@ import {
 } from "./team-bridge-scope-preference";
 import {
 	type TeamBridgeViewMemory,
-	readLastScope,
 	readViewMemory,
 } from "./team-bridge-view-memory";
 
@@ -135,10 +135,7 @@ export function teamBridgeOpeningLanding({
 	storage: Pick<Storage, "getItem"> | null;
 	limit?: number;
 }): TeamBridgeOpeningLanding {
-	const stored = storage
-		? (readLastScope(storage, accountId) ??
-			readScopePreference(storage, accountId))
-		: undefined;
+	const stored = storage ? readScopePreference(storage, accountId) : undefined;
 	const scope = resolveOpeningScope({
 		organizations,
 		stored,

@@ -126,6 +126,9 @@ const bundle = await build({
  import {useTeamBridgeNotifications} from './src/renderer/src/features/team-bridge/use-team-bridge-notifications';
  export function ShellWatcher(){useTeamBridgeNotifications(true);return null;}
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
+ export {organizationOptions} from './src/renderer/src/features/team-bridge/team-bridge-model';
+ export {writeViewMemory} from './src/renderer/src/features/team-bridge/team-bridge-view-memory';
+ export {teamBridgeOpeningLanding} from './src/renderer/src/features/team-bridge/team-bridge-landing';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {resetTeamBridgePrefetch} from './src/renderer/src/features/team-bridge/team-bridge-prefetch';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';

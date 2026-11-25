@@ -343,6 +343,8 @@ for (const [profile, expectedScope, title] of [
 	["cold", "org_shared", "Shared"],
 	["remembered", "org_other", "Other"],
 	["ambiguous", "account", "All organizations"],
+	["upgrade", "org_shared", "Shared"],
+	["ambiguous upgrade", "account", "All organizations"],
 ]) {
 	test(`multi-org ${profile}: status decides before memberships; only the decided list is requested`, async (t) => {
 		const statusGate = deferred();
@@ -351,19 +353,40 @@ for (const [profile, expectedScope, title] of [
 			row(),
 			row({ id: "bcv_other", tenant_id: "org_other", name: "Other thread" }),
 		];
+		const tenants = [
+			{ ...HOME_TENANT, eligible: profile.startsWith("ambiguous") },
+			SHARED,
+		];
+		let watcherScope;
 		const app = await mount({
 			path: "/team-bridge",
 			waitReady: false,
 			statusGate,
 			membershipsGate,
 			memberships: [HOME_MEMBER],
-			tenants: [{ ...HOME_TENANT, eligible: profile === "ambiguous" }, SHARED],
+			tenants,
 			seed: ({ client, ui: bundle, fixture }) => {
+				// Old clients recorded the viewed rail even without a switcher pick.
+				if (profile.endsWith("upgrade") || profile === "remembered") {
+					const tenant = profile === "remembered" ? "org_shared" : "org_other";
+					bundle.writeViewMemory(localStorage, "acct_a", tenant, {
+						target: {
+							type: "conversation",
+							id: tenant === "org_shared" ? "bcv_shared" : "bcv_other",
+						},
+					});
+				}
 				if (profile === "remembered")
 					localStorage.setItem(
 						"lo.teamBridge.scope.v1",
 						JSON.stringify({ acct_a: "org_other" }),
 					);
+				watcherScope = bundle.teamBridgeOpeningLanding({
+					rows,
+					organizations: bundle.organizationOptions([HOME_MEMBER], [], tenants),
+					accountId: "acct_a",
+					storage: localStorage,
+				}).scope;
 				fixture.listFor = (request) => ({
 					conversations:
 						request.scope === "account"
@@ -399,6 +422,14 @@ for (const [profile, expectedScope, title] of [
 			await until(
 				() => listScopes(app).length > 0,
 				"the decided conversation list",
+			);
+			assert.deepEqual(
+				{ list: listScopes(app), watcher: watcherScope },
+				{
+					list: [expectedScope],
+					watcher: expectedScope === "account" ? "all" : expectedScope,
+				},
+				"the first renderer request and the watcher choose the same opening scope",
 			);
 			await until(
 				() =>

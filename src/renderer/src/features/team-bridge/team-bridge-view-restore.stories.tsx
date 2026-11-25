@@ -7,12 +7,13 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { asTeamBridgeTenantId } from "./team-bridge-model";
 import { TeamBridgePage } from "./team-bridge-page";
 import {
 	SCOPE_PREFERENCE_KEY,
 	SESSION_SCOPE_KEY,
 } from "./team-bridge-scope-preference";
-import { VIEW_MEMORY_KEY } from "./team-bridge-view-memory";
+import { VIEW_MEMORY_KEY, writeViewMemory } from "./team-bridge-view-memory";
 
 /**
  * LEAVE AND RETURN, LIVE: the operator's report ("when switching back to the
@@ -119,7 +120,7 @@ function LeaveAndReturn({
 }: {
 	reset: boolean;
 	long?: boolean;
-	opening?: "cold" | "remembered" | "ambiguous";
+	opening?: "cold" | "remembered" | "ambiguous" | "upgrade";
 }) {
 	const orgs = long ? LONG_ORGS : ORGS;
 	const navigate = useNavigate();
@@ -140,11 +141,34 @@ function LeaveAndReturn({
 		const previous = saved.map(([storage, key]) => storage.getItem(key));
 		if (opening) {
 			for (const [storage, key] of saved) storage.removeItem(key);
-			if (opening === "remembered")
+			if (opening === "remembered") {
 				localStorage.setItem(
 					SCOPE_PREFERENCE_KEY,
 					JSON.stringify({ acct_me: "org_northwind" }),
 				);
+				// The last viewed rail and the explicit switcher pick can differ.
+				writeViewMemory(
+					localStorage,
+					"acct_me",
+					asTeamBridgeTenantId("org_minerva"),
+					{
+						target: { type: "conversation", id: "gen_minerva" },
+						tenantId: "org_minerva",
+					},
+				);
+			}
+			if (opening === "upgrade") {
+				// A legacy automatic home landing wrote view history but no preference.
+				writeViewMemory(
+					localStorage,
+					"acct_me",
+					asTeamBridgeTenantId("org_northwind"),
+					{
+						target: { type: "conversation", id: "gen_northwind" },
+						tenantId: "org_northwind",
+					},
+				);
+			}
 		} else if (reset) localStorage.removeItem(VIEW_MEMORY_KEY);
 		const prior = window.api.desktop;
 		queryClient.clear();
@@ -466,6 +490,9 @@ export const ColdOpening: StoryObj<typeof LeaveAndReturn> = {
 };
 export const RememberedOpening: StoryObj<typeof LeaveAndReturn> = {
 	args: { opening: "remembered" },
+};
+export const UpgradeOpening: StoryObj<typeof LeaveAndReturn> = {
+	args: { opening: "upgrade" },
 };
 export const AmbiguousOpening: StoryObj<typeof LeaveAndReturn> = {
 	args: { opening: "ambiguous" },

@@ -493,7 +493,8 @@ function coldLaunch({ stored, phases }) {
 		const sessionScope = m.readSessionScope(session, "acct-1");
 		const held = m.openingDefaultHeld({
 			organizationCount,
-			membershipsSettled: phase.memberships !== "loading",
+			membershipsSettled:
+				phase.hasHubTenants || phase.memberships !== "loading",
 			chosen: false,
 			session: sessionScope,
 		});
@@ -532,17 +533,22 @@ test("cold launch, hub tenants before memberships: never paints or records yeste
 		phases: [
 			// before the status gate: only the watcher's two-tenant snapshot
 			{ organizations: [], snapshotRows, memberships: "loading" },
-			// status answered with hub tenants; memberships still in flight
-			{ organizations: [minerva, acme], snapshotRows, memberships: "loading" },
-			// memberships answered: Minerva is home
+			// The hub list supplies eligibility while memberships are still in flight.
 			{
 				organizations: [knownTeam, knownHome],
 				snapshotRows,
+				hasHubTenants: true,
+				memberships: "loading",
+			},
+			{
+				organizations: [knownTeam, knownHome],
+				snapshotRows,
+				hasHubTenants: true,
 				memberships: "ok",
 			},
 		],
 	});
-	assert.deepEqual(run.painted, ["held", "held", "tnt_minerva"]);
+	assert.deepEqual(run.painted, ["held", "tnt_minerva", "tnt_minerva"]);
 	assert.equal(
 		run.session,
 		"tnt_minerva",
