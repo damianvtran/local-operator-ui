@@ -11,6 +11,7 @@ import {
 	readdirSync,
 	renameSync,
 	rmSync,
+	rmdirSync,
 	statSync,
 	writeFileSync,
 } from "node:fs";
@@ -356,6 +357,65 @@ export class ConsoleHistory {
 	 */
 	nextExitEpoch(sessionId: string, surface: string, live: number): number {
 		return Math.max(this.exitEpoch(sessionId, surface), live) + 1;
+	}
+
+	/**
+	 * Move named surfaces' retained history from one owner to another.
+	 *
+	 * THIS IS THE ONE MOVE A SESSION ID EVER MAKES ON DISK, and it exists for the
+	 * pending local console being attached to the conversation its draft's first send
+	 * created (`ConsoleHost.adoptPendingConsole`). The directory NAME is the session
+	 * key (`sessionDir`), and the host appends from its own `persistedBytes` mark, so
+	 * an adoption that only re-keyed the record in memory would continue the surface's
+	 * log under a new owner while the bytes written so far stayed under the old one —
+	 * two files claiming one surface, each with half of it, and a relaunch that
+	 * restored whichever directory it happened to read.
+	 *
+	 * THE SURFACES ARE THE CALLER'S, not this module's inference, because the handle
+	 * is the one fact a filename cannot reconstruct (`fileStem` is one-way by design).
+	 * A surface the caller did not name — a dismissed shell whose files still sit here
+	 * — is left where it is, so nothing is moved that no record claims.
+	 *
+	 * THE SIDECAR IS REWRITTEN rather than moved unchanged: it carries `session_id`,
+	 * and a sidecar naming the old owner under the new owner's directory would restore
+	 * the surface into the wrong listing on the next launch — the exact half-state this
+	 * method exists to avoid. The empty source directory goes last, and a directory
+	 * with something left in it stays: a file this move did not carry is not this
+	 * move's to delete.
+	 */
+	adoptSession(
+		from: string,
+		to: string,
+		surfaces: readonly string[],
+	): string[] {
+		if (from === to || surfaces.length === 0) return [];
+		const source = sessionDir(this.root, from);
+		if (!existsSync(source)) return [];
+		mkdirSync(sessionDir(this.root, to), {
+			recursive: true,
+			mode: HISTORY_DIR_MODE,
+		});
+		const moved: string[] = [];
+		for (const surface of surfaces) {
+			const logFrom = logPath(this.root, from, surface);
+			if (existsSync(logFrom))
+				renameSync(logFrom, logPath(this.root, to, surface));
+			const meta = this.loadSidecar(from, surface);
+			if (meta) {
+				// Written after the log is in place, so a reader that sees the sidecar
+				// sees the file it describes. A surface with no sidecar yet (created, no
+				// bytes flushed) moves its log and nothing else.
+				this.writeMeta({ ...meta, session_id: to });
+				rmSync(sidecarPath(this.root, from, surface), { force: true });
+			}
+			moved.push(surface);
+		}
+		try {
+			rmdirSync(source);
+		} catch {
+			// Not empty: something this call did not name still lives here.
+		}
+		return moved;
 	}
 
 	/** Remove one surface's history, log and sidecar. */

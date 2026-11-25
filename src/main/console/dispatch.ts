@@ -1,3 +1,4 @@
+import { isDraftConsoleOwner } from "../../shared/console-owner";
 import { ConsoleError } from "./errors";
 import type { ConsoleHost } from "./host";
 import { DEFAULT_COLS, DEFAULT_ROWS, clampGrid } from "./host";
@@ -53,12 +54,47 @@ export async function dispatchConsole(
 	// identity keeps nonce-capability compatibility with older clients; when an
 	// identity is supplied it is a fence, never an invitation to globally list.
 	const owner = optionalString(params.session_id, "session_id");
-	if (owner !== undefined && params.surface !== undefined)
+	/*
+	 * THE PENDING LOCAL CONSOLE IS NOT AN AGENT'S TO REACH — ON EITHER FORM OF THE CALL.
+	 *
+	 * A terminal a person opened on a draft they have not sent from is nobody's
+	 * conversation yet; it becomes one, and becomes readable, only through
+	 * `adoptPendingConsole`. There are two ways the wire can name it and both are
+	 * refused here rather than in the host's per-method bodies, so a method added
+	 * later inherits the fence:
+	 *
+	 *   - the OWNER itself (`session_id: DRAFT_CONSOLE_OWNER`), which would otherwise
+	 *     be a session id with a listing under it and a `cleanupOwner` to empty it;
+	 *   - a SURFACE handle, which the capability-compatible legacy form may name with
+	 *     NO `session_id` at all. That is why the surface check runs even when the
+	 *     owner is absent: `host.assertOwned` asks the RECORD who owns the surface and
+	 *     refuses the pending owner outright, so omitting the identity is not a way
+	 *     around the first check. Non-pending surfaces keep the legacy behaviour
+	 *     unchanged (an omitted owner is still accepted there).
+	 */
+	if (isDraftConsoleOwner(owner)) {
+		throw new ConsoleError(
+			"surface_not_owned",
+			"the local draft's console belongs to no conversation and is not an agent's to reach",
+			{},
+		);
+	}
+	if (params.surface !== undefined)
 		host.assertOwned(requiredSurface(params.surface), owner);
 	switch (method) {
 		case "console_list": {
 			const sessionId = optionalString(params.session_id, "session_id");
-			const surfaces = host.list(sessionId);
+			/*
+			 * A GLOBAL LISTING DOES NOT CARRY THE PENDING CONSOLE. Without a session id
+			 * this method answers with everything the app has, and a draft's terminals
+			 * are the app's, not the caller's: leaving them in would put another
+			 * person's in-progress shell in an agent's inventory (and in any transcript
+			 * that prints it). Omitted rather than redacted: a row is a handle, and a
+			 * handle nobody may use is noise that still names the surface.
+			 */
+			const surfaces = host
+				.list(sessionId)
+				.filter((surface) => !isDraftConsoleOwner(surface.session_id));
 			return { surfaces, count: surfaces.length };
 		}
 		case "console_create": {

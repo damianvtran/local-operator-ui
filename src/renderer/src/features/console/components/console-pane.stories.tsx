@@ -278,6 +278,9 @@ const Frame: FC<{
 	 * round 2, D2/D8). */
 	cleanupResult?: { released: number; protected: number };
 	sessionId?: string | null;
+	/** The local draft this pane is showing, for the stories that have none: it
+	 * carries the directory the pending console's first shell starts in. */
+	draft?: { cwd?: string } | null;
 	hang?: boolean;
 	unavailable?: { reason: string; detail: string };
 	unseen?: string[];
@@ -301,6 +304,7 @@ const Frame: FC<{
 	capacity,
 	cleanupResult,
 	sessionId = THIS_CONVERSATION,
+	draft,
 	hang,
 	unavailable,
 	unseen,
@@ -324,7 +328,7 @@ const Frame: FC<{
 	}, [unseen, sessionId, unseenAgeMs, unseenSession]);
 	return (
 		<div className="bg-surface p-0" style={{ width, height }}>
-			<ConsolePane sessionId={sessionId} onClose={() => {}} />
+			<ConsolePane sessionId={sessionId} draft={draft} onClose={() => {}} />
 		</div>
 	);
 };
@@ -615,10 +619,12 @@ export const Selected: Story = {
  * header, because this is the state a first-run user meets (§6.1). */
 export const Empty: Story = { render: () => <Frame surfaces={[]} /> };
 
-/** A draft: a console runs in a conversation's own directory, so there is nowhere
- * to put one yet. */
+/** A draft: the console is a REAL terminal from the first press, owned by the
+ * pending local draft console and started in the draft's staged directory. This
+ * is the state a New Conversation now lands on — it used to be a notice saying a
+ * console needs a conversation. */
 export const DraftConversation: Story = {
-	render: () => <Frame surfaces={[]} sessionId={null} />,
+	render: () => <Frame surfaces={[]} sessionId={null} draft={{ cwd: "~" }} />,
 };
 
 /** Before the first read answers. */

@@ -83,6 +83,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { DRAFT_CONSOLE_OWNER } from "../../../../../shared/console-owner";
 import {
 	type CanonicalFrontendState,
 	type CanonicalModel,
@@ -2209,9 +2210,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const consoleUnseenAll = useUiPreferencesStore((s) => s.consoleUnseen);
 		const consoleUnseenMarks = useMemo(
 			() =>
-				sessionId === null
-					? []
-					: consoleUnseenAll.filter((mark) => mark.sessionId === sessionId),
+				consoleUnseenAll.filter(
+					(mark) => mark.sessionId === (sessionId ?? DRAFT_CONSOLE_OWNER),
+				),
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
@@ -2225,7 +2226,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			(s) => s.consoleLiveSurface,
 		);
 		const consoleLiveCount =
-			consoleLiveSurface !== null && consoleLiveSurface.sessionId === sessionId
+			consoleLiveSurface !== null &&
+			consoleLiveSurface.sessionId === (sessionId ?? DRAFT_CONSOLE_OWNER)
 				? consoleLiveSurface.count
 				: 0;
 
@@ -2793,14 +2795,29 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								requestConsoleOpen(sessionId);
 							}
 						: /*
-							 * ON A DRAFT THE ROW TOGGLES THE PANE AND FILES NO REQUEST (the
-							 * always-visible rail, D1, which retires design round 1's U3 rule for
-							 * the panel rows): the pane's draft state says "A console needs a
-							 * conversation", which is the answer to the press, and the request is
-							 * what spawns a console - there is no working directory to spawn one
-							 * in. The rail's console arm does the same (`togglePanelRailItem`).
+							 * ON A DRAFT THE PRESS OPENS A REAL TERMINAL NOW (the pending local
+							 * console): the pane's draft state used to be a notice saying "A console
+							 * needs a conversation", because there was no owner to make a surface
+							 * under and no directory to start one in. Both are answered now — main
+							 * keys it under `DRAFT_CONSOLE_OWNER` and it starts in the draft's staged
+							 * directory — so the press is the same request a conversation's is, and
+							 * the pane answers it the same way (create if none is live, else focus).
+							 *
+							 * THE ROW STAYS A TOGGLE WHILE THE PANE IS UP, which is the always-visible
+							 * rail's D1 rule for every pane; only the OPEN half files a request. A
+							 * fresh New chat press mints a new draft key but the SAME owner, so the
+							 * shell the previous draft opened is the one this press focuses — that
+							 * is the whole point of the owner being a constant rather than the key.
+							 * The rail's console arm files the same request (`togglePanelRailItem`).
 							 */
-							() => setConsolePaneOpen(!isConsolePaneOpen)
+							() => {
+								if (isConsolePaneOpen) {
+									setConsolePaneOpen(false);
+									return;
+								}
+								setConsolePaneOpen(true);
+								requestConsoleOpen(DRAFT_CONSOLE_OWNER);
+							}
 				}
 				onOpenCodeReview={
 					/*
@@ -4207,6 +4224,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						>
 							<ConsolePane
 								sessionId={sessionId ?? null}
+								draft={sessionId ? null : { cwd }}
 								onClose={() => setConsolePaneOpen(false)}
 								allowCommandSubmit={allowCommandSubmit}
 							/>

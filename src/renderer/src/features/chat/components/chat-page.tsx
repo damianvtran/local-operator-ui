@@ -74,6 +74,7 @@ import {
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
+	adoptPendingConsole,
 	composerIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
@@ -4575,9 +4576,22 @@ function SessionPanel({
 		setSendErrorCode(undefined);
 		setSendErrorRetry(false);
 		setSendErrorMuted(false);
+		const deliveredTo = draft?.sessionId ?? sessionId ?? "";
+		/*
+		 * THE DRAFT'S CONSOLE MOVES WITH THE MESSAGE (the send path's two arms do
+		 * the same, in `canonical-sessions-store`). Reconciliation is the app
+		 * confirming a first message DID arrive, so the shells a New Conversation's
+		 * pane opened belong to this conversation now — and without this they would
+		 * be left under the pending owner while the user looks at an empty console in
+		 * the conversation they were moved to. Fire-and-forget: this effect runs when
+		 * the message is already visible, and the pane re-reads on main's own change
+		 * signal (`console-state-changed`), so waiting here would only delay the
+		 * sentence this effect exists to clear.
+		 */
+		void adoptPendingConsole(deliveredTo);
 		useCanonicalSessionsStore
 			.getState()
-			.finishDraft(draftIdentity, draft?.sessionId ?? sessionId ?? "");
+			.finishDraft(draftIdentity, deliveredTo);
 	}, [
 		unresolvedRequestId,
 		ownerHasIt,

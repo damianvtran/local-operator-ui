@@ -443,6 +443,9 @@ declare global {
 			console: {
 				state: (sessionId?: string | null) => Promise<unknown>;
 				cleanupOwner?: (sessionId: string) => Promise<unknown>;
+				/** Attach the pending local draft's console surfaces to the conversation
+				 * a successful first send created. Same handle, same pty, same history. */
+				adoptPending: (sessionId: string) => Promise<unknown>;
 				/** A surface the USER asked for. Main sets the origin to `user`. */
 				createSurface: (request: {
 					sessionId: string;

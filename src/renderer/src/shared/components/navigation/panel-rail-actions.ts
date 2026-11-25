@@ -19,6 +19,7 @@ import {
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
+import { DRAFT_CONSOLE_OWNER } from "../../../../../shared/console-owner";
 import type { PanelRailItemId } from "./panel-rail-model";
 
 /**
@@ -161,14 +162,17 @@ export function togglePanelRailItem(
 				return true;
 			}
 			/*
-			 * ON A DRAFT THE PANE STILL OPENS (D1): it draws its own "needs a
-			 * conversation" state, which is the answer to the press. Only a press with
-			 * a conversation files the open request - that request is what tells the
-			 * pane this open came from the user and spawns a console, and a draft has
-			 * no working directory to spawn one in.
+			 * ON A DRAFT THE PANE OPENS ONTO A REAL TERMINAL (the pending local
+			 * console), so the press files the same request a conversation's does —
+			 * against the shared draft owner rather than a session id, because a draft
+			 * has none and the shell must outlive this draft's key.
+			 *
+			 * IT USED TO TOGGLE ONLY, with a note that a draft "has no working
+			 * directory to spawn one in". That is no longer true: the composer's staged
+			 * directory is the draft's, and main starts the shell there.
 			 */
 			state.setConsolePaneOpen(true);
-			if (context.sessionId) state.requestConsoleOpen(context.sessionId);
+			state.requestConsoleOpen(context.sessionId ?? DRAFT_CONSOLE_OWNER);
 			return true;
 		}
 		case "ask": {

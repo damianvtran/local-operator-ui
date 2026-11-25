@@ -381,6 +381,34 @@ export class ConsoleRegistry<R> {
 	}
 
 	/**
+	 * Move every surface one owner holds onto another owner, and answer with what
+	 * moved.
+	 *
+	 * THE ONE PATH THAT MOVES A RECORD'S SESSION, and it is a MOVE rather than a
+	 * patch: `update` documents that a record's session never changes, because the
+	 * session is the fence every other call is checked against, and a patchable fence
+	 * is not a fence. This method exists for the single transition where the owner
+	 * genuinely changes — the pending local console's surfaces becoming the
+	 * conversation their draft's first send created (`DRAFT_CONSOLE_OWNER`) — and it
+	 * changes nothing else: the handle, the runtime (a live pty included), the byte
+	 * log and the history all stay, which is what makes the pane of the new
+	 * conversation show the terminal the user was already looking at.
+	 *
+	 * Called by the host only after the retained history has moved (`adoptSession`),
+	 * so a listing and its files cannot disagree about who owns a surface.
+	 */
+	adopt(from: string, to: string): string[] {
+		if (from === to) return [];
+		const adopted: string[] = [];
+		for (const entry of this.list(from)) {
+			entry.record = { ...entry.record, sessionId: to };
+			adopted.push(entry.record.surface);
+		}
+		if (adopted.length > 0) this.generation += 1;
+		return adopted;
+	}
+
+	/**
 	 * Drop an entry.
 	 *
 	 * Returns the entry it removed, or null when it was already gone — the same

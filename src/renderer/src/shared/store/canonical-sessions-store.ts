@@ -105,6 +105,47 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+
+/**
+ * ATTACH THE PENDING LOCAL CONSOLE TO THE CONVERSATION THIS SEND CREATED.
+ *
+ * A New Conversation's console pane runs its shells under
+ * `DRAFT_CONSOLE_OWNER` (`src/shared/console-owner.ts`), because a draft has no
+ * session id yet. The moment a message is ACCEPTED the conversation exists, and
+ * the surfaces should belong to it: main moves them without touching the pty, so
+ * the pane of the conversation the user lands in is showing the terminal they were
+ * typing into.
+ *
+ * WHY IT LIVES AT THE TWO `finishDraft` CALLS rather than in a `console.*`
+ * subscriber or an effect on the session id: `finishDraft` runs exactly when the
+ * draft RETIRES — on an accepted message, from both the acknowledged and the
+ * late-delivered arm — and never on a failure. Attaching anywhere else would need
+ * its own answer to "did the send succeed", which is the question this store has
+ * already answered.
+ *
+ * NEVER THROWS. It runs inside a send that has just succeeded, and a console that
+ * failed to move must not turn a delivered message into a reported failure; the
+ * surfaces then stay pending — visible and usable on the next New chat press —
+ * which is the honest outcome rather than a lie about the send.
+ */
+export async function adoptPendingConsole(sessionId: string): Promise<void> {
+	if (!sessionId) return;
+	/*
+	 * `typeof window` rather than the optional chain alone: this store is bundled by
+	 * Node suites with no DOM (the send path's own suites among them), and a bare
+	 * `window.api?` there is a ReferenceError — thrown from inside a send that has
+	 * already succeeded, which would report a delivered message as a failure. Absent
+	 * renderer, nothing to adopt.
+	 */
+	if (typeof window === "undefined") return;
+	const adopt = window.api?.console?.adoptPending;
+	if (!adopt) return;
+	try {
+		await adopt(sessionId);
+	} catch {
+		// The shells remain under the pending owner; nothing else is lost.
+	}
+}
 /** Canonical sessions are the only conversation identities. Profile names stage
  * drafts; the legacy agent mapping is retained only to resolve old deep links.
  *
@@ -3472,6 +3513,16 @@ export async function admitChatDraft(
 			inputMode,
 			inputPath,
 		});
+		/*
+		 * THE DRAFT'S CONSOLE, HANDED OVER BEFORE THE ROW RETIRES.
+		 *
+		 * Order matters: `finishDraft` is what moves the UI to the conversation, and
+		 * the pane that mounts there reads the listing immediately. Adopting first
+		 * means that read already finds the surfaces; the other order would paint the
+		 * new conversation's empty console for the round trip and offer a `+` beside
+		 * a shell that exists. The call cannot fail the send (see its own note).
+		 */
+		await adoptPendingConsole(id);
 		store.finishDraft(key, id);
 		// A send that landed retires every message about the send that did not.
 		// `createSession` records its failure page-level and only `fetchSessions`/
@@ -3616,6 +3667,12 @@ export async function admitChatDraft(
 				// press touched (`settleSendComposerRecords`), so the extra settle
 				// this arm used to perform on the post-flip identity alone is gone
 				// with it.
+				//
+				// AND THE DRAFT'S CONSOLE MOVES WITH IT, before the retire for the
+				// reason the other arm states: the pane of the conversation this send
+				// created must find its terminals on the first read, not one round trip
+				// later.
+				await adoptPendingConsole(id);
 				store.finishDraft(key, id);
 				return id;
 			}
