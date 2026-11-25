@@ -581,9 +581,10 @@ test("the main window takes the frame and the ground from the closed decision", 
 							additionalArguments: ["--driver-sentinel"],
 						},
 						ownerAuditStartupArguments: () => ["--scene-sentinel"],
-						telemetryWebPreferences: {
+						// A function since the consent gate: preferences are read per window, not frozen at launch.
+						telemetryWebPreferences: () => ({
 							additionalArguments: ["--telemetry-sentinel"],
-						},
+						}),
 					},
 					{ timeout: 1000 },
 				);
