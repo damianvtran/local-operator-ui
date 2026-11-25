@@ -1223,7 +1223,7 @@ export const AskDrawer = ({
 			data-ask-drawer={scope}
 			tabIndex={-1}
 			className={cn(
-				"panel-top-pad @container/asks flex h-full flex-col bg-elevated",
+				"panel-top-pad flex h-full flex-col bg-elevated @container/asks",
 			)}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
@@ -1260,7 +1260,7 @@ export const AskDrawer = ({
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center gap-2 px-3",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
 				)}
 			>

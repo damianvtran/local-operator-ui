@@ -99,7 +99,8 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
 		classes: [
-			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+			/* The container class trails the ground, as the browser pane's `@container/bpane` does. */
+			'"panel-top-pad flex h-full flex-col bg-elevated @container/asks"',
 		],
 	},
 	{
