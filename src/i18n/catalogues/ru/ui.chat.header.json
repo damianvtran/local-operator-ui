@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "Сделать этот новый чат временным",
 	"ui.chat.header.temporary_toggle_off": "Выключить временный чат",
 	"ui.chat.header.temporary_peer_unavailable": "Временные чаты пока нельзя начать на другом устройстве",
-	"ui.chat.header.temporary_ends_in": "Удаление через {minutes, plural, one {# мин} few {# мин} many {# мин} other {# мин}}"
+	"ui.chat.header.temporary_ends_in": "Удаление через {minutes, plural, one {# мин} few {# мин} many {# мин} other {# мин}}",
+	"ui.chat.header.pin_tab": "Закрепить вкладку",
+	"ui.chat.header.unpin_tab": "Открепить вкладку",
+	"ui.chat.header.close_other_tabs": "Закрыть другие вкладки",
+	"ui.chat.header.close_tabs_left": "Закрыть вкладки слева",
+	"ui.chat.header.close_tabs_right": "Закрыть вкладки справа",
+	"ui.chat.header.close_all_tabs": "Закрыть все вкладки",
+	"ui.chat.header.all_tabs": "Все вкладки"
 }

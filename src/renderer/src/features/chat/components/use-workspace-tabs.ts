@@ -180,7 +180,9 @@ export function useWorkspaceTabs(
 				setFocusRequested(true);
 		}
 	};
-	const close = (tab: WorkspaceTab) => {
+	// `among` lets a bulk close reuse this exact handoff: the successor is picked
+	// from the tabs that survive the bulk close, never one it is removing.
+	const close = (tab: WorkspaceTab, among: readonly WorkspaceTab[] = tabs) => {
 		closeHandoff.current = null;
 		const ticket = {};
 		tabIntent.current = ticket;
@@ -194,7 +196,7 @@ export function useWorkspaceTabs(
 			setFocusRequested(true);
 			return;
 		}
-		const next = workspaceNeighbor(tabs, tab.key);
+		const next = workspaceNeighbor(among, tab.key);
 		if (!next) {
 			startDraft();
 			if (
@@ -236,6 +238,25 @@ export function useWorkspaceTabs(
 		focusHandled,
 		select,
 		close,
+		/**
+		 * Bulk close (others/left/right/all). Inactive tabs only leave the strip
+		 * (as a single inactive close does); the active one, if included, goes
+		 * through `close` so navigation, the confirmed-open handoff and the
+		 * no-successor draft fallback stay one implementation.
+		 */
+		closeMany: (keys: readonly string[]) => {
+			const closing = new Set(keys);
+			const current = targetOf(useCanonicalSessionsStore.getState());
+			const active = tabs.find(
+				(tab) =>
+					closing.has(tab.key) && sameWorkspaceTarget(tab.target, current),
+			);
+			const keep = (tab: WorkspaceTab) =>
+				!closing.has(tab.key) || tab.key === active?.key;
+			setTabs((items) => items.filter(keep));
+			if (active) close(active, tabs.filter(keep));
+			else setFocusRequested(true);
+		},
 		pin: (key: string) => {
 			setTabs((items) =>
 				items.map((item) =>

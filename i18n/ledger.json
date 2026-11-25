@@ -5122,29 +5122,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "1ff6e2e3e821182c167d5c4e4f0c73cef38ea1e5bdaf37ccdcb792a74b4e724f",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "7bd04fa374c8e0cd4f81879d42cafc4b4a5c2a47ce6077dfa30c05c1fdb81762",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-es",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-es.json",
-					"receipt_sha256": "ac44a03975a077eba3ab59355711f18c8da913bda4a504e6885df4118ff1f60f"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-es.json",
+					"receipt_sha256": "31e3a4743cee88993aa96108d721c853bda7f994ef2e8b02d8a8c0ccdc4c1e57",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -5286,6 +5287,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
 							"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "1ff6e2e3e821182c167d5c4e4f0c73cef38ea1e5bdaf37ccdcb792a74b4e724f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-es.json",
+							"receipt_sha256": "ac44a03975a077eba3ab59355711f18c8da913bda4a504e6885df4118ff1f60f"
 						}
 					],
 					"status": "audited"
@@ -19521,29 +19544,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "92815c3771b94f9e0b408fa6c48fbb85d972f23afe795ba4083ae06584bd1be2",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "bf807dff8a188693cf91ad8a474e6caa4be0356b7ec564448303e2170e9abae9",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-fr",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-fr.json",
-					"receipt_sha256": "ab98d918d7427f44799cdd37f316b661df2c81b545cbefc3728d8a6b8fd468e3"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-fr.json",
+					"receipt_sha256": "7f010fa069801224ff5c2646022335a135abd4e2959c577c3890c0a5ae380124",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -19685,6 +19709,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
 							"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "92815c3771b94f9e0b408fa6c48fbb85d972f23afe795ba4083ae06584bd1be2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-fr.json",
+							"receipt_sha256": "ab98d918d7427f44799cdd37f316b661df2c81b545cbefc3728d8a6b8fd468e3"
 						}
 					],
 					"status": "audited"
@@ -34246,29 +34292,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "2fb58843d38a679aa34f2d2d8b07dedc4c1a251afa257dd1a74be1ab1c6115f0",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "596c19c24e6515a07752c5650c2614f2ca11cdfacde551db563f9c8f63068ea2",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
-					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-hi",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-hi.json",
-					"receipt_sha256": "77f84acfb2571e8016f983894c856a3fefbc315673e1e7636e8c0cda6614364f"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-hi.json",
+					"receipt_sha256": "2700439f346c7eb31d93f77aef912d3f270d8aef018c96df73e24b743402fae3",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -34433,6 +34480,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
 							"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "2fb58843d38a679aa34f2d2d8b07dedc4c1a251afa257dd1a74be1ab1c6115f0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-hi.json",
+							"receipt_sha256": "77f84acfb2571e8016f983894c856a3fefbc315673e1e7636e8c0cda6614364f"
 						}
 					],
 					"status": "audited"
@@ -48593,29 +48662,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "c2f10aded28760cfa1ad045da29b835865d1fba2aee9b7d7e10d198ab86a31c6",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "8b28619e56ac95f002f955739cc047a9f502078a16a9cbfdb3c2429f566f0cef",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-ru",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ru.json",
-					"receipt_sha256": "4b589d836246925492cfb15979f8a2009c1b56bdfd4ec5d06cfdce43a8e926e0"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-ru.json",
+					"receipt_sha256": "a9a1a62935250b2638830ce4df8b591eb49d751857eff2d9f13bd976134e1802",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -48757,6 +48827,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
 							"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "c2f10aded28760cfa1ad045da29b835865d1fba2aee9b7d7e10d198ab86a31c6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ru.json",
+							"receipt_sha256": "4b589d836246925492cfb15979f8a2009c1b56bdfd4ec5d06cfdce43a8e926e0"
 						}
 					],
 					"status": "audited"
@@ -63031,29 +63123,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "fd6a7f9f8654530b54cb12b053ae939a3327faba00536016c2712d9288d45368",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "8c6026664d15e8c64e8df54b013695ce521be326aafee82a72412b1625b14c60",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-ur",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ur.json",
-					"receipt_sha256": "7acf15dd9d69dd9c3734eb5e0c6724b5d8aa7ea20b109ae61465eb141a726724"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-ur.json",
+					"receipt_sha256": "2509de5875cc27413827a3bbe4cc128840d1b8447dc253f3dc335fc819b5112f",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -63194,6 +63287,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
 							"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "fd6a7f9f8654530b54cb12b053ae939a3327faba00536016c2712d9288d45368",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ur.json",
+							"receipt_sha256": "7acf15dd9d69dd9c3734eb5e0c6724b5d8aa7ea20b109ae61465eb141a726724"
 						}
 					],
 					"status": "audited"
@@ -77299,29 +77414,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "943706c82f09780837067cb59249e513d562238d6bd09aa083cd5a92bfa926a6",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "75eacde42ecf2a0c7e03d66359224b18c1c3df7fe52ae90c4605a6b1f9d83573",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-vi",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-vi.json",
-					"receipt_sha256": "30b00f95eff3f972ee243028406d83c1f5d3407e5d56c339d79e3bcfe8aefb02"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-vi.json",
+					"receipt_sha256": "7fced2dcd57c36c1eb2bc32b0cb73e3806b105ae63eed61bf275b3a4b7e36a70",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -77480,6 +77596,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
 							"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "943706c82f09780837067cb59249e513d562238d6bd09aa083cd5a92bfa926a6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-vi.json",
+							"receipt_sha256": "30b00f95eff3f972ee243028406d83c1f5d3407e5d56c339d79e3bcfe8aefb02"
 						}
 					],
 					"status": "audited"
@@ -92337,29 +92475,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.header",
-			"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
-			"target_sha256": "0b90219736fc3b643043c6a6d44caf11deaa7dd750d33745bdf319d43e8596a7",
+			"source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+			"target_sha256": "9baddeae08853fc6b115586fdc5dabae4bbe48982dd0751abf62dc1beec8fe32",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"date": "2026-11-24",
+				"note": "UI tab context-menu keys (7) by lopdev coder job b2322bc8e729 in f8b2bfcf081. Older keys keep their earlier translator (ledger history). Auditor reviewer e03508d4186e ran the same model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-22",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn",
+					"instance": "e03508d4186e-tab-menu-f8b2bfcf081-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn.json",
-					"receipt_sha256": "3f9452835b9f6c5e761284fcfc85fbcbe7e1b78c6a4b895fc816d03e56752a4f"
+					"receipt": "i18n/receipts/e03508d4186e-tab-menu-f8b2bfcf081-zh-CN.json",
+					"receipt_sha256": "04f8f3df21a15ae38c7a2ec6419c04911e1f2c83815b3e4c6f8a84cc62108170",
+					"scope": "7 ui.chat.header tab-menu keys added in f8b2bfcf081"
 				}
 			],
 			"status": "audited",
@@ -92518,6 +92657,28 @@
 							"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
 							"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
 							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+					"target_sha256": "0b90219736fc3b643043c6a6d44caf11deaa7dd750d33745bdf319d43e8596a7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-22",
+							"result": "clean",
+							"instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn.json",
+							"receipt_sha256": "3f9452835b9f6c5e761284fcfc85fbcbe7e1b78c6a4b895fc816d03e56752a4f"
 						}
 					],
 					"status": "audited"

@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "इस नई चैट को अस्थायी बनाएँ",
 	"ui.chat.header.temporary_toggle_off": "अस्थायी चैट बंद करें",
 	"ui.chat.header.temporary_peer_unavailable": "अस्थायी चैट अभी किसी दूसरे डिवाइस पर शुरू नहीं हो सकती",
-	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# मिनट} other {# मिनट}} में हटेगी"
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# मिनट} other {# मिनट}} में हटेगी",
+	"ui.chat.header.pin_tab": "टैब पिन करें",
+	"ui.chat.header.unpin_tab": "टैब अनपिन करें",
+	"ui.chat.header.close_other_tabs": "अन्य टैब बंद करें",
+	"ui.chat.header.close_tabs_left": "बाईं ओर के टैब बंद करें",
+	"ui.chat.header.close_tabs_right": "दाईं ओर के टैब बंद करें",
+	"ui.chat.header.close_all_tabs": "सभी टैब बंद करें",
+	"ui.chat.header.all_tabs": "सभी टैब"
 }

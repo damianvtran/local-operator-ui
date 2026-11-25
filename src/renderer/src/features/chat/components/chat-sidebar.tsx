@@ -757,6 +757,31 @@ export const rowCurrent =
 export const rowDragging =
 	"bg-row-selected text-ink hover:bg-row-selected hover:text-ink";
 
+/*
+ * One Agents/Teams section's reserved row columns, computed once per section by
+ * `entityColumns` and handed to every row it draws (design round 1, D1): the count
+ * slot's width in ch (0 = no slot) and whether the 24px link slot is mounted.
+ */
+type EntityColumns = { countCh: number; linkSlot: boolean };
+
+/*
+ * The section's columns from the facts of the rows it draws: the widest census
+ * shown, in digits (one ch each under `tabular-nums`; 0 = no count slot), and
+ * whether any drawn row renders a hub mark (else no link slot). Pure, so
+ * `scripts/sidebar-entity-columns.test.mjs` runs it.
+ */
+function sectionEntityColumns(
+	rows: readonly { badge: number; drawsLinkMark: boolean }[],
+): EntityColumns {
+	let countCh = 0;
+	let linkSlot = false;
+	for (const row of rows) {
+		if (row.badge > 0) countCh = Math.max(countCh, String(row.badge).length);
+		if (row.drawsLinkMark) linkSlot = true;
+	}
+	return { countCh, linkSlot };
+}
+
 /**
  * The HELD row's own mark, and it is deliberately NOT a fill (design round 2, D7 + UX
  * round 2, U6).
@@ -4766,6 +4791,7 @@ export function ChatSidebar({
 						</p>
 						<button
 							type="button"
+							data-sidebar-row-button
 							data-sidebar-page-more-tag={bucket.id}
 							onPointerDown={notePagePointer}
 							onClick={pressPageMore}
@@ -7341,7 +7367,103 @@ export function ChatSidebar({
 			onDismissRollup={() => hub.clearRollup(kind)}
 		/>
 	);
-	const entity = (kind: ChatTarget["kind"], name: string, pinKey = name) => {
+	/*
+	 * THE ENTITY ROW'S HUB FACTS AND BADGE, hoisted out of `entity` (design round 1,
+	 * D1) so the SECTION that lists the rows asks exactly the question each row asks:
+	 * does this row draw a link mark, and which census does it show. One spelling,
+	 * read by the row (to draw them) and by `entityColumns` (to size the section's
+	 * reserved slots), so the two can never disagree about a row.
+	 */
+	const entityHubFacts = (kind: ChatTarget["kind"], name: string) => {
+		const hubKey = hubItemKey(kind, name);
+		const hubItem = hubItems.get(hubKey);
+		const hubMark = hubMarkFor(hubItem);
+		const localId =
+			kind === "team"
+				? teams.data?.find((row) => row.name === name)?.id
+				: (profiles.data?.find((row) => row.name === name)?.agent_id ??
+					undefined);
+		const linkedOrigins = fullHubLinks
+			? linksForLocalItem(hubLinks.data, kind, localId, name)
+			: [];
+		/*
+		 * CODE MAJOR-B: an item in `inventory.unresolved` but NOT in
+		 * `inventory.links` drew nothing, and the legacy HubUpdateMark is suppressed
+		 * once hub_links is advertised - so an item needing the source-confirmation
+		 * act had no indicator at all. The unresolved reader is the second half.
+		 */
+		const unresolvedOrigins =
+			fullHubLinks && linkedOrigins.length === 0
+				? unresolvedForLocalItem(hubLinks.data, kind, localId, name)
+				: [];
+		/* The four marks the link slot can hold; see the slot's note in `entity`. */
+		const drawsLinkMark =
+			linkedOrigins.length > 0 ||
+			unresolvedOrigins.length > 0 ||
+			(!fullHubLinks && Boolean(hubMark && hubItem));
+		return {
+			hubKey,
+			hubItem,
+			hubMark,
+			localId,
+			linkedOrigins,
+			unresolvedOrigins,
+			drawsLinkMark,
+		};
+	};
+	/*
+	 * THE GROUP'S BADGE, from the module rather than from a condition here
+	 * (`sidebar-scope-paging.ts` carries the rules and their reasons). The badge
+	 * reads the CENSUS when the daemon sent one, so a group holding 434
+	 * conversations stops advertising the 283 a page happened to carry.
+	 */
+	const entityBadge = (
+		kind: ChatTarget["kind"],
+		name: string,
+		rows: readonly unknown[],
+	) =>
+		groupBadgeCount({
+			pageable: groupPaging,
+			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
+			held: rows.length,
+			searching: Boolean(query.trim()),
+		});
+	/*
+	 * ONE SECTION'S RESERVED COLUMNS (design round 1, D1). The operator asked for
+	 * the row icons to stay in one column for short names; the first fix reserved a
+	 * 3ch count slot and a 24px link slot on EVERY row, which cut Agents names to
+	 * ~38px in a list with no links and no counts. Alignment is a comparison the eye
+	 * makes WITHIN a section, so the reservation is sized per section, over the rows
+	 * that section actually draws (`names` is already capped by the caller, and a
+	 * row the query does not admit is skipped exactly as `entity` skips it):
+	 *   - `countCh`: digits of the widest census shown (tabular numerals make that
+	 *     a ch count), or 0 when no row shows one - then no slot is rendered at all;
+	 *   - `linkSlot`: true only when at least one drawn row renders a hub mark.
+	 * Every row in the section receives the same object, so the columns stay even
+	 * without any per-row state. `scripts/sidebar-entity-columns.test.mjs` holds it.
+	 */
+	const entityColumns = (
+		kind: ChatTarget["kind"],
+		names: readonly string[],
+	): EntityColumns => {
+		const drawn = [];
+		for (const name of names) {
+			const rows = scopeRows(kind, name);
+			const displayName = kind === "team" ? teamLabelFor(name) : name;
+			if (!entityQueryAdmits(name, rows.length, query, displayName)) continue;
+			drawn.push({
+				badge: entityBadge(kind, name, rows),
+				drawsLinkMark: entityHubFacts(kind, name).drawsLinkMark,
+			});
+		}
+		return sectionEntityColumns(drawn);
+	};
+	const entity = (
+		kind: ChatTarget["kind"],
+		name: string,
+		columns: EntityColumns,
+		pinKey = name,
+	) => {
 		const rows = scopeRows(kind, name);
 		const key = catalogueScopeKey(kind, name);
 		/*
@@ -7400,12 +7522,7 @@ export function ChatSidebar({
 		 * carry; the view is what makes "No chats yet" unreachable while the census
 		 * says otherwise, which is the operator's own screenshot.
 		 */
-		const badge = groupBadgeCount({
-			pageable: groupPaging,
-			total: groupPaging ? scopeCensusTotal(catalogueCounts, kind, name) : null,
-			held: rows.length,
-			searching: Boolean(query.trim()),
-		});
+		const badge = entityBadge(kind, name, rows);
 		const view = groupChatsView({
 			pageable: groupPaging,
 			scope: catalogueScopes[key],
@@ -7511,20 +7628,17 @@ export function ChatSidebar({
 		 */
 		const pinnedAgent =
 			kind === "agent" && sidebarView.pinnedAgents.includes(pinKey);
-		const hubKey = hubItemKey(kind, name);
-		const hubItem = hubItems.get(hubKey);
-		const hubMark = hubMarkFor(hubItem);
+		const {
+			hubKey,
+			hubItem,
+			hubMark,
+			localId,
+			linkedOrigins,
+			unresolvedOrigins,
+		} = entityHubFacts(kind, name);
 		const proposalCount = proposalsEnabled
 			? pendingProposalCount(proposals.data, kind, name)
 			: 0;
-		const localId =
-			kind === "team"
-				? teams.data?.find((row) => row.name === name)?.id
-				: (profiles.data?.find((row) => row.name === name)?.agent_id ??
-					undefined);
-		const linkedOrigins = fullHubLinks
-			? linksForLocalItem(hubLinks.data, kind, localId, name)
-			: [];
 		// Even malformed multi-origin inventory cannot pick the first destination.
 		// The ordinary one-origin row has direct action; ambiguity opens detail.
 		const linkedOrigin =
@@ -7533,16 +7647,6 @@ export function ChatSidebar({
 		// aggregate mark that opens the Hub links detail (design §Sidebar line 48),
 		// where the per-link policy controls live. A zero-origin row draws neither.
 		const aggregateOrigins = linkedOrigins.length > 1 ? linkedOrigins : null;
-		/*
-		 * CODE MAJOR-B: an item in `inventory.unresolved` but NOT in
-		 * `inventory.links` drew nothing, and the legacy HubUpdateMark is suppressed
-		 * once hub_links is advertised - so an item needing the source-confirmation
-		 * act had no indicator at all. The unresolved reader is the second half.
-		 */
-		const unresolvedOrigins =
-			fullHubLinks && linkedOrigins.length === 0
-				? unresolvedForLocalItem(hubLinks.data, kind, localId, name)
-				: [];
 		const history = (
 			<button
 				type="button"
@@ -7598,6 +7702,10 @@ export function ChatSidebar({
 		return (
 			<div key={key} data-entity>
 				<div
+					/* The staged row's box, named for the inset stylesheet (design D5): its
+					 * hover ground and its name button's transparency key on this rather than
+					 * on the merged class string. */
+					data-entity-staged={staged ? "" : undefined}
 					className={cn(
 						"group flex h-8 items-center gap-1 rounded-md",
 						staged && rowCurrent,
@@ -7665,21 +7773,37 @@ export function ChatSidebar({
 					    still lets an absent or two-digit count shift everything left
 					    of it, which moved the glyph across 14px between rows and made
 					    the reveal jitter as the pointer ran down the list. */}
-						<span
-							/*
-							 * THE BADGE SAYS WHAT IT COUNTS (round 1, D1 + D5). The panel draws two
-							 * kinds of number in one 12px column - a SECTION heading's count of the rows
-							 * it is drawing, and a group's badge, which is this scope's census - and they
-							 * look alike. `title` is what a pointer user gets; the `sr-only` span below is
-							 * what a screen reader gets, because this digit sits inside buttons whose own
-							 * `aria-label`s replace their children and it was otherwise announced nowhere
-							 * at all.
-							 */
-							title={badge > 0 ? groupBadgeLabel(badge) : undefined}
-							className="min-w-4 shrink-0 text-end text-meta tabular-nums text-ink-dim"
-						>
-							{badge || ""}
-						</span>
+						{columns.countCh > 0 && (
+							<span
+								/*
+								 * THE BADGE SAYS WHAT IT COUNTS (round 1, D1 + D5). The panel draws two
+								 * kinds of number in one 12px column - a SECTION heading's count of the rows
+								 * it is drawing, and a group's badge, which is this scope's census - and they
+								 * look alike. `title` is what a pointer user gets; the `sr-only` span below is
+								 * what a screen reader gets, because this digit sits inside buttons whose own
+								 * `aria-label`s replace their children and it was otherwise announced nowhere
+								 * at all.
+								 */
+								title={badge > 0 ? groupBadgeLabel(badge) : undefined}
+								/*
+								 * THE SECTION'S COUNT COLUMN (operator, after v0.63.0: "the column
+								 * space for icons is uneven ... they don't go left and out of column
+								 * for shorter team names"; design round 1, D1). A slot sized to its
+								 * own digits let a three-digit census ("511") push this row's
+								 * new-chat glyph ~14px start-ward of its neighbours'; a flat 3ch on
+								 * every row fixed that but cost names the width nobody's count used.
+								 * So the width is the SECTION's widest census in ch (`tabular-nums`
+								 * makes one digit one ch), handed down by `entityColumns`: every row
+								 * of the section shares it, and a section with no counts renders no
+								 * slot at all (the conditional above). Empty on a row without a
+								 * count, so it adds no text to the tree.
+								 */
+								style={{ minWidth: `${columns.countCh}ch` }}
+								className="shrink-0 text-end text-meta tabular-nums text-ink-dim"
+							>
+								{badge || ""}
+							</span>
+						)}
 					</button>
 					{/*
 					 * THE CENSUS, ANNOUNCED (round 1, D5), and INSIDE THE ROW rather than after
@@ -7822,59 +7946,81 @@ export function ChatSidebar({
 							</button>
 						</Tooltip>
 					)}
-					{linkedOrigin && (
-						<HubLinkSidebarMark
-							link={linkedOrigin}
-							staged={staged}
-							onDetail={() => openHubDetail(kind, name)}
-							itemName={name}
-							displayName={displayName}
-							itemsById={hubItemsById}
-							nameAmbiguous={
-								!(kind === "team"
-									? teams.isSuccess && !teams.isFetching
-									: profiles.isSuccess && !profiles.isFetching) ||
-								(displayNameCounts[kind === "team" ? "team" : "agent"].get(
-									name.trim().toLowerCase(),
-								) ?? 0) !== 1
-							}
-						/>
-					)}
-					{aggregateOrigins && (
-						<HubLinkAggregateMark
-							links={aggregateOrigins}
-							staged={staged}
-							onDetail={() => openHubDetail(kind, name)}
-						/>
-					)}
-					{unresolvedOrigins.length > 0 && (
-						<HubUnresolvedMark
-							item={name}
-							details={unresolvedOrigins.map((origin) => origin.detail)}
-							staged={staged}
-							onResolve={() =>
-								navigate(
-									/* A fresh token per press: a repeat press on the SAME
-									 * already-open row must re-open/re-focus it, which a
-									 * constant `=1` cannot do (CODE MINOR-E). */
-									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
-								)
-							}
-						/>
-					)}
-					{!fullHubLinks && hubMark && hubItem && (
-						<HubUpdateMark
-							item={hubItem}
-							mark={hubMark}
-							busy={hub.pending.has(hubKey)}
-							blocked={
-								!hub.canWrite &&
-								(hubMark.kind === "available" ||
-									(hubMark.kind === "failed" && hubMark.retryable))
-							}
-							staged={staged}
-							onPress={() => pressHubMark(kind, name, hubMark)}
-						/>
+					{/*
+					 * THE LINK SLOT IS RESERVED PER SECTION (same operator report as the
+					 * count above; design round 1, D1). The four hub marks are mutually
+					 * exclusive (one origin / several / unresolved only when there is no
+					 * origin / the legacy update mark only when hub links are not
+					 * advertised) and each is a 24px `size-6` control, so ONE fixed `w-6`
+					 * slot holds whichever renders. Collapsing it per ROW slid the name
+					 * button's end edge - and with it the new-chat glyph and the count -
+					 * 24px start-ward on exactly the rows without a link; reserving it on
+					 * EVERY row cost 24px of name in sections with no links at all. So the
+					 * slot is mounted on every row of a section in which at least one drawn
+					 * row has a mark (`entityColumns().linkSlot`), and on none otherwise.
+					 * Empty, it is a bare span: no role, no name, no tab stop.
+					 * `scripts/sidebar-entity-columns.test.mjs` holds this.
+					 */}
+					{columns.linkSlot && (
+						<span
+							data-entity-link-slot
+							className="flex w-6 shrink-0 justify-center"
+						>
+							{linkedOrigin && (
+								<HubLinkSidebarMark
+									link={linkedOrigin}
+									staged={staged}
+									onDetail={() => openHubDetail(kind, name)}
+									itemName={name}
+									displayName={displayName}
+									itemsById={hubItemsById}
+									nameAmbiguous={
+										!(kind === "team"
+											? teams.isSuccess && !teams.isFetching
+											: profiles.isSuccess && !profiles.isFetching) ||
+										(displayNameCounts[kind === "team" ? "team" : "agent"].get(
+											name.trim().toLowerCase(),
+										) ?? 0) !== 1
+									}
+								/>
+							)}
+							{aggregateOrigins && (
+								<HubLinkAggregateMark
+									links={aggregateOrigins}
+									staged={staged}
+									onDetail={() => openHubDetail(kind, name)}
+								/>
+							)}
+							{unresolvedOrigins.length > 0 && (
+								<HubUnresolvedMark
+									item={name}
+									details={unresolvedOrigins.map((origin) => origin.detail)}
+									staged={staged}
+									onResolve={() =>
+										navigate(
+											/* A fresh token per press: a repeat press on the SAME
+											 * already-open row must re-open/re-focus it, which a
+											 * constant `=1` cannot do (CODE MINOR-E). */
+											`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
+										)
+									}
+								/>
+							)}
+							{!fullHubLinks && hubMark && hubItem && (
+								<HubUpdateMark
+									item={hubItem}
+									mark={hubMark}
+									busy={hub.pending.has(hubKey)}
+									blocked={
+										!hub.canWrite &&
+										(hubMark.kind === "available" ||
+											(hubMark.kind === "failed" && hubMark.retryable))
+									}
+									staged={staged}
+									onPress={() => pressHubMark(kind, name, hubMark)}
+								/>
+							)}
+						</span>
 					)}
 					<button
 						type="button"
@@ -8197,8 +8343,10 @@ export function ChatSidebar({
 		key: string;
 		at: number;
 	} | null>(null);
+	const sectionCap = (key: "agents" | "teams") =>
+		sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 	const cappedRows = (key: "agents" | "teams", rows: ReactNode[]) => {
-		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
+		const cap = sectionCap(key);
 		const hidden = rows.length - cap;
 		/*
 		 * THE FOOT'S OWN TWO FACTS (UX round 1's U1 and N1, design round 1's D1):
@@ -8224,6 +8372,7 @@ export function ChatSidebar({
 				{hidden > 0 && (
 					<button
 						type="button"
+						data-sidebar-row-button
 						data-sidebar-section-more={key}
 						/*
 						 * THE SECTION FOOT JOINS THE ARROW WALK (UX round 1's U4). The walk's
@@ -8267,6 +8416,24 @@ export function ChatSidebar({
 			</>
 		);
 	};
+	/*
+	 * EACH SECTION'S COLUMNS, over the rows it DRAWS (design round 1, D1): the
+	 * filtered roster is uncapped (see the branch's note), the plain lists are cut
+	 * at the same `sectionCap` `cappedRows` applies, so a hidden row's census or
+	 * link never widens the rows on screen.
+	 */
+	const filteredAgentColumns = entityColumns(
+		"agent",
+		drawnFilteredAgents.map((row) => row.name),
+	);
+	const agentColumns = entityColumns(
+		"agent",
+		agentRows.slice(0, sectionCap("agents")).map((row) => row.name),
+	);
+	const teamColumns = entityColumns(
+		"team",
+		(teams.data ?? []).slice(0, sectionCap("teams")).map((team) => team.name),
+	);
 	const sectionLabel = (label: string, action?: ReactNode) => (
 		<SidebarSectionHeading label={label} action={action} />
 	);
@@ -9426,7 +9593,12 @@ export function ChatSidebar({
 												 */
 												drawnFilteredAgents.length > 0 ? (
 													drawnFilteredAgents.map((row) =>
-														entity("agent", row.name, row.id),
+														entity(
+															"agent",
+															row.name,
+															filteredAgentColumns,
+															row.id,
+														),
 													)
 												) : (
 													<p className="text-meta text-ink-muted">
@@ -9437,7 +9609,7 @@ export function ChatSidebar({
 												cappedRows(
 													"agents",
 													agentRows.map((row) =>
-														entity("agent", row.name, row.id),
+														entity("agent", row.name, agentColumns, row.id),
 													),
 												)
 											)}
@@ -9453,6 +9625,7 @@ export function ChatSidebar({
 								<button
 									ref={createAgentRowRef}
 									type="button"
+									data-sidebar-row-button
 									className={cn(rowStyle, "w-full text-ink-muted")}
 									onClick={() => navigate("/agents?create=agent")}
 								>
@@ -9478,10 +9651,13 @@ export function ChatSidebar({
 								{teams.data &&
 									cappedRows(
 										"teams",
-										teams.data.map((team) => entity("team", team.name)),
+										teams.data.map((team) =>
+											entity("team", team.name, teamColumns),
+										),
 									)}
 								<button
 									type="button"
+									data-sidebar-row-button
 									className={cn(rowStyle, "w-full text-ink-muted")}
 									onClick={() => navigate("/agents?create=team")}
 								>
@@ -10293,6 +10469,7 @@ export function ChatSidebar({
 			{footShown && (
 				<button
 					type="button"
+					data-sidebar-row-button
 					data-sidebar-page-more
 					onPointerDown={notePagePointer}
 					onClick={pressPageMore}
@@ -10669,6 +10846,7 @@ export function ChatSidebar({
 								 */}
 								<button
 									type="button"
+									data-sidebar-row-button
 									data-sidebar-create-agent
 									onClick={() => {
 										setCreateOpen(false);
@@ -10683,6 +10861,7 @@ export function ChatSidebar({
 								</button>
 								<button
 									type="button"
+									data-sidebar-row-button
 									data-sidebar-create-team
 									onClick={() => {
 										setCreateOpen(false);

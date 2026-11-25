@@ -163,5 +163,40 @@
 		"tone": "short state phrase",
 		"maxCells": 20,
 		"note": "Shown only in the last five minutes before deletion; minutes is a whole number, rounded down."
+	},
+	"ui.chat.header.pin_tab": {
+		"role": "conversation tab menu action",
+		"tone": "short imperative, sentence case",
+		"note": "Pins the tab (not the conversation) to the start of the tab strip; pinned tabs survive bulk closes."
+	},
+	"ui.chat.header.unpin_tab": {
+		"role": "conversation tab menu action",
+		"tone": "short imperative, sentence case",
+		"note": "Returns a pinned tab to the regular tabs."
+	},
+	"ui.chat.header.close_other_tabs": {
+		"role": "conversation tab menu action",
+		"tone": "short imperative, sentence case",
+		"note": "Closes every unpinned tab except the one the menu was opened on. Closes tabs only, never conversations."
+	},
+	"ui.chat.header.close_tabs_left": {
+		"role": "conversation tab menu action",
+		"tone": "short imperative, sentence case",
+		"note": "Closes unpinned tabs visually to the LEFT of this tab (in right-to-left layouts this is still the on-screen left). Closes tabs only."
+	},
+	"ui.chat.header.close_tabs_right": {
+		"role": "conversation tab menu action",
+		"tone": "short imperative, sentence case",
+		"note": "Closes unpinned tabs visually to the RIGHT of this tab (in right-to-left layouts this is still the on-screen right). Closes tabs only."
+	},
+	"ui.chat.header.close_all_tabs": {
+		"role": "conversation tab menu and tab list action",
+		"tone": "short imperative, sentence case",
+		"note": "Closes every unpinned tab; pinned tabs stay. Closes tabs only, never conversations."
+	},
+	"ui.chat.header.all_tabs": {
+		"role": "tab list trigger accessible name",
+		"tone": "short noun phrase",
+		"note": "Names the button at the end of the conversation tab strip that opens the tab list, Close all tabs and the auto-close setting."
 	}
 }

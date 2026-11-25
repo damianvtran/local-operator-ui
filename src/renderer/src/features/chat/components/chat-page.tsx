@@ -6107,6 +6107,7 @@ export function ChatPage() {
 								onFocusHandled={workspace.focusHandled}
 								onOpen={(tab) => void workspace.select(tab)}
 								onClose={(tab) => void workspace.close(tab)}
+								onCloseMany={workspace.closeMany}
 								onPin={workspace.pin}
 								onMove={workspace.move}
 							/>

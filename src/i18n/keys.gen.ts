@@ -6206,13 +6206,18 @@ export type MessageParams = {
 	"ui.chat.fast_mode.turned_off": undefined;
 	"ui.chat.fast_mode.unsupported_stays_off": undefined;
 	"ui.chat.header.actions": undefined;
+	"ui.chat.header.all_tabs": undefined;
 	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
 	"ui.chat.header.archived_hint": undefined;
 	"ui.chat.header.auto_close_inactive_tabs": { minutes: number };
 	"ui.chat.header.cancel_rename": undefined;
 	"ui.chat.header.canonical_chat": undefined;
+	"ui.chat.header.close_all_tabs": undefined;
+	"ui.chat.header.close_other_tabs": undefined;
 	"ui.chat.header.close_run_details": undefined;
+	"ui.chat.header.close_tabs_left": undefined;
+	"ui.chat.header.close_tabs_right": undefined;
 	"ui.chat.header.conversation_name": undefined;
 	"ui.chat.header.copy_id": undefined;
 	"ui.chat.header.delete": undefined;
@@ -6220,6 +6225,7 @@ export type MessageParams = {
 	"ui.chat.header.new_chat": undefined;
 	"ui.chat.header.new_chat_with": { target: string };
 	"ui.chat.header.open_run_details": undefined;
+	"ui.chat.header.pin_tab": undefined;
 	"ui.chat.header.rename_conversation": undefined;
 	"ui.chat.header.restore_conversation": undefined;
 	"ui.chat.header.saving_conversation_name": undefined;
@@ -6233,6 +6239,7 @@ export type MessageParams = {
 	"ui.chat.header.temporary_toggle_off": undefined;
 	"ui.chat.header.temporary_toggle_on": undefined;
 	"ui.chat.header.transcript_display": undefined;
+	"ui.chat.header.unpin_tab": undefined;
 	"ui.chat.header_menu.close_asks": undefined;
 	"ui.chat.header_menu.close_browser": undefined;
 	"ui.chat.header_menu.close_canvas": undefined;

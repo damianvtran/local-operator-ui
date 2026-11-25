@@ -5837,12 +5837,15 @@ test("a new chat's first send changes the header once: no pencil jump, no skelet
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
 	// (a) The pencil's 20px box is held, aria-hidden, until the pencil mounts.
-	// Not in a workspace tab (PR #2043): rename lives in the actions menu there,
-	// so no pencil will ever mount and the box is not held.
+	// Held in the workspace inset too: PR #2091 restored the header's title and
+	// pencil there (operator, 2026-11-24), so a workspace draft gains the same
+	// pencil at its create hop and must not shift when it mounts. The
+	// `titleInWorkspaceTab` exemption #2043 added is gone and must stay gone.
 	assert.match(
 		header,
-		/\) : renameSlotReserved && !titleInWorkspaceTab \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
+		/\) : renameSlotReserved \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
 	);
+	assert.doesNotMatch(header, /titleInWorkspaceTab/);
 	assert.match(
 		page,
 		/renameSlotReserved=\{\s*!sessionId && desktopFeatureEnabled\(capabilities\.data, "commands"\)\s*\}/,
