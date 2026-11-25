@@ -49,11 +49,18 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
+	ChevronDown,
 	Clock,
 	HelpCircle,
 	Loader2,
@@ -1392,6 +1399,15 @@ const AskRow = ({
 	 * SAME closure rather than two copies that could drift: Enter in a field "does what
 	 * `Send answer` does" because it calls this, with the same gate.
 	 */
+	/*
+	 * Whether `More actions` has anything to hold: Confirm and send… where main
+	 * offers its sheet, Decline where the ask can be declined, Dismiss… where the
+	 * backend advertises it. The same three gates the buttons carried.
+	 */
+	const hasMoreActions =
+		onConfirm !== undefined ||
+		canDecline ||
+		(onDismiss !== undefined && canAnswer);
 	const sendAnswer = () => {
 		const answers = askAnswerMap(ask, draft, secrets);
 		// A confirm press the page handler dropped (send lock held) never made the
@@ -2012,66 +2028,71 @@ const AskRow = ({
 						>
 							{t("ui.chat.asks.send_answer")}
 						</button>
-						{onConfirm !== undefined ? (
+						{
 							/*
-							 * "Confirm and send…": the same answer, sent only after the person
-							 * confirms it on main's native sheet (see `onConfirm`). Secondary ink
-							 * beside the primary Send answer (design round 1, D1: most asks need
-							 * no approval, so Send answer stays primary), same gate, so it never
-							 * offers what Send answer would refuse. The label names the outcome;
-							 * the hint line below the row says why it matters.
+							 * ONE PRIMARY, ONE DOOR (the 2026-11-24 ask-panel consult, adopted by
+							 * the operator): the row held four competing controls - Send answer,
+							 * Confirm and send…, Decline and a far-right Dismiss… - and wrapped
+							 * to three lines at the drawer's 356 px floor. `More actions` now
+							 * holds the three that are not the ordinary answer; each stays a
+							 * DISTINCT action with its own outcome, so the menu merges nothing
+							 * into a shared "other" path. The menu is drawn only when it has an
+							 * item, each item keeps its own gate exactly as its button had it,
+							 * and the consequence hint below keeps saying that Send answer is
+							 * not approval wherever Confirm is offered.
+							 *
+							 * THE TRIGGER IS THE DISMISS CHOOSER'S RETURN-FOCUS TARGET
+							 * (`dismissTrigger`): Dismiss… now lives behind it, and a Cancel
+							 * must hand the keyboard back to the control that opened the
+							 * chooser. While main's confirm sheet is up the trigger carries the
+							 * waiting word that the Confirm button used to carry, at the wider
+							 * of the two widths so the row does not shift.
 							 */
-							<button
-								type="button"
-								disabled={disabled || !ready || retryPending}
-								onClick={confirmAnswer}
-								className={cn(
-									"rounded-md border px-3 py-1.5 text-sm",
-									disabled || !ready || retryPending
-										? "border-hairline bg-surface text-ink-dim"
-										: "border-control text-ink hover:bg-sunken",
-								)}
-							>
-								<ConfirmLabel
-									idle={t("ui.chat.ask_attest.action.confirm")}
-									confirming={confirming && busy}
-								/>
-							</button>
-						) : null}
-						{canDecline ? (
-							/*
-							 * OUTLINED SECONDARY, not bare text (design spec, D10/D14): `Decline` was
-							 * a label with no edge beside a bordered Send, so the pair read as one
-							 * disabled control and a stray word. `border-control` is the
-							 * sole-boundary role, and the one the palette contract floors at 3:1.
-							 */
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() => onDecline(ask)}
-								className="h-8 rounded-md border border-control px-3 text-ink text-body-sm hover:bg-row-hover"
-							>
-								{t("ui.chat.asks.decline")}
-							</button>
-						) : null}
-						{/*
-						 * The closed-state door to the dismiss chooser below. Same gate as the
-						 * chooser (`onDismiss` wired AND the live-arm `canAnswer`), and the band
-						 * unmounts while the chooser is open, so the two never coexist; the
-						 * `dismissTrigger` ref still re-attaches here on Cancel before the
-						 * return-focus effect reads it.
-						 */}
-						{onDismiss !== undefined && canAnswer ? (
-							<button
-								ref={dismissTrigger}
-								type="button"
-								disabled={busy}
-								onClick={() => setDismissOpen(true)}
-								className="ms-auto h-8 shrink-0 rounded-md border border-transparent px-3 text-ink-muted text-body-sm hover:bg-row-hover hover:text-ink disabled:text-ink-dim"
-							>
-								{t("ui.chat.asks.dismiss.trigger")}
-							</button>
-						) : null}
+							hasMoreActions ? (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											ref={dismissTrigger}
+											type="button"
+											data-lo-ask-more=""
+											className="inline-flex h-8 items-center gap-1 rounded-md border border-control px-3 text-ink text-body-sm hover:bg-row-hover"
+										>
+											<ConfirmLabel
+												idle={t("ui.agents.detail.action.more_actions")}
+												confirming={confirming && busy}
+											/>
+											<ChevronDown aria-hidden="true" size={14} />
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="start" side="top">
+										{onConfirm !== undefined ? (
+											<DropdownMenuItem
+												disabled={disabled || !ready || retryPending || busy}
+												onSelect={confirmAnswer}
+											>
+												{t("ui.chat.ask_attest.action.confirm")}
+											</DropdownMenuItem>
+										) : null}
+										{canDecline ? (
+											<DropdownMenuItem
+												disabled={busy}
+												onSelect={() => onDecline(ask)}
+											>
+												{t("ui.chat.asks.decline")}
+											</DropdownMenuItem>
+										) : null}
+										{onDismiss !== undefined && canAnswer ? (
+											<DropdownMenuItem
+												disabled={busy}
+												onSelect={() => setDismissOpen(true)}
+											>
+												{t("ui.chat.asks.dismiss.trigger")}
+											</DropdownMenuItem>
+										) : null}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : null
+						}
 					</div>
 					{onConfirm !== undefined ? (
 						/*

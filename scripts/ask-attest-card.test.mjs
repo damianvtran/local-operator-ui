@@ -282,12 +282,38 @@ test("main's refusals read as keyed copy, never as an owner verdict", () => {
 /* ------------------------------------------------------------- the card ---- */
 
 test("the card offers Confirm and send… only where a surface wires onConfirm", () => {
+	/*
+	 * `Confirm and send…` is an item of the `More actions` menu (2026-11-24
+	 * consult), so it is not in static markup while the menu is closed. The item's
+	 * gate (present only with onConfirm) is pinned on the mounted card in
+	 * `ask-dismiss-panel.test.mjs`; what static markup shows is the hint that
+	 * travels with it, drawn only where Confirm is offered.
+	 */
 	const without = panelMarkup();
 	assert.equal(without.includes(CONFIRM_LABEL), false);
+	assert.equal(without.includes(HINT), false);
 	assert.match(without, /Send answer/);
 	const withConfirm = panelMarkup({ onConfirm: () => undefined });
-	assert.equal(withConfirm.includes(CONFIRM_LABEL), true);
-	assert.match(withConfirm, /Send answer/, "plain Send answer stays beside it");
+	assert.match(
+		withConfirm,
+		/Send answer/,
+		"plain Send answer stays the primary",
+	);
+	assert.match(
+		withConfirm,
+		/More actions/,
+		"the door that holds Confirm is drawn",
+	);
+	assert.equal(
+		withConfirm.includes(HINT),
+		true,
+		"and the hint travels with it",
+	);
+	assert.equal(
+		withConfirm.includes(CONFIRM_LABEL),
+		false,
+		"a closed menu draws no item",
+	);
 });
 
 test("both ask surfaces wire the confirm door", () => {

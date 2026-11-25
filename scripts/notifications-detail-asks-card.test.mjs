@@ -498,6 +498,25 @@ async function mount({
 			node.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
 		});
 	};
+	/*
+	 * Decline and Dismiss… are items of the card's `More actions` menu (2026-11-24
+	 * ask-panel consult): open it from its trigger with Enter, the route Radix's
+	 * trigger answers in jsdom, then press the item the menu portals to the document.
+	 */
+	const pressMenuItem = async (scope, label) => {
+		const trigger = scope.querySelector("[data-lo-ask-more]");
+		assert.ok(trigger, `the card has a More actions door for ${label}`);
+		await act(async () => {
+			trigger.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+			);
+		});
+		const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+			(node) => node.textContent.trim() === label,
+		);
+		assert.ok(item, `${label} is offered in More actions`);
+		await press(item);
+	};
 	const buttonIn = (scope, label) =>
 		[...(scope?.querySelectorAll("button") ?? [])].find(
 			(node) => node.textContent.trim() === label,
@@ -523,6 +542,7 @@ async function mount({
 		settledRows,
 		settle,
 		press,
+		pressMenuItem,
 		buttonIn,
 		posts,
 		asks,
@@ -617,7 +637,7 @@ test(
 test("Decline settles the card as Declined", BOUNDED, async () => {
 	const page = await openOnA();
 	try {
-		await page.press(page.buttonIn(page.card("a-1111"), "Decline"));
+		await page.pressMenuItem(page.card("a-1111"), "Decline");
 		assert.ok(
 			await page.settle(() =>
 				page.settledRows().some((row) => row.startsWith("Declined")),
@@ -646,7 +666,7 @@ test(
 	async () => {
 		const page = await openOnA();
 		try {
-			await page.press(page.buttonIn(page.card("a-1111"), "Dismiss…"));
+			await page.pressMenuItem(page.card("a-1111"), "Dismiss…");
 			const reason =
 				page
 					.card("a-1111")

@@ -50,6 +50,7 @@ for (const name of [
 	"InputEvent",
 	"DOMRect",
 	"DocumentFragment",
+	"MutationObserver",
 ]) {
 	if (bootstrap.window[name] !== undefined)
 		globalThis[name] = bootstrap.window[name];
@@ -162,6 +163,33 @@ const buttonWithText = (root, text) =>
 	[...root.querySelectorAll("button")].find(
 		(button) => button.textContent?.trim() === text,
 	);
+/*
+ * THE DOOR IS A MENU NOW (the 2026-11-24 ask-panel consult). `Dismiss…` is an item
+ * of `More actions`, so a press is: open the menu from the trigger (Enter, the
+ * keyboard route Radix's trigger answers in jsdom, which has no pointer layout),
+ * then click the item. The menu portals to the document, not into the card.
+ */
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+const moreTrigger = (row) => row.querySelector("[data-lo-ask-more]");
+const menuItem = (text) =>
+	[...document.querySelectorAll('[role="menuitem"]')].find(
+		(node) => node.textContent?.trim() === text,
+	);
+async function openMore(row) {
+	await act(async () => {
+		moreTrigger(row).dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		);
+	});
+}
+async function pressDismiss(row) {
+	await openMore(row);
+	await act(async () => menuItem("Dismiss…").click());
+}
 const fire = (node, event) => {
 	act(() => {
 		node.dispatchEvent(event);
@@ -182,7 +210,7 @@ test("the chooser is the only live intent, says what is in flight, and survives 
 		"the action row is there before the press",
 	);
 
-	await act(async () => buttonWithText(row, "Dismiss…").click());
+	await pressDismiss(row);
 
 	// D1: the accent action is not on screen at all while the chooser is open.
 	assert.equal(
@@ -270,9 +298,10 @@ test("cancel returns the keyboard to the trigger it re-mounts", async () => {
 		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),
 	);
 	const row = rowOf(rig.container, "a-1");
-	await act(async () => buttonWithText(row, "Dismiss…").click());
+	await pressDismiss(row);
 	await act(async () => buttonWithText(row, "Cancel").click());
-	const trigger = buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…");
+	const trigger = moreTrigger(rowOf(rig.container, "a-1"));
+	assert.ok(trigger, "the door's trigger is back");
 	assert.equal(document.activeElement, trigger, "focus is back on the door");
 	await rig.unmount();
 });
@@ -299,47 +328,25 @@ const controlsAfter = (band) => {
 	return found;
 };
 
-test("dismiss is the band's trailing quiet action and nothing below the band is a control", async () => {
+test("the band keeps one primary and one door, and nothing below the band is a control", async () => {
 	const rig = await mount(
 		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),
 	);
-	const row = rowOf(rig.container, "a-1");
+	const row = rig.container.querySelector('[data-lo-ask-row="a-1"]');
 	const band = row.querySelector("[data-lo-ask-actions]");
 	assert.ok(band, "the pinned band is mounted");
 	assert.equal(band.parentElement, row, "the band is still the card's child");
-	const trigger = buttonWithText(row, "Dismiss…");
-	assert.ok(trigger, "the trigger is offered");
-	assert.equal(
-		band.contains(trigger),
-		true,
-		"the trigger lives inside the band",
-	);
+	const trigger = moreTrigger(row);
+	assert.ok(trigger, "the door is offered");
+	assert.equal(band.contains(trigger), true, "the door lives inside the band");
 	/*
-	 * THE BAND'S LAST CHILD IS ITS FOOT, NOT THE TRIGGER (design spec S2): the
-	 * progress count and the copyable id sit below the actions' row, so `Dismiss…`
-	 * is the trailing control of the ROW rather than of the band.
+	 * ONE PRIMARY, ONE DOOR (2026-11-24 consult): Send answer and `More actions`
+	 * share the band's first row; Decline, Confirm and Dismiss… are items BEHIND the
+	 * door, not buttons beside it, so the row cannot wrap to a third line at the
+	 * drawer's floor. The foot below is still the band's last row.
 	 */
-	assert.equal(
-		trigger.parentElement?.lastElementChild,
-		trigger,
-		"it is the action row's trailing control",
-	);
-	assert.ok(
-		band.lastElementChild?.hasAttribute("data-lo-ask-foot"),
-		"the band's own last row is the foot",
-	);
-	for (const cls of ["ms-auto", "shrink-0", "text-ink-muted"])
-		assert.ok(
-			trigger.className.split(WHITESPACE).includes(cls),
-			`trigger is ${cls}`,
-		);
 	const send = buttonWithText(band, "Send answer");
 	assert.ok(send, "send answer is in the band");
-	/*
-	 * ONE ACTIONS ROW (design spec S2): send, decline and dismiss share a single
-	 * flex row inside the band; `ms-auto` is what parks dismiss at that row's end,
-	 * and the foot below is the band's second row.
-	 */
 	const actionsRow = send.parentElement;
 	assert.ok(actionsRow, "the actions have a row");
 	assert.equal(
@@ -347,19 +354,41 @@ test("dismiss is the band's trailing quiet action and nothing below the band is 
 		band,
 		"the row is the band's first child",
 	);
-	assert.equal(
-		trigger.parentElement,
-		actionsRow,
-		"dismiss rides in the same row as the answer pair",
-	);
+	assert.equal(trigger.parentElement, actionsRow, "the door rides with send");
 	assert.equal(
 		actionsRow.lastElementChild,
 		trigger,
-		"and is its trailing control",
+		"and is the row's trailing control",
 	);
-	const decline = buttonWithText(band, "Decline");
-	assert.ok(decline, "an open ask can be declined");
-	assert.equal(decline.parentElement, actionsRow, "decline rides with send");
+	assert.equal(
+		actionsRow.querySelectorAll("button").length,
+		2,
+		"exactly two controls in the row: Send answer and More actions",
+	);
+	assert.equal(
+		buttonWithText(band, "Decline"),
+		undefined,
+		"Decline is a menu item, not a row button",
+	);
+	assert.equal(
+		trigger.getAttribute("aria-haspopup"),
+		"menu",
+		"the door announces a menu",
+	);
+	assert.ok(
+		band.lastElementChild?.hasAttribute("data-lo-ask-foot"),
+		"the band's own last row is the foot",
+	);
+	/* The menu holds the three distinct actions, in the consult's order. */
+	await openMore(row);
+	assert.equal(trigger.getAttribute("aria-expanded"), "true");
+	assert.ok(menuItem("Decline"), "an open ask can be declined");
+	assert.ok(menuItem("Dismiss…"), "dismiss is offered with the capability");
+	assert.equal(
+		menuItem("Confirm and send…"),
+		undefined,
+		"no confirm item without onConfirm",
+	);
 	const bandClasses = band.className.split(WHITESPACE);
 	/*
 	 * THE GROUND IS THE CARD'S AND THE RULE IS A HAIRLINE (design spec S2/D9); the
@@ -402,15 +431,23 @@ test("dismiss is the band's trailing quiet action and nothing below the band is 
 		).length,
 		"every button in the card sits in or above the band",
 	);
+	await act(async () => {
+		document.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
 	await rig.unmount();
 
+	/* Without onDismiss the door still holds Decline, and Dismiss… is not offered. */
 	const plain = await mount(panelElement([openAsk("a-1")]));
 	const plainRow = rowOf(plain.container, "a-1");
 	const plainBand = plainRow.querySelector("[data-lo-ask-actions]");
+	await openMore(plainRow);
+	assert.ok(menuItem("Decline"), "decline is still behind the door");
 	assert.equal(
-		buttonWithText(plainRow, "Dismiss…"),
+		menuItem("Dismiss…"),
 		undefined,
-		"no trigger without the capability",
+		"no dismiss without the capability",
 	);
 	assert.deepEqual(
 		controlsAfter(plainBand),
@@ -420,12 +457,60 @@ test("dismiss is the band's trailing quiet action and nothing below the band is 
 	await plain.unmount();
 });
 
+test("More actions holds Confirm and send… only where a surface wires onConfirm, and the trigger carries the wait", async () => {
+	const confirmed = [];
+	const asks = [openAsk("a-1")];
+	const drafts = { "a-1": { q1: ["staging"] } };
+	const plain = await mount(panelElement(asks, { drafts }));
+	await openMore(rowOf(plain.container, "a-1"));
+	assert.equal(
+		menuItem("Confirm and send…"),
+		undefined,
+		"no confirm item without onConfirm",
+	);
+	await plain.unmount();
+
+	const rig = await mount(
+		panelElement(asks, {
+			drafts,
+			onConfirm: (ask, answers, change) =>
+				confirmed.push([ask.ask_id, answers, change]),
+		}),
+	);
+	const row = rowOf(rig.container, "a-1");
+	await openMore(row);
+	const item = menuItem("Confirm and send…");
+	assert.ok(item, "the confirm item is offered with onConfirm");
+	assert.equal(item.hasAttribute("data-disabled"), false, "a ready draft");
+	assert.equal(
+		row.textContent.includes(
+			"Only a confirmed answer counts as your approval for deleting or moving files.",
+		),
+		true,
+		"the hint that says Send answer is not approval stays on the card",
+	);
+	await act(async () => item.click());
+	assert.deepEqual(confirmed, [["a-1", { q1: ["staging"] }, false]]);
+
+	/* While main's sheet is up the trigger says so, in the trigger's own place. */
+	await rig.render(
+		panelElement(asks, { drafts, answering: true, onConfirm: () => undefined }),
+	);
+	const trigger = moreTrigger(rowOf(rig.container, "a-1"));
+	const waiting = [...trigger.querySelectorAll("span")].find(
+		(node) => node.textContent === "Confirming…",
+	);
+	assert.ok(waiting, "the in-flight word lives in the trigger");
+	assert.notEqual(waiting.getAttribute("aria-hidden"), "true");
+	await rig.unmount();
+});
+
 test("escape closes the chooser and nothing above it", async () => {
 	const rig = await mount(
 		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),
 	);
 	const row = rowOf(rig.container, "a-1");
-	await act(async () => buttonWithText(row, "Dismiss…").click());
+	await pressDismiss(row);
 	const reason = rowOf(rig.container, "a-1").querySelector(
 		'[data-lo-ask-dismiss-reason="moot"]',
 	);
@@ -445,7 +530,7 @@ test("escape closes the chooser and nothing above it", async () => {
 	);
 	assert.equal(
 		document.activeElement,
-		buttonWithText(after, "Dismiss…"),
+		moreTrigger(after),
 		"and the door has the keyboard",
 	);
 	await rig.unmount();
@@ -454,9 +539,7 @@ test("escape closes the chooser and nothing above it", async () => {
 test("a landed dismissal hands the keyboard to the next card, or to the list", async () => {
 	const asks = [openAsk("a-1"), openAsk("a-2", { ask_id: "a-2" })];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -487,9 +570,7 @@ test("a landed dismissal hands the keyboard to the next card, or to the list", a
 	const composer = document.createElement("textarea");
 	composer.setAttribute("aria-label", "Message");
 	document.body.append(composer);
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-2"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-2"));
 	await act(async () =>
 		rowOf(rig.container, "a-2")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -516,9 +597,7 @@ test("a landed dismissal hands the keyboard to the next card, or to the list", a
 test("with no composer in reach, the empty panel keeps the keyboard on its list", async () => {
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -546,9 +625,7 @@ test("the response hands the keyboard on before the frame removes the card", asy
 	document.body.append(composer);
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -596,9 +673,7 @@ test("the response hands the keyboard on before the frame removes the card", asy
 test("the response hands the next card's first control the keyboard, before the frame", async () => {
 	const asks = [openAsk("a-1"), openAsk("a-2", { ask_id: "a-2" })];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -622,9 +697,7 @@ test("a dismissal that loses the race to another surface still hands off", async
 	document.body.append(composer);
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -667,9 +740,7 @@ test("a refusal that lands before the departure does not lose the keyboard eithe
 	document.body.append(composer);
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -770,9 +841,7 @@ test("a single-ask dismissal keeps the keyboard through the panel's unmount", as
 	document.body.append(composer);
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	const reason = rowOf(rig.container, "a-1").querySelector(
 		'[data-lo-ask-dismiss-reason="moot"]',
 	);
@@ -824,9 +893,7 @@ test("a refusal drops the hand-off, so a later departure cannot steal focus", as
 	document.body.append(composer);
 	const asks = [openAsk("a-1"), openAsk("a-2")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -872,9 +939,7 @@ test("a refusal drops the hand-off, so a later departure cannot steal focus", as
 test("a transport refusal says what did not happen without repeating the wire", async () => {
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	await act(async () =>
 		rowOf(rig.container, "a-1")
 			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
@@ -902,9 +967,7 @@ test("a transport refusal says what did not happen without repeating the wire", 
 test("escape is claimed at the card, so a click elsewhere in it does not lose the panel", async () => {
 	const asks = [openAsk("a-1")];
 	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	const option = rowOf(rig.container, "a-1").querySelector(
 		"button[data-ask-option]",
 	);
@@ -923,10 +986,7 @@ test("escape is claimed at the card, so a click elsewhere in it does not lose th
 		rowOf(rig.container, "a-1").querySelector("[data-lo-ask-dismiss-reason]"),
 		null,
 	);
-	assert.equal(
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…") !== undefined,
-		true,
-	);
+	assert.equal(moreTrigger(rowOf(rig.container, "a-1")) !== undefined, true);
 	await rig.unmount();
 });
 
@@ -970,9 +1030,7 @@ test("the card's foot keeps the id visible while the chooser is open (agent revi
 		rowOf(rig.container, "a-1").querySelector("[data-lo-ask-foot]");
 	assert.ok(footOf(), "the idle card draws its foot");
 
-	await act(async () =>
-		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
-	);
+	await pressDismiss(rowOf(rig.container, "a-1"));
 	const foot = footOf();
 	assert.ok(foot, "the chooser is a step in the card, not a different card");
 	/*
