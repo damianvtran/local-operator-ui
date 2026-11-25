@@ -2764,6 +2764,12 @@ const ASK_ATTEST_REFUSED = new Set([
 /** Reasons with a sentence of their own, keyed by reason. */
 const ASK_ATTEST_OWN = {
 	listener_unavailable: "ui.chat.ask_attest.refusal.not_running",
+	/*
+	 * Main started the conversation itself (a-f372) and waited for it, so "open
+	 * the conversation" would be wrong advice: it did not come up in time.
+	 */
+	listener_timeout: "ui.chat.ask_attest.refusal.not_started",
+	runtime_not_started: "ui.chat.ask_attest.refusal.not_started",
 	expired: "ui.chat.ask_attest.refusal.expired",
 	sheet_open: "ui.chat.ask_attest.refusal.sheet_open",
 	secret_answer: "ui.chat.ask_attest.refusal.secret",

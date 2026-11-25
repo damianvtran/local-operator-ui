@@ -154,7 +154,44 @@ export type AskAttestRefusal =
 	/** A change to an answer that was not itself confirmed (core keeps the weakest). */
 	| "answer_unconfirmed"
 	/** SENT, but the runtime did not stamp it consent-bearing (see step 8). */
-	| "not_consent_bearing";
+	| "not_consent_bearing"
+	/**
+	 * The session's runtime was asked to start (`ensureListener`) but its listener
+	 * never answered within `ASK_LISTENER_WAIT_MS`. Nothing was sent.
+	 */
+	| "listener_timeout"
+	/** The engage itself said no runtime came up (or threw). Nothing was sent. */
+	| "runtime_not_started";
+
+/**
+ * How long, after the person confirms, main keeps re-dialling a session whose
+ * listener is not there yet.
+ *
+ * WHY A WAIT AT ALL (session 00e6a1cd8f62, ask a-f372): a parked runtime has no
+ * listener, so the old single dial met no socket and the confirmed answer could
+ * not be attested; that runtime came up 1.07 s later. The engage starts when the
+ * sheet OPENS (see `ensureListener`), so by the time a person has read and
+ * confirmed it the runtime is usually up and this wait costs nothing.
+ *
+ * WHY THIS NUMBER. The only measurements there are: a-f372's 1.07 s, and the
+ * cold engage's ~1.1 s median that `SESSION_ENGAGE_HOLD_MS` was sized from
+ * (`backend/session-engage.ts`). That module holds the stream for its open bound
+ * plus its hold (5 s + 20 s) before it gives up on a runtime, so a listener wait
+ * any shorter would refuse a runtime the engage is still allowed to bring up, and
+ * any longer would wait on an engage that has already reported failure. It is
+ * the same 25 s, measured from the confirm. Two other clocks still bind: the
+ * ask's own expiry is re-checked before every dial, and core's 30 s attestation
+ * window (`ATTESTATION_TTL_S`) is unaffected - it starts at the SUCCESSFUL dial,
+ * and the forward follows it immediately.
+ */
+export const ASK_LISTENER_WAIT_MS = 25_000;
+
+/**
+ * The pause between dials while waiting. A refused connect on a missing AF_UNIX
+ * path is a cheap local syscall, and 100 ms is below what a person notices after
+ * the ~1 s runtime start.
+ */
+export const ASK_LISTENER_POLL_MS = 100;
 
 /**
  * Core's `asks.surfaces.GUARD_TRUSTED_SURFACES`: the stamps the dangerous-delete
@@ -637,6 +674,17 @@ export type AskAnswerHost = {
 	/** The ordinary desktop forwarder (the same one `sessions.answer` rides). */
 	forward: (input: AskForwardRequest) => Promise<DesktopResponse>;
 	nowMs?: () => number;
+	/**
+	 * Bring up the session's runtime (and so its attest listener), resolving true
+	 * once a runtime is there and false when it could not be started. Called when
+	 * the sheet OPENS, so the runtime starts while the person reads; main does not
+	 * trust its answer as proof of anything - only a successful dial attests. In
+	 * `index.ts` this is `engageSessionThroughStream` (what opening the session
+	 * does), skipped when the socket already exists. Absent: one dial, as before.
+	 */
+	ensureListener?: (sessionId: string, signal: AbortSignal) => Promise<boolean>;
+	/** Override for `ASK_LISTENER_WAIT_MS` (tests). */
+	listenerWaitMs?: number;
 	attest?: (
 		socketPath: string,
 		frame: AskAttestFrame,
@@ -712,6 +760,7 @@ export async function attestAskAnswer(
 	if (!after || !sameAttestDocument(document, after))
 		return askAttestRefusal("document_changed");
 	if (!host.sheet.open()) return askAttestRefusal("sheet_open");
+	const engaging = new AbortController();
 	try {
 		const before = await readLiveAsk(host, answer, nowMs());
 		if ("refusal" in before) return askAttestRefusal(before.refusal);
@@ -720,6 +769,29 @@ export async function attestAskAnswer(
 		const label = await readSessionLabel(host, answer.sessionId);
 		const sheet = askSheet(answer, before.row, label);
 		const expiresAtMs = before.row.expiresAtMs;
+		/*
+		 * WARM WHILE THE PERSON READS (a-f372). Started only after main's own read
+		 * proved there is a live, showable ask, so a page cannot use this door to
+		 * start runtimes for nothing; it runs concurrently with the sheet. A throw
+		 * (sync or async) is "not started", never a reason to send unattested.
+		 */
+		let engaged: boolean | null = null;
+		if (host.ensureListener) {
+			let started: Promise<boolean>;
+			try {
+				started = Promise.resolve(
+					host.ensureListener(answer.sessionId, engaging.signal),
+				);
+			} catch {
+				started = Promise.resolve(false);
+			}
+			void started
+				.then((ok) => ok === true)
+				.catch(() => false)
+				.then((ok) => {
+					engaged = ok;
+				});
+		}
 		// The ask's own clock closes the sheet: a confirmation after expiry is no answer.
 		const expiry = new AbortController();
 		const timer =
@@ -769,11 +841,51 @@ export async function attestAskAnswer(
 			return askAttestRefusal("expired");
 		// ONE frozen answer is attested and forwarded, so the two cannot disagree
 		// and neither can differ from what the sheet showed.
-		const failure = await (host.attest ?? dialAttest)(
-			askAttestSocketPath(host.configDir(), answer.sessionId),
-			askAttestFrame(answer),
-		);
-		if (failure) return askAttestRefusal(failure);
+		const dial = host.attest ?? dialAttest;
+		const socketPath = askAttestSocketPath(host.configDir(), answer.sessionId);
+		const frame = askAttestFrame(answer);
+		// Real time, not `nowMs`: this bounds how long the person waits.
+		const waitUntil =
+			performance.now() + (host.listenerWaitMs ?? ASK_LISTENER_WAIT_MS);
+		for (;;) {
+			const failure = await dial(socketPath, frame);
+			if (failure === null) break;
+			/*
+			 * ONLY A MISSING LISTENER IS RETRIED. A listener that answered and refused
+			 * (impostor, wrong signature, bad frame) or timed out is a verdict; dialling
+			 * it again would only repeat it. Without `ensureListener` nothing is
+			 * starting the runtime, so there is nothing to wait for. Every way out of
+			 * this loop that is not a successful dial is a keyed refusal: there is no
+			 * path to `forward` that skips the attestation.
+			 */
+			if (failure !== "listener_unavailable" || !host.ensureListener)
+				return askAttestRefusal(failure);
+			if (engaged === false) return askAttestRefusal("runtime_not_started");
+			if (performance.now() >= waitUntil)
+				return askAttestRefusal("listener_timeout");
+			await new Promise((resolve) =>
+				setTimeout(
+					resolve,
+					Math.min(
+						ASK_LISTENER_POLL_MS,
+						Math.max(1, waitUntil - performance.now()),
+					),
+				),
+			);
+			/*
+			 * EVERY RETRY RE-PROVES WHAT THE FIRST DIAL DID: the gate (focus
+			 * included), the same sender document and the ask's deadline. A wait must
+			 * not become a window in which the person walked away, the page navigated
+			 * or the question closed while main still attests on their behalf.
+			 */
+			const waiting = attestProvenanceRefusal(host.facts());
+			if (waiting) return askAttestRefusal(waiting);
+			const still = host.document();
+			if (!still || !sameAttestDocument(document, still))
+				return askAttestRefusal("document_changed");
+			if (expiresAtMs !== null && !(expiresAtMs > nowMs()))
+				return askAttestRefusal("expired");
+		}
 		const forwarded = await host.forward(askForwardRequest(answer));
 		// Step 8 (S3): a delivered answer the runtime did not stamp consent-bearing
 		// must not read as a confirmation. A non-2xx forward (busy, settled) is the
@@ -786,6 +898,8 @@ export async function attestAskAnswer(
 			return askAttestRefusal("not_consent_bearing");
 		return forwarded;
 	} finally {
+		// The engage is the caller's to stop early; its own hold bounds it anyway.
+		engaging.abort();
 		host.sheet.close();
 	}
 }

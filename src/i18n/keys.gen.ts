@@ -5032,6 +5032,7 @@ export type MessageParams = {
 	"ui.chat.ask_attest.refusal.not_consent_bearing": undefined;
 	"ui.chat.ask_attest.refusal.not_eligible": undefined;
 	"ui.chat.ask_attest.refusal.not_running": undefined;
+	"ui.chat.ask_attest.refusal.not_started": undefined;
 	"ui.chat.ask_attest.refusal.refused": undefined;
 	"ui.chat.ask_attest.refusal.retry": undefined;
 	"ui.chat.ask_attest.refusal.secret": undefined;

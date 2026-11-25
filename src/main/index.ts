@@ -82,6 +82,7 @@ import {
 	ASK_ATTEST_PROBE_WORLD_ID,
 	type AskAnswerHost,
 	AskSheetLock,
+	askAttestSocketPath,
 	attestAskAnswer,
 } from "./ask-attest";
 import { uploadAttachment } from "./attachment-upload";
@@ -96,7 +97,9 @@ import {
 } from "./backend";
 import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
 import { backendConfig, launchEnv } from "./backend/config";
+import { sessionHasRuntime } from "./backend/fleet-drain";
 import { LogFileType, logger } from "./backend/logger";
+import { engageSessionThroughStream } from "./backend/session-engage";
 import {
 	browserHostEnabled,
 	browserHostStopPending,
@@ -4639,6 +4642,66 @@ app
 					sheet: askSheetLock,
 					configDir: () => quickSendConfigDir(),
 					forward: sendDesktop,
+					/*
+					 * START A PARKED RUNTIME WHILE THE SHEET IS OPEN (a-f372). The attest
+					 * listener lives inside the session's runtime, so a parked session has
+					 * none and the one dial used to fail. A bare `sessions.warm` from main
+					 * spawns nothing (`session-engage.ts` header), so this does what opening
+					 * the session does: the same engage the update re-engage uses, over the
+					 * same relay and roster read. An existing socket means a live runtime:
+					 * no stream is opened for it. The answer is advisory - only a dial that
+					 * the listener accepts attests anything.
+					 */
+					ensureListener: async (sessionId, signal) => {
+						if (
+							existsSync(askAttestSocketPath(quickSendConfigDir(), sessionId))
+						)
+							return true;
+						const relay = backendService.getStreamRelay();
+						const outcome = await engageSessionThroughStream({
+							sessionId,
+							subscribe: (id, emit) =>
+								relay.subscribe({ sessionId: id }, (frame) => {
+									if (frame.kind === "data")
+										emit({ kind: "data", data: frame.data });
+									else if (frame.kind === "error")
+										emit({ kind: "error", detail: frame.detail });
+									else emit({ kind: "end" });
+								}),
+							unsubscribe: (streamId) => relay.unsubscribe(streamId),
+							watch: (subscriptionId) =>
+								backendService.requestDesktop({
+									op: "sessions.watch",
+									sessionId,
+									subscriptionId,
+									visible: true,
+									canNotify: false,
+								}),
+							warm: (id) =>
+								backendService.requestDesktop({
+									op: "sessions.warm",
+									sessionId: id,
+								}),
+							// Once the ceremony ends (abort), stop holding: a live runtime
+							// reads true, a cancelled one ends the engage on its next poll.
+							hasRuntime: async () =>
+								signal.aborted
+									? true
+									: sessionHasRuntime(
+											await backendService.servingSessionFleet(),
+											sessionId,
+										),
+							sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+							now: () => Date.now(),
+							log: (line) => logger.info(line, LogFileType.BACKEND),
+						});
+						if (!outcome.engaged)
+							logger.warn(
+								`Ask attest: no runtime for ${sessionId}: ${outcome.reason ?? "no reason given"}`,
+								LogFileType.BACKEND,
+							);
+						return outcome.engaged;
+					},
 				};
 				return attestAskAnswer(askRequest, host);
 			},
