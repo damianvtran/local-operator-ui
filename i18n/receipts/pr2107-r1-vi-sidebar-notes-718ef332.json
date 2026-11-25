@@ -1,0 +1,77 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (remote-device and opened-by-in sidebar literals)",
+	"locale": "vi",
+	"namespace": "ui.chat.sidebar_notes",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-vi-sidebar-notes-718ef332",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session aa5c1716715b (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render sites (chat-remote.ts remoteDeviceLabel/remoteClause/remoteUnreachableClause; openedByNote in chat-sidebar.tsx) and the vi catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-vi-sidebar-notes-718ef332"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"id": "V1",
+			"severity": "NIT",
+			"key": "ui.chat.sidebar_notes.opened_by_named_in",
+			"current": "do {agent} mở trong “{label}”",
+			"replacement": "do {agent} mở từ “{label}”",
+			"why": "The context role says the agent started this chat FROM another named conversation; 'mở trong' (opened inside) mirrors the English 'in' faithfully but can read as the chat living inside {label}. 'từ' states the origin. Optional; the current value is accurate to the English. Same applies to opened_by_anonymous_in ('do một tác nhân mở từ “{label}”').",
+			"disposition": "deferred - optional wording, not applied by the auditor"
+		},
+		{
+			"id": "V2",
+			"severity": "NIT",
+			"key": "ui.chat.sidebar_notes.remote_unreachable_no_answer",
+			"current": "không kết nối được · thiết bị không phản hồi",
+			"replacement": "không kết nối được · không phản hồi",
+			"why": "44 characters vs English 31 against a one-line ~256px tooltip hint; may wrap. Inferred from character count only, not a rendered measurement. Dropping 'thiết bị' keeps the meaning (the line already sits under the device clause).",
+			"disposition": "deferred - width unverified by render"
+		}
+	],
+	"audited_values": {
+		"ui.chat.sidebar_notes.remote_another_device": "một thiết bị khác",
+		"ui.chat.sidebar_notes.remote_on_device": "trên {device}",
+		"ui.chat.sidebar_notes.remote_on_device_network": "trên {device} · {network}",
+		"ui.chat.sidebar_notes.remote_unreachable_no_answer": "không kết nối được · thiết bị không phản hồi",
+		"ui.chat.sidebar_notes.remote_unreachable_reason": "không kết nối được · {reason}",
+		"ui.chat.sidebar_notes.opened_by_named_in": "do {agent} mở trong “{label}”",
+		"ui.chat.sidebar_notes.opened_by_anonymous_in": "do một tác nhân mở trong “{label}”"
+	},
+	"checks": {
+		"placeholders": "byte-identical ICU placeholder sets for all 7 keys (script comparison of {..} tokens en vs vi)",
+		"device_fallback": "remote_another_device fills {device} (chat-remote.ts:47) giving 'trên một thiết bị khác' - natural; a verbatim name ('trên cloud-node-1') also reads naturally. Vietnamese has no case/gender agreement to break around {device}/{label}/{agent}",
+		"terminology": "'không kết nối được' matches the catalogue's unreachable term (ui.agents.pages.backend.unreachable); 'không phản hồi' matches 'did not answer' usage; 'thiết bị khác' and 'tác nhân' match shipped terms; 'do {agent} mở' extends the shipped opened_by_named",
+		"quotes": "“…” around {label} matches the vi catalogue convention (176 “ vs 0 «; ui.chat.sidebar.json uses “{title}”)",
+		"middle_dot": "' · ' separator preserved in remote_on_device_network and both unreachable lines",
+		"register": "lowercase clauses, no full stop, as the context requires",
+		"english_leakage": "none; only placeholders are Latin tokens",
+		"width": "13-44 characters; see V2 for the longest",
+		"plurals": "none in English or vi; none expected",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"diff": "git diff --numstat: 7 insertions, 0 deletions",
+		"tooling": "generate.mjs --check (keys.gen.ts byte-identical), check-duplicates.mjs ok, check-strings.mjs ok, context-parity.mjs ok; ledger-check not expected to pass until the integrator updates i18n/ledger.json"
+	},
+	"binding": "sha256 of on-disk bytes in the PR worktree at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/vi/ui.chat.sidebar_notes.json 718ef332031708dc91275be0221b5b7a25897c21d3f2a6d4f8770ebeb58dbf2a; English src/i18n/catalogues/en/ui.chat.sidebar_notes.json 877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934; context ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c.",
+	"scope": "PR #2107 r1: the 7 new ui.chat.sidebar_notes keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934",
+	"context_sha256": "ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c",
+	"target_sha256": "718ef332031708dc91275be0221b5b7a25897c21d3f2a6d4f8770ebeb58dbf2a",
+	"sha256": {
+		"vi": "718ef332031708dc91275be0221b5b7a25897c21d3f2a6d4f8770ebeb58dbf2a",
+		"en": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934"
+	}
+}

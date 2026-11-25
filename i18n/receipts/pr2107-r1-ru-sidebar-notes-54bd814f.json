@@ -1,0 +1,58 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (remote-row and opened-by sidebar clauses)",
+	"locale": "ru",
+	"namespace": "ui.chat.sidebar_notes",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-ru-sidebar-notes-54bd814f",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session cd4573fb0a8b (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, chat-remote.ts (remoteDeviceLabel/remoteClause/remoteUnreachableClause), chat-sidebar.tsx openedByNote and the ru catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-ru-sidebar-notes-54bd814f"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.chat.sidebar_notes.remote_another_device": "другое устройство",
+		"ui.chat.sidebar_notes.remote_on_device": "место выполнения: {device}",
+		"ui.chat.sidebar_notes.remote_on_device_network": "место выполнения: {device} · {network}",
+		"ui.chat.sidebar_notes.remote_unreachable_no_answer": "недоступно · не ответило",
+		"ui.chat.sidebar_notes.remote_unreachable_reason": "недоступно · {reason}",
+		"ui.chat.sidebar_notes.opened_by_named_in": "открыт агентом {agent} в разговоре «{label}»",
+		"ui.chat.sidebar_notes.opened_by_anonymous_in": "открыт агентом в разговоре «{label}»"
+	},
+	"checks": {
+		"device_composition": "remoteDeviceLabel() fills {device} with deviceName(owner_device_name, owner_device) - the wire name verbatim or the id's last 8 chars - else the nominative remote_another_device. The same label also feeds useRemoteSessionDevice -> remoteUnreachableText ('Устройство {device} не отвечает'), so the fallback must stay nominative.",
+		"remote_on_device_judgement": "'место выполнения: {device}' is the right case-neutral form: the label-after-colon reads correctly for a Latin name ('место выполнения: cloud-node-1') AND the fallback ('место выполнения: другое устройство'). The catalogue's 'на {device}' pattern (ui.mesh.mesh_node.on_device, ui.chat.device.label.on) would yield ungrammatical 'на другое устройство' for the fallback; 'на устройстве «{device}»' yields 'на устройстве «другое устройство»'; 'устройство: {device}' doubles the noun. Slightly formal, but natural for a tooltip/screen-reader label line after a list comma; lowercase as the context requires.",
+		"agreement": "'недоступно · не ответило' is neuter, agreeing with the implied 'устройство' and matching ui.chat.device_move.ineligible.no_answer ('не ответило на последнее чтение'). 'открыт' agrees with the existing opened_by_* values ('открыт агентом', 'открыт агентом {agent}'); {agent} sits in apposition after the instrumental 'агентом', so the verbatim name needs no case.",
+		"placeholders": "byte-identical sets vs English for all 7 keys ({device}; {device},{network}; {reason}; {agent},{label}; {label})",
+		"punctuation": "middle dot ( · ) preserved; Russian guillemets «» around {label} as the context asks and as the ru catalogue uses throughout; no full stops",
+		"english_leakage": "none; no Latin text outside placeholders",
+		"width": "17-44 characters before substitution, comparable to English; one line in the ~256px tooltip except long labels/reasons, which wrap as in English",
+		"plurals": "none expected; none present",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"diff": "git diff --numstat: 7 insertions, 0 deletions",
+		"tooling": "generate.mjs --check, check-duplicates.mjs, check-strings.mjs, context-parity.mjs all exit 0; ledger-check reports ru/ui.chat.sidebar_notes stale source/target hashes as expected until the integrator updates i18n/ledger.json"
+	},
+	"out_of_scope": "pre-existing, not gating: ui.canvas.files.remoteUnreachable would read 'Устройство другое устройство не отвечает' if remoteDeviceLabel ever falls back (the source comment calls that a guard the backend does not produce); same in English ('another device isn't…').",
+	"binding": "sha256 of on-disk bytes in the PR #2107 worktree at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/ru/ui.chat.sidebar_notes.json 54bd814fbfe5a1fb2fdc4deb0eaf38024ddae5349b02d9ec28a85a84f1a2519a; English src/i18n/catalogues/en/ui.chat.sidebar_notes.json 877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934; context ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c. Key set equals English.",
+	"scope": "PR #2107 r1: the 7 new ui.chat.sidebar_notes keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934",
+	"context_sha256": "ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c",
+	"target_sha256": "54bd814fbfe5a1fb2fdc4deb0eaf38024ddae5349b02d9ec28a85a84f1a2519a",
+	"sha256": {
+		"ru": "54bd814fbfe5a1fb2fdc4deb0eaf38024ddae5349b02d9ec28a85a84f1a2519a",
+		"en": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934"
+	}
+}

@@ -1,0 +1,53 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (projects/remote literals: 3 new ui.projects refusal keys)",
+	"locale": "hi",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-hi-projects-cf19dcd9",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer, team lopdev); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session a5cc4a60428a (reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, project-edit-model.ts's refusal-code map and the hi catalogue's shipped terms ('फिर कोशिश करें', 'थोड़ी देर में', 'संस्करण', 'स्टोर'); no MT used.",
+		"instance": "pr2107-r1-hi-projects-cf19dcd9"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "प्रोजेक्ट सहेजा नहीं गया: उसका एक मान स्वीकार नहीं किया गया। फ़ील्ड जाँचें और फिर कोशिश करें।",
+		"ui.projects.project_refusals.project_store_busy": "प्रोजेक्ट स्टोर व्यस्त है। थोड़ी देर में फिर कोशिश करें।",
+		"ui.projects.project_refusals.project_schema_newer": "यह प्रोजेक्ट Local Operator के नए संस्करण से सहेजा गया था। इसे बदलने के लिए ऐप अपडेट करें।"
+	},
+	"checks": {
+		"diff_numstat": "3 insertions, 0 deletions",
+		"key_set_equals_english": true,
+		"placeholders": "none in English or hi for all 3 keys",
+		"sentence_count": "matches English (2 sentences each; project_invalid keeps the colon)",
+		"field_not_named": "project_invalid stays generic, per sidecar",
+		"product_name": "Local Operator kept untranslated",
+		"english_leakage": "none (only Local Operator Latin)",
+		"plurals": "none",
+		"bidi_controls": "none",
+		"gates_run": "generate --check 0, check-duplicates 0, context-parity 0; ledger-check reports the expected stale-row errors for hi/ui.projects pending the integrator's ledger update"
+	},
+	"binding": "sha256 of working-tree bytes on d494bee5200: target src/i18n/catalogues/hi/ui.projects.json cf19dcd903b643225e51133b381333422e8a1a6bdc6d05aaed3cd0dc1959256a; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409.",
+	"scope": "PR #2107 r1: the 3 new project_refusals keys only; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "cf19dcd903b643225e51133b381333422e8a1a6bdc6d05aaed3cd0dc1959256a",
+	"sha256": {
+		"hi": "cf19dcd903b643225e51133b381333422e8a1a6bdc6d05aaed3cd0dc1959256a",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}
