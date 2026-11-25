@@ -60,6 +60,18 @@ const holdItem = z.object({
 		.transform((value) =>
 			typeof value === "string" && SHA256_HEX.test(value) ? value : null,
 		),
+	/*
+	 * local-operator #4546, optional so an older core still parses: the thread
+	 * root of a held REPLY, which the owner-audit join needs because replies
+	 * are not on the conversation timeline. An empty or non-string value reads
+	 * as absent (fall back to the timeline read) rather than failing the list.
+	 */
+	thread_root_id: z
+		.unknown()
+		.optional()
+		.transform((value) =>
+			typeof value === "string" && value.length > 0 ? value : null,
+		),
 });
 
 const holdsPage = z.object({

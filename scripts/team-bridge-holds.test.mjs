@@ -76,6 +76,7 @@ const RE_HIDE_FAILED = /Could not update hidden messages on this device/;
 const RE_HELD_LOADING = /Loading held messages/;
 const RE_HELD_LIST_ERROR = /Held messages could not be loaded/;
 const RE_RESTORE_LOCAL = /Restore message a1234567/;
+const RE_SHA256_HEX = /^[0-9a-f]{64}$/;
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
 const hold = (over = {}) => ({
@@ -93,7 +94,7 @@ const hold = (over = {}) => ({
 	...over,
 });
 
-test("local hide requires an expired Deliver window and settled missing details", () => {
+test("local hide: an expired receipt row, or a row that can never be discarded, once details settle missing", () => {
 	const receipt = "1".repeat(64);
 	const exact = hold({
 		can_deliver: false,
@@ -115,12 +116,14 @@ test("local hide requires an expired Deliver window and settled missing details"
 		m.canHideHoldLocally({ ...exact, can_deliver: true }, unavailable),
 		false,
 	);
+	/* Operator report 2026-11-24: a row with no usable receipt can never be
+	   discarded here, so it may always be hidden (a metadata fingerprint). */
 	assert.equal(
 		m.canHideHoldLocally(
 			{ ...exact, discard_receipt: "malformed" },
 			unavailable,
 		),
-		false,
+		true,
 	);
 	assert.equal(
 		m.canHideHoldLocally(
@@ -956,7 +959,10 @@ const fresh700 = (over = {}) =>
 		...over,
 	});
 
-test("a still-deliverable hold that fails to load arms no receipt Discard (M1/S-1/Q-1)", () => {
+test("a still-deliverable hold that fails to load arms the receipt Discard, never Deliver (operator 2026-11-24)", () => {
+	/* Supersedes PR #2017 r1 M1/S-1/Q-1: a fresh unloadable row (the held
+	   thread reply) had only "Try again" and no way out. Discard never
+	   delivers, so it is armed by the receipt inside the window too. */
 	const item = fresh700();
 	const a = m.holdAffordance(item, NOW);
 	assert.equal(a.state, "open");
@@ -965,19 +971,25 @@ test("a still-deliverable hold that fails to load arms no receipt Discard (M1/S-
 		["unavailable", null],
 		["ready", { state: "none" }],
 	]) {
-		assert.equal(m.receiptDiscardArmed(item, a, detail, binding), false);
-		// So no proof reaches the wire for either word.
-		for (const word of ["deliver", "discard"])
-			assert.equal(
-				m.holdDecideProof(word, {
-					armed: { deliver: false, discard: false },
-					binding,
-					receipt: null,
-				}),
-				null,
-			);
+		assert.equal(m.receiptDiscardArmed(item, a, detail, binding), true);
+		const armed = { deliver: false, discard: true };
+		// Deliver never carries a receipt, whatever is armed.
+		assert.equal(
+			m.holdDecideProof("deliver", {
+				armed: { deliver: true, discard: true },
+				binding,
+				receipt: RECEIPT,
+			}),
+			null,
+		);
+		assert.deepEqual(
+			m.holdDecideProof("discard", { armed, binding, receipt: RECEIPT }),
+			{ hold_receipt: RECEIPT },
+		);
 	}
-	// An in-window Discard-only hold (Deliver never open) keeps the fallback.
+	// Still loading: nothing acts on load.
+	assert.equal(m.receiptDiscardArmed(item, a, "loading", null), false);
+	// An in-window Discard-only hold keeps the fallback.
 	const discardOnly = fresh700({
 		hold_code: "screening_failed",
 		releasable: false,
@@ -994,6 +1006,178 @@ test("a still-deliverable hold that fails to load arms no receipt Discard (M1/S-
 	const e = m.holdAffordance(expired, NOW);
 	assert.equal(e.state, "deliver_expired");
 	assert.equal(m.receiptDiscardArmed(expired, e, "unavailable", null), true);
+});
+
+test("every held state has a way out: Discard, or a local hide when unloadable (operator 2026-11-24)", () => {
+	const unavailable = { state: "unavailable" };
+	const shown = {
+		state: "ready",
+		message: { id: "x", body: "hello" },
+		tenantId: "t",
+		binding: { state: "shown", hash: "a".repeat(64) },
+	};
+	const way = (item, detail) => {
+		const a = m.holdAffordance(item, NOW);
+		const binding = detail.state === "ready" ? detail.binding : null;
+		const receipt = m.receiptDiscardArmed(item, a, detail.state, binding);
+		const body =
+			binding !== null && m.armedWords(a, binding, true).discard === true;
+		const hide = m.canHideHoldLocally(item, detail, NOW);
+		return { receipt, body, hide };
+	};
+	// Loaded: the body-bound Discard, no hide.
+	assert.deepEqual(way(hold(), shown), {
+		receipt: false,
+		body: true,
+		hide: false,
+	});
+	// Unavailable inside the window, with a receipt: receipt Discard.
+	assert.deepEqual(way(fresh700(), unavailable), {
+		receipt: true,
+		body: false,
+		hide: false,
+	});
+	// Unavailable past the window: receipt Discard, and the #4358 hide.
+	assert.deepEqual(way(orphan(), unavailable), {
+		receipt: true,
+		body: false,
+		hide: true,
+	});
+	// write_once_conflict (core #4546 makes it discardable with a receipt).
+	const conflict = fresh700({
+		message_id: "bcmsg_woc",
+		hold_code: "write_once_conflict",
+		can_deliver: false,
+		releasable: false,
+	});
+	assert.equal(m.holdReason(conflict), "records");
+	assert.equal(way(conflict, unavailable).receipt, true);
+	// No receipt (an older core), in or out of the window: a local hide.
+	for (const item of [
+		fresh700({ discard_receipt: null }),
+		orphan({ discard_receipt: null }),
+		fresh700({ actionable: false }),
+		fresh700({ conversation_id: "" }),
+		fresh700({ can_deliver: false, can_discard: false }),
+	]) {
+		const found = way(item, unavailable);
+		assert.equal(found.receipt, false);
+		assert.equal(found.hide, true, JSON.stringify(item));
+		// ...and only once the details have settled.
+		assert.equal(m.canHideHoldLocally(item, { state: "loading" }, NOW), false);
+	}
+	// A loaded body never hides, and a withheld hash keeps its real Discard.
+	assert.equal(
+		m.canHideHoldLocally(fresh700({ discard_receipt: null }), shown, NOW),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(
+			fresh700({ discard_receipt: null }),
+			{
+				state: "ready",
+				message: { id: "x", body: null },
+				tenantId: "t",
+				binding: { state: "withheld", hash: "a".repeat(64) },
+			},
+			NOW,
+		),
+		false,
+	);
+	// A decided row is settled: nothing.
+	assert.equal(
+		m.canHideHoldLocally(
+			fresh700({
+				discard_receipt: null,
+				decision: {
+					word: "discard",
+					decided_at: null,
+					outcome: "pending",
+					key_id: null,
+				},
+			}),
+			unavailable,
+			NOW,
+		),
+		false,
+	);
+});
+
+test("a no-receipt row gets its own hide fingerprint, which a later receipt retires", async () => {
+	const legacy = fresh700({ discard_receipt: null });
+	const page = await m.addLocalHoldRevisions("acct_1", {
+		enabled: true,
+		key_protection: null,
+		items: [legacy, fresh700({ message_id: "bcmsg_with_receipt" })],
+	});
+	const revision = page.items[0].localHideRevision;
+	assert.match(revision, RE_SHA256_HEX);
+	// A row whose receipt Discard is possible gets none: it is not stuck.
+	assert.equal(page.items[1].localHideRevision, undefined);
+	const hidden = new Set([revision]);
+	assert.equal(m.isHoldHiddenLocally(page.items[0], hidden), true);
+	// Core starts serving a receipt: the row is discardable, so it reappears.
+	assert.equal(
+		m.isHoldHiddenLocally(
+			{ ...page.items[0], discard_receipt: RECEIPT },
+			hidden,
+		),
+		false,
+	);
+});
+
+test("a held thread reply is read from its thread; without thread_root_id, the timeline", () => {
+	const reply = hold({
+		message_id: "bcmsg_reply",
+		seq: 41,
+		thread_root_id: "bcmsg_b01f2381a44a4335bcb7f9e4808710e0",
+	});
+	assert.deepEqual(m.holdLookupRead(reply), {
+		read: "replies",
+		rootId: "bcmsg_b01f2381a44a4335bcb7f9e4808710e0",
+		beforeSeq: 42,
+	});
+	for (const over of [{}, { thread_root_id: null }, { thread_root_id: "" }])
+		assert.deepEqual(m.holdLookupRead(hold({ seq: 4, ...over })), {
+			read: "timeline",
+			beforeSeq: 5,
+		});
+	assert.deepEqual(m.holdLookupRead(hold({ seq: null })), {
+		read: "timeline",
+		beforeSeq: undefined,
+	});
+	// The thread read answers root + replies; the reply itself is matched...
+	const root = { id: "bcmsg_b01f2381a44a4335bcb7f9e4808710e0", body: "root" };
+	const found = { id: "bcmsg_reply", body: "the reply" };
+	assert.equal(m.findHeldMessage(reply, [root, found]), found);
+	// ...never a neighbour, so a miss stays a miss.
+	assert.equal(m.findHeldMessage(reply, [root]), null);
+	// And the join then resolves it as ready, not `unavailable`.
+	const binding = { state: "shown", hash: "a".repeat(64) };
+	assert.equal(
+		m.resolveHoldDetail(reply, {
+			auditSupported: true,
+			lookup: { pending: false, found: { message: found, tenantId: "t" } },
+			binding: { pending: false, value: binding },
+		}).state,
+		"ready",
+	);
+	// The list parse carries the root when core serves it (#4546), and reads
+	// an absent or empty one as null.
+	const page = api.parseHoldsPage({
+		enabled: true,
+		items: [
+			reply,
+			hold({ message_id: "bcmsg_2" }),
+			hold({ message_id: "bcmsg_3", thread_root_id: "" }),
+		],
+	});
+	assert.equal(
+		page.items[0].thread_root_id,
+		"bcmsg_b01f2381a44a4335bcb7f9e4808710e0",
+	);
+	assert.equal(page.items[1].thread_root_id, null);
+	assert.equal(page.items[2].thread_root_id, null);
 });
 
 test("a row core says is not actionable, or has no conversation, arms nothing (m1)", () => {
@@ -1100,7 +1284,13 @@ function memoryPreference() {
 }
 
 test("only the same account and exact receipt are hidden after restart; observed recovery persists", async () => {
-	const other = hold({ message_id: "bcmsg_other", actionable: true });
+	/* An ordinary in-window row with a receipt: its Discard is possible, so it
+	   never takes a hide fingerprint (a no-receipt row now would). */
+	const other = hold({
+		message_id: "bcmsg_other",
+		actionable: true,
+		discard_receipt: "e".repeat(64),
+	});
 	const raw = hidePage([expiredForLocalHide, other]);
 	const [same, anotherAccount, newReceipt] = await Promise.all([
 		m.addLocalHoldRevisions("account-a", raw),
@@ -1572,6 +1762,8 @@ const RE_RETRY = />Try again</;
 const RE_RECEIPT_ONLY = /couldn’t be loaded\. It can no longer be delivered/;
 const RE_UNREAD_BUTTON = /without reading it"/;
 const RE_DELIVER_BUTTON = />Deliver</;
+const RE_NOT_YET = /can’t be delivered or discarded yet/;
+const RE_NOT_HERE = /text isn’t available here, so it can’t be delivered/;
 const RE_OVERCLAIM = /applied|yet|sender|notif|told|will/i;
 
 function renderRow(item) {
@@ -1589,11 +1781,16 @@ function renderRow(item) {
 	return { html, calls };
 }
 
-test("Try again stays on every row whose details failed to load (M1/S-1/Q-1)", () => {
+test("Try again stays on every row whose details failed to load, beside its Discard", () => {
 	const fresh = renderRow(fresh700());
 	assert.match(fresh.html, RE_RETRY);
+	// In the window it never claims "can no longer be delivered"...
 	assert.doesNotMatch(fresh.html, RE_RECEIPT_ONLY);
-	assert.doesNotMatch(fresh.html, RE_UNREAD_BUTTON);
+	assert.doesNotMatch(fresh.html, RE_NOT_YET);
+	assert.match(fresh.html, RE_NOT_HERE);
+	// ...and offers the unread Discard (operator 2026-11-24), never Deliver.
+	assert.match(fresh.html, RE_UNREAD_BUTTON);
+	assert.doesNotMatch(fresh.html, RE_DELIVER_BUTTON);
 	const expired = renderRow(orphan({ message_id: "bcmsg_701" }));
 	assert.match(expired.html, RE_RETRY);
 	assert.match(expired.html, RE_RECEIPT_ONLY);
@@ -1624,7 +1821,7 @@ const batch = await load(
 	`export * from "./src/renderer/src/features/team-bridge/team-bridge-discard-batch";`,
 );
 
-test("batch captures only existing single-discard proofs, never loading/mismatched/fresh-unloadable rows", () => {
+test("batch captures every single-discard proof, fresh-unloadable rows included, never loading/mismatched", () => {
 	const source = [
 		hold({ message_id: "shown" }),
 		orphan({ message_id: "expired" }),
@@ -1648,7 +1845,13 @@ test("batch captures only existing single-discard proofs, never loading/mismatch
 	const snapshot = m.captureDiscardSnapshot(source, details, NOW);
 	assert.deepEqual(
 		new Set(snapshot.map(({ item }) => item.message_id)),
-		new Set(["shown", "expired"]),
+		new Set(["shown", "expired", fresh700().message_id]),
+	);
+	// The fresh unloadable row binds its receipt, never a body.
+	assert.deepEqual(
+		snapshot.find(({ item }) => item.message_id === fresh700().message_id)
+			.proof,
+		{ hold_receipt: RECEIPT },
 	);
 	assert.deepEqual(
 		snapshot.find(({ item }) => item.message_id === "shown").proof,
@@ -1661,7 +1864,7 @@ test("batch captures only existing single-discard proofs, never loading/mismatch
 	source[0].conversation_id = "changed";
 	source[1].discard_receipt = "d".repeat(64);
 	source.push(hold({ message_id: "new-arrival" }));
-	assert.equal(snapshot.length, 2);
+	assert.equal(snapshot.length, 3);
 	assert.equal(
 		snapshot.find(({ item }) => item.message_id === "shown").item
 			.conversation_id,
