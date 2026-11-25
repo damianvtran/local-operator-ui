@@ -4422,9 +4422,15 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
  * blended into the strip. So the contrast is now made by ABSENCE as much as by
  * fill: an inactive tab paints nothing at rest (muted ink) and takes the
  * sidebar's `row-hover` only under the pointer; the active tab alone carries an
- * opaque `row-selected` ground, full ink at weight 500, and a 2px accent rule
- * along its bottom edge. Tokens only, no border or pill outline (design
- * direction). `scripts/workspace-tabs.test.mjs` holds this.
+ * opaque `row-selected` ground and full ink at weight 500. Tokens only, no
+ * border or pill outline (design direction).
+ *
+ * SELECTED = BRIGHTENING, NO RAIL (operator, 2026-11-25: "I hate the bottom
+ * border rail style of highlight on the tab, please remove that and we'll just
+ * leave the brightening but no rail, that looks super dated"). The 2px accent
+ * `::after` mark that sat along the active tab's bottom edge is gone; the ground
+ * and ink above are the whole treatment. `scripts/workspace-tabs.test.mjs`
+ * holds this and fails if a rail returns as an `::after` or a box-shadow.
  */
 [data-workspace-tab] {
 	--workspace-tab-fill: transparent;
@@ -4456,18 +4462,6 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 [data-workspace-tab][data-active] {
 	--workspace-tab-fill: var(--color-row-selected);
 	color: var(--color-ink);
-}
-/* The indicator sits inside the paint's 2px inset, inset 8px from each end so
- * it reads as a mark on the tab, not a strip-wide underline. */
-[data-workspace-tab][data-active]::after {
-	content: "";
-	position: absolute;
-	inset-block-end: 2px;
-	inset-inline: 8px;
-	height: 2px;
-	border-radius: 1px;
-	background: var(--color-accent);
-	pointer-events: none;
 }
 [data-workspace-tab][data-active] > button[aria-current] {
 	font-weight: 500;

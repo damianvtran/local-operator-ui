@@ -677,6 +677,10 @@ content column beside their full-height secondary sidebar (and wrap their
 pending/error states in the same full-height frame). Team Bridge keeps the same
 left-column portal and early Back; the conversation/thread replacement stays
 inside the right-hand frame.
+A selected workspace tab is marked by brightening alone - the opaque
+`row-selected` ground, full `ink`, weight 500 - with no bottom rail, underline
+or accent indicator (operator, 2026-11-25: the rail "looks super dated");
+[`scripts/workspace-tabs.test.mjs`](../scripts/workspace-tabs.test.mjs) fails if one returns.
 Chat mounts its body after workspace tabs and keeps `canvas-content` as the
 only body paint; its loading and route-error arms use the same boundary. The
 native Browser route mounts its body after its tab/address chrome and reports
