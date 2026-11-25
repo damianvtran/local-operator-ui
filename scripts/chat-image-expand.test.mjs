@@ -328,11 +328,12 @@ const DIALOG = '[role="dialog"]';
 /** The picture INSIDE the overlay, which is what "expanded" means here. */
 const EXPANDED_PICTURE = '[role="dialog"] img';
 /**
- * The scrim. Named by the role class the shared `DialogOverlay` gives it — the
- * element a press outside the picture lands on in a browser, and the one Radix
- * reads as "outside the layer".
+ * The scrim. Named by the backdrop class the shared `DialogOverlay` gives it
+ * (`lo-dialog-scrim`, dialog.tsx) — the element a press outside the picture
+ * lands on in a browser, and the one Radix reads as "outside the layer". Not a
+ * `bg-*` utility: the overlay deliberately carries none (review round 1, L2).
  */
-const SCRIM = '[class*="bg-scrim"]';
+const SCRIM = ".lo-dialog-scrim";
 /** The overlay's own close control, which is not the panel's corner button. */
 const CLOSE = 'button[aria-label="Close image"]';
 /** What the closed state looks like: no layer, nothing to escape from. */
