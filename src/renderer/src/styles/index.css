@@ -4431,6 +4431,14 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
  * `::after` mark that sat along the active tab's bottom edge is gone; the ground
  * and ink above are the whole treatment. `scripts/workspace-tabs.test.mjs`
  * holds this and fails if a rail returns as an `::after` or a box-shadow.
+ *
+ * BRIGHTER SELECTED GROUND (operator approved design D1 on PR #2109: "Brighten
+ * the selected tab a little"). With the rail gone, plain `row-selected` sat
+ * only ~1.04:1 from the `row-hover` a neighbour takes under the pointer, so
+ * selected and hovered tabs read alike. Mixing 4% `ink` into `row-selected`
+ * lifts that to ~1.17:1 in dark and ~1.13:1 in light. It is scoped to this
+ * rule on purpose: hover keeps `row-hover`, and no theme token moves, so every
+ * other `row-selected` consumer is unchanged.
  */
 [data-workspace-tab] {
 	--workspace-tab-fill: transparent;
@@ -4460,7 +4468,11 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	--workspace-tab-fill: var(--color-row-hover);
 }
 [data-workspace-tab][data-active] {
-	--workspace-tab-fill: var(--color-row-selected);
+	--workspace-tab-fill: color-mix(
+		in srgb,
+		var(--color-row-selected) 96%,
+		var(--color-ink)
+	);
 	color: var(--color-ink);
 }
 [data-workspace-tab][data-active] > button[aria-current] {
