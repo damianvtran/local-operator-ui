@@ -98,7 +98,6 @@
 				"ui.onboarding.modal.action.continue",
 				"ui.onboarding.modal.action.finish",
 				"ui.onboarding.modal.action.meet",
-				"ui.onboarding.modal.action.skip",
 				"ui.onboarding.modal.action.skip_for_now",
 				"ui.onboarding.modal.action.skip_to_chat",
 				"ui.onboarding.modal.error.aida_open_failed",
