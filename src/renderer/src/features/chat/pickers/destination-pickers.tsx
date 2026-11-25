@@ -2145,6 +2145,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			emptyAction={
 				emptyOffersConnect ? (
 					<Button
+						data-picker-hover=""
 						variant="secondary"
 						size="sm"
 						type="button"
@@ -2337,6 +2338,7 @@ export const ModelPicker: FC<PickerContext> = ({
 					<div className="flex min-w-0 flex-wrap items-center">
 						{!draft && (
 							<Button
+								data-picker-hover=""
 								variant="ghost"
 								size="sm"
 								type="button"
@@ -2354,6 +2356,7 @@ export const ModelPicker: FC<PickerContext> = ({
 							</Button>
 						)}
 						<Button
+							data-picker-hover=""
 							variant="ghost"
 							size="sm"
 							type="button"

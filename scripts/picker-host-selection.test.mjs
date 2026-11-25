@@ -704,6 +704,39 @@ const effortRows = [
 	{ value: "high", label: "High" },
 ];
 
+test("only an anchored quick picker opts out of the popover's glass", () => {
+	for (const kind of ["model", "effort"]) {
+		const props = {
+			open: true,
+			onClose() {},
+			title: kind,
+			options: effortRows,
+			onPick() {},
+		};
+		const view = mount({ ...props, quick: { kind } });
+		try {
+			const panel = () =>
+				document.querySelector(`[data-quick-picker="${kind}"]`);
+			assert.equal(panel().dataset.pickerPlacement, "fallback");
+			assert.ok(panel().classList.contains("lo-dialog-surface"));
+
+			const anchor = document.createElement("button");
+			// jsdom has no layout. Supply the visible chip rect that the host
+			// requires, then inspect the actual portalled content, not its props.
+			anchor.getClientRects = () => [new dom.window.DOMRect(10, 10, 20, 20)];
+			document.body.append(anchor);
+			view.render({ ...props, quick: { kind, anchor } });
+
+			assert.equal(panel().dataset.pickerPlacement, "anchored");
+			assert.ok(panel().hasAttribute("data-lo-floating"));
+			assert.ok(!panel().hasAttribute("data-glass-overlay"));
+			assert.ok(panel().classList.contains("shadow-overlay"));
+		} finally {
+			view.unmount();
+		}
+	}
+});
+
 test("quick effort is a focused ladder without search, and keys act on its announced row", () => {
 	const calls = [];
 	let closed = false;

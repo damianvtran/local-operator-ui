@@ -1579,6 +1579,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 				collisionPadding: 8,
 				"aria-labelledby": titleId,
 				"aria-describedby": descriptionId,
+				// The composer choices use solid paper, like the typing surface. Keep
+				// the glass marker on every other consumer of the shared popover.
+				"data-glass-overlay": undefined,
 				className: cn(
 					compactFrame,
 					"max-h-[var(--radix-popover-content-available-height)] w-[calc(100vw-1rem)]",
@@ -2075,6 +2078,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 */}
 						<Button
 							ref={closeButtonRef}
+							data-picker-hover=""
 							variant="ghost"
 							size={isQuick ? "icon-sm" : "sm"}
 							type="button"

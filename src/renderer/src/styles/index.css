@@ -3153,6 +3153,57 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 
 /* Textareas can match :focus-visible on click or autofocus. Use the ink
  * caret in ordinary themes so getting ready to type never boxes the draft. */
+/* The anchored Model/Effort paper borrows the elevated role's relative
+ * luminance, not its hue (some themes have strongly colored grounds). Equal
+ * linear-sRGB channels make the paper neutral without filtering its accents.
+ * Keep the brightest stop at that role and lower the resting tone slightly:
+ * hover can brighten even on a near-white theme without costing dark contrast.
+ * As on the composer, the short 1px gleam doesn't draw a perimeter. */
+[data-quick-picker][data-picker-placement="anchored"] {
+	--picker-hover-fill: color(
+		from var(--lo-elevated) srgb-linear
+			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
+			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
+			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
+	);
+	background-color: light-dark(
+		color-mix(in srgb, var(--picker-hover-fill), black 3%),
+		color-mix(in srgb, var(--picker-hover-fill), black 12%)
+	);
+	background-image: linear-gradient(
+			90deg,
+			transparent,
+			light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 17%)) 36% 60%,
+			transparent
+		), linear-gradient(180deg, var(--picker-hover-fill), transparent 38px);
+	background-position: 9% top, center top;
+	background-size: 61% 1px, 100% 100%;
+	background-repeat: no-repeat;
+}
+
+/* Pointer feedback is a brightness step, not an accent state. Keep the
+ * existing structural edge legible even where the fill step is subtle. */
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"][data-hovered="true"]:not(
+		[aria-selected="true"],
+		[aria-disabled="true"]
+	) {
+	background-color: var(--picker-hover-fill);
+}
+
+@media (hover: hover) {
+	[data-quick-picker][data-picker-placement="anchored"]
+		[data-picker-hover]:enabled:hover:not(:active) {
+		background-color: var(--picker-hover-fill);
+	}
+}
+
+@media (forced-colors: active) {
+	[data-quick-picker][data-picker-placement="anchored"] {
+		background-image: none;
+	}
+}
+
 .composer-dock-textarea {
 	caret-color: var(--lo-ink);
 }
