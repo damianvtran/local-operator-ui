@@ -196,8 +196,15 @@ export const ApprovalModeChip: FC<{
 			const outcome = await runApprovalEscape(
 				approvalToggleArgs(mode) === "auto" ? "session" : "ask",
 				{
+					// This press is the owner's explicit session-mode choice, not an answer
+					// to a pending approval or an automatic reaction to incoming content.
 					runCommand: (name, args) =>
-						command.run(name, args, APPROVAL_ESCAPE_COPY.notChanged()),
+						command.run(
+							name,
+							args,
+							APPROVAL_ESCAPE_COPY.notChanged(),
+							args === "auto" ? { bridgeAck: true } : undefined,
+						),
 					editDefault: () =>
 						Promise.reject(new Error("the chip never edits the default")),
 				},

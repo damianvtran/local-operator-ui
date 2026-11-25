@@ -4436,7 +4436,14 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 	const onPick = useCallback(
 		async (value: string) => {
 			if (scope === "session") {
-				await command.run("approvals", value);
+				// Match the composer toggle: only an explicit press on this session's
+				// Auto grants the capability, never the global settings branch below.
+				await command.run(
+					"approvals",
+					value,
+					undefined,
+					value === "auto" ? { bridgeAck: true } : undefined,
+				);
 				/*
 				 * The receipt is prose; the row marker and the composer's approval
 				 * chip read the entity query. Without this the dialog kept marking the
