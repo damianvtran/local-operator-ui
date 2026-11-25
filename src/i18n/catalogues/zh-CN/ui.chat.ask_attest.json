@@ -11,6 +11,7 @@
 	"ui.chat.ask_attest.refusal.not_consent_bearing": "你的回答已发送，但未被确认为你本人的回答，因此不会算作你的批准。请让智能体重新提问，然后使用“确认并发送”。",
 	"ui.chat.ask_attest.refusal.not_eligible": "如需批准，请在运行此对话的终端中回答。此应用副本无法确认回答，未经确认发送的回答不会算作你的批准。",
 	"ui.chat.ask_attest.refusal.not_running": "请打开对话，然后再次确认。该对话未在运行，因此无法确认此回答。未经确认发送的回答不会算作你的批准。",
+	"ui.chat.ask_attest.refusal.not_started": "请再次确认。对话未能及时启动，因此无法确认此回答，也未发送任何内容。",
 	"ui.chat.ask_attest.refusal.refused": "请再次确认。对话未接受此确认，未经确认发送的回答不会算作你的批准。",
 	"ui.chat.ask_attest.refusal.retry": "回答未确认。请重试。",
 	"ui.chat.ask_attest.refusal.secret": "含有隐藏值的回答无法确认，因为确认界面无法显示该值。请改用“发送回答”。",

@@ -83,6 +83,13 @@
 		"role": "inline message under an ask card when the confirmation could not reach the conversation because it is not running",
 		"tone": "leads with what works; says an unconfirmed send will not count as approval; ends with a full stop"
 	},
+	"ui.chat.ask_attest.refusal.not_started": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message under an ask card when the app started the conversation to confirm the answer but it did not come up in time; nothing was sent",
+		"tone": "leads with what works; says nothing was sent; ends with a full stop"
+	},
 	"ui.chat.ask_attest.refusal.refused": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",

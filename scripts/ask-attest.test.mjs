@@ -460,6 +460,178 @@ test("a missing socket (cold runtime) is listener_unavailable and nothing is for
 	);
 });
 
+/* ------------------------------------------- a parked runtime (a-f372) */
+
+/*
+ * THE REPRODUCTION (session 00e6a1cd8f62, ask a-f372): the operator confirmed on
+ * the sheet while the session's runtime was parked; it came up ~1.07 s later, so
+ * the one dial met no socket and the answer could not be attested. These tests
+ * drive the REAL dialler against a REAL AF_UNIX listener that only exists once
+ * the host's `ensureListener` (the engage) has brought it up.
+ */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("parked runtime: the engage starts when the sheet opens, the late socket is waited for, the answer is attested", async () => {
+	rmSync(join(scratch, "run", "attest", `${SID}.sock`), { force: true });
+	const order = [];
+	let live = null;
+	const { host: h, calls } = host({
+		attest: undefined,
+		ensureListener: async (sessionId) => {
+			order.push(`ensure:${sessionId}`);
+			// The runtime binds its socket a beat after the engage, as in a-f372.
+			await sleep(150);
+			live = await listener();
+			return true;
+		},
+		showSheet: async (sheet) => {
+			order.push("sheet");
+			calls.sheets.push(sheet);
+			return true;
+		},
+		listenerWaitMs: 5_000,
+	});
+	try {
+		const response = await attestAskAnswer(respond(), h);
+		assert.equal(response.status, 200, JSON.stringify(response.body));
+		assert.deepEqual(
+			order,
+			[`ensure:${SID}`, "sheet"],
+			"warmed BEFORE the sheet",
+		);
+		assert.equal(live?.frames.length, 1, "exactly one attested frame");
+		assert.equal(calls.forward.length, 1, "forwarded once, after the attest");
+	} finally {
+		await live?.close();
+	}
+});
+
+test("parked runtime that never binds: a bounded wait, then listener_timeout and nothing forwarded", async () => {
+	rmSync(join(scratch, "run", "attest", `${SID}.sock`), { force: true });
+	const { host: h, calls } = host({
+		attest: undefined,
+		ensureListener: async () => true,
+		listenerWaitMs: 400,
+	});
+	const started = performance.now();
+	const response = await attestAskAnswer(respond(), h);
+	const elapsed = performance.now() - started;
+	assertRefused(response, "listener_timeout");
+	assert.equal(calls.forward.length, 0);
+	assert.ok(elapsed >= 400, `waited the bound (${elapsed} ms)`);
+	assert.ok(elapsed < 2_000, `and no longer (${elapsed} ms)`);
+});
+
+test("an engage that fails or throws is runtime_not_started, never a send", async () => {
+	for (const ensureListener of [
+		async () => false,
+		async () => {
+			throw new Error("relay down");
+		},
+		() => {
+			throw new Error("sync throw");
+		},
+	]) {
+		rmSync(join(scratch, "run", "attest", `${SID}.sock`), { force: true });
+		const { host: h, calls } = host({
+			attest: undefined,
+			ensureListener,
+			listenerWaitMs: 5_000,
+		});
+		const started = performance.now();
+		const response = await attestAskAnswer(respond(), h);
+		assertRefused(response, "runtime_not_started");
+		assert.equal(calls.forward.length, 0);
+		assert.ok(
+			performance.now() - started < 2_000,
+			"no full wait once the engage said no",
+		);
+	}
+});
+
+test("the ask expiring during the wait is expired: no dial after it, nothing forwarded", async () => {
+	const dials = [];
+	const {
+		host: h,
+		calls,
+		clock,
+	} = host({
+		attest: async () => {
+			dials.push(clock.ms);
+			return "listener_unavailable";
+		},
+		ensureListener: async () => true,
+		listenerWaitMs: 5_000,
+	});
+	const timer = setTimeout(() => {
+		clock.ms = NOW_MS + 600_001;
+	}, 250);
+	try {
+		const response = await attestAskAnswer(respond(), h);
+		assertRefused(response, "expired");
+		assert.equal(calls.forward.length, 0);
+		assert.ok(
+			dials.every((at) => at < NOW_MS + 600_000),
+			"no dial past expiry",
+		);
+	} finally {
+		clearTimeout(timer);
+	}
+});
+
+test("the retry is bounded, retries only a missing listener, and re-runs the gate between dials", async () => {
+	let dials = 0;
+	const { host: h } = host({
+		attest: async () => {
+			dials += 1;
+			return "listener_unavailable";
+		},
+		ensureListener: async () => true,
+		listenerWaitMs: 500,
+	});
+	assertRefused(await attestAskAnswer(respond(), h), "listener_timeout");
+	// One dial per ASK_LISTENER_POLL_MS (100 ms) over 500 ms, plus the first.
+	assert.ok(dials >= 3 && dials <= 8, `bounded dials (${dials})`);
+
+	// A listener that answered (refused) is a verdict, not a missing socket.
+	let refusedDials = 0;
+	const refused = host({
+		attest: async () => {
+			refusedDials += 1;
+			return "listener_refused";
+		},
+		ensureListener: async () => true,
+		listenerWaitMs: 5_000,
+	});
+	assertRefused(
+		await attestAskAnswer(respond(), refused.host),
+		"listener_refused",
+	);
+	assert.equal(refusedDials, 1);
+
+	// Focus lost while waiting is the gate's refusal on the next retry.
+	let focused = true;
+	const unfocused = host({
+		attest: async () => {
+			focused = false;
+			return "listener_unavailable";
+		},
+		facts: () => {
+			const facts = person();
+			return facts.window
+				? { ...facts, window: { ...facts.window, focused } }
+				: facts;
+		},
+		ensureListener: async () => true,
+		listenerWaitMs: 5_000,
+	});
+	assertRefused(
+		await attestAskAnswer(respond(), unfocused.host),
+		"window_not_focused",
+	);
+	assert.equal(unfocused.calls.forward.length, 0);
+});
+
 test("a refused verdict on accept is listener_refused; a refused frame is frame_refused; neither forwards", async () => {
 	for (const [shape, reason] of [
 		[{ greeting: { ok: false, reason: "signature" } }, "listener_refused"],
