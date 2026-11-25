@@ -55,7 +55,7 @@ const source = (name) =>
 const modelPath = "features/chat/components/";
 const routePath = /^\/chat\//;
 const TAB_STRIP =
-	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 32px;/;
+	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 36px;/;
 const TAB_PAINT_HOST =
 	/\[data-workspace-tab\]\s*\{[^}]*position: relative;\s*isolation: isolate;/;
 const TAB_PAINT =
@@ -64,7 +64,7 @@ const ACTIVE_TAB_PAINT =
 	/\[data-workspace-tab\]\[data-active\]\s*\{\s*--workspace-tab-fill:/;
 const DRAG_SPACER = /\[data-workspace-tab-spacer\]\s*\{\s*align-self: stretch;/;
 const NO_DRAG_TAB = /data-workspace-tab=""[^>]*data-titlebar-no-drag=""/;
-const TAB_TARGET = /className="flex h-7 [^"]+"\s*aria-current=/;
+const TAB_TARGET = /className="flex h-8 [^"]+"\s*aria-current=/;
 const CLOSE_TARGET = /data-workspace-close=""\s*className="[^"\n]*\bsize-6\b/;
 const MORE_TARGET =
 	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
@@ -259,10 +259,10 @@ for (const [locale, check] of Object.entries({
 	});
 }
 
-test("the 32px strip leaves 4px of settled air on both sides of the tab paint without sacrificing hit area", () => {
+test("the 36px fallback strip leaves settled air around the larger tab target", () => {
 	const css = source("styles/index.css");
 	const strip = source(`${modelPath}workspace-tabs.tsx`);
-	// The centered 28px target leaves 2px of native lane on each edge; another
+	// The centered 32px target leaves at least 2px of lane on each edge; another
 	// 2px comes only out of its paint, not the scrollport or pointer target.
 	assert.match(css, TAB_STRIP);
 	assert.match(css, TAB_PAINT_HOST);

@@ -97,7 +97,7 @@ test("the shared contract is present exactly where it is allowed", () => {
 	const shell = readSource(SHELL);
 	assert.match(
 		shell,
-		/"--panel-top-pad": "var\(--chrome-strip-h\)"/,
+		/"--panel-top-pad":\s*"var\(--app-navigation-row-h, var\(--chrome-strip-h\)\)"/,
 		"the shell must publish the strip's height to the route content; without it `panel-top-pad` resolves to 0 and every panel's first row sits under the traffic lights",
 	);
 	const styles = readSource(STYLES);

@@ -459,21 +459,12 @@
  * deliberately does not enable WCO (it would add no pixels, and it would hand the
  * renderer a geometry main already reproduces from its own full-screen events).
  *
- * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
- * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
- * window capture reads the drawn circles at centre 16.00. The derivation and the
- * instrument note are on `src/main/titlebar-options.ts`, beside the
- * `trafficLightPosition` decision they explain.
- *
- * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
- * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
- * BESIDE the lights; this shell puts the lane above every column instead, so no
- * column's first row is beside them and the inset's only consumer left is a banner,
- * which is a first child of the shell and therefore paints under the lights.
+ * The app controls and traffic lights share a 40px centerline. Keep an
+ * exclusion beyond the native left hit boxes regardless of text direction.
  */
 [data-chrome-mode="integrated"][data-chrome-platform="mac"] {
-	--chrome-strip-h: 32px;
-	--chrome-inset-start: 80px;
+	--chrome-strip-h: 40px;
+	--chrome-inset-start: 88px;
 	--chrome-inset-end: 0px;
 	--chrome-inset-end-h: 0px;
 }
@@ -605,6 +596,80 @@
 	[data-titlebar-lane] {
 	display: block;
 	height: var(--chrome-strip-h);
+}
+
+/* One transparent overlay: keep the columns' grounds reaching y0, with
+ * Browser's own tab/address controls below this independent app history. */
+[data-desktop-navigation-shell] {
+	--app-navigation-row-h: max(
+		40px,
+		var(--chrome-strip-h),
+		var(--chrome-inset-end-h)
+	);
+	--panel-top-pad: var(--app-navigation-row-h);
+	--app-navigation-button: 28px;
+	--app-navigation-gap: 4px;
+	--app-navigation-margin: 8px;
+	--app-navigation-width: calc(
+		4 *
+		var(--app-navigation-button) +
+		3 *
+		var(--app-navigation-gap)
+	);
+	--app-navigation-left: calc(
+		var(--chrome-inset-start) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-right: auto;
+	--app-navigation-exclusion-left: calc(
+		var(--app-navigation-left) +
+		var(--app-navigation-width)
+	);
+	--app-navigation-exclusion-right: var(--chrome-inset-end);
+}
+/* Mirror the group except beside physical left-side OS controls. On the
+ * right, stop before the native caption hit targets rather than mirroring them. */
+:root:not([data-chrome-platform="mac"], [data-chrome-leading="true"])
+	[data-desktop-navigation-shell]:dir(rtl),
+[data-chrome-fullscreen="true"] [data-desktop-navigation-shell]:dir(rtl) {
+	--app-navigation-left: auto;
+	--app-navigation-right: calc(
+		var(--chrome-inset-end) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-exclusion-left: var(--chrome-inset-start);
+	--app-navigation-exclusion-right: calc(
+		var(--app-navigation-right) +
+		var(--app-navigation-width)
+	);
+}
+[data-desktop-navigation] {
+	position: absolute;
+	z-index: 34;
+	inset-block-start: 0;
+	left: var(--app-navigation-left);
+	right: var(--app-navigation-right);
+	display: flex;
+	align-items: center;
+	gap: var(--app-navigation-gap);
+	height: var(--app-navigation-row-h);
+}
+[data-desktop-navigation] > button {
+	width: var(--app-navigation-button);
+	height: var(--app-navigation-button);
+}
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-desktop-navigation-shell]
+	> [data-titlebar-lane] {
+	display: block;
+	height: var(--app-navigation-row-h);
+}
+/* The app shell now owns trailing caption clearance, too. */
+:root
+	[data-desktop-navigation-shell]
+	main[data-workspace-outlet]
+	> [data-chrome-route-band] {
+	display: none;
 }
 
 /* An ordinary route body starts after platform clearance. Full-height split
@@ -4471,7 +4536,7 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 [data-workspace-tabs] {
 	display: flex;
 	align-items: center;
-	min-height: 32px;
+	min-height: 36px;
 	gap: 4px;
 	padding-inline: 8px;
 }
@@ -4510,6 +4575,36 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 }
 [data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
 	[data-workspace-tabs]:dir(rtl) {
+	--workspace-left-column: var(--panel-rail-w, 0px);
+	--workspace-right-column: var(--workspace-sidebar-w, 0px);
+}
+/* Share the overlay with the app controls even in a collapsed layout. The
+ * sidebar and rail widths are the physical distances already spent. */
+:root [data-desktop-navigation-shell] [data-workspace-tabs] {
+	--workspace-left-column: var(--workspace-sidebar-w, 0px);
+	--workspace-right-column: var(--panel-rail-w, 0px);
+	position: relative;
+	z-index: 31;
+	margin-block-start: calc(-1 * var(--app-navigation-row-h));
+	min-height: var(--app-navigation-row-h);
+	padding-left: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-left) +
+			8px -
+			var(--workspace-left-column)
+		)
+	);
+	padding-right: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-right) +
+			8px -
+			var(--workspace-right-column)
+		)
+	);
+}
+:root [data-desktop-navigation-shell] [data-workspace-tabs]:dir(rtl) {
 	--workspace-left-column: var(--panel-rail-w, 0px);
 	--workspace-right-column: var(--workspace-sidebar-w, 0px);
 }
@@ -4555,9 +4650,8 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	flex: 0 0 auto;
 	color: var(--color-ink-muted);
 }
-/* In the 32px lane, a 28px tab already leaves 2px outside its hit box.
- * Inset only the paint by another 2px per edge for 4px of visible air,
- * without growing the no-drag scrollports or touching the button targets. */
+/* Inset the paint inside the larger hit box, keeping the tab row airy
+ * without reducing its pointer target. */
 [data-workspace-tab]::before {
 	content: "";
 	position: absolute;

@@ -665,7 +665,7 @@ const App: FC = () => {
 					setConsoleActiveSurface(surface);
 					setConsolePaneOpen(true);
 				}
-				navigate("/chat");
+				navigate(sessionId === null ? "/chat" : `/chat/${sessionId}`);
 			},
 		);
 		return () => unsubscribe?.();
@@ -731,6 +731,7 @@ const App: FC = () => {
 				)
 					return;
 				setActiveSession(payload.session_id);
+				navigate(`/chat/${payload.session_id}`);
 			}
 			setConsoleActiveSurface(payload.surface);
 			setConsolePaneOpen(true);
@@ -739,6 +740,7 @@ const App: FC = () => {
 	}, [
 		displayedSessionId,
 		isCommandPaletteOpen,
+		navigate,
 		setActiveSession,
 		setConsolePaneOpen,
 		setConsoleActiveSurface,
@@ -796,7 +798,7 @@ const App: FC = () => {
 			}
 			setActiveSession(target.sessionId);
 			setBrowserPaneOpen(true);
-			navigate("/chat");
+			navigate(`/chat/${target.sessionId}`);
 		});
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
@@ -1177,6 +1179,7 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						insetRouteBody
+						showDesktopNavigation
 						showChatRail={placement === "chat"}
 						/*
 						 * `StripFeedKeeper` replaces the navigation's catalogue feed while it is

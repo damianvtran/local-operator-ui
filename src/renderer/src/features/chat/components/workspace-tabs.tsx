@@ -404,7 +404,7 @@ export function WorkspaceTabs({
 						else buttons.current.delete(key);
 					}}
 					type="button"
-					className="flex h-7 min-w-0 items-center gap-1.5 rounded-sm px-2 text-body-sm"
+					className="flex h-8 min-w-0 items-center gap-1.5 rounded-sm px-2 text-body-sm"
 					aria-current={active ? "page" : undefined}
 					onClick={() => onOpen(tab)}
 					draggable

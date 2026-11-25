@@ -175,7 +175,7 @@ export async function openBrowserAttention(
 	}
 	deps.setActiveSession(target.sessionId);
 	deps.setBrowserPaneOpen(true);
-	deps.navigate("/chat");
+	deps.navigate(`/chat/${target.sessionId}`);
 }
 
 /**

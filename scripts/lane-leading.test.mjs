@@ -446,7 +446,7 @@ test("the lane is one transparent overlay, and no route opts out", () => {
 	);
 	assert.match(
 		layout,
-		/"--panel-top-pad": "var\(--chrome-strip-h\)"/,
+		/"--panel-top-pad":\s*"var\(--app-navigation-row-h, var\(--chrome-strip-h\)\)"/,
 		"the content column must publish the strip's height to every route, unconditionally",
 	);
 });
