@@ -70,8 +70,10 @@ const MORE_TARGET =
 	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
 const TAB_FOCUS =
 	/\[data-workspace-tabs\] button:focus-visible\s*\{\s*outline: 2px solid var\(--color-accent\);\s*outline-offset: -2px;/;
+// End padding only: the start edge is the header row's `ps-6` utility (PR #2099),
+// and an unlayered start padding here would override it. lane-leading pins that.
 const HEADER_PADDING =
-	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-start: 4px;\s*padding-inline-end: 12px;\s*\}/;
+	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-end: 12px;\s*\}/;
 
 test("reopening canonical ids focuses the existing target without adding a duplicate", () => {
 	const opened = syncWorkspaceTabs([], targetA, {});
