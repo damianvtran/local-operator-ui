@@ -352,6 +352,41 @@ const ENGLISH_BY_DESIGN = [
 	[
 		"src/main/update-install.ts",
 		"detail",
+		// The disk-image refusal's support line: the bundle path that proved the
+		// read-only volume. Its message and remedy are keyed (ui.updates.disk_image).
+		"`${bundlePath} is on a read-only volume",
+		SUPPORT_RECORD,
+	],
+	// "Move to Applications" outcomes: the panel shows the keyed `message`
+	// (ui.updates.disk_image.move_*); `detail` names Electron's mover and the
+	// conflict type for the support record and the update-service log.
+	[
+		"src/main/update-install.ts",
+		"detail",
+		'"The app is not running from a disk image',
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`moveToApplicationsFolder threw",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		"`A copy already exists in Applications",
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
+		'"moveToApplicationsFolder returned false',
+		SUPPORT_RECORD,
+	],
+	[
+		"src/main/update-install.ts",
+		"detail",
 		"`${detail}${",
 		"The installer fallback scaffold (installer slice): the support detail plus its `What happened:` lead-in, appended to the keyed remedy",
 	],

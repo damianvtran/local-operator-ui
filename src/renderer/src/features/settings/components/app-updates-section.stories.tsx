@@ -238,6 +238,7 @@ const scriptedUpdater = ({
 		downloadUpdate: async () => [],
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
+		moveToApplications: async () => true,
 		getLastInstallAttempt: async () => lastInstallAttempt ?? null,
 		onUpdateAvailable: noop,
 		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) =>

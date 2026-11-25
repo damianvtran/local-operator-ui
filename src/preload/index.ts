@@ -841,6 +841,13 @@ const api = {
 		 * app is running.
 		 */
 		quitForUpdateInstall: () => ipcRenderer.invoke("quit-for-update-install"),
+		/**
+		 * Move a copy running from the installer disk image into Applications and
+		 * relaunch from there (the `running-from-disk-image` refusal's action).
+		 * Resolves `{ ok: true }` just before the app relaunches, else the reason
+		 * and a localized sentence for the panel.
+		 */
+		moveToApplications: () => ipcRenderer.invoke("move-to-applications"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("update-available", handler);

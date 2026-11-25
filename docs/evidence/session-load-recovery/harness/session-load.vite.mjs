@@ -84,6 +84,7 @@ for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
 	"downloadUpdate", "quitAndInstall", "updateBackend",
 	"quitForUpdateInstall",
+	"moveToApplications",
 ]) updater[name] = async () => ({});
 // Every subscription on the preload updater surface. A missing one is not
 // cosmetic: UpdateNotification calls them at mount, and a TypeError there

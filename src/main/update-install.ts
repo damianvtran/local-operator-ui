@@ -293,7 +293,8 @@ export type InstallBlockCode =
 	| "download-verification-failed"
 	| "insufficient-disk-space"
 	| "artifact-metadata-missing"
-	| "artifact-cannot-launch";
+	| "artifact-cannot-launch"
+	| "running-from-disk-image";
 
 /** What the user can actually do about a refusal, in their own UI terms. */
 export type UpdateRemedy = {
@@ -385,6 +386,232 @@ export function appBundleFromExecutable(execPath: string): string | null {
 	const index = execPath.lastIndexOf(marker);
 	if (index <= 0) return null;
 	return execPath.slice(0, index - 1);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * A LAUNCH FROM THE INSTALLER DISK IMAGE
+ * ---------------------------------------------------------------------------
+ *
+ * The incident (2026-11, Ryan Copp, 0.53.2 -> 0.63.0): the update was refused
+ * with "Install needs 1.6 GiB ... 0.0 GiB free" on a Mac with 13.4 GiB free in
+ * /Applications. His agent confirmed the app was running straight from the
+ * mounted DMG (`/Volumes/Local Operator 0.53.2-arm64/Local Operator.app`): a
+ * read-only image with 2,240 KiB free, so the 0.0 GiB reading was TRUE for the
+ * volume the bundle lives on. The disk-space refusal was the right arithmetic
+ * about the wrong problem: no amount of freeing space lets Squirrel swap a
+ * bundle on a read-only image, and the remedy it printed ("Free up about
+ * 1.6 GiB") sent the user looking for space he already had.
+ *
+ * So the disk-image launch is its own refusal, decided BEFORE the space check,
+ * with the one remedy that works: open the copy in Applications (or move this
+ * one there). It must never fail open: the install would write into the image.
+ *
+ * Detection is deliberately two facts, not one:
+ *  - the bundle sits under `/Volumes/` (where macOS mounts every image), AND
+ *  - its parent directory is not writable (an image is mounted read-only).
+ * `/Volumes/` alone is not enough: a user may keep apps on a writable external
+ * drive (`/Volumes/External/Applications/...`), and that install can update.
+ * Node's `statfs` exposes no read-only flag, so writability is the probe the
+ * caller supplies (`access(W_OK)`, which answers EROFS on a read-only mount).
+ * Gatekeeper's App Translocation (a quarantined app run from a randomised
+ * read-only path under /private/var/folders) is NOT covered here: it is a
+ * different path and different copy, and it has not been observed in a report.
+ */
+
+/** Where macOS mounts disk images and external volumes. */
+const VOLUMES_PREFIX = "/Volumes/";
+
+/**
+ * True when the running bundle is on a mounted, read-only volume - the shape of
+ * a launch straight from the installer DMG. `parentWritable` is the caller's
+ * probe of the bundle's parent directory (see the block comment above).
+ */
+export function isDiskImageLaunch(input: {
+	bundlePath: string | null;
+	parentWritable: boolean;
+}): boolean {
+	if (!input.bundlePath) return false;
+	if (!input.bundlePath.startsWith(VOLUMES_PREFIX)) return false;
+	return !input.parentWritable;
+}
+
+/** The refusal for a launch from the installer disk image. */
+export function diskImageLaunchBlock(
+	bundlePath: string,
+	version?: string | null,
+): InstallBlock {
+	return {
+		code: "running-from-disk-image",
+		message: version
+			? t("ui.updates.disk_image.message_version", { version })
+			: t("ui.updates.disk_image.message"),
+		remedy: { text: t("ui.updates.disk_image.remedy") },
+		detail: `${bundlePath} is on a read-only volume (the installer disk image); the update cannot be written there.`,
+	};
+}
+
+/** What a "Move to Applications" press came to, in the renderer's terms. */
+export type MoveToApplicationsResult =
+	| { ok: true }
+	| {
+			ok: false;
+			reason: "not-on-disk-image" | "exists" | "exists-and-running" | "failed";
+			/** One localized sentence for the panel. */
+			message: string;
+			detail: string;
+	  };
+
+/**
+ * Move the running bundle out of the disk image and into /Applications.
+ *
+ * `move` is Electron's `app.moveToApplicationsFolder`, injected so the outcome
+ * mapping is testable without Electron. Why that API is safe for this bundle:
+ * it copies the whole sealed `.app` (the signature travels with it, nothing
+ * inside is rewritten), relaunches from the copy, and - for a source inside a
+ * disk image - detaches the image instead of trashing the source, so nothing is
+ * written to the DMG (Electron's `electron_bundle_mover.mm`, `IsInDiskImage`).
+ *
+ * The conflict policy is the one decision that is ours. Electron's default on
+ * an existing `/Applications/Local Operator.app` is to TRASH it and put this
+ * copy in its place - and the copy on a stale installer image is usually OLDER
+ * than the one in Applications (Ryan's image was 0.53.2). Replacing it would be
+ * a silent downgrade, so every conflict declines the move and tells the user to
+ * open the copy that is already there; the user decides, not the image.
+ *
+ * A `false` with no conflict is a cancelled authorization prompt or a failed
+ * copy, and a throw is a failure Electron reported; both are a clear message,
+ * never a retry.
+ */
+export function moveToApplications(deps: {
+	onDiskImage: boolean;
+	move: (options: {
+		conflictHandler: (conflictType: "exists" | "existsAndRunning") => boolean;
+	}) => boolean;
+}): MoveToApplicationsResult {
+	if (!deps.onDiskImage) {
+		return {
+			ok: false,
+			reason: "not-on-disk-image",
+			message: t("ui.updates.disk_image.move_failed"),
+			detail: "The app is not running from a disk image; nothing was moved.",
+		};
+	}
+	let conflict: "exists" | "existsAndRunning" | null = null;
+	try {
+		const moved = deps.move({
+			conflictHandler: (conflictType) => {
+				conflict = conflictType;
+				return false;
+			},
+		});
+		if (moved) return { ok: true };
+	} catch (error) {
+		return {
+			ok: false,
+			reason: "failed",
+			message: t("ui.updates.disk_image.move_failed"),
+			detail: `moveToApplicationsFolder threw: ${String(error)}`,
+		};
+	}
+	if (conflict != null) {
+		return {
+			ok: false,
+			reason: conflict === "existsAndRunning" ? "exists-and-running" : "exists",
+			message: t("ui.updates.disk_image.move_exists"),
+			detail: `A copy already exists in Applications (${conflict}); it was left in place.`,
+		};
+	}
+	return {
+		ok: false,
+		reason: "failed",
+		message: t("ui.updates.disk_image.move_failed"),
+		detail:
+			"moveToApplicationsFolder returned false (authorization cancelled or the copy failed).",
+	};
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * A FREE-SPACE READING THAT CANNOT BE TRUE
+ * ---------------------------------------------------------------------------
+ *
+ * Once the disk-image launch is refused on its own, a reading of exactly 0 (or
+ * NaN, Infinity, a negative number) on a volume the app can WRITE to is not a
+ * full disk: a writable volume with zero available blocks could not have just
+ * stored the download being verified. It is a bad answer from statfs, and
+ * refusing an update on it repeats the incident's mistake (a working path
+ * traded for a guess). So it is treated as UNREADABLE: `bfree` is tried (on
+ * APFS it equals `bavail`; it only overstates by the root reserve on other
+ * file systems), and if that is implausible too the answer is null, which
+ * every caller already treats as "do not refuse" - with a warning naming the
+ * directory and the raw numbers, so a support log shows why it failed open.
+ * A POSITIVE reading below the requirement is believed and still refuses.
+ * A directory that does not exist yet is measured at its nearest existing
+ * ancestor (same volume), rather than being unreadable for that reason alone.
+ */
+
+/** The subset of `fs.StatFs` the reading uses, so tests can inject one. */
+export type StatfsReading = { bavail: number; bfree: number; bsize: number };
+
+export type FreeBytesReading = {
+	/** Free bytes, or null when no plausible reading exists. */
+	bytes: number | null;
+	/** True when a reading was taken but rejected as impossible. */
+	implausible: boolean;
+	/** For the log: what was read and why it was or was not used. */
+	note: string | null;
+};
+
+const plausibleBytes = (value: number): boolean =>
+	Number.isFinite(value) && value > 0;
+
+export function readFreeBytes(
+	dir: string,
+	statfs: (dir: string) => StatfsReading,
+): FreeBytesReading {
+	let probe = dir;
+	let stats: StatfsReading | null = null;
+	let lastError: unknown = null;
+	// Walk up only on ENOENT: any other error (EACCES, EIO) is about THIS volume.
+	for (;;) {
+		try {
+			stats = statfs(probe);
+			break;
+		} catch (error) {
+			lastError = error;
+			const parent = dirname(probe);
+			if ((error as { code?: string })?.code !== "ENOENT" || parent === probe) {
+				break;
+			}
+			probe = parent;
+		}
+	}
+	if (stats == null) {
+		return {
+			bytes: null,
+			implausible: false,
+			note: `Could not read free space for ${dir}: ${String(lastError)}`,
+		};
+	}
+	const available = stats.bavail * stats.bsize;
+	if (plausibleBytes(available)) {
+		return { bytes: available, implausible: false, note: null };
+	}
+	const total = stats.bfree * stats.bsize;
+	const raw = `bavail=${stats.bavail} bfree=${stats.bfree} bsize=${stats.bsize} at ${probe}`;
+	if (plausibleBytes(total)) {
+		return {
+			bytes: total,
+			implausible: true,
+			note: `Implausible available-space reading for ${dir} (${raw}); using bfree instead.`,
+		};
+	}
+	return {
+		bytes: null,
+		implausible: true,
+		note: `Implausible free-space reading for ${dir} (${raw}); treating it as unreadable and not refusing on it.`,
+	};
 }
 
 /**

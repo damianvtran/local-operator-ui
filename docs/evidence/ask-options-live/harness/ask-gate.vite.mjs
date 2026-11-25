@@ -154,6 +154,7 @@ for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
 	"downloadUpdate", "quitAndInstall", "updateBackend",
 	"quitForUpdateInstall",
+	"moveToApplications",
 ]) updater[name] = async () => ({});
 updater.getLastInstallAttempt = async () => null;
 for (const name of [

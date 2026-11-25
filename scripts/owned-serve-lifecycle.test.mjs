@@ -1199,7 +1199,14 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 test("native update handoff awaits owned cleanup before markers/watchdog/install", async () => {
 	const source = readFileSync("src/main/update-service.ts", "utf8");
 	const start = source.indexOf('ipcMain.handle("quit-and-install",');
-	const end = source.indexOf("\n\t\t/**", start);
+	/*
+	 * End at the NEXT handler registration, not at the next docblock: the
+	 * handler that follows ("move-to-applications") is introduced by a `/*`
+	 * comment, so a `/**` boundary swallowed it and the slice then referenced
+	 * `moveToApplications`, which this context does not (and should not) stub.
+	 */
+	const end = source.indexOf("ipcMain.handle(", start + 1);
+	assert.ok(end > start, "no handler follows quit-and-install");
 	const code = (await transform(source.slice(start, end), { loader: "ts" }))
 		.code;
 	for (const failed of [false, true]) {

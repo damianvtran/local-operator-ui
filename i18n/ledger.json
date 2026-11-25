@@ -133944,6 +133944,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "09acbddf41d09f9135a15920d58219cc5abda92a7223f0534c109adc8e357249",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-es.json",
+					"receipt_sha256": "be4da7b1fc4149b1add9eb1197c7c8c9fb5d585bbc5f045650bbfc4f437b2d9c",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "44b3da9519883f37b152046ac569a26635d4157acf0fd46e3f7a571273f0f6e3",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-fr.json",
+					"receipt_sha256": "797a4d74536fe35fd645643ed8e3fd9ffbcc4d54a0caa320f6933d922fa4eb21",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "1ccc7842e3a23a090c6c2589403c316899cf5f9ee571c5532c4db43d3acdeb6b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "70edd884fa93-diskimage-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-hi.json",
+					"receipt_sha256": "583d25e1c0ce1846576b46c5c0c7a9c641512882fb861cf06f6f6b69b634d07e",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "c693794733335073e8adc63f4eb96783092ddcedc4c55493e6e1d253665e97cc",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-ru.json",
+					"receipt_sha256": "52730c9fbe1b9270af4ef7f5992395148ed9b183b22c54d3fe8d12e638278532",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "6ba6eaff58f0d3b53ae6988212d0490792c178e9e34fe6aef49b3c632683b19e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-ur.json",
+					"receipt_sha256": "c50d5b5c648a50d242fb47100a0891a78277cb9f37515a8e8d09e295acd5b3e0",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "7011b11096f1f80fcc83de26e11993bba79f83a91f2f5d050a6204ccece4665f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-vi.json",
+					"receipt_sha256": "2494869d0bc82a8df0529d5d463ea8317432c3689e6c9eadade40a67390e7cae",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.updates.disk_image",
+			"source_sha256": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+			"target_sha256": "3059df20587c0f9c9aa3b00545fc35abd95fb1623a64c94e5473ec253e5ccb54",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "70edd884fa93-diskimage-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/70edd884fa93-diskimage-zh-cn.json",
+					"receipt_sha256": "2a3bf099f9eb0fc4f5487b0f519835237c3752320dcc58a3e7cd2d8c3f176c4d",
+					"scope": "PR #2092 round 1 @ 1211346",
+					"note": "Translator model is the coder lane's usual model, not stated in the PR; unverified. Auditor same family: disclosed."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

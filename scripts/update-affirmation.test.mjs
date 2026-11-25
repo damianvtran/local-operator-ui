@@ -524,6 +524,7 @@ const updater = {
 	getLastInstallAttempt: async () => null,
 	quitAndInstall: async () => false,
 	quitForUpdateInstall: async () => {},
+	moveToApplications: async () => {},
 	downloadUpdate: async () => [],
 	on(event) {
 		return (handler) => {

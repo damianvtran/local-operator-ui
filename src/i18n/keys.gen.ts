@@ -206,6 +206,7 @@ import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeRename from "./catalogues/en/ui.teamBridge.rename.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
 import enUiTeamBridgeTrial from "./catalogues/en/ui.teamBridgeTrial.json";
+import enUiUpdatesDiskImage from "./catalogues/en/ui.updates.disk_image.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import enUiUpdatesService from "./catalogues/en/ui.updates.service.json";
 import enUiUpdatesStatus from "./catalogues/en/ui.updates.status.json";
@@ -394,6 +395,7 @@ import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeRename from "./catalogues/es/ui.teamBridge.rename.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
 import esUiTeamBridgeTrial from "./catalogues/es/ui.teamBridgeTrial.json";
+import esUiUpdatesDiskImage from "./catalogues/es/ui.updates.disk_image.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import esUiUpdatesService from "./catalogues/es/ui.updates.service.json";
 import esUiUpdatesStatus from "./catalogues/es/ui.updates.status.json";
@@ -582,6 +584,7 @@ import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeRename from "./catalogues/fr/ui.teamBridge.rename.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
 import frUiTeamBridgeTrial from "./catalogues/fr/ui.teamBridgeTrial.json";
+import frUiUpdatesDiskImage from "./catalogues/fr/ui.updates.disk_image.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import frUiUpdatesService from "./catalogues/fr/ui.updates.service.json";
 import frUiUpdatesStatus from "./catalogues/fr/ui.updates.status.json";
@@ -770,6 +773,7 @@ import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeRename from "./catalogues/hi/ui.teamBridge.rename.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
 import hiUiTeamBridgeTrial from "./catalogues/hi/ui.teamBridgeTrial.json";
+import hiUiUpdatesDiskImage from "./catalogues/hi/ui.updates.disk_image.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import hiUiUpdatesService from "./catalogues/hi/ui.updates.service.json";
 import hiUiUpdatesStatus from "./catalogues/hi/ui.updates.status.json";
@@ -958,6 +962,7 @@ import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeRename from "./catalogues/ru/ui.teamBridge.rename.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
 import ruUiTeamBridgeTrial from "./catalogues/ru/ui.teamBridgeTrial.json";
+import ruUiUpdatesDiskImage from "./catalogues/ru/ui.updates.disk_image.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import ruUiUpdatesService from "./catalogues/ru/ui.updates.service.json";
 import ruUiUpdatesStatus from "./catalogues/ru/ui.updates.status.json";
@@ -1146,6 +1151,7 @@ import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeRename from "./catalogues/ur/ui.teamBridge.rename.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
 import urUiTeamBridgeTrial from "./catalogues/ur/ui.teamBridgeTrial.json";
+import urUiUpdatesDiskImage from "./catalogues/ur/ui.updates.disk_image.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import urUiUpdatesService from "./catalogues/ur/ui.updates.service.json";
 import urUiUpdatesStatus from "./catalogues/ur/ui.updates.status.json";
@@ -1334,6 +1340,7 @@ import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeRename from "./catalogues/vi/ui.teamBridge.rename.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
 import viUiTeamBridgeTrial from "./catalogues/vi/ui.teamBridgeTrial.json";
+import viUiUpdatesDiskImage from "./catalogues/vi/ui.updates.disk_image.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import viUiUpdatesService from "./catalogues/vi/ui.updates.service.json";
 import viUiUpdatesStatus from "./catalogues/vi/ui.updates.status.json";
@@ -1522,6 +1529,7 @@ import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeRename from "./catalogues/zh-CN/ui.teamBridge.rename.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
 import zhCNUiTeamBridgeTrial from "./catalogues/zh-CN/ui.teamBridgeTrial.json";
+import zhCNUiUpdatesDiskImage from "./catalogues/zh-CN/ui.updates.disk_image.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 import zhCNUiUpdatesService from "./catalogues/zh-CN/ui.updates.service.json";
 import zhCNUiUpdatesStatus from "./catalogues/zh-CN/ui.updates.status.json";
@@ -1713,6 +1721,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeRename,
 	...enUiTeamBridgeThreadRow,
 	...enUiTeamBridgeTrial,
+	...enUiUpdatesDiskImage,
 	...enUiUpdatesPanel,
 	...enUiUpdatesService,
 	...enUiUpdatesStatus,
@@ -1909,6 +1918,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeRename,
 		...esUiTeamBridgeThreadRow,
 		...esUiTeamBridgeTrial,
+		...esUiUpdatesDiskImage,
 		...esUiUpdatesPanel,
 		...esUiUpdatesService,
 		...esUiUpdatesStatus,
@@ -2099,6 +2109,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeRename,
 		...frUiTeamBridgeThreadRow,
 		...frUiTeamBridgeTrial,
+		...frUiUpdatesDiskImage,
 		...frUiUpdatesPanel,
 		...frUiUpdatesService,
 		...frUiUpdatesStatus,
@@ -2289,6 +2300,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeRename,
 		...hiUiTeamBridgeThreadRow,
 		...hiUiTeamBridgeTrial,
+		...hiUiUpdatesDiskImage,
 		...hiUiUpdatesPanel,
 		...hiUiUpdatesService,
 		...hiUiUpdatesStatus,
@@ -2479,6 +2491,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeRename,
 		...ruUiTeamBridgeThreadRow,
 		...ruUiTeamBridgeTrial,
+		...ruUiUpdatesDiskImage,
 		...ruUiUpdatesPanel,
 		...ruUiUpdatesService,
 		...ruUiUpdatesStatus,
@@ -2669,6 +2682,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeRename,
 		...urUiTeamBridgeThreadRow,
 		...urUiTeamBridgeTrial,
+		...urUiUpdatesDiskImage,
 		...urUiUpdatesPanel,
 		...urUiUpdatesService,
 		...urUiUpdatesStatus,
@@ -2859,6 +2873,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeRename,
 		...viUiTeamBridgeThreadRow,
 		...viUiTeamBridgeTrial,
+		...viUiUpdatesDiskImage,
 		...viUiUpdatesPanel,
 		...viUiUpdatesService,
 		...viUiUpdatesStatus,
@@ -3049,6 +3064,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeRename,
 		...zhCNUiTeamBridgeThreadRow,
 		...zhCNUiTeamBridgeTrial,
+		...zhCNUiUpdatesDiskImage,
 		...zhCNUiUpdatesPanel,
 		...zhCNUiUpdatesService,
 		...zhCNUiUpdatesStatus,
@@ -15253,6 +15269,14 @@ export type MessageParams = {
 	"ui.teamBridgeTrial.paused.note": { date: string };
 	"ui.teamBridgeTrial.paused.note_member": { date: string };
 	"ui.teamBridgeTrial.subscribe": undefined;
+	"ui.updates.disk_image.heading": undefined;
+	"ui.updates.disk_image.message": undefined;
+	"ui.updates.disk_image.message_version": { version: string };
+	"ui.updates.disk_image.move_button": undefined;
+	"ui.updates.disk_image.move_exists": undefined;
+	"ui.updates.disk_image.move_failed": undefined;
+	"ui.updates.disk_image.moving": undefined;
+	"ui.updates.disk_image.remedy": undefined;
 	"ui.updates.panel.artifact.damaged.message": undefined;
 	"ui.updates.panel.artifact.damaged.message_version": { version: string };
 	"ui.updates.panel.artifact.metadata_missing.message": undefined;

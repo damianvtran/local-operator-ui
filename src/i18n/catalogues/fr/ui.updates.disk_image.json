@@ -1,0 +1,10 @@
+{
+	"ui.updates.disk_image.heading": "Cette copie ne peut pas se mettre à jour",
+	"ui.updates.disk_image.message": "Local Operator s'exécute depuis l'image disque d'installation : la mise à jour ne peut donc pas être installée ici.",
+	"ui.updates.disk_image.message_version": "Local Operator s'exécute depuis l'image disque d'installation : la mise à jour vers la version {version} ne peut donc pas être installée ici.",
+	"ui.updates.disk_image.remedy": "Déplacez l'app vers le dossier Applications, puis mettez-la à jour depuis cet emplacement.",
+	"ui.updates.disk_image.move_button": "Déplacer vers Applications",
+	"ui.updates.disk_image.moving": "Déplacement…",
+	"ui.updates.disk_image.move_exists": "Local Operator se trouve déjà dans Applications : cette copie n'a donc pas été déplacée. Quittez-la, puis ouvrez Local Operator depuis Applications.",
+	"ui.updates.disk_image.move_failed": "Impossible de déplacer Local Operator vers Applications. Quittez l'app, faites-la glisser dans Applications dans le Finder, puis ouvrez-la depuis cet emplacement."
+}

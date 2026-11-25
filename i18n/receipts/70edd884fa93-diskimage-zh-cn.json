@@ -1,0 +1,20 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "70edd884fa93-diskimage-zh-cn",
+	"date": "2026-11-24",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer session 70edd884fa93), not the translator (coder lane). Read committed bytes of PR #2092 at 1211346 plus the hi fix in the audit commit; no translation authored otherwise.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2092,
+	"head": "1211346508d",
+	"scope": "All 8 keys of ui.updates.disk_image read against en and en context: meaning, idiom, register, {version} placeholder byte-identical, NFC, no Cc/Cf, no ASCII '...', button length vs row width",
+	"namespace": "ui.updates.disk_image",
+	"status": "passed",
+	"sha256": {
+		"en": "dd3c687f1820bb5bebb01cb70e8b71279eadf15879e7c2f49c2e05e91f88f864",
+		"zh-CN": "3059df20587c0f9c9aa3b00545fc35abd95fb1623a64c94e5473ec253e5ccb54"
+	},
+	"findings": [],
+	"resolved": []
+}
