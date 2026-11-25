@@ -582,25 +582,43 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the dialog's ground and the row's ground are the same family, so the row's mark is the whole fix; reverting it to the accent wash alone restores a 1.003:1 selection on the default palette and keeps every palette assertion in this file green",
 	},
 	{
-		what: "picker option row pointer tint",
+		what: "non-anchored picker option row pointer tint",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
-		/*
-		 * `!option.disabled` joined the condition in review round 1 (U2): a refused
-		 * row keeps its `cursor: not-allowed` and its reason but NOT the wash -
-		 * the wash is this picker's "you may click this" signal, and painting it on
-		 * a row that cannot be picked gave the pointer two contradictory answers.
-		 * The pin follows the expression rather than the old spelling: the ROLE the
-		 * entry exists for is that a SETTABLE row paints this ground, and the
-		 * disabled gate is exactly what the round asked for.
-		 */
-		must: 'isHovered && !isActive && !option.disabled && "bg-accent-wash"',
-		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2), and withheld from a refused row (review round 1, U2)",
+		must: '!anchored &&\n\t\t\t\t\t\tisHovered &&\n\t\t\t\t\t\t!isActive &&\n\t\t\t\t\t\t!option.disabled &&\n\t\t\t\t\t\t"bg-accent-wash"',
+		why: "dialog and fallback rows keep their accent wash for settable pointer targets, distinct from keyboard selection; anchored Model/Effort instead paint their own neutral pointer tone",
+	},
+	{
+		what: "anchored picker option row pointer scope",
+		file: "src/renderer/src/styles/index.css",
+		must: `@media (hover: hover) {
+	[data-quick-picker][data-picker-placement="anchored"]
+		[role="option"][data-hovered="true"]:not(
+			[aria-selected="true"],
+			[aria-disabled="true"],
+			[data-picked="true"]
+		),
+	[data-quick-picker][data-picker-placement="anchored"]
+		[data-picker-hover]:enabled:hover:not(:active) {
+		background-color: var(--picker-pointer);
+	}`,
+		why: "the paper hover applies only to pointer-capable anchored pickers; it must not signal a disabled row is clickable or overwrite the keyboard target or in-flight pick",
+	},
+	{
+		what: "anchored picker option row pointer tone",
+		file: "src/renderer/src/styles/index.css",
+		/* A shipped recipe pin, not a new palette floor: the pointer tone comes
+		 * from neutral paper, not an accent role in the flat-hex palette loop. */
+		must: `--picker-pointer: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 10%),
+		color-mix(in srgb, var(--picker-paper), white 9%)
+	);`,
+		why: "anchored hover steps darker on light paper and brighter on dark paper, without needing accent tint or a perimeter",
 	},
 	{
 		/*
 		 * The picker row's STRUCTURAL mark, and the other half of design D12.
 		 *
-		 * The tint above is pinned because it is a deliberate state; it is NOT
+		 * The non-anchored tint is pinned because it is a deliberate state; it is NOT
 		 * enough on its own, and this pin is what says so. `accent-wash` is ΔE00
 		 * 0.77 on the dialog's own ground in obsidian — no mark at all — and
 		 * perceptibility is a property of the role pair, not of the class string,
@@ -611,12 +629,10 @@ const STRUCTURAL_CALL_SITES = [
 		 * role assertion and an edit that drops the edge fails this one. Reverting
 		 * this expression to the tint alone is what the two pins catch together.
 		 */
-		what: "picker option row structural mark",
+		what: "non-anchored picker option row structural mark",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
-		/* `!option.disabled` joined this arm in review round 1 too (U2); see the
-		 * tint entry above for why the gate is the point rather than a drift. */
-		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
-		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12) - for settable rows; a refused row carries neither half (review round 1, U2)",
+		must: '!anchored &&\n\t\t\t\t\t\t(isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "dialog and fallback rows still need an edge for the in-flight and settable pointer marks because their accent wash alone can be imperceptible; anchored rows deliberately have no perimeter",
 	},
 	{
 		what: "turn answer rail role",
