@@ -384,11 +384,14 @@ the two state roles spend the palette's own `accent` hue at a bounded fraction o
 its chroma, so what a reader should carry from this paragraph is the lesson — a
 band bought with chroma alone does not answer the report — and not the ratios.
 
-**Elevation is a lightness step, not a shadow.** There is exactly one shadow in
-the system and it belongs only to objects that leave the flow: menu, dialog,
-drawer, popover, tooltip, select. An in-flow card that needs to feel raised
-takes the next ground, not a shadow. This is why the four grounds must be
-mutually distinguishable, and why `check-themes` asserts it.
+### Floating panels
+
+**The ground provides separation; the shadow supports it.** Use a single
+`shadow-overlay` only for surfaces that leave the flow: menus, pickers,
+popovers, tooltips, drawers, dialogs and other floating cards. An ordinary
+in-flow card that needs to feel raised takes the next ground, not a shadow.
+This is why the four grounds must be mutually distinguishable, and why
+`check-themes` asserts it.
 
 **A floating surface separates by surface contrast AND elevation — never by a
 stroke.** (Operator report, 2026-11-06: a session-list tooltip, the canvas rail's
@@ -411,16 +414,30 @@ bare.) The rule that follows, and it applies to every leave-flow surface:
   that would make tailwind-merge drop `shadow-overlay`, or a contact-less
   `--shadow-overlay`. It is a static check; a computed border is a browser
   run's evidence.
+- **Give floating panels a quiet, palette-driven finish.** Use a low-contrast
+  tone-on-tone gradient on the panel ground. Where the material calls for an
+  opaque neutral ground, take its lightness from `elevated`: the [anchored Model
+  and Effort pickers](https://github.com/damianvtran/local-operator-ui/pull/2112)
+  are the solid-paper reference. They borrow the finish from the
+  [Nested dock](#composer-the-nested-dock) without copying its in-flow treatment.
+  An optional shallow top gleam fades out before the corners and never traces
+  the perimeter. Use the shared primitives, palette roles
+  and semantic state treatments, not per-panel hex values or bespoke shadows.
+  The finish must not mute text, icons, or focus and checked-state indicators.
 - **The boundary is the shadow's contact layer.** `--shadow-overlay` composes a
   tight contact layer (`--lo-shadow-contact`, derived from the palette's `scrim`
   role) with the palette ambient, so there is real darkening AT the edge and the
   panel reads on every theme. A `0 0 0 1px` ring is not a substitute: zero blur
   makes it a border drawn with a shadow.
-- **On window glass it is restrengthened, never lightened.** A menu, popover,
-  tooltip or select list stays translucent on glass (the operator's request,
-  #1706; see § Window glass) with a 12px backdrop blur, and its contact layer is
-  the same `scrim` contact pulled 50% toward black - darker and a little stronger,
-  never stepped toward `ink`. On a dark palette ink is near-white, and an
+- **The finish does not change the panel's material.** Keep the existing
+  [Window glass](#window-glass-translucency-on-by-default-where-supported)
+  coverage, contrast preferences and opacity exceptions. The anchored composer
+  pickers deliberately stay solid; do not extend that exception to other
+  pickers by default. Menus, popovers, tooltips and select lists that use glass
+  stay translucent with a 12px backdrop blur (#1706); the finish must not add
+  an opaque plate. Their contact layer is the same `scrim` contact pulled 50%
+  toward black - darker and a little stronger, never stepped toward `ink`.
+  On a dark palette ink is near-white, and an
   ink-mixed "shadow" is a light rim: the lighter-than-surface outline the operator
   reported, drawn with a shadow instead of a border. `contrast-contract.mjs`
   measures the contact as painted (blurred coverage at the edge, both desktop
@@ -455,6 +472,21 @@ bare.) The rule that follows, and it applies to every leave-flow surface:
   Dialog footers take `tonal` through the shared `SecondaryButton`. Chips,
   badges and avatars inside a floating panel are in-flow content and keep their
   own treatment (a badge's hairline is the badge's, not the panel's).
+
+**First migration pass (planned, not yet applied):** Team picker, Device
+picker and sidebar View options. Keep each panel on its shared primitive and
+preserve the existing interaction and state semantics.
+
+**Rendered evidence for each migration:** Capture before/after in dark and
+light themes, with Window glass on and off where supported. Repeat at compact
+width and with high contrast, including forced colors where supported. Verify
+there is no perimeter (except the forced-colors stroke), no clipping, and that
+text and state indicators clear their contrast floors on the actual ground.
+Use the keyboard to open, move, select and dismiss the panel; verify focus
+returns to the trigger on keyboard dismissal. Where the panel has checked
+items, capture a frame where focus or the active row differs from the checked
+value: both must read independently. The shadow must survive focus outside
+forced colors.
 
 ### The four inks
 
