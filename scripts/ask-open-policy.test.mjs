@@ -38,6 +38,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/renderer/src/features/chat/ask-open-policy";
 			export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";
+			export { resolveSessionAskFrame } from "./src/renderer/src/features/chat/session-asks";
 		`,
 		loader: "ts",
 		resolveDir: process.cwd(),
@@ -75,6 +76,7 @@ const {
 	createAskDismissals,
 	createAskOpenView,
 	decideAskAutoOpen,
+	resolveSessionAskFrame,
 	shouldCloseCarriedDrawer,
 } = policy;
 
@@ -230,6 +232,26 @@ test("D5 - the sheet refusal's sentence claims nothing about a surface", () => {
 		),
 		"the drawer did not open, so the region must not say it did",
 	);
+});
+
+test("a cold conversation does not auto-open for a native Team Bridge row in the aggregate", () => {
+	const conversation = resolveSessionAskFrame(
+		"c-a",
+		{},
+		{
+			capability: "live",
+			rows: [
+				ask("open", {
+					session_id: "c-a",
+					questions: [{ bridge: { kind: "bridge" }, question_id: "q-1" }],
+				}),
+			],
+		},
+	);
+	const { view } = pane();
+	const { verdict } = view.observe(frame(conversation));
+	assert.equal(verdict.action, "leave");
+	assert.equal(verdict.reason, "nothing-pending");
 });
 
 test("state 1 - no asks on open: closed, and an ask that arrives later does not open it", () => {

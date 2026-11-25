@@ -96,6 +96,7 @@ const row = (over = {}) => ({
 const CLAIMLESS = {};
 const PENDING = { rows: null, capability: "unknown" };
 const answered = (rows) => ({ rows, capability: "live" });
+const nativeBridgeQuestion = { bridge: { kind: "bridge" }, question_id: "q-1" };
 
 test("a claimless frame with the aggregate still in flight is LOADING, never unavailable", () => {
 	const frame = resolveSessionAskFrame(SESSION, CLAIMLESS, PENDING);
@@ -126,6 +127,35 @@ test("a claimless frame takes its rows and count from the aggregate, filtered by
 	assert.equal(view.published, true);
 	assert.equal(view.unread, false);
 	assert.equal(view.rows.length, 2);
+});
+
+test("a native-only aggregate resolves to an empty conversation queue", () => {
+	const native = row({ questions: [nativeBridgeQuestion] });
+	const aggregate = answered([native]);
+	const frame = resolveSessionAskFrame(SESSION, CLAIMLESS, aggregate);
+	assert.deepEqual(frame, { asks: null, asks_open: 0, asks_truncated: false });
+	// Requests, fleet, and signing share the raw aggregate, not this projection.
+	assert.deepEqual(aggregate.rows, [native]);
+});
+
+test("conversation fallback keeps ordinary, site, and unmarked bridge questions", () => {
+	const ordinary = row({ ask_id: "ordinary" });
+	const site = row({
+		ask_id: "site",
+		questions: [
+			{ site: { origin: "https://example.com" }, question_id: "site:v1:qa" },
+		],
+	});
+	const withoutId = row({
+		ask_id: "no-id",
+		questions: [{ bridge: { kind: "bridge" }, question_id: "" }],
+	});
+	const native = row({ ask_id: "native", questions: [nativeBridgeQuestion] });
+	const aggregate = answered([ordinary, site, withoutId, native]);
+	const frame = resolveSessionAskFrame(SESSION, CLAIMLESS, aggregate);
+	assert.deepEqual(frame.asks, [ordinary, site, withoutId]);
+	assert.equal(frame.asks_open, 3);
+	assert.deepEqual(aggregate.rows, [ordinary, site, withoutId, native]);
 });
 
 test("an empty aggregate slice is a RESOLVED empty queue, not an unavailable one", () => {
@@ -224,6 +254,13 @@ test("a tally-only frame keeps the canonical tally when the index holds fewer ro
 	);
 });
 
+test("a positive canonical tally does not refill from a native Team Bridge row", () => {
+	const canonical = { asks: null, asks_open: 1, asks_truncated: true };
+	const native = row({ questions: [nativeBridgeQuestion] });
+	const frame = resolveSessionAskFrame(SESSION, canonical, answered([native]));
+	assert.deepEqual(frame, canonical);
+});
+
 test("canonical rows win over the aggregate", () => {
 	const canonicalRow = row({ ask_id: "canonical" });
 	const canonical = {
@@ -301,6 +338,23 @@ test("a slice at the projection cap is conservatively marked possibly truncated 
 		false,
 		"below the cap the slice is the population",
 	);
+});
+
+test("filtering native requests cannot make a capped aggregate look complete", () => {
+	const visible = row({ ask_id: "visible" });
+	const native = Array.from(
+		{ length: ASK_AGGREGATE_SESSION_CAP - 1 },
+		(_, index) =>
+			row({ ask_id: `native-${index}`, questions: [nativeBridgeQuestion] }),
+	);
+	const frame = resolveSessionAskFrame(
+		SESSION,
+		CLAIMLESS,
+		answered([...native, visible]),
+	);
+	assert.deepEqual(frame.asks, [visible]);
+	assert.equal(frame.asks_open, 1);
+	assert.equal(frame.asks_truncated, true);
 });
 
 test("the page resolves the frame once and both surfaces receive it (R1-3)", async () => {
