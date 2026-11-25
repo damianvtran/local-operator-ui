@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Link } from "react-router-dom";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
@@ -142,7 +143,9 @@ export function AuditFailure({
 			</p>
 			{state === "auth" && (
 				<Button variant="ghost" asChild>
-					<a href="#/settings?section=radient">{t("ui.ownerAudit.sign_in")}</a>
+					<Link to="/settings?section=radient">
+						{t("ui.ownerAudit.sign_in")}
+					</Link>
 				</Button>
 			)}
 			{(state === "error" || state === "unavailable") && (

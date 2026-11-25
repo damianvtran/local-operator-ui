@@ -3,8 +3,13 @@ import { paletteDoorLabel } from "@features/command-palette/palette-shortcut";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { isolateLtr } from "@shared/i18n/isolate-ltr";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	MAC_PLATFORM,
+	navigationShortcutLabel,
+} from "@shared/navigation-gesture";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	ArrowLeft,
@@ -27,7 +32,7 @@ export function DesktopNavigationControls({
 }) {
 	useI18nLocale();
 	const rtl = useTextDirection() === "rtl";
-	const isMac = navigator.platform.toUpperCase().includes("MAC");
+	const isMac = MAC_PLATFORM.test(navigator.platform);
 	const navigate = useNavigate();
 	const { canBack, canForward } = useDesktopNavigationAvailability();
 	const backLabel = t("ui.browser.browser_url_bar.back");
@@ -35,6 +40,10 @@ export function DesktopNavigationControls({
 	const sidebarLabel = expanded
 		? t("ui.shell.sidebar_navigation.collapse_sidebar")
 		: t("ui.shell.sidebar_navigation.expand_sidebar");
+	const primary = isMac ? "Meta" : "Control";
+	const sidebarChord = isolateLtr(sidebarToggleCap(isMac));
+	const backChord = isolateLtr(navigationShortcutLabel("back", isMac));
+	const forwardChord = isolateLtr(navigationShortcutLabel("forward", isMac));
 	const paletteChords = {
 		everything: isolateLtr(paletteDoorLabel("everything", isMac)),
 		chats: isolateLtr(paletteDoorLabel("chats", isMac)),
@@ -50,7 +59,15 @@ export function DesktopNavigationControls({
 	// These tips sit over shell/Browser chrome, above the native browser body.
 	return (
 		<div data-desktop-navigation="" data-titlebar-no-drag="">
-			<Tooltip content={sidebarLabel}>
+			<Tooltip
+				content={
+					routeOwnsSidebar ? (
+						sidebarLabel
+					) : (
+						<ShortcutText text={`${sidebarLabel} (${sidebarChord})`} />
+					)
+				}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
@@ -60,7 +77,7 @@ export function DesktopNavigationControls({
 					aria-label={sidebarLabel}
 					aria-expanded={expanded}
 					aria-disabled={routeOwnsSidebar}
-					aria-keyshortcuts={sidebarToggleCap(isMac)}
+					aria-keyshortcuts={routeOwnsSidebar ? undefined : `${primary}+B`}
 					onClick={() => {
 						if (!routeOwnsSidebar) toggleSidebar();
 					}}
@@ -68,7 +85,7 @@ export function DesktopNavigationControls({
 					<Sidebar aria-hidden="true" />
 				</Button>
 			</Tooltip>
-			<Tooltip content={backLabel}>
+			<Tooltip content={<ShortcutText text={`${backLabel} (${backChord})`} />}>
 				<Button
 					variant="ghost"
 					size="icon-sm"
@@ -76,6 +93,7 @@ export function DesktopNavigationControls({
 					type="button"
 					data-desktop-back=""
 					aria-label={backLabel}
+					aria-keyshortcuts={`${primary}+[`}
 					aria-disabled={!canBack}
 					onClick={() => {
 						if (canBack) navigate(-1);
@@ -84,7 +102,9 @@ export function DesktopNavigationControls({
 					<Back aria-hidden="true" />
 				</Button>
 			</Tooltip>
-			<Tooltip content={forwardLabel}>
+			<Tooltip
+				content={<ShortcutText text={`${forwardLabel} (${forwardChord})`} />}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
@@ -92,6 +112,7 @@ export function DesktopNavigationControls({
 					type="button"
 					data-desktop-forward=""
 					aria-label={forwardLabel}
+					aria-keyshortcuts={`${primary}+]`}
 					aria-disabled={!canForward}
 					onClick={() => {
 						if (canForward) navigate(1);
@@ -101,7 +122,14 @@ export function DesktopNavigationControls({
 				</Button>
 			</Tooltip>
 			<Tooltip
-				content={t("ui.shell.sidebar_navigation.search_tooltip", paletteChords)}
+				content={
+					<ShortcutText
+						text={t(
+							"ui.shell.sidebar_navigation.search_tooltip",
+							paletteChords,
+						)}
+					/>
+				}
 			>
 				<Button
 					variant="ghost"
