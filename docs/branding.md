@@ -613,33 +613,41 @@ it are separate surfaces and follow the floating-surface rules.
   explicit Jump to latest action. Conditional transcript fades belong to the
   scroller and never cover the dock, its controls or focus.
 
-Reference: [Desktop #2040](https://github.com/damianvtran/local-operator-ui/pull/2040),
-[Composer placement](../src/renderer/src/features/chat/components/composer-placement.stories.tsx)
+Implementation: [Chat page](../src/renderer/src/features/chat/components/chat-page.tsx)
+for transcript, status and dock placement, shared
+[`MessageInput`](../src/renderer/src/shared/components/composer/message-input.tsx)
+for the shelf, editor and action row, and
+[`.composer-dock` styles](../src/renderer/src/styles/index.css) for the material.
+Use [Composer placement](../src/renderer/src/features/chat/components/composer-placement.stories.tsx)
 for status, compact layout and glass, and
 [Attachments preview](../src/renderer/src/features/chat/components/attachments-preview.stories.tsx)
 for staging, dismissal and focus return.
 
 ### Shared inset for primary pages
 
-**One inner frame, not an inset window.** Use `WorkspaceFrame` at the route body
-boundary. The ordinary frame has 8px logical inline and bottom gutters and 10px
-corners, without a border, `PanelEdge`, shadow or second backing. App navigation,
-native controls and drag surfaces, the real panel rail and shell-level Fleet
-Asks are shell chrome, not children of the inset. The visible gutter replaces the shell seams where it separates the
-page from those rails, not on legacy flush joins. It continues the shell/tab
-`surface` ground (at the sidebar's own glass alpha when covered) in the exposed
-gutters and corners only. Bare native material here reads as a dark outline;
-filling behind the frame instead would double the body glass. The rails must
-read on their own grounds, even with no inspector open.
+**One inner frame, not an inset window.** Use
+[`WorkspaceFrame`](../src/renderer/src/shared/components/common/workspace-frame.tsx)
+at the route body boundary; see `.workspace-frame` in the
+[shared stylesheet](../src/renderer/src/styles/index.css). The ordinary frame
+has 8px paired logical inline gutters, an 8px bottom gutter and 10px corners,
+without a border, `PanelEdge`, shadow or second backing. App navigation stays
+full-height; it and the native controls, drag surfaces, shell panel rail and
+Fleet Asks sit outside the inset. The gutter replaces a shell seam where it
+separates the two grounds, not on a legacy flush join. It continues shell
+`surface` (at the sidebar's glass alpha when covered) in the exposed gutters
+and corners only. Bare native material there reads as an outline; filling
+behind the body instead would double its glass. The rails must read on their
+own grounds even with no inspector open.
 
 **Share the boundary, not the layout.** The outlet holds the same frame through
 loading, empty, error and content. Ordinary routes spend the platform's
-clearance before the frame, and that 32px band above it is painted in the
+clearance before the frame. Where present, that band is painted in the
 gutter's own role and colour (the shell/tab `surface`, at the sidebar's glass
 alpha when covered) — never left as bare window material — so the inset reads
-the same on all four sides. The band stays a window drag surface; tabs will
-later occupy it on every page, as they already do on Chat. Settings (including subsection links) and Agents
-(including saved-agent detail) explicitly match a full-height split variant:
+the same at the top as at the other edges. Leave the unused integrated band
+draggable; ordinary routes do not gain Chat's workspace tabs. Settings
+(including subsection links) and Agents (including saved-agent detail)
+explicitly use a full-height split variant:
 the secondary navigation sidebar runs full height from y0 to the bottom on
 `surface`, while the content pane sits beside it inside `<WorkspaceFrame
 variant="full-height">` with even 8px gutters on all four sides (top, bottom,
@@ -647,19 +655,23 @@ left, right) and 10px rounded corners. Both columns clear the transparent lane
 or trailing caption band once inside their painted column, above the scroller
 (the inset content column subtracts the 8px top gutter already paid), so
 neither controls nor scrolled rows can sit under the drag target. Fullscreen
-uses the normal smaller clearance inside the same grounds. Scrollable inset
-inner areas carry `[data-lo-pane-edge-cues]` (24px scroll-driven top and bottom
-fades, zero at rest; `[data-lo-pane-edge-cues="bottom"]` where `sticky top-0`
-section headers sit at the top edge so pinned headers are never dimmed).
-Route-local actions, independent list/detail scrolling, sticky bands, narrow
-layout replacements and focus return stay with the page. Keep content cards,
-semantic boundaries and visible focus; don't wrap each column in a card.
+uses the normal smaller clearance inside the same grounds. For scrollable
+inner areas, put `[data-lo-pane-edge-cues]` on the scroller, not the frame:
+the shared 24px cues appear only where content can continue past an edge and
+clear at that edge's endpoint. Use `="bottom"` if a sticky top section header
+would be dimmed. Keep fixed controls outside the mask; the shared CSS opts
+out for marked sticky footers and Ask actions. Route-local actions, independent
+list/detail scrolling, sticky bands, narrow layout replacements and focus
+return stay with the page. Don't nest frames or turn layout columns into a
+card grid. Keep real content cards (such as project items), semantic boundaries
+and visible focus where they serve the task.
 
-**Show the work, not a second tab label.** A redundant page identity is an
-`sr-only` h1, not an icon, display heading and introduction above the controls.
-Keep selected item names and meaningful headings, setup or safety instructions,
-empty and error text, and the actual controls. If there is no toolbar, don't
-leave an empty title row.
+**Show the work, not a second route label.** A redundant page identity can be
+an `sr-only` h1 rather than an icon, display heading and introduction above the
+controls. Keep selected item names, meaningful headings, setup or safety text,
+empty/error messages and the actual controls. A conversation title you can read
+and rename on supported layouts is context, not a duplicate route heading.
+If there is no toolbar, don't leave an empty title row.
 
 **Share geometry, not an alpha layer.** Off stays solid. Sidebars only keeps
 its sidebar coverage and solid page/pane grounds. Full app keeps the existing
@@ -692,19 +704,13 @@ only / Full app. Renderer geometry and screenshots are not native hit testing:
 measure Browser resize, clicks, overlays, and route-exit hide (and Console's grid
 and crop after its Chat host moves) in the actual app.
 
-**Offline integrated preview.** The source checks cover 17 live route patterns
-in pending and settled states, including the shell/adapter boundary and Browser
-bounds reporting. They are not a rendered frame or native click check. The
-previous 1380×900 Settings capture shows clipped glyphs on the trailing edge
-while the spinner is visible, not in the settled frame. Its recorded body rect
-stayed at `[268, 32, 1104, 860]` throughout that sample. The matched route now
-prevents a retained Chat portal from painting into the zero-width rail host;
-that is a source invariant, not proof that the portal caused those pixels or
-that they are gone. Recapture this transition, the complete route matrix and
-the native Browser interactions on this candidate before asking for approval.
-Do not merge or release before the operator has seen that evidence.
+Use the [workspace-frame source checks](../scripts/workspace-frame.test.mjs)
+for route ownership and the Browser adapter boundary. When changing a frame,
+capture both pending and settled states; an unchanged frame rectangle does not
+prove text or a portal is painted inside it. Keep candidate-specific captures
+and release readiness on the PR, not in this contract.
 
-### Panels: one seam, edge-to-edge, fading at the top
+### Edge-to-edge rails and legacy flush panels
 
 A full-height panel is a region that owns a ground at the window's edge — the app
 sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
@@ -713,7 +719,7 @@ route-local column inside the [Shared inset](#shared-inset-for-primary-pages)
 never draws `PanelEdge`. Only the explicit full-height split variant spends
 native clearance inside its panes rather than above the frame.
 
-- **An edge-to-edge panel draws one seam, and still no border.** The tone step is
+- **At a legacy flush join, draw at most one seam and no border.** The tone step is
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
   75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
   alone is not enough between two full-height planes: `canvas` to `surface`
@@ -743,11 +749,11 @@ native clearance inside its panes rather than above the frame.
     facing the content in RTL; the class is pinned in
     `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
     this change.
-- **Edge-to-edge panels extend through the titlebar strip; no top inset on the
-  panel; the scroll region clips and fades under it.** A panel that owns its
-  ground at the window edge (the app sidebar, the shell panel rail, or a
-  legacy flush route) starts at y0 and paints its own ground through the
-  traffic lights' band. Its first content row is padded by
+- **Edge-to-edge rails paint through the title-bar strip.** The app sidebar,
+  shell panel rail and full-height secondary rails start at y0 and keep their
+  own ground behind the native controls' band. Clear the first row inside the
+  grounded column, not by offsetting the rail. Keep that clearance outside
+  the scroller so rows clip and fade below the chrome. Use
   `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
   content column for every route. Use that shared clearance rather than
   computing a route-specific titlebar inset.
@@ -757,10 +763,9 @@ native clearance inside its panes rather than above the frame.
     panel column (it pushes the column's first row below the strip while the
     panel's ground keeps y0). The shell pads primary page bodies once on
     `<main>`; their nested columns use neither utility.
-  - The titlebar lane is a single transparent overlay for every route. It
-    reserves no height and paints no ground; there is no route opt-in, and
-    no gradient mirror of the columns. Only the drag surface and
-    `data-slot-edge` remain on it.
+  - In integrated chrome, the shell's title-bar overlay supplies drag surface,
+    not a second painted header. Keep the rail's ground continuous underneath;
+    route-owned controls and gutters paint their own surfaces.
   - **A scroll region must clip at the panel's content edge, so its pad sits
     outside the scroller.** A scroll container's own `padding-top` clips at
     its padding box, which lets scrolled text paint through the strip; the
@@ -775,10 +780,14 @@ native clearance inside its panes rather than above the frame.
     grounded, `panel-flush` ancestor needs no ground of its own — and must not
     take one, which would put a second tone step inside a single panel.
 - **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
-- **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
-  the scroller uses the shared scroll-driven mask: content dissolves under the
-  top spacing rather than being cut by a hard boundary, and the fade is zero at
-  rest so the first row is not dimmed for no reason.
+- **A scrolling rail must clear its top edge.** Keep title-bar clearance
+  outside the scroller and use a scroll-driven top cue so rows dissolve under
+  that edge after scrolling, never dimming the first row at the top endpoint.
+  The app sidebar and Library filter rail use `[data-lo-sidebar-edge-cues]`;
+  full-height Settings and Agents secondary lists use `[data-lo-pane-edge-cues]`.
+  The shared stylesheet supplies a bottom cue as well where the scroller uses
+  that rule. The top clearance of a rail is distinct from the paired inner
+  cues of a primary workspace.
 - **A panel footer/composer sits outside the scroller.** The scroll container
   ends above it; content never paints underneath it.
 - **Narrow windows replace, they do not overlay.** A detail rail that cannot
@@ -809,17 +818,35 @@ route inventory and body boundary.
   border, `PanelEdge` seams, extra card/backing or shell shadow. These Chat-specific rules build on the shared primary-page inset; they
   are not a new palette or a ban on content cards, native menus, or necessary
   focus and forced-colors boundaries.
-- **Only tabs have a resting fill in the workspace controls.** Keep it quiet
-  and borderless. Show the conversation title once in the chrome, in its tab;
-  keep rename in the existing actions. Team/Agent/Device selectors and other
+- **Selected-only tab fill is the design target.** Inactive tabs rest clear and
+  take a quiet hover tone. Give only the selected tab a slightly stronger
+  `row-selected`-based fill, full-strength ink and medium title weight; keep
+  the programmatic current state. No bottom rail, underline or accent marker.
+  [Desktop #2109](https://github.com/damianvtran/local-operator-ui/pull/2109)
+  tracks the implementation; this target is not a claim about released builds.
+  A subtle frost or sheen may follow the existing chrome material, but do not
+  stack a track, card or opaque backing beneath it.
+- **Split navigation from context.** The Chat workspace tabs sit above the
+  framed body and its controls. Native Browser has its own tab/address chrome
+  and viewport; it does not use Chat's tabs. Keep the readable title and inline
+  rename when supported in the [Chat header](../src/renderer/src/features/chat/components/chat-header.tsx),
+  even though the tab also names the conversation. Do not add resting shadows
+  to Team/Agent/Device selectors or icon buttons. These
   workspace chrome buttons rest transparent and borderless. Keep focus-visible
   outlines, a non-colour selected cue and the existing hit areas.
 - **Use the actual OS titlebar band where integrated chrome is available.**
   Fit the tabs between the existing native exclusion zones and leave empty
-  space draggable. Make the controls and their full hit areas no-drag. Keep
-  pinned tabs in a lane independent of regular scrolling, with scrollable
-  overflow bounded to its lane. Reorder within a lane by drag or accessible
-  move actions; crossing lanes requires explicit pin/unpin.
+  space draggable. Respect the physical caption controls in RTL. Use the shell's
+  `data-titlebar-drag` region for empty space and `data-titlebar-no-drag` for
+  complete interactive hit areas, including tab lanes, title/rename and the
+  overflow control. Native window drag is not tab reordering. Keep the strip
+  above the inset when the platform does not integrate it.
+- **Keep tab actions local and the strip usable under overflow.**
+  [`WorkspaceTabs`](../src/renderer/src/features/chat/components/workspace-tabs.tsx)
+  gives pinned and regular tabs separate bounded scroll lanes and the strip a
+  distinct overflow menu. Keep per-tab actions distinct from strip actions.
+  Preserve keyboard navigation and focus handoff; reorder within a lane by
+  drag or accessible move actions, and cross lanes only by explicit pin/unpin.
 - **Tab close only removes workspace membership.** Keep the conversation, its
   draft and its runtime. Automatic cleanup is opt-in for inactive regular tabs
   confirmed at rest. Pinned tabs never auto-close; if rest cannot be confirmed,
@@ -838,9 +865,20 @@ route inventory and body boundary.
   typography, inset and spacing within and between sections as Today, Running
   and the other conversation groups. Match their uppercase display on the
   group label only, not in translation strings or on a containing section.
-  The app sidebar draws them this way on every route, not only while Chat is
-  open: no route decides the heading variant, the row fills or the built-in
-  install action's style.
+  Align leading labels/avatars and trailing action slots with conversation
+  rows; hover and keyboard focus can reveal actions without moving labels or
+  changing row height. Keep the alignment and resting styles independent of
+  the active route. See the shared
+  [`SidebarSectionHeading`](../src/renderer/src/features/chat/components/sidebar-section-heading.tsx)
+  and [app sidebar](../src/renderer/src/features/chat/components/chat-sidebar.tsx).
+- **Conversation row selection (design target; implementation is a follow-up).**
+  Give the current conversation a persistent rounded background in the same
+  visual family as row hover, but distinguish selection from a hovered
+  neighbour. Make the hover fill brighter and easy to see in dark themes.
+  Paint one fill, not stacked layers, a border or an accent rail. Keep
+  `aria-current` and an independent `:focus-visible` outline that shows on both
+  selected and unselected rows. This is the sidebar row rule, separate from
+  the title-bar tab treatment tracked in #2109.
 
 #### Shared inset evidence
 
@@ -1228,8 +1266,34 @@ First-run setup (`features/onboarding/onboarding-stage.css`, scoped to
 
 Why: the operator found the old 640px setup dialog "flat and unexciting", and the
 first screen is where a new user decides what kind of product this is. Why scoped:
-none of these treatments has earned a place in task UI, where attention belongs to
-the work. A second surface that wants any of them needs its own case here.
+the stage effects do not carry over to task UI, where attention belongs to the
+work. The helix motif itself can travel under the narrower rule below.
+
+#### Signature helix: optional brand motion
+
+The helix frames a stationary Local Operator mark with front and back strands
+crossing around it. Use the motif sparingly for an opted-in brand moment, not
+as a loading signal, control, repeated card decoration or substitute for the
+mark. The desktop references are the shared
+[`BrandMark`](../src/renderer/src/shared/components/common/brand-mark.tsx),
+[`NewChatHorizon`](../src/renderer/src/shared/components/composer/new-chat-horizon.tsx),
+its [scoped styles](../src/renderer/src/shared/components/composer/new-chat-horizon.css)
+and [motion controller](../src/renderer/src/shared/components/composer/new-chat-horizon-motion.ts).
+Reuse the composition, not the first-run timeline, glow, sign-in button or
+renderer dependencies. Keep the effect inside its own space, with restrained
+palette-role colour, no layout shift and no obscured content or controls.
+
+**For public assets and pages:** start with an approved still or the canonical
+mark. If you add motion, the still/mark must work on its own when playback is
+unavailable, reduced motion or forced colours is on, or the input is touch or
+keyboard rather than a mouse. Pointer response is an optional enhancement:
+keep it off on touch, away from hit targets, and never require hover or
+animation to read content or act. Keep decorative art out of focus order and
+assistive announcements; expose the brand name separately if the art is the
+only identity. Suspend work when the page is hidden or the effect is offscreen;
+stop listeners and animation on unmount. A poster, thumbnail, export or
+screenshot should still read as the brand without motion. This is guidance for
+reuse, not a claim that a public asset or page has already adopted it.
 
 ### Icons
 
@@ -1531,11 +1595,12 @@ in an isolated lane (both need a live conversation), and the wallpaper worst cas
 here is a declared composite of the app's own alpha frames rather than a capture
 over a real desktop.
 
-**The selected tab is an overlay, not a pill.** A tab's opaque `bg-surface` /
-`bg-elevated` fill is a hole in a translucent strip; inside a covered pane the
-selected pill takes the selected ink step (8%), the same as a selected row. The
-tab strip itself is a plane (`clear`), because 8% over a strip's own 5% field
-would stack to 12.7% and put `inkMuted` at 4.18:1 on dracula. Measured at 8% over
+**Inside a covered pane, the selected tab is an overlay, not an opaque
+pill.** This is the nested pane rule, not the [Chat workspace title-bar
+rule](#shared-inset-chat-workspace). A tab's opaque `bg-surface` / `bg-elevated`
+fill is a hole in a translucent pane strip. Its selected state takes the ink
+step (8%), the same as a selected row, over a clear strip: 8% over a strip's own
+5% field would stack to 12.7% and put `inkMuted` at 4.18:1 on dracula. Measured at 8% over
 the pane: `inkMuted` 4.76:1, `inkDim` 3.92:1, `ink` 6.16:1 - the worst palette,
 all three material tiers. A row HOVER inside a covered pane is the row-hover ink
 overlay; the rail's `hover:bg-surface` / `hover:bg-sunken` utilities are translated
