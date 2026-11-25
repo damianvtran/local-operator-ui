@@ -90,7 +90,10 @@ import { Check } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
-import { invalidateApprovalMode } from "../../session-status/approval-mode-chip";
+import {
+	invalidateApprovalMode,
+	useApprovalMode,
+} from "../../session-status/approval-mode-chip";
 
 /** Which gate the press loosens: the live one, or the saved default. */
 /**
@@ -306,6 +309,7 @@ export const APPROVAL_ESCAPE_COPY = {
 	setSession: () => t("ui.chat.approval.escape.set_session"),
 	setAll: () => t("ui.chat.approval.escape.set_all"),
 	alwaysAsk: () => t("ui.chat.approval.escape.always_ask"),
+	alwaysAskScope: () => t("ui.chat.approval.escape.always_ask_scope"),
 	askSaved: () => t("ui.chat.approval.escape.ask_saved"),
 	/**
 	 * What auto does NOT switch off. The operator's condition for the one-click
@@ -404,12 +408,14 @@ const ESCAPE_LINK =
 	"inline-flex min-h-11 items-center rounded-sm text-meta text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:no-underline";
 
 /*
- * A handle whose state already holds: success ink, no underline, and the
+ * A handle whose state already holds: warning ink (design round 1, D3 - the
+ * composer chip marks Auto amber, and "auto is on" is one fact with one tone;
+ * amber also matches the guardrail note's "this loosens a check"), no underline, and the
  * not-allowed cursor dropped - the press is not refused, it is finished. The
  * `disabled:` variants of ESCAPE_LINK would otherwise paint it as unavailable.
  */
 const DONE_HANDLE =
-	"disabled:cursor-default disabled:text-success hover:no-underline";
+	"disabled:cursor-default disabled:text-warning hover:no-underline";
 
 /*
  * The handle whose press is in flight (design round 1, D1): its label IS the
@@ -644,6 +650,9 @@ export const ApprovalEscapeControls = ({
 						data-approval-escape-ask=""
 						data-state={askState}
 						disabled={busy && askState !== "pending"}
+						// The handle sits beside "all sessions" but moves only this one
+						// (design round 1, D5); the label is the operator's own wording.
+						title={APPROVAL_ESCAPE_COPY.alwaysAskScope()}
 						aria-disabled={askState === "pending" || undefined}
 						aria-busy={askState === "pending" || undefined}
 						aria-describedby={statusId}
@@ -739,20 +748,59 @@ export const ApprovalEscape = ({
 	 */
 	const inFlight = useRef(false);
 	/*
-	 * A SAVED STATE ENDS WHEN THE MODE MOVES AWAY FROM AUTO (agent review round 1,
-	 * N3). "done" otherwise lasted the component's lifetime, so a mode changed back
-	 * while the dock stayed mounted left a disabled handle saying "Auto is on".
-	 * Keyed on the reported mode CHANGING, so the save itself - which lands before
-	 * the snapshot reports "auto" - is not undone by the stale "ask" it replaced.
+	 * THE LIVE MODE, SHARED WITH THE CHIP (design round 1, D1 / QA Q1). The gate's
+	 * `approval_mode` describes the policy when the request was RAISED; a chip
+	 * press or a typed `/approvals` while the card stays mounted left it saying
+	 * "Ask - session override" beside a chip saying Auto, offering the loosening
+	 * that already held and hiding the way back. Every approvals route
+	 * invalidates this one query, so the card reads it too. Until its first
+	 * answer (or on an unknown value) the gate-carried mode stands.
+	 *
+	 * Provenance: the query carries only the mode. A mode that DIFFERS from the
+	 * gate's was moved by a session command after the request was raised, which
+	 * is a session override by definition; an equal mode keeps the gate's own
+	 * provenance, the best fact available.
+	 */
+	const live = useApprovalMode(sessionId);
+	const liveMode = live.updatedAt > 0 ? live.mode : null;
+	const mode: ApprovalEscapeMode | undefined = liveMode ?? approvalMode;
+	const provenance: ApprovalEscapeProvenance | undefined =
+		liveMode && liveMode !== approvalMode ? "session" : approvalProvenance;
+	/*
+	 * A NEW OR CHANGED GATE IS A FRESH POLICY READING (design D4 / QA Q2): the
+	 * runtime stamps the gate with the mode at the moment it asked, so a gate
+	 * whose stamp moved - including a change from the TUI or another client -
+	 * is the cheap signal to re-read the shared query the chip paints from.
+	 */
+	// One stamp for mode + provenance, so a provenance-only move also re-reads.
+	const gateStamp =
+		approvalMode === undefined
+			? null
+			: `${approvalMode}|${approvalProvenance ?? ""}`;
+	useEffect(() => {
+		if (gateStamp === null) return;
+		invalidateApprovalMode(client, sessionId);
+	}, [gateStamp, client, sessionId]);
+	/*
+	 * A CONFIRMATION ENDS WHEN THE MODE STOPS MATCHING IT (agent review round 1,
+	 * N3; design round 1, D1). "Auto is on" after a chip switch back to ask - or
+	 * "asks again" after a switch to auto - would be a claim about a mode the
+	 * session no longer has. Keyed on the mode CHANGING, so the save itself
+	 * (which lands before the re-read reports the new mode) is not undone by the
+	 * stale value it replaced.
 	 */
 	useEffect(() => {
-		if (approvalMode === undefined || approvalMode === "auto") return;
-		setStatus((current) =>
-			current.kind === "session-saved" || current.kind === "default-saved"
-				? { kind: "idle" }
-				: current,
-		);
-	}, [approvalMode]);
+		if (!mode) return;
+		setStatus((current) => {
+			const claims =
+				current.kind === "session-saved" || current.kind === "default-saved"
+					? "auto"
+					: current.kind === "ask-saved"
+						? "ask"
+						: null;
+			return claims && claims !== mode ? { kind: "idle" } : current;
+		});
+	}, [mode]);
 
 	const editDefault = useCallback(
 		(value: string) =>
@@ -806,8 +854,8 @@ export const ApprovalEscape = ({
 	);
 
 	const policy = policyAfterSave(status, {
-		mode: approvalMode,
-		provenance: approvalProvenance,
+		mode,
+		provenance,
 		globalMode: approvalGlobalMode,
 	});
 	return (

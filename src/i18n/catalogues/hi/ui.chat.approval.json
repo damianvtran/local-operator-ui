@@ -3,6 +3,7 @@
 	"ui.chat.approval.chip.switch_to_ask": "हर टूल से पहले फिर से पूछने के लिए क्लिक करें।",
 	"ui.chat.approval.chip.switch_to_auto": "इस सत्र में टूल अपने-आप स्वीकृत करने के लिए क्लिक करें।",
 	"ui.chat.approval.escape.always_ask": "हमेशा पूछें",
+	"ui.chat.approval.escape.always_ask_scope": "केवल यह सत्र",
 	"ui.chat.approval.escape.ask_saved": "यह सत्र फिर से हर टूल से पहले पूछेगा — इस अनुरोध का उत्तर अभी भी देना है।",
 	"ui.chat.approval.escape.bridge_latched": "इस बातचीत में “Allow all” और auto बंद हैं। auto चालू करने के लिए टर्मिनल में /approvals auto टाइप करें, या नई बातचीत के लिए /new इस्तेमाल करें।",
 	"ui.chat.approval.escape.default_saved": "इस बातचीत के लिए ऑटो सेट किया गया; जो सत्र डिफ़ॉल्ट अपनाते हैं, उनके लिए इसे डिफ़ॉल्ट के रूप में सहेजा गया। जिन बातचीतों की अपनी पसंद है, वे उसी पर रहती हैं। इस अनुरोध पर अब भी जवाब देना बाकी है।",

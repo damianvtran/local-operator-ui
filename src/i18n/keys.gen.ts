@@ -4952,6 +4952,7 @@ export type MessageParams = {
 	"ui.chat.approval.chip.switch_to_ask": undefined;
 	"ui.chat.approval.chip.switch_to_auto": undefined;
 	"ui.chat.approval.escape.always_ask": undefined;
+	"ui.chat.approval.escape.always_ask_scope": undefined;
 	"ui.chat.approval.escape.ask_saved": undefined;
 	"ui.chat.approval.escape.bridge_latched": undefined;
 	"ui.chat.approval.escape.default_saved": undefined;

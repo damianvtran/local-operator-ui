@@ -29,6 +29,13 @@
 		"role": "link under an approval request, shown while the session is on auto, that turns approval prompts back on",
 		"tone": "short imperative, sentence case, no trailing period"
 	},
+	"ui.chat.approval.escape.always_ask_scope": {
+		"length": "2-4 words",
+		"note": "Says the 'Always ask' link changes only this conversation, not every session; it sits next to the all-sessions link.",
+		"placeholders": {},
+		"role": "tooltip on the 'Always ask' link under an approval request",
+		"tone": "plain, no trailing period"
+	},
 	"ui.chat.approval.escape.ask_saved": {
 		"length": "",
 		"note": "The pending request is still unanswered; keep that clause.",

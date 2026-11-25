@@ -3,6 +3,7 @@
 	"ui.chat.approval.chip.switch_to_ask": "点击后将再次在每个工具运行前询问。",
 	"ui.chat.approval.chip.switch_to_auto": "点击后本会话将自动批准工具。",
 	"ui.chat.approval.escape.always_ask": "始终询问",
+	"ui.chat.approval.escape.always_ask_scope": "仅限本会话",
 	"ui.chat.approval.escape.ask_saved": "本会话将再次在每个工具运行前询问——此请求仍需回答。",
 	"ui.chat.approval.escape.bridge_latched": "此对话中已关闭“Allow all”和auto。要开启auto，请在终端中输入/approvals auto，或使用/new开始新对话。",
 	"ui.chat.approval.escape.default_saved": "此对话已设为自动，并保存为后续会话的默认设置；已有自己设置的对话保持不变。此请求仍需要回答。",

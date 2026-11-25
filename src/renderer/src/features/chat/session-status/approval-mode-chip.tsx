@@ -30,7 +30,14 @@ import { cn } from "@shared/lib/utils";
  * a guessed mode is worse than no chip.
  */
 import type { QueryClient } from "@tanstack/react-query";
-import { type FC, useCallback, useState } from "react";
+import { ArrowRightLeft } from "lucide-react";
+import { type FC, useCallback, useEffect, useState } from "react";
+// Cycle-safe like `useEntities` below: the card's exports are only called at
+// run time, never at module evaluation.
+import {
+	APPROVAL_ESCAPE_COPY,
+	runApprovalEscape,
+} from "../components/trace/approval-escape";
 import { useEntities } from "../pickers/destination-pickers";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import { READING_BUTTON } from "./session-status-strip";
@@ -61,6 +68,25 @@ export function approvalModeFrom(current: unknown): "auto" | "ask" | null {
 	return current === "auto" || current === "ask" ? current : null;
 }
 
+/**
+ * The session's live approval mode as the backend last reported it, plus when
+ * that report landed. THE ONE READ every approval-mode surface shares (design
+ * round 1, D1): the chip and the approval card both call this, so a chip press,
+ * a card link or a typed `/approvals` - each of which invalidates this key -
+ * repaints both. `updatedAt` is 0 until a first answer, which lets the card
+ * keep its gate-carried mode until the query has said something newer.
+ */
+export function useApprovalMode(sessionId: string): {
+	mode: "auto" | "ask" | null;
+	updatedAt: number;
+} {
+	const entities = useEntities<{ value: string }>(sessionId, "approvals");
+	return {
+		mode: approvalModeFrom(entities.data?.current),
+		updatedAt: entities.data === undefined ? 0 : entities.dataUpdatedAt,
+	};
+}
+
 /** The command a press sends: the opposite of the reported mode. */
 export const approvalToggleArgs = (mode: "auto" | "ask"): "auto" | "ask" =>
 	mode === "auto" ? "ask" : "auto";
@@ -68,9 +94,15 @@ export const approvalToggleArgs = (mode: "auto" | "ask"): "auto" | "ask" =>
 export const ApprovalModeChipView: FC<{
 	mode: "auto" | "ask" | null;
 	busy?: boolean;
+	/**
+	 * The backend's reason the last press did not change the mode (agent review
+	 * round 1, M1). Shown as the card shows it - `Unchanged: <detail>` - so a
+	 * refused loosening (bridge latch, operator consent) is never a silent no-op.
+	 */
+	refusal?: string | null;
 	onToggle: () => void;
 	className?: string;
-}> = ({ mode, busy = false, onToggle, className }) => {
+}> = ({ mode, busy = false, refusal = null, onToggle, className }) => {
 	useI18nLocale();
 	if (!mode) return null;
 	const word =
@@ -84,25 +116,51 @@ export const ApprovalModeChipView: FC<{
 	// The tooltip carries what the switch does AND what auto never disables
 	// (the operator's condition: guardrails still bind in auto mode).
 	const tip = `${action} ${t("ui.chat.approval.escape.guardrails_note")}`;
+	const refused = refusal ? APPROVAL_ESCAPE_COPY.unchanged(refusal) : null;
 	return (
-		<button
-			type="button"
-			data-approval-mode-chip=""
-			data-mode={mode}
-			aria-busy={busy || undefined}
-			disabled={busy}
-			title={tip}
-			aria-label={`${t("ui.chat.approval.chip.label", { mode: word })}. ${tip}`}
-			onClick={onToggle}
-			className={cn(
-				READING_BUTTON,
-				mode === "auto" && "text-warning",
-				"disabled:cursor-progress",
-				className,
-			)}
-		>
-			{t("ui.chat.approval.chip.label", { mode: word })}
-		</button>
+		<span className="inline-flex min-w-0 items-center gap-1">
+			<button
+				type="button"
+				data-approval-mode-chip=""
+				data-mode={mode}
+				aria-busy={busy || undefined}
+				disabled={busy}
+				title={refused ? `${refused}\n${tip}` : tip}
+				aria-label={`${t("ui.chat.approval.chip.label", { mode: word })}. ${tip}`}
+				onClick={onToggle}
+				className={cn(
+					READING_BUTTON,
+					mode === "auto" && "text-warning",
+					"disabled:cursor-progress",
+					className,
+				)}
+			>
+				{t("ui.chat.approval.chip.label", { mode: word })}
+				{/*
+				 * The resting affordance (design round 1, D2): at rest the chip used the
+				 * static readings' type and ink, so only hover showed it was a control.
+				 * The swap glyph says "press to switch" without a second label.
+				 */}
+				<ArrowRightLeft
+					aria-hidden="true"
+					className="size-3 shrink-0 opacity-70"
+				/>
+			</button>
+			{/*
+			 * The refusal sits beside the chip, truncated (the strip has no room for a
+			 * sentence); the full text is the chip's tooltip and this element's title.
+			 * `<output>` announces it once without moving focus.
+			 */}
+			{refused ? (
+				<output
+					data-approval-mode-refusal=""
+					title={refused}
+					className="block max-w-64 truncate text-danger text-meta"
+				>
+					{refused}
+				</output>
+			) : null}
+		</span>
 	);
 };
 
@@ -111,18 +169,40 @@ export const ApprovalModeChip: FC<{
 	sessionId: string;
 	className?: string;
 }> = ({ sessionId, className }) => {
-	const entities = useEntities<{ value: string }>(sessionId, "approvals");
+	const { mode } = useApprovalMode(sessionId);
 	const command = useSessionCommand(sessionId);
 	// Optional: the shared composer also mounts in documents with no provider
 	// (the mini view), where `useQueryClient` would throw.
 	const { client } = useOptionalQueryClient();
 	const [pressing, setPressing] = useState(false);
-	const mode = approvalModeFrom(entities.data?.current);
+	const [refusal, setRefusal] = useState<string | null>(null);
+	// A refusal describes the mode it failed to leave; once the mode moves (any
+	// surface), it is no longer true.
+	useEffect(() => {
+		if (mode) setRefusal(null);
+	}, [mode]);
 	const toggle = useCallback(async () => {
 		if (!mode || pressing) return;
 		setPressing(true);
+		setRefusal(null);
 		try {
-			await command.run("approvals", approvalToggleArgs(mode));
+			/*
+			 * The card's own classifier, not a second reading of the receipt: a
+			 * `notice` that is the no-gates sentence, a `block`, a `native_action`
+			 * and a transport failure are all refusals there, and the chip must not
+			 * call any of them a switch. Only the live-gate arms run, so the
+			 * default-setting port is never reached.
+			 */
+			const outcome = await runApprovalEscape(
+				approvalToggleArgs(mode) === "auto" ? "session" : "ask",
+				{
+					runCommand: (name, args) =>
+						command.run(name, args, APPROVAL_ESCAPE_COPY.notChanged()),
+					editDefault: () =>
+						Promise.reject(new Error("the chip never edits the default")),
+				},
+			);
+			if (outcome.kind !== "saved") setRefusal(outcome.detail);
 		} finally {
 			// Repaint from the backend's answer, success or refusal alike.
 			await client.invalidateQueries({ queryKey: approvalModeKey(sessionId) });
@@ -133,6 +213,7 @@ export const ApprovalModeChip: FC<{
 		<ApprovalModeChipView
 			mode={mode}
 			busy={pressing || command.busy}
+			refusal={refusal}
 			onToggle={() => void toggle()}
 			className={className}
 		/>

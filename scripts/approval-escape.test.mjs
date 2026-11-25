@@ -596,7 +596,9 @@ test("the pressed handle says it is working, then says what now holds", () => {
 	const allTag = buttonOpeningTag(done, "Auto is now the default");
 	assert.match(allTag, /data-state="done"/);
 	assert.match(allTag, / disabled(?:=""|\s|>)/);
-	assert.match(allTag, /disabled:text-success/);
+	// D3: "auto is on" shares the chip's amber, not success green.
+	assert.match(allTag, /disabled:text-warning/);
+	assert.doesNotMatch(allTag, /text-success/);
 	assert.match(
 		buttonOpeningTag(done, "Auto is on for this session"),
 		/data-state="done"/,
@@ -645,10 +647,8 @@ test("N3/N4: a saved state ends when the mode moves back, and the reveal scrolls
 		"src/renderer/src/features/chat/components/trace/approval-escape.tsx",
 		"utf8",
 	);
-	assert.match(
-		source,
-		/if \(approvalMode === undefined \|\| approvalMode === "auto"\) return;/,
-	);
+	// N3's behaviour (a confirmation ends when the mode moves) is now mounted
+	// for real in approval-mode-live.test.mjs; only the N4 scroll pin stays here.
 	assert.doesNotMatch(source, /scrollIntoView\?\.\(/);
 	assert.match(source, /revealInOwnScroller\(line\)/);
 });

@@ -3,6 +3,7 @@
 	"ui.chat.approval.chip.switch_to_ask": "Click to ask before every tool again.",
 	"ui.chat.approval.chip.switch_to_auto": "Click to auto-approve tools in this session.",
 	"ui.chat.approval.escape.always_ask": "Always ask",
+	"ui.chat.approval.escape.always_ask_scope": "This session only",
 	"ui.chat.approval.escape.ask_saved": "This session asks before every tool again — this request still needs an answer.",
 	"ui.chat.approval.escape.bridge_latched": "Allow all and auto are off in this conversation. To turn auto on, type /approvals auto in the terminal, or use /new for a fresh conversation.",
 	"ui.chat.approval.escape.default_saved": "Auto set for this conversation; saved as the default for sessions that follow it. Conversations with their own choice keep it. This request still needs an answer.",
