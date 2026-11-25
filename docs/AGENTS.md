@@ -1,44 +1,54 @@
-# Agent notes — interface panels
+# Agent notes — workspace layout and chrome
 
-These are the panel rules an agent changing a desktop surface must follow.
-They are part of the visual system in `docs/branding.md`; that file owns the
-colour and ground rationale, this file is the short enforceable checklist.
+Use this checklist alongside the [branding contract](branding.md), which owns
+geometry, material and interaction rationale.
 
-## Panels
+## Primary workspace and rails
 
-A **panel** is a region that owns a ground beside the canvas: the app sidebar,
-a route's leading rail, a roster, a detail/dock pane. It is not a card, an
-input, a menu or a popover.
+- **One rounded, unbordered [Shared inset](branding.md#shared-inset-for-primary-pages).**
+  Use `WorkspaceFrame` across route states. Chat, Agent Hub, Library, Projects
+  and Notifications share that boundary, not a common layout. Settings and
+  Agents frame only their content, with even gutters beside their edge-to-edge
+  secondary rails. Do not nest frames, add canvas backing, outline layout
+  regions or turn columns into a card grid.
+- **Keep the app sidebar full height.** At an edge-to-edge rail, the box that
+  paints the ground also owns title-bar clearance, outside the scroller. Use
+  the shared rail top cue (`data-lo-sidebar-edge-cues` in the app sidebar),
+  not an inset band or a border. A legacy flush join may have one `PanelEdge`;
+  no seam where an inset gutter already separates the grounds. Library's
+  filter rail is local to its frame, not window-edge chrome.
+- **Fade the inner scroll edges, not the frame.** Use `data-lo-pane-edge-cues`
+  for the paired cues where content can scroll further; use the bottom-only
+  variant for a pinned top header and keep controls out of the mask. Chat uses
+  its own transcript cue and keeps the composer outside the scroller. When the
+  Library detail cannot fit beside its list, replace the list instead of
+  floating the dock over it.
 
-- **A panel runs edge-to-edge to the top of the content area**, under the
-  title-bar lane. It is never inset below a header and never starts below its
-  own scroll content. Route-owned leading columns hand themselves to the shell
-  with `useLaneLeadingColumn("surface")` so the lane paints the same ground
-  above them (`scripts/lane-leading.test.mjs`).
-- **A panel has no border.** Separation comes from the ground ladder
-  (`canvas` / `surface` / `elevated` / `sunken`) and spacing. Do not add a
-  `border-r`, `border-l`, `border-t` or `border-b` to a panel root; a 1px rule
-  is a second, redundant mark and it cannot reach the top through the shell's
-  clipped columns. `border-control` stays the boundary of an input, select,
-  checkbox or outlined button — not a panel edge.
-- **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. The Library search, sort and filter controls take the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
-- **A scrolling panel fades at its top edge.** Put
-  `data-lo-sidebar-edge-cues` on the panel's scroller; the shared scroll-driven
-  mask in `styles/index.css` dissolves content under the top spacing instead of
-  clipping it against a hard boundary.
-- **The padded box is the grounded box.** The element that wears
-  `panel-top-pad` must be the same box that paints the panel's ground. A padded
-  wrapper with no ground of its own is the inset band the rule forbids, and a
-  content column inside a grounded, `panel-flush` ancestor needs no ground of
-  its own.
-- **Keep the composer/panel footer outside the scroller.** The scroll container
-  ends above it; content never paints underneath it.
-- **Narrow windows replace, they do not overlay.** When the detail rail cannot
-  fit beside the content at its minimum width, the selected asset becomes the
-  full-width route view; the content column and filter rail step aside. The
-  filter rail itself collapses into the Filters sheet below 1200px. A panel never
-  floats over another panel's content.
+## Title bar, sidebar rows and composer
 
-The Library filter rail is the reference implementation: full-height
-`bg-surface` column, `data-lo-sidebar-edge-cues`, no edge rule, with the
-preview dock separated by the `surface` ground rather than a line.
+- **Tabs above Chat's inset controls.** Integrated chrome keeps native drag
+  space and reserves `no-drag` for full interactive hit areas. Test mouse and
+  keyboard separately. Native Browser owns its tab/address chrome; don't add
+  the Chat strip to other routes. Keep editable conversation context where
+  supported and trim redundant route headings, not meaningful titles.
+- **Quiet, visible states.** Workspace selectors and icon buttons rest without
+  paper or stroke. Keep hover and focus visible without moving rows or controls.
+  The [Chat tab rule](branding.md#shared-inset-chat-workspace) describes the
+  selected-only fill and no-rail target tracked in #2109; don't apply the
+  nested glass-pane tab rule to the title bar. Preserve separate pinned and
+  regular lanes, bounded overflow, keyboard moves and safe tab cleanup.
+- **Align sidebar sections.** Teams and Agents share `SidebarSectionHeading`,
+  label inset and spacing with Today and Running. Uppercase only the visual
+  group label. Align leading content and trailing hover/focus actions without
+  reflow, and keep launcher actions separate from history/manage actions. The
+  [conversation row target](branding.md#shared-inset-chat-workspace) calls for
+  one persistent selection fill, brighter dark hover and independent focus;
+  the sidebar follow-up is separate from #2109.
+- **Keep the [Nested dock](branding.md#composer-the-nested-dock) matte in Chat.**
+  Status above; context shelf and writing well in one dock; staged files and
+  draft actions in the editor. Frost/gloss is subtle and must not change the
+  glass coverage or add a resting or focus frame. Keep visible caret and
+  control focus.
+
+For public asset reuse, follow the [signature helix](branding.md#signature-helix-optional-brand-motion)
+contract: optional decorative motion with a complete static fallback.
