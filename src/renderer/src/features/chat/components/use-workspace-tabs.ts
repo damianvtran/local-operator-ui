@@ -1,3 +1,4 @@
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { getCurrentPath } from "@shared/utils/path-utils";
@@ -13,9 +14,11 @@ import {
 	saveWorkspaceTabsWithTitles,
 	savedWorkspaceTabsDiffer,
 	savedWorkspaceTitle,
+	snapshotConversationTitle,
 	syncWorkspaceTabs,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
+	workspaceTabsAwaitingTitle,
 	workspaceTarget,
 } from "../workspace-tabs-model";
 
@@ -182,6 +185,60 @@ export function useWorkspaceTabs(
 			store.setWorkspaceTabs(saved);
 		}
 	}, [tabs, sessions, seenRevision]);
+
+	/*
+	 * ASK A TAB NOBODY CAN NAME FOR ITS NAME (operator, 2026-11-25: "New chat"
+	 * tabs after some time). A session tab with no head-page row, no header seen
+	 * this run and no saved title is a real conversation the strip has simply
+	 * never been told the name of - typically one far down the activity order
+	 * that was restored before titles were saved. Once the catalogue settles,
+	 * read its snapshot (the same `sessions.get` opening the tab performs; Core
+	 * #4576 fills its title from the stored one) and remember the answer like a
+	 * header title, which also saves it so the next launch needs no request.
+	 *
+	 * Once per session per run (`titleLookups`), sequential, best-effort: a
+	 * failed or untitled answer leaves the existing "New chat" fallback rather
+	 * than retrying. The ids are marked BEFORE the await so a re-render while
+	 * one is in flight cannot issue a second read for it.
+	 */
+	const catalogueSettled = useCanonicalSessionsStore(
+		(state) => state.head.at > 0 || state.error !== null,
+	);
+	const savedTabs = useUiPreferencesStore((state) => state.workspaceTabs);
+	const titleLookups = useRef(new Set<string>());
+	useLayoutEffect(() => {
+		void seenRevision;
+		const pending = workspaceTabsAwaitingTitle({
+			tabs,
+			rows: new Map(sessions.map((row) => [row.session_id, row.title])),
+			seen: titles.current,
+			saved: savedTabs,
+			catalogueSettled,
+			attempted: titleLookups.current,
+		});
+		if (pending.length === 0) return;
+		for (const { id } of pending) titleLookups.current.add(id);
+		void (async () => {
+			for (const { key, id } of pending) {
+				try {
+					const snapshot = await desktopResult<unknown>({
+						op: "sessions.get",
+						sessionId: id,
+					});
+					rememberTitle(key, snapshotConversationTitle(snapshot));
+				} catch {
+					// A title is decoration: a refused or failed read keeps the fallback.
+				}
+			}
+		})();
+	}, [
+		tabs,
+		sessions,
+		savedTabs,
+		catalogueSettled,
+		seenRevision,
+		rememberTitle,
+	]);
 
 	const open = ({ target }: WorkspaceTab, ticket?: object) => {
 		if (target.kind === "draft") {

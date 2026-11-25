@@ -322,6 +322,68 @@ export function saveWorkspaceTabsWithTitles(
 	);
 }
 
+/**
+ * Session tabs that NO source can name, and that have not been looked up yet
+ * this run.
+ *
+ * WHY (operator, 2026-11-25: "I'm still ending up with 'New chat' tabs after
+ * some time"). Their strip held a session tab saved with no title whose
+ * conversation DOES have a stored title, but sat ~290 rows deep in activity
+ * order - far below the 50-row head page - and was not the active tab. Row,
+ * header and saved title were all empty, so after the catalogue settled the
+ * tab drew "New chat" for the whole run and saved nothing for the next one.
+ * A tab whose name is missing from every local source must ASK for it (the
+ * caller reads the session's snapshot, which carries the stored title since
+ * Core #4576) rather than settle to a label that claims the chat is empty.
+ *
+ * CONSTRAINTS. Only once the catalogue has settled (until then the row may
+ * still arrive, and the tab is already drawing its loading state); never a
+ * draft (a draft genuinely is a new chat); and at most once per session per
+ * run (`attempted`), so a conversation with no title, a deleted one, or a
+ * failing read costs one request rather than a loop.
+ */
+export function workspaceTabsAwaitingTitle(input: {
+	tabs: readonly WorkspaceTab[];
+	rows: ReadonlyMap<string, string | null | undefined>;
+	seen: Readonly<Record<string, string>>;
+	saved: readonly SavedWorkspaceTab[];
+	catalogueSettled: boolean;
+	attempted: ReadonlySet<string>;
+}): { key: string; id: string }[] {
+	if (!input.catalogueSettled) return [];
+	const saved = new Map(input.saved.map((row) => [row.id, row.title]));
+	return input.tabs.flatMap(({ key, target }) => {
+		if (target.kind !== "session" || input.attempted.has(target.id)) return [];
+		const named =
+			savedWorkspaceTitle(input.rows.get(target.id)) ??
+			savedWorkspaceTitle(input.seen[key]) ??
+			savedWorkspaceTitle(saved.get(target.id));
+		return named ? [] : [{ key, id: target.id }];
+	});
+}
+
+/**
+ * The stored conversation title out of a `sessions.get` snapshot answer, or
+ * null. Core fills a cold snapshot's blank `conversation_title` from the same
+ * resolver the catalogue row uses (Core #4576), so the tab and the sidebar
+ * agree. Defensive like `sessionCwdFromSnapshot`: the document is not part of
+ * the typed contract, and a missing layer means "no name", never a throw.
+ */
+export function snapshotConversationTitle(snapshot: unknown): string | null {
+	const payload = (snapshot as { payload?: unknown } | null | undefined)
+		?.payload;
+	const frontend = (payload as { frontend?: unknown } | null | undefined)
+		?.frontend;
+	const state = (frontend as { snapshot?: unknown } | null | undefined)
+		?.snapshot;
+	return (
+		savedWorkspaceTitle(
+			(state as { conversation_title?: unknown } | null | undefined)
+				?.conversation_title,
+		) ?? null
+	);
+}
+
 /** Whether two persisted strips differ in anything a launch would restore. */
 export function savedWorkspaceTabsDiffer(
 	a: readonly SavedWorkspaceTab[],
