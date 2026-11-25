@@ -15,7 +15,6 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 	dimmed,
 	suppressed,
 	paperSelector = "[data-lo-composer-splash]",
-	markClassName = "size-10",
 }: {
 	quiet: boolean;
 	dimmed: boolean;
@@ -30,12 +29,6 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 	 * parent's has settled.
 	 */
 	paperSelector?: string;
-	/**
-	 * The mark's size classes. The canvas positions itself on the mark SLOT's
-	 * centre (`MARK_Y`), not on the glyph's box, so the crossing stays on the
-	 * mark at any size; the first-run intro shows it larger than new chat does.
-	 */
-	markClassName?: string;
 }) {
 	const scene = useRef<HTMLCanvasElement>(null);
 	const controller = useRef<ReturnType<typeof trackNewChatHorizon>>(undefined);
@@ -89,11 +82,7 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 				data-lo-empty-mark={suppressed ? undefined : ""}
 				className="new-chat-horizon__mark relative flex"
 			>
-				<BrandMark
-					className={markClassName}
-					tone="ink-muted"
-					treatment="engraved"
-				/>
+				<BrandMark className="size-10" tone="ink-muted" treatment="engraved" />
 			</span>
 		</div>
 	);

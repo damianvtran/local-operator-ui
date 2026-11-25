@@ -1208,8 +1208,9 @@ longer than 240ms, and only something entering the screen earns that.
 First-run setup (`features/onboarding/onboarding-stage.css`, scoped to
 `[data-lo-onboarding-stage]`) breaks four rules above on purpose, and only there:
 
-- **Motion length.** The intro runs ~2.2 s and the hand-off 700 ms (the whole
-  auto-playing sequence ≈3.0 s, under the design kit's 4.4 s budget). It is the one
+- **Motion length.** The intro holds 2.2 s and the hand-off takes 920 ms
+  (`INTRO_HOLD_MS` + `HANDOFF_MS` in `onboarding-intro.ts`: the whole
+  auto-playing sequence is 3.12 s, under the design kit's 4.4 s budget). It is the one
   screen whose job is a brand moment rather than a task, and it is skippable by any
   key, click or wheel. Under reduced motion it does not play at all: the stage opens
   on the sign-in final frame, and every entrance there is `animation: none` over an

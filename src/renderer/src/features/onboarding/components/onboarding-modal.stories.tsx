@@ -1,3 +1,4 @@
+import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -88,6 +89,9 @@ export const DefaultModel: Story = {
 /** Web search against a backend WITHOUT Aida: three options, then "Finish". */
 export const Search: Story = { args: { step: OnboardingStep.SEARCH } };
 
+/** Module-level so the bridge effect's dependency stays referentially stable. */
+const NO_PROVIDERS: DesktopProvider[] = [];
+
 /*
  * A desktop transport that answers the two reads the last step makes about her:
  * the capability (`features.aida`) and her status document with a configured
@@ -98,9 +102,12 @@ export const Search: Story = { args: { step: OnboardingStep.SEARCH } };
 const AidaBridge = ({
 	name,
 	greetingState,
+	providers = NO_PROVIDERS,
 	children,
 }: {
 	name: string;
+	/** The census `providers.list` serves; empty (a first run) by default. */
+	providers?: DesktopProvider[];
 	/**
 	 * The ledger's state word, when the story is about it. OMITTED BY DEFAULT so
 	 * the fixtures that predate the ledger photograph the tolerant path - an older
@@ -137,7 +144,7 @@ const AidaBridge = ({
 							name,
 						});
 					case "providers.list":
-						return ok({ providers: [] });
+						return ok({ providers });
 					default:
 						throw new Error(
 							`unexpected desktop op in this story: ${request.op}`,
@@ -148,7 +155,7 @@ const AidaBridge = ({
 		return () => {
 			api.desktop = previous;
 		};
-	}, [name, greetingState]);
+	}, [name, greetingState, providers]);
 	return children;
 };
 
@@ -177,6 +184,42 @@ export const MeetAidaDelivered: Story = {
 	args: { step: OnboardingStep.MEET },
 	render: ({ step }) => (
 		<AidaBridge name="Aida" greetingState="delivered">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * Radient signed in: the flags `providers.list` reports for a machine whose
+ * store holds a Radient credential (same shape as `SIGNED_IN_CENSUS` in
+ * `provider-setup.stories.tsx`), and nothing else connected.
+ */
+const RADIENT_CONNECTED_CENSUS: DesktopProvider[] = [
+	{
+		id: "radient",
+		name: "Radient",
+		storage_id: "radient",
+		search_aliases: [],
+		auth_methods: [],
+		local: false,
+		credential_optional: false,
+		has_credential: true,
+		configured: true,
+		stored_credentials: 1,
+		base_url: "https://api.radienthq.com/v1",
+	},
+];
+
+/**
+ * Sign-in once Radient is connected (design + QA round 1, ledger L14): the
+ * panel reads "Signed in", the heading and sentence switch to the connected
+ * copy, and the progress track has no web-search segment - Radient already
+ * covers search, so the walk is sign-in, model, Meet Aida. This is the frame
+ * the search-skip decision (`decideIncludeSearch`) is reviewed against.
+ */
+export const RadientConnected: Story = {
+	render: ({ step }) => (
+		<AidaBridge name="Aida" providers={RADIENT_CONNECTED_CENSUS}>
 			<OnboardingFrame step={step} />
 		</AidaBridge>
 	),

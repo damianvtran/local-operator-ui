@@ -1,5 +1,5 @@
 /**
- * Connect Provider Step - "Sign in to get started" (stage refresh, spec § 5.1)
+ * Connect Provider Step - "Build your base of agent operations" (stage refresh, spec § 5.1)
  *
  * ## Why it is shaped like this
  *
@@ -36,11 +36,11 @@ import {
 	RECOMMENDED_PROVIDER_ID,
 	accountNameOf,
 	isConnectedRow,
-	monogramOf,
 } from "@features/providers/provider-catalog";
 import { ProviderDetail } from "@features/providers/provider-detail";
 import { ProviderGrid } from "@features/providers/provider-grid";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
+import { RadientMark } from "@shared/components/common/radient-mark";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
@@ -49,6 +49,7 @@ import { cn } from "@shared/lib/utils";
 import { Brain, CircleCheck, LifeBuoy, Search, Sparkles } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { ChatGPTMark, ClaudeMark } from "./brand-marks";
 
 /** The two subscriptions the stage offers as buttons, in display order. */
 export const SUBSCRIPTION_PROVIDER_IDS = ["openai", "anthropic"] as const;
@@ -120,15 +121,19 @@ const Well: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className="mt-2 rounded-[10px] bg-sunken p-4">{children}</div>
 );
 
-/** The 18px provider chip on a subscription button (the grid's monogram). */
-const Chip: FC<{ brand: string }> = ({ brand }) => (
-	<span
-		aria-hidden="true"
-		className="grid size-[18px] shrink-0 place-items-center rounded-[4px] bg-elevated font-medium text-[9px] text-ink leading-none"
-	>
-		{monogramOf(brand)}
-	</span>
-);
+/**
+ * The product's own mark on a subscription button (ledger L15). The two-letter
+ * monogram it replaces read as a placeholder beside the Radient mark; the
+ * provider grid keeps its monograms.
+ */
+const SubscriptionMark: FC<{
+	id: (typeof SUBSCRIPTION_PROVIDER_IDS)[number];
+}> = ({ id }) =>
+	id === "openai" ? (
+		<ChatGPTMark size={18} className="shrink-0" />
+	) : (
+		<ClaudeMark size={18} className="shrink-0" />
+	);
 
 const BENEFITS = [
 	{ key: "ui.onboarding.signin.radient.benefit.skills", icon: Sparkles },
@@ -159,6 +164,8 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 	/** Ids that connected WHILE this step was showing: those rows animate in. */
 	const [justConnected, setJustConnected] = useState<Set<string>>(new Set());
 	const seen = useRef<Set<string> | null>(null);
+	/** "Other ways to connect": scrolled to on open (see `revealMore`). */
+	const moreRef = useRef<HTMLDivElement>(null);
 
 	const connectedIds = rows
 		.filter((provider) => stageConnected(provider))
@@ -237,6 +244,32 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 			: t("ui.onboarding.signin.radient.eyebrow");
 
 	const radientWaiting = active === RECOMMENDED_PROVIDER_ID && waiting;
+	/*
+	 * Once a subscription is connected the panel says ONE sentence about what
+	 * Radient adds, instead of the benefit list (design D3, UX U3): the list plus
+	 * a nudge restating it pushed "Other ways to connect" below the fold.
+	 */
+	const nudging = !radientOn && brands.length > 0;
+
+	/*
+	 * Opening "Other ways to connect" brings it to the top of the stage's scroll
+	 * box (UX U4): it opens below the fold at 1280x720, and the only visible
+	 * change was a field's top edge above the footer. `start`, not `nearest`:
+	 * the grid is taller than the box, and `nearest` would not move it. After a
+	 * frame so the opened panel has its height.
+	 */
+	const revealMore = (open: boolean) => {
+		if (!open) return;
+		requestAnimationFrame(() => {
+			const reduced =
+				typeof window.matchMedia === "function" &&
+				window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			moreRef.current?.scrollIntoView({
+				block: "start",
+				behavior: reduced ? "auto" : "smooth",
+			});
+		});
+	};
 
 	return (
 		<div className="flex flex-col">
@@ -279,7 +312,11 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 								aria-expanded={active === RECOMMENDED_PROVIDER_ID}
 								onClick={() => start(RECOMMENDED_PROVIDER_ID)}
 							>
-								{radientWaiting ? <Spinner size="sm" /> : null}
+								{radientWaiting ? (
+									<Spinner size="sm" />
+								) : (
+									<RadientMark size={18} className="shrink-0" />
+								)}
 								{radientWaiting
 									? t("ui.onboarding.signin.waiting")
 									: brands.length > 0
@@ -291,22 +328,24 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 							? panelFor(radient)
 							: null}
 					</div>
-					<ul className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-x-6 gap-y-2.5">
-						{BENEFITS.map(({ key, icon: Icon }) => (
-							<li
-								key={key}
-								className="flex items-center gap-2 text-body-sm text-ink-muted"
-							>
-								<Icon
-									size={14}
-									className="shrink-0 text-accent-alt"
-									aria-hidden="true"
-								/>
-								{t(key)}
-							</li>
-						))}
-					</ul>
-					{!radientOn && brands.length > 0 ? (
+					{nudging ? null : (
+						<ul className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-x-6 gap-y-2.5">
+							{BENEFITS.map(({ key, icon: Icon }) => (
+								<li
+									key={key}
+									className="flex items-center gap-2 text-body-sm text-ink-muted"
+								>
+									<Icon
+										size={14}
+										className="shrink-0 text-accent-alt"
+										aria-hidden="true"
+									/>
+									{t(key)}
+								</li>
+							))}
+						</ul>
+					)}
+					{nudging ? (
 						<p className="mt-3 text-body-sm text-ink-muted">
 							{t("ui.onboarding.signin.radient.nudge", {
 								brands: listFormat(brands),
@@ -356,7 +395,11 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 							aria-expanded={active === id}
 							onClick={() => start(id)}
 						>
-							{rowWaiting ? <Spinner size="sm" /> : <Chip brand={brand} />}
+							{rowWaiting ? (
+								<Spinner size="sm" />
+							) : (
+								<SubscriptionMark id={id} />
+							)}
 							{rowWaiting
 								? t("ui.onboarding.signin.waiting")
 								: id === "openai"
@@ -376,8 +419,12 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 				{t("ui.onboarding.signin.subscriptions_note")}
 			</p>
 
-			<div className="mt-6 flex flex-col items-center">
+			<div
+				ref={moreRef}
+				className="mt-6 flex scroll-mt-2 flex-col items-center"
+			>
 				<Disclosure
+					onOpenChange={revealMore}
 					summary={
 						<span className="text-body-sm text-ink-muted">
 							{t("ui.onboarding.signin.more")}

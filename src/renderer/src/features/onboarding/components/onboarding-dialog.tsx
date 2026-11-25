@@ -42,9 +42,38 @@ import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, type RefObject, useRef } from "react";
+import { type ReactNode, type RefObject, forwardRef, useRef } from "react";
 import type { StagePhase } from "./onboarding-intro";
 import { ONBOARDING_COLUMN_WIDTH } from "./onboarding-layout";
+
+/**
+ * The stage's h1: the dialog's accessible title, at the step's size.
+ *
+ * THE SIZE GOES THROUGH `DialogTitle`'s OWN `className`, never the `asChild`
+ * child's (design round 1, D2). Radix's `Slot` CONCATENATES the two class lists,
+ * so `text-heading` (the primitive's default) and `text-display` both landed on
+ * the h1 and the stylesheet's order picked `text-heading`: the Meet Aida bookend
+ * rendered at 16px. `DialogTitle` merges its className through `cn`, whose
+ * tailwind-merge knows the type ramp, so the size asked for here is the only one
+ * left.
+ */
+export const StageTitle = forwardRef<
+	HTMLHeadingElement,
+	{ size: "title" | "display"; children: ReactNode }
+>(({ size, children }, ref) => (
+	<DialogTitle
+		asChild
+		className={cn(
+			"font-medium text-ink outline-none!",
+			size === "display" ? "text-display" : "text-title",
+		)}
+	>
+		<h1 ref={ref} tabIndex={-1}>
+			{children}
+		</h1>
+	</DialogTitle>
+));
+StageTitle.displayName = "StageTitle";
 
 export type OnboardingStageProps = {
 	open: boolean;
@@ -212,18 +241,9 @@ export const OnboardingStage = ({
 						key={`header-${stepKey}`}
 						data-stage-step-enter={animateStep ? "" : undefined}
 					>
-						<DialogTitle asChild>
-							<h1
-								ref={headingRef}
-								tabIndex={-1}
-								className={cn(
-									"font-medium text-ink outline-none!",
-									titleSize === "display" ? "text-display" : "text-title",
-								)}
-							>
-								{title}
-							</h1>
-						</DialogTitle>
+						<StageTitle ref={headingRef} size={titleSize}>
+							{title}
+						</StageTitle>
 						{subtitle ? (
 							<p className="line-clamp-3 max-w-[34rem] text-body text-ink-muted">
 								{subtitle}

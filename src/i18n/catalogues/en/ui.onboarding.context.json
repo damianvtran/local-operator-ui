@@ -5,9 +5,9 @@
 		"note": "Any key, click or scroll skips the intro."
 	},
 	"ui.onboarding.intro.subtitle": {
-		"role": "Line under the welcome heading on the first-run intro",
-		"tone": "Confident, plain",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"role": "Line under the welcome heading on the first-run intro: the product's tagline",
+		"tone": "Confident, energetic, plain",
+		"note": "Local Operator is a product name. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
 	},
 	"ui.onboarding.intro.title": {
 		"role": "Welcome heading on the first-run intro, shown large under the brand mark",
@@ -36,6 +36,11 @@
 		"tone": "Neutral",
 		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
 	},
+	"ui.onboarding.search.block.radient": {
+		"role": "Footer note on the search step while the Radient option is chosen but not signed in; Finish is disabled until then",
+		"tone": "Plain instruction naming both ways out",
+		"note": "'Free' is the first option's own label (ui.onboarding.search.mode.free); use the same word. Radient stays untranslated."
+	},
 	"ui.onboarding.search.mode.free_detail": {
 		"role": "Explanation of the preselected Free web-search option",
 		"tone": "Plain factual description",
@@ -48,9 +53,9 @@
 		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
 	},
 	"ui.onboarding.search.mode.radient": {
-		"role": "Title of the middle web-search option",
-		"tone": "Neutral",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"role": "Title of the middle web-search option: the Radient account, which the user can sign in to or create",
+		"tone": "Neutral noun phrase; the button under it carries the verb",
+		"note": "First-run setup stage. Radient is a product name; keep it untranslated."
 	},
 	"ui.onboarding.search.mode.radient_action": {
 		"role": "Button in the middle web-search option that starts a Radient browser sign-in",
@@ -59,7 +64,7 @@
 	},
 	"ui.onboarding.search.mode.radient_detail": {
 		"role": "Explanation under the middle web-search option",
-		"tone": "Plain benefit list",
+		"tone": "Plain benefit list; says the account can be created here",
 		"note": "Radient is a product name; keep it untranslated."
 	},
 	"ui.onboarding.search.mode.radient_done": {
@@ -175,12 +180,12 @@
 		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
 	},
 	"ui.onboarding.signin.radient.nudge": {
-		"role": "Paragraph inside the Radient panel when only subscriptions are connected",
+		"role": "One sentence inside the Radient panel when only subscriptions are connected; the benefit list is hidden then",
 		"tone": "Persuasive but plain; never blocking",
 		"placeholders": {
 			"brands": "Connected subscription names joined by the locale's list format, e.g. 'ChatGPT and Claude'"
 		},
-		"note": "Product names stay untranslated."
+		"note": "Product names stay untranslated. No singular/plural 'plan': the sentence names the brands, not their plans."
 	},
 	"ui.onboarding.signin.subscriptions_note": {
 		"role": "Small note under the ChatGPT and Claude buttons",
@@ -188,29 +193,29 @@
 		"note": "Plus, Pro, Max are plan names; keep them untranslated."
 	},
 	"ui.onboarding.signin.subtitle": {
-		"role": "Sentence under the sign-in heading",
-		"tone": "Plain, helpful",
-		"note": "Radient, ChatGPT and Claude are product names; keep them untranslated. 'Plan' means the user's paid subscription."
+		"role": "Sentence under the sign-in heading before anything is connected: why Radient, and that subscriptions can join",
+		"tone": "Persuasive but plain",
+		"note": " Radient, ChatGPT and Claude are product names; keep them untranslated. 'Plan' means the user's paid subscription."
 	},
 	"ui.onboarding.signin.subtitle_connected": {
-		"role": "Sentence under the heading once any account is connected",
-		"tone": "Plain",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"role": "Sentence under the heading once a subscription (not Radient) is connected",
+		"tone": "Plain, confirming",
+		"note": "Repeats the connected state on purpose: the heading above it is now 'Your base of operations is ready'."
 	},
 	"ui.onboarding.signin.subtitle_radient_connected": {
 		"role": "Sentence under the heading once Radient is connected",
-		"tone": "Plain",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"tone": "Plain, confirming",
+		"note": " Radient, ChatGPT and Claude are product names; keep them untranslated. 'Plan' means the user's paid subscription. 'Powering' is figurative (Radient supplies the agents' models and tools), not electricity."
 	},
 	"ui.onboarding.signin.title": {
-		"role": "Heading of the first setup step",
-		"tone": "Inviting",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"role": "Heading of the first setup step before anything is connected",
+		"tone": "Inviting, energetic; an imperative",
+		"note": "Echoes the intro tagline's 'base of operations'; use the same word for it. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
 	},
 	"ui.onboarding.signin.title_connected": {
-		"role": "Heading of the first setup step once an account is connected",
-		"tone": "Confirming",
-		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+		"role": "Heading of the first setup step once any account is connected",
+		"tone": "Confirming, warm",
+		"note": "Same 'base of operations' word as the step's first heading. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
 	},
 	"ui.onboarding.signin.waiting": {
 		"role": "Button label while a browser sign-in is waiting for the user",

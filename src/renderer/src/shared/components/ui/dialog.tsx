@@ -14,7 +14,7 @@ import { Button } from "./button";
 /**
  * Modal dialog.
  *
- * The overlay is `bg-scrim`, which is a per-theme role. A hardcoded black
+ * The overlay derives from `scrim` (via `.lo-dialog-scrim`), a per-theme role. A hardcoded black
  * alpha is the usual shortcut here and it is wrong in the six light themes,
  * where the scrim is a warm near-black at a lower alpha.
  *
@@ -51,9 +51,13 @@ export const DialogOverlay = forwardRef<
 		ref={ref}
 		className={cn(
 			// No entrance animation; see the note at the top of `tooltip.tsx`.
-			// `lo-dialog-scrim` darkens the palette's scrim for dialogs only
-			// (styles/index.css, "THE DIALOG SURFACE").
-			"lo-dialog-scrim fixed inset-0 z-50 bg-scrim",
+			// `lo-dialog-scrim` IS the backdrop colour: the palette's scrim a step
+			// toward black, for dialogs only (styles/index.css, "THE DIALOG
+			// SURFACE"). No `bg-*` utility may sit beside it: utilities outrank the
+			// `components` layer it lives in, so a `bg-scrim` here silently painted
+			// the plain scrim instead (review round 1, R2/D1/Q-2). A caller's own
+			// `bg-*` (the stage's `bg-transparent`) still wins, on purpose.
+			"lo-dialog-scrim fixed inset-0 z-50",
 			className,
 		)}
 		{...props}

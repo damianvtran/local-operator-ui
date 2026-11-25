@@ -11438,7 +11438,6 @@ export type MessageParams = {
 	"ui.onboarding.modal.action.continue": undefined;
 	"ui.onboarding.modal.action.finish": undefined;
 	"ui.onboarding.modal.action.meet": { name: string };
-	"ui.onboarding.modal.action.skip": undefined;
 	"ui.onboarding.modal.action.skip_for_now": undefined;
 	"ui.onboarding.modal.action.skip_to_chat": undefined;
 	"ui.onboarding.modal.error.aida_open_failed": { name: string };
@@ -11449,6 +11448,7 @@ export type MessageParams = {
 	"ui.onboarding.modal.title.fallback": undefined;
 	"ui.onboarding.modal.title.meet": { name: string };
 	"ui.onboarding.modal.title.search": undefined;
+	"ui.onboarding.search.block.radient": undefined;
 	"ui.onboarding.search.each_key_saved": undefined;
 	"ui.onboarding.search.intro": undefined;
 	"ui.onboarding.search.mode.free": undefined;

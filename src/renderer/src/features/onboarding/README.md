@@ -12,7 +12,7 @@ or wheel) the helix rises into the header slot of the first step. Under reduced
 motion there is no intro. Then up to four numbered steps
 (`onboarding-sequence.ts` derives them):
 
-1. **Sign in to get started** (`steps/connect-provider-step.tsx`): Radient as the
+1. **Build your base of agent operations** (`steps/connect-provider-step.tsx`): Radient as the
    one primary in a glass panel that lists what it adds, ChatGPT and Claude as
    "Log in with ..." buttons (subscription sign-ins, not API keys), and "Other
    ways to connect · API keys, local models" folding away the rest of the

@@ -333,6 +333,13 @@ type SearchApiStepProps = {
 	 * is actually configured if the user continues now (spec § 5.3, Waiting).
 	 */
 	onChoiceChange?: (choice: SearchChoice) => void;
+	/**
+	 * What the step needs before Finish can mean what the radio says (UX round
+	 * 1, U2): the Radient option chosen but not signed in reports a sentence and
+	 * the footer disables its primary; `null` otherwise. Without it, Finish
+	 * silently applied Free under a radio that read Radient.
+	 */
+	onBlockReason?: (reason: string | null) => void;
 };
 
 /**
@@ -343,6 +350,7 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 	radient = null,
 	radientConnected = false,
 	onChoiceChange,
+	onBlockReason,
 }) => {
 	const [mode, setMode] = useState<SearchMode>(
 		radientConnected ? "radient" : "free",
@@ -370,6 +378,16 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 	useEffect(() => {
 		onChoiceChange?.(effective);
 	}, [effective, onChoiceChange]);
+
+	const block =
+		mode === "radient" && !radientConnected
+			? t("ui.onboarding.search.block.radient")
+			: null;
+	useEffect(() => {
+		if (!onBlockReason) return undefined;
+		onBlockReason(block);
+		return () => onBlockReason(null);
+	}, [onBlockReason, block]);
 
 	const saveKey = async (key: string, value: string) => {
 		await updateCredentialMutation.mutateAsync({ key, value });
@@ -448,8 +466,15 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 												autoStart
 												onDone={() => setSigningIn(false)}
 												onFlowPhase={(phase) => {
-													// Cancel inside the panel returns it to idle.
-													if (phase === "idle") setSigningIn(false);
+													// Only a CANCEL reaches idle (the panel reports
+													// changes, never its mount): the sign-in was
+													// abandoned, so the choice falls back to Free rather
+													// than leaving a Radient radio that is not true
+													// (UX round 1, U2).
+													if (phase === "idle") {
+														setSigningIn(false);
+														setMode("free");
+													}
 												}}
 											/>
 										</div>

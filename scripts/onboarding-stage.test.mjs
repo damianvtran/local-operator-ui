@@ -44,6 +44,7 @@ const bundle = await build({
 				onboardingSequence,
 				radientConnected,
 				fallbackStep,
+				decideIncludeSearch,
 			} from "./src/renderer/src/features/onboarding/components/onboarding-sequence";
 			export {
 				OnboardingStep,
@@ -64,6 +65,12 @@ const bundle = await build({
 				STAGE_PROVIDER_IDS,
 			} from "./src/renderer/src/features/onboarding/components/steps/connect-provider-step";
 			export { t, setLocale } from "./src/i18n";
+			import { Dialog } from "./src/renderer/src/shared/components/ui/dialog";
+			import { StageTitle } from "./src/renderer/src/features/onboarding/components/onboarding-dialog";
+			export const renderStageTitle = (size) =>
+				renderToStaticMarkup(
+					createElement(Dialog, {}, createElement(StageTitle, { size }, "Meet Aida")),
+				);
 
 			export const renderSearch = (client, props) =>
 				renderToStaticMarkup(
@@ -93,6 +100,7 @@ const bundle = await build({
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
 	},
 	// Shared with this file's imports so the seeded QueryClient is the one the
 	// components read (see provider-grid-pin.test.mjs).
@@ -103,7 +111,14 @@ const bundle = await build({
 		"react/jsx-runtime",
 		"@tanstack/react-query",
 	],
-	loader: { ".css": "empty" },
+	// The stage heading's module draws the brand mark and the helix; their
+	// assets carry no assertion here.
+	loader: {
+		".css": "empty",
+		".png": "empty",
+		".svg": "empty",
+		".webp": "empty",
+	},
 	jsx: "automatic",
 	define: {
 		"import.meta.env": JSON.stringify({
@@ -400,5 +415,79 @@ test("S-7 the bookend's story fixtures spell her name Aida, never Ada", () => {
 		"utf8",
 	);
 	assert.doesNotMatch(stories, /name="Ada"/);
-	assert.equal((stories.match(/<AidaBridge name="Aida"/g) ?? []).length, 2);
+	// MeetAida, MeetAidaDelivered and RadientConnected (L14) each name her.
+	assert.equal((stories.match(/<AidaBridge name="Aida"/g) ?? []).length, 3);
+});
+
+/* ------------------------------------------------------------------ S-8 */
+
+test("S-8 the stage heading carries exactly the size it asks for (Meet Aida is display)", () => {
+	/*
+	 * Design round 1, D2: the size used to ride on the `asChild` h1, and Radix's
+	 * Slot concatenates class lists, so the primitive's `text-heading` survived
+	 * beside `text-display` and won on stylesheet order (Meet Aida at 16px).
+	 * Exactly one type-ramp size may reach the h1.
+	 */
+	const ramp = /^text-(display|title|heading|body|body-sm|meta|meta-sm)$/;
+	for (const [size, want] of [
+		["display", "text-display"],
+		["title", "text-title"],
+	]) {
+		const html = m.renderStageTitle(size);
+		const classes = (html.match(/<h1[^>]*class="([^"]*)"/)?.[1] ?? "").split(
+			/\s+/,
+		);
+		assert.deepEqual(
+			classes.filter((name) => ramp.test(name)),
+			[want],
+			`h1 for "${size}": ${classes.join(" ")}`,
+		);
+	}
+});
+
+/* ------------------------------------------------------------------ S-9 */
+
+test("S-9 the search latch: decided when the census answers, live on steps 1-2, held after", () => {
+	/*
+	 * Code review round 1, R4/R5: the latch was decided at MOUNT (app start, no
+	 * census yet), and nothing tested the latch itself - a regression to a live
+	 * `!radientOn` would have passed every helper test. This walks the reducer
+	 * through the user's own timeline.
+	 */
+	const step = (s, radientOn, censusLoaded = true) => ({
+		step: s,
+		radientOn,
+		censusLoaded,
+	});
+	const decide = m.decideIncludeSearch;
+	// Before the census answers, nothing is decided - even with no Radient row.
+	assert.equal(decide(null, step(S.SEARCH, false, false)), null);
+	// A resumed setup on SEARCH whose census says Radient: decided OUT on the
+	// first answer, so fallbackStep can move it on to Meet.
+	assert.equal(decide(null, step(S.SEARCH, true)), false);
+	assert.equal(
+		m.fallbackStep(
+			S.SEARCH,
+			m.onboardingSequence({ includeSearch: false, aidaAvailable: true }),
+		),
+		S.MEET,
+	);
+	// Live on sign-in and the model step: Radient connecting there removes it.
+	let latch = decide(null, step(S.CONNECT_PROVIDER, false));
+	assert.equal(latch, true);
+	latch = decide(latch, step(S.CONNECT_PROVIDER, true));
+	assert.equal(latch, false);
+	latch = decide(latch, step(S.DEFAULT_MODEL, false));
+	assert.equal(latch, true, "signing out again on step 2 brings it back");
+	// Held on SEARCH: Radient connecting there keeps the step under the user.
+	latch = decide(latch, step(S.SEARCH, false));
+	latch = decide(latch, step(S.SEARCH, true));
+	assert.equal(latch, true, "the step never vanishes mid-flow");
+	latch = decide(latch, step(S.MEET, true));
+	assert.equal(latch, true);
+	// Back to the model step re-opens the latch and re-decides.
+	latch = decide(latch, step(S.DEFAULT_MODEL, true));
+	assert.equal(latch, false);
+	// A census refetch in flight never un-decides.
+	assert.equal(decide(false, step(S.SEARCH, false, false)), false);
 });

@@ -286,7 +286,8 @@ type ProviderDetailProps = {
 	 */
 	autoStart?: boolean;
 	/**
-	 * Told every time the sign-in flow's phase changes, so a surface that owns the
+	 * Told every time the sign-in flow's phase CHANGES (never the mount-time idle;
+	 * see the effect), so a surface that owns the
 	 * button outside this panel can label it ("Waiting for browser") from the same
 	 * state the panel renders, rather than from a second guess.
 	 */
@@ -938,7 +939,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const onFlowPhaseRef = useRef(onFlowPhase);
 	onFlowPhaseRef.current = onFlowPhase;
 	const flowSucceeded = flow.operation?.state === "succeeded";
+	/*
+	 * CHANGES ONLY, measured from a fresh idle flow (review round 1, R1/U1/Q-1).
+	 * Reporting the mount-time `idle` told the first-run stage "the user
+	 * cancelled" in the same commit `autoStart` started the sign-in, so the well
+	 * closed on its own first press: no waiting state, no Cancel, and the unmount
+	 * paused the poll. Callers read `idle` as a cancel, which is only true as a
+	 * TRANSITION into it; a panel that re-attaches to a running session still
+	 * reports, because `active` differs from the idle baseline.
+	 */
+	const reportedPhase = useRef<{
+		phase: SignInState["phase"];
+		succeeded: boolean;
+	}>({ phase: "idle", succeeded: false });
 	useEffect(() => {
+		const last = reportedPhase.current;
+		if (last.phase === flow.phase && last.succeeded === flowSucceeded) return;
+		reportedPhase.current = { phase: flow.phase, succeeded: flowSucceeded };
 		onFlowPhaseRef.current?.(flow.phase, flowSucceeded);
 	}, [flow.phase, flowSucceeded]);
 

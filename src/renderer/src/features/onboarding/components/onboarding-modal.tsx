@@ -58,6 +58,7 @@ import { OnboardingStage } from "./onboarding-dialog";
 import { onboardingFooter } from "./onboarding-footer";
 import { type IntroMode, useStageIntro } from "./onboarding-intro";
 import {
+	decideIncludeSearch,
 	fallbackStep,
 	onboardingSequence,
 	radientConnected,
@@ -161,18 +162,26 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 	const aidaControl = useAidaControl();
 
 	/*
-	 * THE SEARCH LATCH (`onboarding-sequence.ts`). Live while the user is on the
-	 * first two steps - where Radient connecting legitimately removes the step -
-	 * and frozen from the moment they leave the model step, so a Radient sign-in
-	 * completed ON the search step never pulls it out from under them.
+	 * THE SEARCH LATCH (`decideIncludeSearch` in `onboarding-sequence.ts`).
+	 * Decided once the census first answers - never at mount, which happens at
+	 * app start before any census exists (review round 1, R4) - then live on the
+	 * first two steps, where Radient connecting legitimately removes the step,
+	 * and held from the moment they leave the model step, so a Radient sign-in
+	 * completed ON the search step never pulls it out from under them. Undecided
+	 * reads as "include" until the census answers.
 	 */
-	const [includeSearch, setIncludeSearch] = useState(() => !radientOn);
-	const latchOpen =
-		currentStep === OnboardingStep.CONNECT_PROVIDER ||
-		currentStep === OnboardingStep.DEFAULT_MODEL;
+	const [searchLatch, setSearchLatch] = useState<boolean | null>(null);
+	const censusLoaded = providers.isFetched;
 	useEffect(() => {
-		if (latchOpen) setIncludeSearch(!radientOn);
-	}, [latchOpen, radientOn]);
+		setSearchLatch((previous) =>
+			decideIncludeSearch(previous, {
+				step: currentStep,
+				radientOn,
+				censusLoaded,
+			}),
+		);
+	}, [currentStep, radientOn, censusLoaded]);
+	const includeSearch = searchLatch ?? true;
 
 	const sequence = useMemo(
 		() => onboardingSequence({ includeSearch, aidaAvailable }),
@@ -385,7 +394,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 		let walk = sequence;
 		if (currentStep === OnboardingStep.DEFAULT_MODEL) {
 			const latched = !radientOn;
-			setIncludeSearch(latched);
+			setSearchLatch(latched);
 			walk = onboardingSequence({ includeSearch: latched, aidaAvailable });
 		}
 		const at = walk.indexOf(currentStep);
@@ -456,6 +465,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 						radient={radientRow}
 						radientConnected={radientOn}
 						onChoiceChange={onSearchChoice}
+						onBlockReason={registerStepBlock}
 					/>
 				);
 			default:
@@ -465,8 +475,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 
 	/*
 	 * The stage's header per step. Sign-in changes with what is connected (spec
-	 * § 5.1): "Sign in to get started" until something is, then "You're
-	 * connected" with a sentence that says what else is worth adding.
+	 * § 5.1): "Build your base of agent operations" until something is, then
+	 * "Your base of operations is ready" with a sentence that says what else is worth adding.
 	 */
 	const brands = connectedSubscriptionBrands(census);
 	const header = (() => {
@@ -518,10 +528,17 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 	 *   because "Skip" beside "Meet Aida" reads as skipping her, which it is.
 	 */
 	const footer = onboardingFooter(currentStep, stepBlock, continuing);
+	/*
+	 * "Skip for now" only while nothing is connected (design D5, UX U5): once a
+	 * provider is, it sat beside Continue meaning "finish and skip the model
+	 * step", and the footer had two answers to one question.
+	 */
 	const footerStart = isFirst ? (
-		<Button variant="ghost" size="lg" onClick={finish}>
-			{t("ui.onboarding.modal.action.skip_for_now")}
-		</Button>
+		connected ? null : (
+			<Button variant="ghost" size="lg" onClick={finish}>
+				{t("ui.onboarding.modal.action.skip_for_now")}
+			</Button>
+		)
 	) : (
 		<Button variant="ghost" size="lg" onClick={handleBack}>
 			{t("ui.onboarding.modal.action.back")}
@@ -529,11 +546,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 	);
 	const footerEnd = (
 		<>
-			{isLast && !isFirst ? (
+			{/* The ghost exists only beside "Meet <name>", where it means
+			    something else; beside Finish it called the same `finish()` and
+			    made the user choose between two identical buttons (UX U5). */}
+			{isLast && !isFirst && aidaAvailable ? (
 				<Button variant="ghost" size="lg" onClick={finish} disabled={meeting}>
-					{aidaAvailable
-						? t("ui.onboarding.modal.action.skip_to_chat")
-						: t("ui.onboarding.modal.action.skip")}
+					{t("ui.onboarding.modal.action.skip_to_chat")}
 				</Button>
 			) : null}
 			{!isFirst || connected ? (
@@ -603,7 +621,15 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 									<span
 										className={cn(
 											"h-0.5 w-full rounded-[2px] transition-colors duration-base ease-out-quart",
-											isCovered ? "bg-accent" : "bg-hairline",
+											/*
+											 * Upcoming segments use `bg-control` (`border-control`), the role
+											 * made for non-text UI boundaries: >= 3.13:1 on
+											 * canvas in every shipped palette (min rosePineDawn;
+											 * 4.15 localOperatorDark). `hairline` measured
+											 * 1.44:1 and the track read as one dash, not
+											 * "1 of 3" (design round 1, D4).
+											 */
+											isCovered ? "bg-accent" : "bg-control",
 										)}
 									/>
 								</button>

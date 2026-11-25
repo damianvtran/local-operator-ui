@@ -135,7 +135,7 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.intro.subtitle",
-		"Agents that do real work on your computer.",
+		"Your base of operations for agents that get real work done.",
 		"onboarding-dialog.tsx",
 	],
 	[
@@ -157,7 +157,6 @@ const CONTRACT = [
 	["ui.onboarding.modal.action.continue", "Continue", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.finish", "Finish", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.meet", "Meet {name}", "onboarding-modal.tsx"],
-	["ui.onboarding.modal.action.skip", "Skip", "onboarding-modal.tsx"],
 	[
 		"ui.onboarding.modal.action.skip_for_now",
 		"Skip for now",
@@ -201,6 +200,11 @@ const CONTRACT = [
 	["ui.onboarding.modal.title.meet", "Meet {name}", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.title.search", "Web search", "onboarding-modal.tsx"],
 	[
+		"ui.onboarding.search.block.radient",
+		"Finish signing in to Radient, or choose Free.",
+		"steps/search-api-step.tsx",
+	],
+	[
 		"ui.onboarding.search.each_key_saved",
 		"Each key is saved on your device as soon as you leave its field.",
 		"steps/search-api-step.tsx",
@@ -238,7 +242,7 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.search.mode.radient",
-		"Sign in with Radient",
+		"Radient account",
 		"steps/search-api-step.tsx",
 	],
 	[
@@ -248,7 +252,7 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.search.mode.radient_detail",
-		"Higher-volume search, plus smart skill and tool picks, automatic model fallbacks and cost-aware routing.",
+		"Sign in or create an account for higher-volume search, plus smart skill and tool picks, automatic model fallbacks and cost-aware routing.",
 		"steps/search-api-step.tsx",
 	],
 	[
@@ -394,7 +398,7 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.signin.radient.nudge",
-		"Keep your {brands} plan, and add Radient too. Your agents get smart skill and tool picks, optimized search and automatic fallbacks when a model is busy.",
+		"Keep using {brands}, and add Radient for higher-volume search, smart tool picks and automatic fallbacks.",
 		"steps/connect-provider-step.tsx",
 	],
 	[
@@ -404,27 +408,27 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.signin.subtitle",
-		"Radient is the quickest start. You can add your ChatGPT or Claude plan too.",
+		"Radient powers your agents with smarter tools, search and model fallbacks. Bring your ChatGPT or Claude plan along too.",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.signin.subtitle_connected",
-		"Add more accounts, or continue.",
+		"You're connected. Add another account, or continue.",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.signin.subtitle_radient_connected",
-		"Radient is connected. Add a subscription too, or continue.",
+		"Radient is powering your agents. Bring your ChatGPT or Claude plan too, or continue.",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.signin.title",
-		"Sign in to get started",
+		"Build your base of agent operations",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.signin.title_connected",
-		"You're connected",
+		"Your base of operations is ready",
 		"onboarding-modal.tsx",
 	],
 	[
@@ -1436,7 +1440,9 @@ test("parameters render as escaped text, never markup", () => {
 		}),
 	);
 	assert.ok(
-		markup.includes("Keep your &lt;strong&gt;Plan&lt;/strong&gt; plan"),
+		markup.includes(
+			"Keep using &lt;strong&gt;Plan&lt;/strong&gt;, and add Radient",
+		),
 		"the parameter was not escaped into text",
 	);
 	assert.ok(

@@ -86,7 +86,7 @@
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "使用一次性验证码登录{brand}账户。",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "使用{brand}账户登录。",
 	"ui.providers.provider_catalog.use_a_subscription": "使用账号登录",
-	"ui.providers.provider_catalog.use_an_api_key": "粘贴 API 密钥",
+	"ui.providers.provider_catalog.use_an_api_key": "粘贴API密钥",
 	"ui.providers.provider_catalog.run_models_on_this_computer": "在此电脑上运行模型",
 	"ui.providers.provider_catalog.set_up": "设置",
 	"ui.providers.provider_catalog.add_key": "添加密钥",

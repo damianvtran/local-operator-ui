@@ -20,9 +20,11 @@
  * Radient can connect while the user is ON the search step (the step offers it
  * as its middle option). A live predicate would yank the step out from under
  * them mid-sign-in and renumber the track. The modal therefore decides
- * `includeSearch` when the user leaves the default-model step, and re-decides
- * it only when they go back to sign-in, where the answer can legitimately
- * change (design spec § 1: "a step never disappears from under the user").
+ * `includeSearch` once the census first answers, keeps re-deciding it while the
+ * user is on sign-in or the model step (where the answer can legitimately
+ * change), and holds it from the moment they leave the model step (design spec
+ * § 1: "a step never disappears from under the user"). `decideIncludeSearch`
+ * is that rule, as a reducer a test can drive.
  */
 
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
@@ -92,4 +94,41 @@ export function fallbackStep(
 		return OnboardingStep.MEET;
 	}
 	return OnboardingStep.CONNECT_PROVIDER;
+}
+
+/** What the search latch reads on each render (see `decideIncludeSearch`). */
+export type SearchLatchInput = {
+	/** The step on screen. */
+	step: OnboardingStep;
+	/** Whether the census shows Radient connected. */
+	radientOn: boolean;
+	/**
+	 * Whether the census has answered at least once. Before that, `radientOn`
+	 * is "no rows yet", not "not connected".
+	 */
+	censusLoaded: boolean;
+};
+
+/**
+ * The search latch: whether the search step is in the walk, given what it was.
+ *
+ * `previous === null` means undecided. The first decision WAITS for the census
+ * (review round 1, R4): the modal is mounted at app start, before the census
+ * exists, so a decision taken at mount read every Radient user as "not
+ * connected" and a resumed setup kept a search step they had no use for - and
+ * `fallbackStep`'s SEARCH -> MEET migration could never fire. After the first
+ * decision it is live on sign-in and the model step and held everywhere else,
+ * so a Radient sign-in finished ON the search step never pulls the step out.
+ * Callers read `null` as "include" (the longer walk) until the census answers.
+ */
+export function decideIncludeSearch(
+	previous: boolean | null,
+	{ step, radientOn, censusLoaded }: SearchLatchInput,
+): boolean | null {
+	if (!censusLoaded) return previous;
+	const latchOpen =
+		step === OnboardingStep.CONNECT_PROVIDER ||
+		step === OnboardingStep.DEFAULT_MODEL;
+	if (previous === null || latchOpen) return !radientOn;
+	return previous;
 }
