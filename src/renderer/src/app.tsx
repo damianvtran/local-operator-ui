@@ -84,6 +84,7 @@ import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { Spinner } from "@shared/components/common/spinner";
 import { UpdateNotification } from "@shared/components/common/update-notification";
+import { desktopHistoryKeepsFocus } from "@shared/components/navigation/desktop-navigation-focus";
 import {
 	SidebarNavigation,
 	StripFeedKeeper,
@@ -851,6 +852,15 @@ const App: FC = () => {
 			}
 			if (!shouldStartNewChat(event)) return;
 			event.preventDefault();
+			// New Chat is an explicit handoff to the draft composer, not a
+			// continuation of Back/Forward. Release the persistent control before
+			// staging, including when the draft opens at the same /chat address.
+			const previousFocus = document.activeElement;
+			if (
+				previousFocus instanceof HTMLElement &&
+				desktopHistoryKeepsFocus(previousFocus)
+			)
+				previousFocus.blur();
 			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
 			navigate("/chat");
 		};
