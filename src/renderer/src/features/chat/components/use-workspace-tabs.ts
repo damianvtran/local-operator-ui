@@ -11,6 +11,7 @@ import {
 	moveWorkspaceTab,
 	sameWorkspaceTarget,
 	saveWorkspaceTabs,
+	savedWorkspaceTabsDiffer,
 	syncWorkspaceTabs,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
@@ -141,20 +142,30 @@ export function useWorkspaceTabs(
 		};
 	}, [settleClose]);
 
+	/*
+	 * Re-save when the catalogue changes too, not only the strip: that is how a
+	 * tab's remembered title follows a rename or the first catalogue answer, so
+	 * the NEXT launch draws real names before any page lands. The catalogue row
+	 * wins; a tab whose row is absent (below the page, not yet read) keeps the
+	 * title it was saved with rather than losing it. The live header title
+	 * reaches the catalogue row through the store's own title write, so the row
+	 * is the one source here.
+	 */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	useLayoutEffect(() => {
 		const store = useUiPreferencesStore.getState();
-		const saved = saveWorkspaceTabs(tabs);
-		if (
-			saved.length !== store.workspaceTabs.length ||
-			saved.some(
-				({ id, pinned }, i) =>
-					id !== store.workspaceTabs[i].id ||
-					pinned !== store.workspaceTabs[i].pinned,
-			)
-		) {
+		const prior = new Map(
+			store.workspaceTabs.map((row) => [row.id, row.title]),
+		);
+		const rows = new Map(sessions.map((row) => [row.session_id, row.title]));
+		const saved = saveWorkspaceTabs(
+			tabs,
+			(id) => rows.get(id)?.trim() || prior.get(id),
+		);
+		if (savedWorkspaceTabsDiffer(saved, store.workspaceTabs)) {
 			store.setWorkspaceTabs(saved);
 		}
-	}, [tabs]);
+	}, [tabs, sessions]);
 
 	const open = ({ target }: WorkspaceTab, ticket?: object) => {
 		if (target.kind === "draft") {

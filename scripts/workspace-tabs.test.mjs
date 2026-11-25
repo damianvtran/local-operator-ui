@@ -25,8 +25,10 @@ const {
 	displayedWorkspaceTabs,
 	makeWorkspaceTab,
 	moveWorkspaceTab,
+	resolveWorkspaceTabTitle,
 	sanitizeSavedWorkspaceTabs,
 	saveWorkspaceTabs,
+	savedWorkspaceTabsDiffer,
 	syncWorkspaceTabs,
 	translate,
 	workspaceBulkCloseKeys,
@@ -578,4 +580,133 @@ test("negative control: the wiring guard rejects a strip whose ellipsis left the
 	);
 	assert.notEqual(flat, strip, "control mutation applied");
 	assert.throws(() => assertTabMenuWiring(flat, hook, page));
+});
+
+test("tab titles: remembered names first, loading only while the catalogue is unsettled", () => {
+	const base = { target: targetA, catalogueSettled: false };
+	// Persisted title paints a restored tab before any page lands.
+	assert.deepEqual(resolveWorkspaceTabTitle({ ...base, savedTitle: "Aida" }), {
+		kind: "title",
+		text: "Aida",
+	});
+	// No name anywhere and no answer yet: loading, not "New chat".
+	assert.deepEqual(resolveWorkspaceTabTitle(base), { kind: "loading" });
+	assert.deepEqual(resolveWorkspaceTabTitle({ ...base, savedTitle: "  " }), {
+		kind: "loading",
+	});
+	// Loaded catalogue row outranks the remembered name; header outranks both.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			...base,
+			catalogueSettled: true,
+			catalogueTitle: "Renamed",
+			savedTitle: "Old",
+		}),
+		{ kind: "title", text: "Renamed" },
+	);
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			...base,
+			activeTitle: "Header",
+			catalogueTitle: "Row",
+		}),
+		{ kind: "title", text: "Header" },
+	);
+	// Settled (answered or failed) with no row: the existing fallback, never a spinner.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({ ...base, catalogueSettled: true }),
+		{
+			kind: "fallback",
+		},
+	);
+	// Drafts are "New chat" even before the catalogue answers, and ignore saved names.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: draft,
+			catalogueSettled: false,
+			savedTitle: "x",
+		}),
+		{ kind: "fallback" },
+	);
+});
+
+test("saved tab titles round-trip, and state written before the field still loads", () => {
+	const titles = { [targetA.id]: "  Aida ", [targetB.id]: "" };
+	const saved = saveWorkspaceTabs(
+		[sessionA, sessionB, draftTab],
+		(id) => titles[id],
+	);
+	assert.deepEqual(saved, [
+		{ id: targetA.id, pinned: false, title: "Aida" },
+		{ id: targetB.id, pinned: false },
+	]);
+	assert.deepEqual(
+		sanitizeSavedWorkspaceTabs(JSON.parse(JSON.stringify(saved))),
+		saved,
+	);
+	// Old blob: no title key at all.
+	assert.deepEqual(
+		sanitizeSavedWorkspaceTabs([{ id: targetA.id, pinned: true }]),
+		[{ id: targetA.id, pinned: true }],
+	);
+	// Non-string or oversized titles never reach the strip unbounded.
+	const [bad, long] = sanitizeSavedWorkspaceTabs([
+		{ id: targetA.id, pinned: false, title: 42 },
+		{ id: targetB.id, pinned: false, title: "x".repeat(1000) },
+	]);
+	assert.equal("title" in bad, false);
+	assert.equal(long.title.length, 300);
+	// A title change alone is a difference worth re-saving.
+	assert.equal(
+		savedWorkspaceTabsDiffer(
+			saved,
+			saved.map((row) => ({ ...row })),
+		),
+		false,
+	);
+	assert.equal(
+		savedWorkspaceTabsDiffer(saved, [
+			{ ...saved[0], title: "Other" },
+			saved[1],
+		]),
+		true,
+	);
+});
+
+function assertTitleLoadingWiring(strip, hook) {
+	assert.match(strip, /resolveWorkspaceTabTitle\(/);
+	assert.match(strip, /state\.head\.at > 0 \|\| state\.error !== null/);
+	assert.match(
+		strip,
+		/data-workspace-tab-title-loading=""\s*aria-busy="true"[\s\S]*?<Skeleton aria-hidden="true" className="h-2\.5 w-20" \/>/,
+	);
+	assert.match(strip, /t\("ui\.chat\.canonical\.loading\.region_label"\)/);
+	assert.equal((strip.match(/\{titleSlot\(tab, /g) ?? []).length, 2);
+	assert.match(hook, /\}, \[tabs, sessions\]\);/);
+	assert.match(hook, /savedWorkspaceTabsDiffer\(saved, store\.workspaceTabs\)/);
+}
+
+test("restored tabs draw a fixed-width loading placeholder and persist their titles", () => {
+	const strip = source("features/chat/components/workspace-tabs.tsx");
+	const hook = source("features/chat/components/use-workspace-tabs.ts");
+	assertTitleLoadingWiring(strip, hook);
+	// Negative controls: each regression shape must fail the guard.
+	for (const mutated of [
+		[strip.replace("state.head.at > 0 || state.error !== null", "false"), hook],
+		[strip.replace('className="h-2.5 w-20"', 'className="h-2.5"'), hook],
+		[strip.replace('aria-busy="true"', ""), hook],
+		[strip.replace('{titleSlot(tab, "truncate")}', "{title(tab)}"), hook],
+		[strip, hook.replace("}, [tabs, sessions]);", "}, [tabs]);")],
+	]) {
+		assert.ok(
+			mutated[0] !== strip || mutated[1] !== hook,
+			"control mutation applied",
+		);
+		assert.throws(() => assertTitleLoadingWiring(...mutated));
+	}
+	// Model-level negative control: dropping the loading arm reads "fallback".
+	assert.notDeepEqual(
+		resolveWorkspaceTabTitle({ target: targetA, catalogueSettled: true }),
+		{ kind: "loading" },
+	);
 });

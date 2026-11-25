@@ -14,8 +14,10 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@shared/components/ui/context-menu";
+import { Skeleton } from "@shared/components/ui/skeleton";
 import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { ChevronDown, Ellipsis, Pin, X } from "lucide-react";
 import {
 	type DragEvent,
@@ -29,6 +31,7 @@ import {
 	type WorkspaceBulkClose,
 	type WorkspaceTab,
 	displayedWorkspaceTabs,
+	resolveWorkspaceTabTitle,
 	workspaceBulkCloseKeys,
 } from "../workspace-tabs-model";
 
@@ -88,12 +91,57 @@ export function WorkspaceTabs({
 	// Pins survive "close all" by contract; the item disables when only pins remain.
 	const closeAllKeys = workspaceBulkCloseKeys(tabs, "", "all", false);
 	const [overflow, setOverflow] = useState(false);
-	const title = ({ target, key }: WorkspaceTab) =>
-		(key === activeKey && activeTitle) ||
-		(target.kind === "session" &&
-			sessions.find((row) => row.session_id === target.id)?.title) ||
-		titles[key] ||
-		t("ui.shell.sidebar_navigation.new_chat");
+	const savedTabs = useUiPreferencesStore((state) => state.workspaceTabs);
+	/*
+	 * The catalogue has SETTLED once a head answer landed (`head.at` is its
+	 * stamp) or the read failed (`error`). Until then a tab with no known name
+	 * is loading, not "New chat"; after it, an absent row settles to the
+	 * fallback so a gone conversation never shimmers forever.
+	 */
+	const catalogueSettled = useCanonicalSessionsStore(
+		(state) => state.head.at > 0 || state.error !== null,
+	);
+	const resolveTitle = ({ target, key }: WorkspaceTab) =>
+		resolveWorkspaceTabTitle({
+			target,
+			activeTitle: key === activeKey ? activeTitle : undefined,
+			catalogueTitle:
+				target.kind === "session"
+					? sessions.find((row) => row.session_id === target.id)?.title
+					: undefined,
+			sessionTitle: titles[key],
+			savedTitle:
+				target.kind === "session"
+					? savedTabs.find((row) => row.id === target.id)?.title
+					: undefined,
+			catalogueSettled,
+		});
+	/** Plain text for labels; a loading tab reads "Loading conversation". */
+	const title = (tab: WorkspaceTab) => {
+		const resolved = resolveTitle(tab);
+		if (resolved.kind === "title") return resolved.text;
+		return resolved.kind === "loading"
+			? t("ui.chat.canonical.loading.region_label")
+			: t("ui.shell.sidebar_navigation.new_chat");
+	};
+	/*
+	 * The visible title slot. A loading tab draws the shared Skeleton at a
+	 * FIXED width so the strip does not reflow when names arrive in a burst;
+	 * the sr-only text keeps the button's accessible name.
+	 */
+	const titleSlot = (tab: WorkspaceTab, className: string) =>
+		resolveTitle(tab).kind === "loading" ? (
+			<span
+				data-workspace-tab-title-loading=""
+				aria-busy="true"
+				className="flex items-center"
+			>
+				<Skeleton aria-hidden="true" className="h-2.5 w-20" />
+				<span className="sr-only">{title(tab)}</span>
+			</span>
+		) : (
+			<span className={className}>{title(tab)}</span>
+		);
 
 	useLayoutEffect(() => {
 		if (activeKey && activeTitle) titles[activeKey] = activeTitle;
@@ -368,7 +416,7 @@ export function WorkspaceTabs({
 					}}
 				>
 					{tab.pinned && <Pin aria-hidden="true" className="size-3 shrink-0" />}
-					<span className="truncate">{title(tab)}</span>
+					{titleSlot(tab, "truncate")}
 				</button>
 				{/*
 				 * The tab's own actions live INSIDE the tab, beside its close button, so
@@ -518,7 +566,7 @@ export function WorkspaceTabs({
 									{tab.pinned && (
 										<Pin aria-hidden="true" className="size-3 shrink-0" />
 									)}
-									<span className="max-w-56 truncate">{title(tab)}</span>
+									{titleSlot(tab, "max-w-56 truncate")}
 								</DropdownMenuItem>
 							))}
 						{overflow && <DropdownMenuSeparator />}
