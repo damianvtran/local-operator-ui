@@ -108,6 +108,14 @@ window.HTMLCanvasElement.prototype.getContext = () => null;
  * what comes back is not the subject, what was SENT is.
  */
 const sent = [];
+/*
+ * The policy WRITES the card made. Since the card reads the live mode through
+ * the shared `useApprovalMode` query (the chip's read), the bridge also sees
+ * `commands.entities` reads, before and after a press re-invalidates them. They
+ * change no policy, so the press assertions count only what could loosen it.
+ */
+const policyWrites = () =>
+	sent.filter((request) => request.op !== "commands.entities");
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -269,6 +277,14 @@ after(async () => {
 	await act(async () => {
 		root?.unmount();
 	});
+	/*
+	 * The card now reads the shared `useApprovalMode` query, so the client holds
+	 * cached `commands.entities` queries whose garbage-collection timers (React
+	 * Query's default gcTime, 5 min) keep the event loop alive after unmount: the
+	 * file then idled until the runner cancelled it at ~300 s. Clearing the
+	 * cache cancels those timers so the process exits when the tests do.
+	 */
+	queryClient.clear();
 	for (const [key, descriptor] of originals) {
 		if (descriptor === undefined) delete globalThis[key];
 		else Object.defineProperty(globalThis, key, descriptor);
@@ -359,20 +375,22 @@ test("NEGATIVE CONTROL: an unlatched approval still offers both links and they s
 	);
 
 	await press(session);
-	assert.equal(sent.length, 1);
-	assert.equal(sent[0].op, "sessions.command");
-	assert.equal(sent[0].command, "approvals");
-	assert.equal(sent[0].args, "auto");
+	const sessionWrites = policyWrites();
+	assert.equal(sessionWrites.length, 1);
+	assert.equal(sessionWrites[0].op, "sessions.command");
+	assert.equal(sessionWrites[0].command, "approvals");
+	assert.equal(sessionWrites[0].args, "auto");
 
 	sent.length = 0;
 	await press(buttonNamed("Auto-approve all sessions"));
+	const allWrites = policyWrites();
 	assert.deepEqual(
-		sent.map((request) => request.op),
+		allWrites.map((request) => request.op),
 		["settings.edit", "sessions.command"],
 		"the default is written first, then this conversation is asked to follow",
 	);
-	assert.equal(sent[0].key, "tool_approval_mode");
-	assert.equal(sent[0].value, "auto");
+	assert.equal(allWrites[0].key, "tool_approval_mode");
+	assert.equal(allWrites[0].value, "auto");
 });
 
 test("NEGATIVE CONTROL: bridge flags that are explicitly false or absent leave the card as before", async () => {
