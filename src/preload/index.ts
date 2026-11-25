@@ -20,6 +20,7 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
+	BackendUpdateStatus,
 } from "../main/update-service";
 import {
 	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
@@ -891,26 +892,7 @@ const api = {
 			};
 		},
 		onBackendUpdateNotAvailable: (
-			callback: (info: {
-				version: string;
-				runningVersion?: string | null;
-				restartable?: boolean;
-				/**
-				 * False when the check that sent this pair never READ the published release, so
-				 * the notice may state the two readings without calling the install current.
-				 * Absent means the release was read. Only the network-unavailable pass sends
-				 * false (QA round 3, Q3-1).
-				 */
-				releaseRead?: boolean;
-				/**
-				 * Whether the INSTALL this check read is the app's own environment.
-				 *
-				 * The second ownership reading, and the one the skew panel's control needs:
-				 * `restartable` is true on a global install too, where the press behind that
-				 * control runs the install's own updater rather than a restart (design D5).
-				 */
-				appOwnedEnvironment?: boolean;
-			}) => void,
+			callback: (info: BackendUpdateStatus) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("backend-update-not-available", handler);

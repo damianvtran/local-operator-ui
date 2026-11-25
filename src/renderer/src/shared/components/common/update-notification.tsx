@@ -1417,6 +1417,16 @@ export const UpdateNotification = ({
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updatingBackend, setUpdatingBackend] = useState(false);
+	// Background convergence is not an update press in flight. Only the quiet
+	// sidebar arc follows it; the reader can still check or use the app normally.
+	const [convergingBackend, setConvergingBackend] = useState(false);
+	const backendObservation = useRef<{
+		id: number;
+		version: string | null;
+		installScope?: string;
+		converging: boolean;
+		settled: boolean;
+	}>({ id: 0, version: null, converging: false, settled: false });
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 	const [downloading, setDownloading] = useState(false);
@@ -1775,8 +1785,8 @@ export const UpdateNotification = ({
 		noteInFlight(UpdateType.UI, downloading || installing);
 	}, [downloading, installing, noteInFlight]);
 	useEffect(() => {
-		noteInFlight(UpdateType.BACKEND, updatingBackend);
-	}, [updatingBackend, noteInFlight]);
+		noteInFlight(UpdateType.BACKEND, updatingBackend || convergingBackend);
+	}, [updatingBackend, convergingBackend, noteInFlight]);
 	/*
 	 * The percent travels separately from the flag because it arrives at its own
 	 * cadence (a `download-progress` per chunk): null while nothing is measured,
@@ -2221,6 +2231,36 @@ export const UpdateNotification = ({
 		attempt.inFlight = false;
 		return true;
 	}, []);
+
+	/**
+	 * Checks can finish after a promotion or after a more recent check. Reject
+	 * those readings before they can clear a newer notice, or re-raise one that
+	 * an authoritative equality already retired.
+	 */
+	const acceptBackendObservation = useCallback(
+		(reported: string | null, id?: number, scope?: string) => {
+			const observed = backendObservation.current;
+			const version = readableVersion(reported);
+			if (id !== undefined && id <= observed.id) return false;
+			if (
+				version &&
+				observed.version &&
+				version !== observed.version &&
+				!atLeastVersion(version, observed.version)
+			)
+				return false;
+			if (version && version !== observed.version) {
+				observed.version = version;
+				observed.installScope = scope;
+				observed.converging = false;
+				observed.settled = false;
+				setConvergingBackend(false);
+			}
+			if (id !== undefined) observed.id = id;
+			return true;
+		},
+		[],
+	);
 
 	/**
 	 * Put an install/running skew on screen, unless the user has already read it.
@@ -2756,6 +2796,50 @@ export const UpdateNotification = ({
 		// Backend update not available
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
+				const observed = backendObservation.current;
+				const install = readableVersion(info.version);
+				const running = readableVersion(info.runningVersion);
+				const sameInstall =
+					!observed.installScope || info.installScope === observed.installScope;
+				const equal =
+					sameInstall &&
+					install !== null &&
+					running === install &&
+					info.bootVersionVerified === true;
+				if (!sameInstall && (info.observationOnly || observed.converging))
+					return;
+				if (
+					!acceptBackendObservation(
+						info.version,
+						info.observationId,
+						info.installScope,
+					)
+				)
+					return;
+				if (equal || info.convergenceEnded) {
+					observed.converging = false;
+					setConvergingBackend(false);
+				}
+				if (equal) {
+					observed.settled = true;
+					setBackendSkewNotice(null);
+				}
+				if (info.observationOnly) {
+					// A local reconciliation must not close offers or answer a manual check.
+					if (info.convergenceEnded && running && !equal) {
+						announceBackendSkew({
+							installVersion: install,
+							runningVersion: running,
+							notRestarted: true,
+							unattended: false,
+							restartable: false,
+							releaseRead: true,
+							appOwnedEnvironment: false,
+							kind: "landed",
+						});
+					}
+					return;
+				}
 				const currentInfo = backendUpdateInfoRef.current;
 				/*
 				 * The indicator yields to the answer (issue #672). It is cleared
@@ -2780,7 +2864,8 @@ export const UpdateNotification = ({
 					// (review U12).
 					if (
 						currentInfo &&
-						atLeastVersion(info.version, currentInfo.latestVersion)
+						install !== null &&
+						atLeastVersion(install, currentInfo.latestVersion)
 					) {
 						setBackendUpdateInfo(null);
 						return false;
@@ -2817,7 +2902,13 @@ export const UpdateNotification = ({
 				 * later check able to re-offer, because the install itself is up to date.
 				 * The producer now sends the daemon's reading on this event too.
 				 */
-				if (readableVersion(info.runningVersion)) {
+				if (
+					running &&
+					!observed.converging &&
+					!(observed.settled && info.observationId === undefined)
+				) {
+					if (install && !atLeastVersion(running, install))
+						observed.installScope = info.installScope;
 					announceBackendSkew({
 						installVersion: info.version,
 						runningVersion: info.runningVersion ?? null,
@@ -2843,6 +2934,15 @@ export const UpdateNotification = ({
 		// Backend update completed
 		const removeBackendUpdateCompletedListener =
 			window.api.updater.onBackendUpdateCompleted((completion) => {
+				if (
+					completion &&
+					!acceptBackendObservation(
+						completion.installVersion,
+						completion.observationId,
+						completion.installScope,
+					)
+				)
+					return;
 				// The attempt this answers is over, and `terminal` keeps the resolved
 				// `true`/`false` behind this event from reporting it a second time.
 				answerBackendUpdateAttempt();
@@ -2853,6 +2953,20 @@ export const UpdateNotification = ({
 				setChecking(false);
 				setUpdatingBackend(false);
 				setBackendUpdatePhase(null);
+
+				const observed = backendObservation.current;
+				if (completion?.converging === true) {
+					if (observed.settled && completion.observationId === undefined)
+						return;
+					observed.converging = true;
+					observed.installScope = completion.installScope;
+					setBackendUpdateCompleted(false);
+					setBackendSkewNotice(null);
+					setConvergingBackend(true);
+					return;
+				}
+				observed.converging = false;
+				setConvergingBackend(false);
 
 				/*
 				 * A completion is only good news for the server when the thing serving the
@@ -2896,6 +3010,7 @@ export const UpdateNotification = ({
 					 * no field, and their funnel is exactly what it was.
 					 */
 					completion.moved !== true &&
+					!(observed.settled && completion.observationId === undefined) &&
 					announceBackendSkew({
 						installVersion: completion.installVersion,
 						runningVersion: completion.runningVersion,
@@ -3067,6 +3182,7 @@ export const UpdateNotification = ({
 			removeInstallSucceededListener();
 		};
 	}, [
+		acceptBackendObservation,
 		announceBackendSkew,
 		answerBackendUpdateAttempt,
 		autoCheck,

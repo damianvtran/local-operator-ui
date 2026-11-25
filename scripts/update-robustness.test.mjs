@@ -10659,6 +10659,9 @@ const driveGlobalUpdate = async ({
 	 */
 	serveInstances = [],
 	serveBootVersions = [],
+	servePrefix = "",
+	serveInstallKind = "",
+	startupMode = "GLOBAL_INSTALL",
 	/*
 	 * The machine's runtime roster (`GET /v1/desktop/runtimes`) for the
 	 * straggler census, as the CRUDResponse's `result` object
@@ -10769,9 +10772,10 @@ const driveGlobalUpdate = async ({
 			? serveQueues[key].shift()
 			: (serveQueues[key][0] ?? fallback);
 	const backend = {
-		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+		getStartupMode: () => service.LocalOperatorStartupMode[startupMode],
 		getBackendUrl: () => "http://127.0.0.1:9",
 		isUsingExternalBackend: () => external,
+		getStatusSnapshot: () => ({ state: "attached" }),
 		setAutoUpdating: (value) => {
 			autoUpdating = value;
 			calls.autoUpdating.push(value);
@@ -10803,8 +10807,8 @@ const driveGlobalUpdate = async ({
 			readings: {
 				bootVersion: shiftServe("bootVersions", null),
 				instanceId: shiftServe("instances", null),
-				prefix: "",
-				installKind: "",
+				prefix: servePrefix,
+				installKind: serveInstallKind,
 				startedByApp: false,
 			},
 			managedByThisApp: false,
@@ -10919,6 +10923,7 @@ const driveGlobalUpdate = async ({
 	const interval = updateService.updateCheckInterval;
 	const dispose = () => {
 		if (interval) clearInterval(interval);
+		updateService.clearAttachedPromotion?.();
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -11003,7 +11008,15 @@ const driveGlobalUpdate = async ({
 			updateService.waitForBackendVersion = async () => daemonReports;
 		}
 		updateService.checkBackendHealth = async () => true;
-		return { updateService, sent, calls, dispose, userData, markerPath };
+		return {
+			updateService,
+			backend,
+			sent,
+			calls,
+			dispose,
+			userData,
+			markerPath,
+		};
 	} catch (error) {
 		dispose();
 		throw error;
@@ -11064,6 +11077,195 @@ test("the offer carries the reading that decides the sentence it renders", async
 		adopted.dispose();
 	}
 });
+
+for (const scenario of [
+	"settled",
+	"equal check",
+	"sustained",
+	"unreadable",
+	"not queued",
+	"wrong daemon",
+	"no boot record",
+]) {
+	test(`attached uv-tool promotion: ${scenario}`, async () => {
+		const root = realpathSync(
+			mkdtempSync(join(tmpdir(), "lo-attached-promotion-")),
+		);
+		const previous = join(
+			root,
+			"generations",
+			"old",
+			"tools",
+			"local-operator",
+		);
+		const promoted = join(root, "generations", "new");
+		const next = join(promoted, "tools", "local-operator");
+		for (const [prefix, version] of [
+			[previous, "0.113.8"],
+			[next, "0.113.9"],
+		]) {
+			makeInstall(prefix, version);
+			writeFileSync(
+				join(prefix, "uv-receipt.toml"),
+				'[tool]\nname = "local-operator"\n',
+			);
+		}
+		symlinkSync(join(root, "generations", "old"), join(root, "current"));
+		let run;
+		try {
+			run = await driveGlobalUpdate({
+				before: "0.113.8",
+				after: "0.113.9",
+				target: "0.113.9",
+				external: true,
+				startupMode: "EXISTING_SERVER",
+				daemonReports: "0.113.8",
+				managedRoute: "entry-point",
+				serveInstances: ["fixture-old"],
+				serveBootVersions: scenario === "no boot record" ? [] : ["0.113.8"],
+				servePrefix: previous,
+				serveInstallKind: "uv-tool",
+				servingPrefix: previous,
+				shimPath: join(
+					root,
+					"current",
+					"tools",
+					"local-operator",
+					"bin",
+					"local-operator",
+				),
+				realEvidenceReads: true,
+				runGate: async () => {
+					symlinkSync(promoted, join(root, "candidate"));
+					renameSync(join(root, "candidate"), join(root, "current"));
+				},
+				stdout: JSON.stringify({
+					update_report: {
+						schema: "update.report.v1",
+						ok: true,
+						install_version: "0.113.9",
+						target: "0.113.9",
+						serve: [
+							{
+								pid: 123,
+								from: "0.113.8",
+								to: "0.113.8",
+								moved: false,
+								instance: "fixture-old",
+							},
+						],
+						daemons: [],
+						rolling: {
+							contract: "rolling-no-kill-v1",
+							core_installed: true,
+							serving_measured: true,
+							promoted: { generation: promoted, version: "0.113.9" },
+							now_current: { generation: promoted, version: "0.113.9" },
+							services: [
+								{
+									pid: 123,
+									instance:
+										scenario === "wrong daemon"
+											? "another-instance"
+											: "fixture-old",
+									serving_version: "0.113.8",
+									loaded_root: previous,
+									state: "pending",
+								},
+								{
+									name: "serve pid 123",
+									state: "pending",
+									reason:
+										scenario === "not queued"
+											? "old serving build or unproved handoff"
+											: "move pending, retrying in the background",
+								},
+							],
+						},
+					},
+				}),
+			});
+			assert.equal(await run.updateService.updateBackend("0.113.9"), true);
+			const completion = backendCompletion(run.sent)?.payload;
+			console.log(`${scenario}: completion ${JSON.stringify(completion)}`);
+			const converges = [
+				"settled",
+				"equal check",
+				"sustained",
+				"unreadable",
+			].includes(scenario);
+			assert.equal(completion?.converging, converges ? true : undefined);
+			assert.equal(completion?.runningVersion, "0.113.8");
+			assert.equal(run.calls.restarts, 0);
+			assert.equal(run.calls.starts, 0);
+			if (!converges) return;
+
+			run.updateService.observeAttachedPromotion();
+			const status = () =>
+				run.sent.findLast(
+					({ channel }) => channel === "backend-update-not-available",
+				)?.payload;
+			assert.equal(
+				status(),
+				undefined,
+				"an ordinary old-record probe must not end convergence",
+			);
+			const equal = scenario === "settled" || scenario === "equal check";
+			if (equal) {
+				const old = run.backend.servingInstall();
+				run.backend.servingInstall = () => ({
+					...old,
+					readings: {
+						...old.readings,
+						prefix: next,
+						instanceId: "fixture-new",
+						bootVersion: "0.113.9",
+					},
+				});
+			} else if (scenario === "unreadable") {
+				run.backend.getStatusSnapshot = () => ({ state: "detached" });
+			}
+			if (scenario === "equal check") {
+				run.updateService.readRunningBackend = async () => ({
+					version: "0.113.9",
+					prefix: next,
+					installKind: "uv-tool",
+				});
+				const plan = await run.updateService.resolveBackendUpdatePlan();
+				run.updateService.resolveBackendUpdatePlan = async () => ({
+					...plan,
+					installedInstallVersion: "0.113.9",
+				});
+				run.updateService.networkIsReachable = () => false;
+				await run.updateService.checkForBackendUpdates(true);
+				assert.ok(
+					status()?.observationOnly,
+					"silent equality must not answer a manual check",
+				);
+				assert.equal(
+					run.updateService.attachedPromotion,
+					null,
+					"the deadline is cancelled",
+				);
+			} else {
+				run.updateService.observeAttachedPromotion(!equal);
+				assert.equal(status()?.convergenceEnded, true);
+			}
+			console.log(
+				`${scenario}: observation ${JSON.stringify({ ...status(), installScope: "<synthetic current>" })}`,
+			);
+			assert.equal(
+				status()?.runningVersion,
+				equal ? "0.113.9" : scenario === "sustained" ? "0.113.8" : null,
+			);
+			assert.equal(status()?.bootVersionVerified, equal);
+			assert.ok(status()?.observationId > completion.observationId);
+		} finally {
+			run?.dispose();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+}
 
 test("a silent check speaks when the two readings disagree, and not when they agree", async () => {
 	/*

@@ -1076,7 +1076,29 @@ type ServingInstall = {
  * still means what it always did - the plain success the renderer toast shows -
  * so an older producer keeps working.
  */
+export type BackendUpdateStatus = {
+	version: string | null;
+	runningVersion?: string | null;
+	/** Stable console path of the install, including across generation flips. */
+	installScope?: string;
+	restartable?: boolean;
+	/** False when the local pair was measured without reading the published release. */
+	releaseRead?: boolean;
+	appOwnedEnvironment?: boolean;
+	/** Ordered at the start of a check, so a late check cannot overwrite a promotion. */
+	observationId?: number;
+	/** Equality includes the attached process's boot record, not just /health. */
+	bootVersionVerified?: boolean;
+	/** A local reconciliation, not a response to the user's Check for updates. */
+	observationOnly?: boolean;
+	convergenceEnded?: boolean;
+};
+
 export type BackendUpdateCompletion = {
+	observationId?: number;
+	installScope?: string;
+	/** The updater scheduled another move of this exact attached daemon. */
+	converging?: boolean;
 	/** The version the install on disk reports after the attempt. */
 	installVersion: string | null;
 	/** The version the daemon serving this app reports, when it was readable. */
@@ -2315,6 +2337,22 @@ export class UpdateService {
 	private backendUrl: string;
 	private updateCheckInterval: NodeJS.Timeout | null = null;
 	private backendService: BackendServiceManager | null = null;
+	private backendObservationId = 0;
+	private attachedPromotion: {
+		version: string;
+		previousPrefix: string;
+		promotedPrefix: string;
+		currentEntry: string;
+		previousInstance: string;
+		startedId: number;
+		timer: ReturnType<typeof setTimeout>;
+	} | null = null;
+
+	// Three promotions (2026-11-25 update-service logs) first verified equality
+	// at 62.814, 113.077 and 125.128 s after promotion. These are sampling upper
+	// bounds, not handoff times. 150 s covers the largest plus two 10 s attachment
+	// probe cycles. This is a UI deadline, NEVER a daemon or installer deadline.
+	private readonly attachedPromotionGraceMs = 150_000;
 
 	/**
 	 * What the updater is doing right now.
@@ -2838,6 +2876,16 @@ export class UpdateService {
 	 */
 	private pythonSpawnEnv(): Record<string, string | undefined> {
 		return withPythonBytecodeCache(process.env, this.markerDir());
+	}
+
+	private sendBackendUpdateCompletion(
+		completion: BackendUpdateCompletion,
+	): void {
+		if (!completion.converging) this.clearAttachedPromotion();
+		this.sendToRenderer("backend-update-completed", {
+			...completion,
+			observationId: ++this.backendObservationId,
+		});
 	}
 
 	private sendToRenderer(channel: string, payload: unknown): boolean {
@@ -4871,6 +4919,7 @@ export class UpdateService {
 	 * Clean up resources, event listeners, and IPC handlers when the service is no longer needed
 	 */
 	public dispose(): void {
+		this.clearAttachedPromotion();
 		// Clear the update check interval
 		if (this.updateCheckInterval) {
 			clearInterval(this.updateCheckInterval);
@@ -7177,6 +7226,7 @@ export class UpdateService {
 		 */
 		reportFailure = !silent,
 	): Promise<BackendCheckReport> {
+		const observationId = ++this.backendObservationId;
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
 			LogFileType.UPDATE_SERVICE,
@@ -7376,7 +7426,8 @@ export class UpdateService {
 					 * restarted the daemon onto the install, and a reading captured before it
 					 * would announce a skew a successful repair has already closed.
 					 */
-					eventRunning: this.eventRunningVersion(runningVersion),
+					...this.checkBootObservation(installVersion, running),
+					observationId,
 					silent,
 					releaseRead: false,
 					/*
@@ -7543,7 +7594,11 @@ export class UpdateService {
 			 * serving when the events are sent, which is what every sentence about the
 			 * daemon has to describe.
 			 */
-			const eventRunning = this.eventRunningVersion(runningVersion);
+			const bootObservation = this.checkBootObservation(
+				installVersion,
+				running,
+			);
+			const { eventRunning } = bootObservation;
 			if (eventRunning !== runningVersion) {
 				logger.info(
 					`The events this check sends carry the serving process's own reading: ${eventRunning ?? "no reading"} (the record it booted with), against /health's ${runningVersion ?? "no reading"}`,
@@ -7722,7 +7777,8 @@ export class UpdateService {
 			 */
 			this.sendBackendSkewNotice({
 				installedVersion,
-				eventRunning,
+				...bootObservation,
+				observationId,
 				silent,
 				/*
 				 * The published release WAS read on this path - the offer and the
@@ -8472,17 +8528,121 @@ export class UpdateService {
 	 * once. Absence is both-fields-null, never a papered-over reading: a record
 	 * that could not be read proves nothing and the verdict says so.
 	 */
-	private servingRecordReadings(): {
-		bootVersion: string | null;
-		instanceId: string | null;
-	} {
-		const readings =
+	private servingRecordReadings() {
+		return (
 			this.backendService?.servingInstall().readings ??
-			servingInstallReadings(null);
-		return {
-			bootVersion: readings.bootVersion,
-			instanceId: readings.instanceId,
+			servingInstallReadings(null)
+		);
+	}
+
+	private clearAttachedPromotion(): void {
+		if (!this.attachedPromotion) return;
+		clearTimeout(this.attachedPromotion.timer);
+		this.attachedPromotion = null;
+	}
+
+	/** Observes the existing attachment probe; this never starts, restarts or probes a daemon. */
+	observeAttachedPromotion(expired = false): void {
+		const promotion = this.attachedPromotion;
+		if (!promotion) return;
+		const record = this.servingRecordReadings();
+		const current = readInstallIdentity(promotion.currentEntry);
+		const sameInstall =
+			current.version === promotion.version &&
+			current.venvPrefix === promotion.promotedPrefix;
+		const attached =
+			this.backendService?.getStatusSnapshot().state === "attached";
+		const settled =
+			sameInstall &&
+			attached &&
+			record.installKind === "uv-tool" &&
+			record.prefix === promotion.promotedPrefix &&
+			record.bootVersion === promotion.version &&
+			!!record.instanceId &&
+			record.instanceId !== promotion.previousInstance;
+		if (!settled && !expired) return;
+		// A timeout does not manufacture a skew from the last cached version. The
+		// old warning is actionable only when we can still identify that old daemon.
+		const stillBehind =
+			sameInstall &&
+			attached &&
+			record.installKind === "uv-tool" &&
+			record.prefix === promotion.previousPrefix &&
+			!!record.instanceId &&
+			record.bootVersion !== null &&
+			compareVersions(record.bootVersion, promotion.version) === -1;
+		this.clearAttachedPromotion();
+		const payload: BackendUpdateStatus = {
+			version: promotion.version,
+			installScope: promotion.currentEntry,
+			runningVersion: settled || stillBehind ? record.bootVersion : null,
+			bootVersionVerified: settled,
+			observationId: ++this.backendObservationId,
+			observationOnly: true,
+			convergenceEnded: true,
+			restartable: false,
+			appOwnedEnvironment: false,
 		};
+		this.sendToRenderer("backend-update-not-available", payload);
+	}
+
+	private beginAttachedPromotion(input: {
+		report: UpdateReport | null;
+		before: string | null;
+		after: string | null;
+		currentEntry: string | null;
+		record: ReturnType<UpdateService["servingRecordReadings"]>;
+		previousInstance: string | null;
+	}): boolean {
+		const { report, before, after, currentEntry, record, previousInstance } =
+			input;
+		const retry = report?.serveRetries;
+		if (
+			!after ||
+			!before ||
+			compareVersions(before, after) !== -1 ||
+			!currentEntry ||
+			!retry ||
+			report.ok !== true ||
+			report.install_version !== after ||
+			report.target !== after ||
+			record.installKind !== "uv-tool" ||
+			record.bootVersion !== before ||
+			!record.instanceId ||
+			record.instanceId !== previousInstance ||
+			!retry.serving.some(
+				(row) =>
+					row.instanceId === record.instanceId &&
+					row.bootVersion === record.bootVersion &&
+					row.prefix === record.prefix,
+			)
+		)
+			return false;
+		const current = readInstallIdentity(currentEntry);
+		// The repair receipt could cover another installation. Bind its promotion to
+		// the same current entry this press used to verify the on-disk version.
+		if (
+			current.version !== after ||
+			!current.venvPrefix ||
+			current.venvPrefix !== join(retry.generation, "tools", "local-operator")
+		)
+			return false;
+		this.clearAttachedPromotion();
+		const timer = setTimeout(
+			() => this.observeAttachedPromotion(true),
+			this.attachedPromotionGraceMs,
+		);
+		timer.unref();
+		this.attachedPromotion = {
+			version: after,
+			previousPrefix: record.prefix,
+			promotedPrefix: current.venvPrefix,
+			currentEntry,
+			previousInstance: record.instanceId,
+			startedId: this.backendObservationId + 1,
+			timer,
+		};
+		return true;
 	}
 
 	/**
@@ -8752,6 +8912,31 @@ export class UpdateService {
 		return this.servingBootVersion() ?? fallback;
 	}
 
+	private checkBootObservation(
+		installed: string | null,
+		running: RunningBackendReading,
+	) {
+		const record = this.servingRecordReadings();
+		const samePrefix = !!running.prefix && record.prefix === running.prefix;
+		// A /health fallback can repeat the on-disk version of an old daemon.
+		// Retiring a warning requires the disk, boot record and attached endpoint
+		// to agree, on the same install the warning is about.
+		return {
+			eventRunning: record.bootVersion ?? running.version,
+			installScope: samePrefix
+				? (installPointerPath(join(record.prefix, "bin", "local-operator")) ??
+					undefined)
+				: undefined,
+			bootVersionVerified:
+				samePrefix &&
+				!!installed &&
+				isReadableVersion(installed) &&
+				record.bootVersion === installed &&
+				!!record.instanceId &&
+				running.version === installed,
+		};
+	}
+
 	/**
 	 * THE ONE PLACE THE SKEW NOTICE IS SENT, for the two checks that can reach it.
 	 *
@@ -8824,6 +9009,9 @@ export class UpdateService {
 		installedVersion: string | null;
 		/** The serving process's OWN reading, from its serve record. */
 		eventRunning: string | null;
+		bootVersionVerified: boolean;
+		installScope?: string;
+		observationId: number;
 		silent: boolean;
 		releaseRead: boolean;
 		/** Whether the INSTALL a press would move is the app's own (design D5). */
@@ -8836,22 +9024,33 @@ export class UpdateService {
 			isReadableVersion(installedVersion) &&
 			isReadableVersion(eventRunning) &&
 			installedVersion.trim() !== eventRunning.trim();
+		const verifiedEqual =
+			options.bootVersionVerified && installedVersion === eventRunning;
+		const promotion = this.attachedPromotion;
 		if (
-			(!silent || readingsDiffer) &&
+			verifiedEqual &&
+			promotion &&
+			options.observationId > promotion.startedId &&
+			options.installScope === promotion.currentEntry &&
+			installedVersion === promotion.version
+		) {
+			this.clearAttachedPromotion();
+		}
+		if (
+			(!silent || readingsDiffer || verifiedEqual) &&
 			this.mainWindow &&
 			!this.mainWindow.isDestroyed() &&
 			this.mainWindow.webContents &&
 			!this.mainWindow.webContents.isDestroyed()
 		) {
-			const payload: {
-				version: string | null;
-				runningVersion: string | null;
-				restartable: boolean;
-				appOwnedEnvironment: boolean;
-				releaseRead?: boolean;
-			} = {
+			const payload: BackendUpdateStatus = {
 				version: installedVersion,
 				runningVersion: eventRunning,
+				...(options.installScope ? { installScope: options.installScope } : {}),
+				observationId: options.observationId,
+				...(verifiedEqual
+					? { bootVersionVerified: true, observationOnly: silent }
+					: {}),
 				/** Whether the app may restart the daemon that is behind. */
 				restartable: this.backendIsAppOwned(),
 				/*
@@ -9389,6 +9588,12 @@ export class UpdateService {
 		const serveInstanceBefore = generationInstall
 			? this.servingRecordReadings().instanceId
 			: null;
+		const attachedCurrentEntry =
+			generationInstall &&
+			backend.getStartupMode() === LocalOperatorStartupMode.EXISTING_SERVER &&
+			backend.isUsingExternalBackend()
+				? installPointerPath(installPath)
+				: null;
 		const fleetBeforeUpdate = generationInstall
 			? await this.readFleetSnapshot(backend)
 			: null;
@@ -9738,7 +9943,16 @@ export class UpdateService {
 			 * the renderer's guard suppresses the notice by construction - while the
 			 * daemon the reader is talking to still serves the old build.
 			 */
-			const running = this.eventRunningVersion(health);
+			const record = this.servingRecordReadings();
+			const running = record.bootVersion ?? health;
+			const converging = this.beginAttachedPromotion({
+				report: updateReport,
+				before,
+				after,
+				currentEntry: attachedCurrentEntry,
+				record,
+				previousInstance: serveInstanceBefore,
+			});
 			logger.info(
 				`Install moved to ${after ?? "unknown"}; the attached backend still reports ${running ?? "no reading"}${running === health ? "" : ` (its own record; /health answers ${health ?? "no reading"})`}`,
 				LogFileType.UPDATE_SERVICE,
@@ -9755,9 +9969,18 @@ export class UpdateService {
 			 * `moved: false` states the same fact as a distinction the panel can key
 			 * copy from (2026-09-30) rather than inferring it from two readings.
 			 */
-			this.sendToRenderer("backend-update-completed", {
+			this.sendBackendUpdateCompletion({
 				installVersion: after,
 				runningVersion: running,
+				...(converging ? { converging } : {}),
+				...(record.prefix && installPath
+					? {
+							installScope:
+								attachedCurrentEntry ??
+								installPointerPath(installPath) ??
+								undefined,
+						}
+					: {}),
 				restarted: false,
 				moved: false,
 				restartable: this.backendIsAppOwned(),
