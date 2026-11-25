@@ -1,0 +1,50 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "hi",
+	"auditor": "reviewer",
+	"agent": "reviewer",
+	"session": "12abfd116490",
+	"instance": "12abfd116490-apprmode-r3-hi",
+	"model": "anthropic/claude-opus-5-5",
+	"model_fallback": null,
+	"independence": "lopdev reviewer session 12abfd116490; did not write this value (authored by the PR #2093 lopdev coder in 0a621217018). Same model family as the coder is possible: session independence, disclosed. Read the worktree at 0a621217018; edited no catalogue.",
+	"date": "2026-11-24",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2093,
+	"head": "0a621217018",
+	"base": "e29505b0be3",
+	"references": {
+		"glossary": "damianvtran/local-operator@4981010c6fb6 i18n/glossary.md",
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide": "damianvtran/local-operator@e21f92fa4ee1 i18n/style-guides/hi.md",
+		"usage": "src/renderer/src/features/chat/components/trace/approval-escape.tsx:655 title= on the 'Always ask' handle"
+	},
+	"scope": "Copy round 3 delta audit (e29505b0be3..0a621217018): the one new key ui.chat.approval.escape.always_ask_scope, read against en value, en .context.json entry, glossary, style guide and rendered usage. git diff --numstat shows +1/-0 per locale catalogue, so the other 24 keys are byte-identical to the bytes audited in round 2 (receipt 2f78dd26d3ba-apprmode-r2-hi) and carried.",
+	"checks": {
+		"meaning": "Says the Always-ask handle changes only this conversation, not every session, as the context note requires; 2-4 words; no trailing period.",
+		"mechanical": "Key parity with en (25); no placeholders; NFC; no Cc/Cf characters."
+	},
+	"status": "passed",
+	"namespaces": {
+		"ui.chat.approval": {
+			"status": "passed",
+			"keys_audited": 1,
+			"audited_keys": [
+				"ui.chat.approval.escape.always_ask_scope"
+			],
+			"sha256": {
+				"en": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+				"hi": "f7d903b7a8c759caba2b947d030f377547615e113f4c99fed9e92a1a5d92ae06",
+				"context": "bb9018085202f4a09a3981021a8bedecde957703f3da9e7bd0588967d1ccb7a6"
+			},
+			"final_values": {
+				"ui.chat.approval.escape.always_ask_scope": "केवल यह सत्र"
+			},
+			"notes": {
+				"ui.chat.approval.escape.always_ask_scope": "'केवल यह सत्र' — glossary session→सत्र; केवल = only; matches 'इस सत्र में' sibling."
+			},
+			"findings": []
+		}
+	}
+}

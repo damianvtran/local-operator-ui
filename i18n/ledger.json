@@ -111378,8 +111378,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "89c472f6fff28eb64430a2dab74696f2c010bd1f00b0e2ba62267803f324e2f0",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "f7da13eedab40c8322f73b1d365031904fecd24da10d72fa0fad60b857621086",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -111391,16 +111391,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-es",
+					"instance": "12abfd116490-apprmode-r3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-es.json",
-					"receipt_sha256": "3930fd6abc1c8d55b3fed5208bb23d154284b446481c73a7bfcbfa8ba391136c",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-es.json",
+					"receipt_sha256": "f094e973c7162cf371f85acc6b17a99d53d245dee80f12417966678d9448ea00",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -111448,6 +111448,29 @@
 							"receipt": "i18n/receipts/pr1881-es-46289ddf.json",
 							"receipt_sha256": "09833adb7a11aa791c6564e9304e98ee1ba0d20512a4905f668ebbe496e9e8eb",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "89c472f6fff28eb64430a2dab74696f2c010bd1f00b0e2ba62267803f324e2f0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-es.json",
+							"receipt_sha256": "3930fd6abc1c8d55b3fed5208bb23d154284b446481c73a7bfcbfa8ba391136c",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -112283,8 +112306,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "0248b4f3ebaaa215f0547b850e0bbf902b0be7c148e91dca1b6b92be9c28bc96",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "ae91682be7a6f0f5c4eda492e968865a97b151afd047c75c84e7aa192c790a2e",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -112296,16 +112319,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-fr",
+					"instance": "12abfd116490-apprmode-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-fr.json",
-					"receipt_sha256": "a8f4799f55b71c534314eebdba8c074c94f7bb9959c14ab9ffb96e018fea1930",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-fr.json",
+					"receipt_sha256": "1e234e30741a9030fc9554193287fc713d2d0664c7c1421a0e4739c66bb39ffb",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -112353,6 +112376,29 @@
 							"receipt": "i18n/receipts/pr1881-fr-459652a5.json",
 							"receipt_sha256": "332cd0a0ed7031047b66f8098157479798a20c421dca387e380c624939388e42",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "0248b4f3ebaaa215f0547b850e0bbf902b0be7c148e91dca1b6b92be9c28bc96",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-fr.json",
+							"receipt_sha256": "a8f4799f55b71c534314eebdba8c074c94f7bb9959c14ab9ffb96e018fea1930",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -113188,8 +113234,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "ce69f0a116342e4ddbcb890da778168ea191c94bed531a97e223563a29d41703",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "f7d903b7a8c759caba2b947d030f377547615e113f4c99fed9e92a1a5d92ae06",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -113201,16 +113247,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-hi",
+					"instance": "12abfd116490-apprmode-r3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-hi.json",
-					"receipt_sha256": "42a3b11d74dc2ae05223eaa541b19592ad9e9ec0fe203dedcbdb98d5ff1f195d",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-hi.json",
+					"receipt_sha256": "c4665d3822786e5a2db751f88d5c018971beedf20e0d2c598d187cfe24bd0341",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -113258,6 +113304,29 @@
 							"receipt": "i18n/receipts/pr1881-hi-7c6055be.json",
 							"receipt_sha256": "c509a0c5fc31d4438ebdaaa88247b50cfe91434af8d92631af779499a88c1f6e",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "ce69f0a116342e4ddbcb890da778168ea191c94bed531a97e223563a29d41703",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-hi.json",
+							"receipt_sha256": "42a3b11d74dc2ae05223eaa541b19592ad9e9ec0fe203dedcbdb98d5ff1f195d",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -114069,8 +114138,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "a9f544c88705c99398b227fae4f10050350a35ba1096291f7603d65be07b30f8",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "0a1e884fb6796300543011f453dfb7ac20895547827a793b36a16d7e98370b60",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -114082,16 +114151,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-ru",
+					"instance": "12abfd116490-apprmode-r3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-ru.json",
-					"receipt_sha256": "937c3b20c33c5e1b84c3d4803acaae55080e8453798380fc6571d7fbce396b9a",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-ru.json",
+					"receipt_sha256": "687709de8ae986f84e24f6399cada9a2b16b9eae87b9a0172d30a82238508661",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -114139,6 +114208,29 @@
 							"receipt": "i18n/receipts/pr1881-ru-5fe57626.json",
 							"receipt_sha256": "bc667c9648c2606c95091c77b0e32290ae77a9b5de474adee3ff123aff728765",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "a9f544c88705c99398b227fae4f10050350a35ba1096291f7603d65be07b30f8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-ru.json",
+							"receipt_sha256": "937c3b20c33c5e1b84c3d4803acaae55080e8453798380fc6571d7fbce396b9a",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -114974,8 +115066,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "ed51182ddd3908ceb0ce08159fb4dcc8e717c6103766a403e40000a2089ea7bf",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "3d49441f4b1be119c38e6b48a1e873a0a967094bd7eb0c990df95255d211eca7",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -114986,17 +115078,17 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
-					"result": "clean-with-findings",
-					"instance": "2f78dd26d3ba-apprmode-r2-ur",
+					"result": "clean",
+					"instance": "12abfd116490-apprmode-r3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-ur.json",
-					"receipt_sha256": "ee16f09c2610d84e0fa8fdb4a7f7cdade8acc08588f17f416e40b9f400b12a6e",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-ur.json",
+					"receipt_sha256": "6cfd22bfaf902bd86e1edeb04354ab6d269088632899ea6172fc4c1ba0d393e2",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -115044,6 +115136,29 @@
 							"receipt": "i18n/receipts/pr1881-ur-bbac41af.json",
 							"receipt_sha256": "8dc276e5c48bd9795bf4a185a883639f4e16677a6f56ee0e655e4cb7ea605a08",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "ed51182ddd3908ceb0ce08159fb4dcc8e717c6103766a403e40000a2089ea7bf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean-with-findings",
+							"instance": "2f78dd26d3ba-apprmode-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-ur.json",
+							"receipt_sha256": "ee16f09c2610d84e0fa8fdb4a7f7cdade8acc08588f17f416e40b9f400b12a6e",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -115855,8 +115970,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "a857c2c07ae34fe625fe86687425bad83e313f30138c94afd0673c83c9b51f82",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "941b740265a2e9f41e71c5d869e18824ef1b363402d54d69335511fae5ac4ffb",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -115868,16 +115983,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-vi",
+					"instance": "12abfd116490-apprmode-r3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-vi.json",
-					"receipt_sha256": "86e2a09a9de4532370dc80e34bb31402e1ec0595f52432767a4f52caeb1f3807",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-vi.json",
+					"receipt_sha256": "1eabb11ed7b29719e63ab907dcb9001875dc76e4beb44bcb3378be9778904fc5",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -115925,6 +116040,29 @@
 							"receipt": "i18n/receipts/pr1881-vi-18911e1f.json",
 							"receipt_sha256": "2db84e11c60f725d7e9ce2cb72bc39a97c074445b967c6694aa6088100903e8b",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "a857c2c07ae34fe625fe86687425bad83e313f30138c94afd0673c83c9b51f82",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-vi.json",
+							"receipt_sha256": "86e2a09a9de4532370dc80e34bb31402e1ec0595f52432767a4f52caeb1f3807",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
@@ -116736,8 +116874,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
-			"target_sha256": "a9607b6986dc341967e943a02992659821fbc0581c682f8d84ee3169d2316866",
+			"source_sha256": "f0e1904036f2f4643243f3f3503f4c9c818195018e90f6b33290dab5c9ecd77d",
+			"target_sha256": "f86b28d423c7d65746be1029fceb1731ff07fda62738c77d7bdde01fdf7e6dc7",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -116749,16 +116887,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "2f78dd26d3ba-apprmode-r2-zh-CN",
+					"instance": "12abfd116490-apprmode-r3-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-zh-CN.json",
-					"receipt_sha256": "5de252a92982cfff7aad50e087b38913c1362012d7ab1589d58df950baa54739",
-					"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
+					"receipt": "i18n/receipts/12abfd116490-apprmode-r3-zh-CN.json",
+					"receipt_sha256": "6c7f4998486eee6210695a8366ef2fc20d06ffd951cdd0faadeaf2cf5c2aebae",
+					"scope": "ui.chat.approval: PR #2093 copy round 3 — 1 new key (escape.always_ask_scope) audited; 24 others byte-identical to round-2-audited bytes, carried"
 				}
 			],
 			"status": "audited",
@@ -116806,6 +116944,29 @@
 							"receipt": "i18n/receipts/pr1881-zh-cn-4e007bc9.json",
 							"receipt_sha256": "a2440d9a40cf861858d16cad4d5388f8b42c13ddfa1d533f95143a235bddfd43",
 							"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+					"target_sha256": "a9607b6986dc341967e943a02992659821fbc0581c682f8d84ee3169d2316866",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-24",
+							"result": "clean",
+							"instance": "2f78dd26d3ba-apprmode-r2-zh-CN",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2f78dd26d3ba-apprmode-r2-zh-CN.json",
+							"receipt_sha256": "5de252a92982cfff7aad50e087b38913c1362012d7ab1589d58df950baa54739",
+							"scope": "ui.chat.approval: PR #2093 copy round 2 — 8 new/changed keys audited; 16 others byte-identical to base, carried"
 						}
 					],
 					"status": "audited"
