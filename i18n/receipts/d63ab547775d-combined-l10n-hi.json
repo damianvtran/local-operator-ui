@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit",
+ "audit_id": "combined-updates-l10n-second-hi",
+ "date": "2026-11-25",
+ "instance": "d63ab547775d-combined-l10n-hi",
+ "agent": "ux-reviewer",
+ "session": "d63ab547775d",
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "locale": "hi",
+ "namespace": "ui.common.updates",
+ "source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+ "target_sha256": "9efc341f605d4aaae89f4a2782ce703d4ed819b5eb42d4e1465cc204ed24916a",
+ "context_sha256": "1d83f19a72d046ea5feda7e4e910a49f31efb926d2887689ce5fcbb409a1f6a3",
+ "glossary": {
+  "path": "~/local-operator/i18n/glossary.md",
+  "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+ },
+ "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+ "worktree_base": "14a6856dc393fe401f545629f2a24938983882e1 (uncommitted, pre-push frozen bytes)",
+ "translator": {
+  "agent": "coder (team lopdev, PR #2119 remediation)",
+  "session": "2e1962ee2ac8",
+  "job": "41d7be746d6b",
+  "model": "openai/gpt-6.2-sol",
+  "fallback": "none reported",
+  "date": "2026-11-25",
+  "earlier_batch_session": "2e56c7f020cf"
+ },
+ "independence": "Second independent audit. Auditor session d63ab547775d (anthropic/claude-opus-5-5) differs from translator session 2e1962ee2ac8 (openai/gpt-6.2-sol) in both session and model, and wrote no translation or code. Disclosed: this session authored PR #2119's UX round-1 comment, whose findings U4–U6 suggested English wording that the remediation adapted (e.g. notes_unavailable). The primary localization audit belongs to the reviewer role, not this receipt.",
+ "scope": "Second independent audit of the combined-update popup copy (ui.common.updates.combined.*, 14 keys, single popup variant per the operator's 'not a separate popup on top of the popup'). Each value was read against the English source, the context sidecar (role/note, incl. server_failed's Check-for-updates pointer and app_install_failed's no-reachability claim), the glossary and the hi style guide, and against neighbouring namespace terms (Check for updates, release notes, notice, restart). Changed vs HEAD in this locale: 7 values. Mechanical checks: key parity with en, ICU placeholders, ellipsis form, fr ’ and U+202F, zh …… and no CJK–Latin space. No rendered fit, native RTL rendering or native-speaker review is claimed.",
+ "audited_keys": [
+  "ui.common.updates.combined.install_all",
+  "ui.common.updates.combined.install_both",
+  "ui.common.updates.combined.app_version",
+  "ui.common.updates.combined.server_version",
+  "ui.common.updates.combined.description",
+  "ui.common.updates.combined.notes_unavailable",
+  "ui.common.updates.combined.in_progress",
+  "ui.common.updates.combined.restarting_server",
+  "ui.common.updates.combined.busy",
+  "ui.common.updates.combined.offer_changed",
+  "ui.common.updates.combined.app_preparation_failed",
+  "ui.common.updates.combined.server_failed",
+  "ui.common.updates.combined.app_install_failed",
+  "ui.common.updates.combined.request_failed"
+ ],
+ "changed_keys": [
+  "ui.common.updates.combined.install_all",
+  "ui.common.updates.combined.description",
+  "ui.common.updates.combined.notes_unavailable",
+  "ui.common.updates.combined.restarting_server",
+  "ui.common.updates.combined.server_failed",
+  "ui.common.updates.combined.app_install_failed",
+  "ui.common.updates.combined.request_failed"
+ ],
+ "findings": [
+  {
+   "id": "L-HI1",
+   "severity": "nit",
+   "key": "ui.common.updates.combined.restarting_server",
+   "issue": "Renders 'restart' as फिर से शुरू (here and in combined.description), while ≥8 existing strings in this namespace use दोबारा शुरू for the same server restart. Both are correct; consistency only.",
+   "suggest": "सर्वर को दोबारा शुरू किया जा रहा है और उसके संस्करण की जाँच हो रही है…"
+  },
+  {
+   "id": "L-HI2",
+   "severity": "nit",
+   "key": "ui.common.updates.combined.notes_unavailable",
+   "issue": "रिलीज़ नोट here vs रिलीज़ नोट्स in the namespace's existing release-notes strings and the link directly below.",
+   "suggest": "इस अपडेट के साथ रिलीज़ नोट्स नहीं दिए गए हैं।"
+  }
+ ]
+}

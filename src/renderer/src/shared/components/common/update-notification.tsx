@@ -43,10 +43,16 @@ import { formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import {
-	CombinedUpdateDialog,
+	COMBINED_UPDATE_HEADING,
+	COMBINED_UPDATE_NOTICE,
+	type CombinedFailure,
+	type CombinedProgress,
+	CombinedUpdateContent,
+	CombinedUpdateSummary,
 	CombinedUpdateTrigger,
+	combinedTriggerId,
 	useCombinedUpdateSurface,
-} from "./combined-update-dialog";
+} from "./combined-update-content";
 import { PanelDetails } from "./panel-details";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
@@ -503,7 +509,7 @@ export const UpdateContainer = ({
 	...props
 }: HTMLAttributes<HTMLDivElement> & {
 	tone?: "notice" | "failed";
-	role?: "status" | "alert";
+	role?: "status" | "alert" | "region";
 	/**
 	 * Present on a panel that is a RELEASE DETAIL rather than a state the user
 	 * entered: it draws a close control, answers Escape, and takes focus when it
@@ -611,6 +617,7 @@ export const UpdateContainer = ({
 					: undefined
 			}
 			data-lo-floating=""
+			data-update-notice=""
 			className={cn(
 				"fixed top-4 end-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 				"rounded-lg bg-elevated shadow-overlay",
@@ -1704,6 +1711,72 @@ export const UpdateNotification = ({
 	const [installSucceeded, setInstallSucceeded] = useState<string | null>(null);
 
 	const setCombinedOffer = useCombinedUpdateSurface((state) => state.setOffer);
+	const combinedOffer = useCombinedUpdateSurface((state) => state.offer);
+	const combinedReview = useCombinedUpdateSurface((state) => state.review);
+	const [combinedProgress, setCombinedProgress] =
+		useState<CombinedProgress | null>(null);
+	const [combinedFailure, setCombinedFailure] =
+		useState<CombinedFailure | null>(null);
+	const combinedActive = useRef(false);
+	const combinedIsCurrent =
+		combinedReview !== null &&
+		combinedOffer?.targets.app === combinedReview.targets.app &&
+		combinedOffer.targets.server === combinedReview.targets.server;
+	const combinedDisplayFailure =
+		combinedFailure ??
+		(combinedProgress === null && !combinedIsCurrent ? "offer_changed" : null);
+	const focusOnCombinedClose = useRef<ReturnType<
+		typeof combinedTriggerId
+	> | null>(null);
+	useEffect(() => {
+		const triggerId = focusOnCombinedClose.current;
+		if (combinedReview || !triggerId) return;
+		focusOnCombinedClose.current = null;
+		// A notice trigger remounts when the individual notice returns. A server
+		// success can retire it altogether; fall back to the remaining update action.
+		(
+			document.getElementById(triggerId) ??
+			document.querySelector<HTMLElement>(
+				"[data-combined-update-return] button:not([role])",
+			) ??
+			document.querySelector<HTMLElement>("[data-update-notice] button")
+		)?.focus();
+	}, [combinedReview]);
+	const dismissCombined = () => {
+		if (combinedActive.current) return;
+		const state = useCombinedUpdateSurface.getState();
+		focusOnCombinedClose.current = state.origin
+			? combinedTriggerId(state.origin)
+			: null;
+		setCombinedFailure(null);
+		state.close();
+	};
+	const confirmCombined = async () => {
+		if (
+			combinedActive.current ||
+			!combinedReview ||
+			!combinedIsCurrent ||
+			combinedDisplayFailure
+		)
+			return;
+		combinedActive.current = true;
+		setCombinedProgress({ phase: "download" });
+		let handedOff = false;
+		try {
+			const result = await window.api.updater.installCombinedUpdate(
+				combinedReview.targets,
+			);
+			handedOff = result.status === "handoff";
+			if (result.status !== "handoff") setCombinedFailure(result.status);
+		} catch {
+			setCombinedFailure("request_failed");
+		} finally {
+			if (!handedOff) {
+				combinedActive.current = false;
+				setCombinedProgress(null);
+			}
+		}
+	};
 	useEffect(() => {
 		if (
 			!window.api?.updater?.installCombinedUpdate ||
@@ -1747,7 +1820,13 @@ export const UpdateNotification = ({
 		updateInfo,
 		updatingBackend,
 	]);
-	useEffect(() => () => setCombinedOffer(null), [setCombinedOffer]);
+	useEffect(
+		() => () => {
+			setCombinedOffer(null);
+			useCombinedUpdateSurface.getState().close();
+		},
+		[setCombinedOffer],
+	);
 
 	// Install refusals, an install that never completed, and an install that is
 	// still running. Kept apart from each other because only one of them is a
@@ -2610,6 +2689,7 @@ export const UpdateNotification = ({
 		// Frontend update error - also handle manual update requirements
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
+				if (combinedActive.current) return;
 				/*
 				 * `stripErrorPrefixes` at the boundary as well as at the paint: the state
 				 * is also read by paths that do not go through `UpdateErrorAlert`, and a
@@ -2701,7 +2781,8 @@ export const UpdateNotification = ({
 		// other is the outcome of the previous one.
 		const removeInstallProgressListener =
 			window.api.updater.onUpdateInstallProgress((info) => {
-				setInstallPhase(info.phase);
+				if (combinedActive.current) setCombinedProgress({ phase: info.phase });
+				else setInstallPhase(info.phase);
 			});
 		const removeInstallSucceededListener =
 			window.api.updater.onUpdateInstallSucceeded((info) => {
@@ -2711,7 +2792,13 @@ export const UpdateNotification = ({
 		// Frontend update progress
 		const removeUpdateProgressListener = window.api.updater.onUpdateProgress(
 			(progressObj) => {
-				setDownloadProgress(progressObj);
+				if (combinedActive.current) {
+					setCombinedProgress((progress) =>
+						progress?.phase === "download"
+							? { phase: "download", percent: progressObj.percent }
+							: progress,
+					);
+				} else setDownloadProgress(progressObj);
 			},
 		);
 
@@ -2905,6 +2992,9 @@ export const UpdateNotification = ({
 				setChecking(false);
 				setUpdatingBackend(false);
 				setBackendUpdatePhase(null);
+				// The combined result is the only completion claim on that surface.
+				// Still retire the now-stale server offer above.
+				if (combinedActive.current) return;
 
 				/*
 				 * A completion is only good news for the server when the thing serving the
@@ -3005,6 +3095,12 @@ export const UpdateNotification = ({
 		const removeBackendUpdateProgressListener =
 			window.api.updater.onBackendUpdateProgress(
 				({ phase, sourceRebuild, waitedMs }) => {
+					if (combinedActive.current) {
+						setCombinedProgress({
+							phase: phase === "restarting" ? "restarting" : "server",
+						});
+						return;
+					}
 					setBackendUpdatePhase(phase);
 					/*
 					 * The elapsed reading travels with the phase (design D3), and it is
@@ -3055,6 +3151,7 @@ export const UpdateNotification = ({
 		 */
 		const removeBackendUpdateErrorListener =
 			window.api.updater.onBackendUpdateError((report) => {
+				if (combinedActive.current && report.phase === "update") return;
 				if (report.phase === "update" && answerBackendUpdateAttempt()) {
 					/*
 					 * This channel's real strings are Node errno forms - the operator's
@@ -3170,13 +3267,37 @@ export const UpdateNotification = ({
 	 */
 	const withErrorToast = (panel: ReactNode, notice?: ReactNode) => (
 		<>
-			<CombinedUpdateDialog />
-			{panel}
+			{/* Same component in the same slot as the individual notice: no portal,
+       scrim, second card or focus trap, including while the server restarts. */}
+			{combinedReview ? (
+				<UpdateContainer
+					id={COMBINED_UPDATE_NOTICE}
+					// biome-ignore lint/a11y/useSemanticElements: keep the identical standing notice element across review, progress and return
+					role="region"
+					aria-labelledby={COMBINED_UPDATE_HEADING}
+					className="w-120"
+					onKeyDown={(event) => {
+						if (event.key !== "Escape" || combinedActive.current) return;
+						event.stopPropagation();
+						dismissCombined();
+					}}
+				>
+					<CombinedUpdateContent
+						review={combinedReview}
+						progress={combinedProgress}
+						failure={combinedProgress ? null : combinedDisplayFailure}
+						onDismiss={dismissCombined}
+						onConfirm={() => void confirmCombined()}
+					/>
+				</UpdateContainer>
+			) : (
+				panel
+			)}
 			{/* The update that just landed sits beside whichever surface is up, and
 			    independent of the error slot: an install is not a state of the update
 			    check, and this arrives on a launch where there may be nothing to offer
 			    at all (UX U4). */}
-			{installSucceeded !== null ? (
+			{!combinedReview && installSucceeded !== null ? (
 				<FloatingAlert
 					open
 					autoHideDuration={8000}
@@ -3186,7 +3307,7 @@ export const UpdateNotification = ({
 					{installSucceededCopy(installSucceeded)}
 				</FloatingAlert>
 			) : null}
-			{error !== null ? (
+			{combinedReview ? null : error !== null ? (
 				<UpdateErrorAlert
 					open={snackbarOpen}
 					message={error}
@@ -3820,6 +3941,7 @@ export const UpdateNotification = ({
 					</p>
 				)}
 
+				<CombinedUpdateSummary className="mt-3" />
 				<UpdateActions>
 					{!downloading && (
 						<>
@@ -3906,6 +4028,7 @@ export const UpdateNotification = ({
 					</output>
 				) : null}
 
+				<CombinedUpdateSummary className="mt-3" />
 				<UpdateActions>
 					<Button
 						variant="tonal"
@@ -3915,6 +4038,7 @@ export const UpdateNotification = ({
 					>
 						{t("ui.common.updates.update_notification.update_later")}
 					</Button>
+					{!installing && <CombinedUpdateTrigger />}
 					{/* One click, then the line above says it heard: the pre-flight behind this
 					    button can take seconds over a 1 GiB bundle. The label does not change
 					    while it runs - the status line is what reports progress, and a button
@@ -4492,6 +4616,7 @@ export const UpdateNotification = ({
 						<p className="mt-4 text-body text-ink">
 							{managedCostSentence(backendUpdateInfo)}
 						</p>
+						<CombinedUpdateSummary className="mt-3" />
 						<UpdateActions>
 							<Button
 								variant="tonal"

@@ -7979,7 +7979,12 @@ test("combined update stages first and requires an owned daemon on the exact tar
 		let prep = true;
 		service.prepareAppInstall = async () => {
 			seen.push("verify-and-stage");
-			return prep ? { targetVersion: targets.app, handoff: null } : null;
+			return prep
+				? {
+						targetVersion: targets.app,
+						handoff: { stagingRoot: join(dir, "staged") },
+					}
+				: null;
 		};
 		let backendResult = true;
 		service.runBackendUpdate = async (target, combined) => {
@@ -8002,7 +8007,10 @@ test("combined update stages first and requires an owned daemon on the exact tar
 			if (rotate) instance = "unrelated-successor";
 			return { version: installed, prefix: dir, installKind: "managed" };
 		};
-		service.readServingInstall = () => ({ version: installed, appOwned: true });
+		service.readServingInstall = (_health, { exactPackage }) => {
+			assert.equal(exactPackage, true);
+			return { version: installed, appOwned: true };
+		};
 		let commit = false;
 		service.commitAppInstall = async ({ targetVersion }) => {
 			seen.push("handoff");
@@ -8045,7 +8053,11 @@ test("combined update stages first and requires an owned daemon on the exact tar
 		backendResult = true;
 		const proofSteps = [...installSteps, "health"];
 		await expect("server_failed", proofSteps); // New metadata, old boot.
+		boot = `${targets.server}rc1`;
+		await expect("server_failed", proofSteps); // Same numeric triple, different boot release.
 		boot = targets.server;
+		installed = `${targets.server}rc1`;
+		await expect("server_failed", proofSteps); // Same numeric triple, different installed release.
 		installed = "0.69.6";
 		await expect("server_failed", proofSteps); // Unreviewed newer release.
 		installed = targets.server;

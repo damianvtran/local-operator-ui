@@ -2037,6 +2037,114 @@ test(
 	},
 );
 
+test(
+	"the combined IPC refuses an unavailable staged seal, and never falls back to a deferred native install",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("combined-strict");
+		const shipItLog = join(dir, "shipit-argv.log");
+		const runningBundle = writeBundleFixture(
+			join(dir, "tree", `${FIXTURE_APP_NAME}.app`),
+			{ version: "0.0.1", shipItLog },
+		);
+		const zipPath = writeUpdateZip(dir, { version: "0.0.2", shipItLog });
+		await withUpdateService(async ({ updateService, userData }) => {
+			const serverActions = [];
+			let held = false;
+			updateService.backendService = {
+				isUsingExternalBackend: () => false,
+				checkIsAutoUpdating: () => held,
+				setAutoUpdating: (value) => {
+					held = value;
+				},
+				stop: async (strict) => {
+					serverActions.push(["stop", strict]);
+				},
+				start: async () => {
+					serverActions.push(["restore"]);
+					return true;
+				},
+			};
+			updateService.quietReason = null;
+			const webContents = updateService.mainWindow.webContents;
+			webContents.mainFrame = {};
+			const owner = { sender: webContents, senderFrame: webContents.mainFrame };
+			const targets = { app: "0.0.2", server: "0.69.5" };
+			updateService.runningBundleProbe = () => runningBundle;
+			updateService.downloadedArtifactPath = zipPath;
+			updateService.lastUpdateInfo = releaseMetadata(zipPath, targets.app);
+			updateService.downloadAppUpdate = async () => [zipPath];
+			updateService.combinedAppOfferVersion = targets.app;
+			updateService.combinedServerOfferVersion = targets.server;
+			updateService.runBackendUpdate = async (target) => {
+				serverActions.push(["update", target]);
+				return true;
+			};
+			updateService.proveCombinedBackend = async () => true;
+			const readSeal = updateService.readBundleSeal.bind(updateService);
+			let stagedProbeUnavailable = true;
+			let stagedSealProbes = 0;
+			updateService.readBundleSeal = async (path) => {
+				if (path.startsWith(updateStagingRoot(userData))) {
+					stagedSealProbes += 1;
+					if (stagedProbeUnavailable)
+						return {
+							seal: {
+								kind: "unavailable",
+								detail: "synthetic codesign refusal",
+							},
+						};
+				}
+				return readSeal(path);
+			};
+			const handler = globalThis.__loIpcHandlers["install-combined-update"];
+			assert.deepEqual(await handler(owner, targets), {
+				status: "app_preparation_failed",
+			});
+			assert.equal(stagedSealProbes, 1);
+			assert.deepEqual(
+				serverActions,
+				[],
+				"no publish, stop or restart without a staged seal",
+			);
+			assert.equal(install.readPendingInstallMarker(userData), null);
+			assert.equal(held, false);
+
+			stagedProbeUnavailable = false;
+			updateService.startInstaller = () => null;
+			assert.deepEqual(await handler(owner, targets), {
+				status: "app_install_failed",
+			});
+			assert.equal(stagedSealProbes, 2);
+			assert.deepEqual(serverActions, [
+				["update", targets.server],
+				["stop", true],
+				["restore"],
+			]);
+			assert.deepEqual(
+				globalThis.__loQuitAndInstall,
+				[],
+				"never enters the asynchronous Squirrel path",
+			);
+			assert.deepEqual(globalThis.__loQuits, []);
+			assert.equal(install.readPendingInstallMarker(userData), null);
+			assert.equal(held, false);
+
+			// Standalone, with the same unspawnable installer, can still use the native
+			// fallback. This is a distinct operation on the same registered handlers.
+			assert.equal(
+				await globalThis.__loIpcHandlers["quit-and-install"](),
+				true,
+			);
+			assert.deepEqual(globalThis.__loQuitAndInstall, [[false, true]]);
+			assert.equal(
+				install.readPendingInstallMarker(userData)?.installerPid,
+				null,
+			);
+		});
+	},
+);
+
 /**
  * With the installer missing, the handler falls back to Squirrel's own path.
  *

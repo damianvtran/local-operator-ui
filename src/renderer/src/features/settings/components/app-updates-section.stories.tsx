@@ -4,9 +4,11 @@ import { UpdateType } from "@shared/store/deferred-updates-store";
 import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import { DEFAULT_FOLLOWED_SEGMENT } from "@shared/utils/update-segment";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { UpdateInfo } from "electron-updater";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { type FC, type ReactNode, useLayoutEffect, useRef } from "react";
 import type { UpdateCheckVerdict } from "../../../../../main/update-check-verdict";
+import type { CombinedUpdateResult } from "../../../../../shared/combined-update";
 import { AppUpdatesSection } from "./app-updates-section";
 
 /**
@@ -161,6 +163,7 @@ type StoryWorld = {
 	offer?: Record<string, unknown>;
 	appOffer?: UpdateInfo;
 	combinedResult?: "server_failed" | "app_install_failed";
+	combinedHeld?: boolean;
 	/** Fired on `backend-update-not-available` when present. */
 	skew?: Record<string, unknown>;
 	/**
@@ -182,6 +185,7 @@ const scriptedUpdater = ({
 	offer,
 	appOffer,
 	combinedResult,
+	combinedHeld,
 	skew,
 	lastInstallAttempt,
 }: StoryWorld) => {
@@ -189,6 +193,17 @@ const scriptedUpdater = ({
 	const appOffered: Array<(info: UpdateInfo) => void> = [];
 	const serverOffered: Array<ServerOfferListener> = [];
 	const serverNotAvailable: Array<(info: Record<string, unknown>) => void> = [];
+	const downloadProgress: Array<(info: ProgressInfo) => void> = [];
+	const appProgress: Array<
+		(info: { phase: "verifying" | "staging" | "starting" }) => void
+	> = [];
+	const backendProgress: Array<
+		(info: { phase: "installing" | "restarting" }) => void
+	> = [];
+	let resolveCombined: ((value: CombinedUpdateResult) => void) | undefined;
+	let combinedStep = 0;
+	let combinedCalls = 0;
+	let backendCalls = 0;
 	const hold = <T,>(sink: T[], listener: T) => {
 		sink.push(listener);
 		return () => {
@@ -242,19 +257,64 @@ const scriptedUpdater = ({
 			}
 			return verdict;
 		},
-		updateBackend: async () => false,
+		updateBackend: async () => {
+			backendCalls += 1;
+			return false;
+		},
 		downloadUpdate: async () => [],
 		quitAndInstall: async () => true,
 		installCombinedUpdate: async (targets: {
 			app: string;
 			server: string;
-		}) => ({
-			status:
-				targets.app === appOffer?.version &&
-				targets.server === offer?.latestVersion
-					? (combinedResult ?? "offer_changed")
-					: "offer_changed",
-		}),
+		}): Promise<CombinedUpdateResult> => {
+			combinedCalls += 1;
+			if (
+				targets.app !== appOffer?.version ||
+				targets.server !== offer?.latestVersion
+			)
+				return { status: "offer_changed" };
+			if (!combinedHeld) return { status: combinedResult ?? "offer_changed" };
+			for (const listener of downloadProgress)
+				listener({
+					percent: 42,
+					total: 100,
+					transferred: 42,
+					delta: 42,
+					bytesPerSecond: 100,
+				});
+			return new Promise((resolve) => {
+				resolveCombined = resolve;
+			});
+		},
+		combinedCounts: () => ({ combinedCalls, backendCalls }),
+		// Hold each real bridge phase until the driver advances it; a screenshot
+		// and a keyboard check must not depend on winning a timing race.
+		advanceCombined: () => {
+			if (!resolveCombined) return;
+			switch (combinedStep++) {
+				case 0:
+					for (const listener of appProgress) listener({ phase: "verifying" });
+					break;
+				case 1:
+					for (const listener of appProgress) listener({ phase: "staging" });
+					break;
+				case 2:
+					for (const listener of backendProgress)
+						listener({ phase: "installing" });
+					break;
+				case 3:
+					for (const listener of backendProgress)
+						listener({ phase: "restarting" });
+					break;
+				case 4:
+					for (const listener of appProgress) listener({ phase: "starting" });
+					break;
+				default:
+					resolveCombined({ status: combinedResult ?? "server_failed" });
+					resolveCombined = undefined;
+					combinedStep = 0;
+			}
+		},
 		quitForUpdateInstall: async () => true,
 		moveToApplications: async () => true,
 		getLastInstallAttempt: async () => lastInstallAttempt ?? null,
@@ -271,7 +331,8 @@ const scriptedUpdater = ({
 			callback: (info: Record<string, unknown>) => void,
 		) => hold(serverNotAvailable, callback),
 		onBackendUpdateCompleted: noop,
-		onBackendUpdateProgress: noop,
+		onBackendUpdateProgress: (listener: (typeof backendProgress)[number]) =>
+			hold(backendProgress, listener),
 		/*
 		 * The surface this check's failure lands on now that the panel subscribes to
 		 * it: a stub missing it throws inside the panel's mount effect, and Storybook
@@ -280,13 +341,15 @@ const scriptedUpdater = ({
 		onBackendUpdateError: noop,
 		onBackendUpdateManualRequired: noop,
 		onUpdateDownloaded: noop,
-		onUpdateProgress: noop,
+		onUpdateProgress: (listener: (typeof downloadProgress)[number]) =>
+			hold(downloadProgress, listener),
 		onUpdateError: noop,
 		onUpdateInstallBlocked: noop,
 		onUpdateInstallFailed: noop,
 		onUpdateInstallInFlight: noop,
 		onBeforeQuitForUpdate: noop,
-		onUpdateInstallProgress: noop,
+		onUpdateInstallProgress: (listener: (typeof appProgress)[number]) =>
+			hold(appProgress, listener),
 		onUpdateInstallSucceeded: noop,
 		/*
 		 * Not part of the real bridge: the story below waits for the panel's own
@@ -396,10 +459,11 @@ const pressCheckForUpdates = () => {
  * photograph a press that produced nothing, and the wait is a property of the
  * story's script rather than of how long the harness happened to sleep.
  */
-const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
-	expect,
-	press = true,
-}) => {
+const ReportFrame: FC<{
+	expect: string;
+	press?: boolean;
+	fixtureControls?: boolean;
+}> = ({ expect, press = true, fixtureControls = false }) => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
@@ -453,6 +517,15 @@ const ReportFrame: FC<{ expect: string; press?: boolean }> = ({
 
 	return (
 		<div className="min-h-screen bg-canvas p-6 font-sans text-body text-ink">
+			{fixtureControls && (
+				<button
+					type="button"
+					className="fixed bottom-3 start-3 text-body-sm text-ink-muted"
+					onClick={() => updaterRef()?.advanceCombined()}
+				>
+					Advance fixture update
+				</button>
+			)}
 			{/*
 			 * Both are fixed to the same bottom-right corner while they are up, so
 			 * their ORDER is what decides which one is legible: in `app.tsx` the
@@ -528,6 +601,7 @@ const meta = {
 					REPORTED_MACHINE) as MachineNumbers,
 				offer: context.parameters.offer as Record<string, unknown> | undefined,
 				appOffer: context.parameters.appOffer as UpdateInfo | undefined,
+				combinedHeld: context.parameters.combinedHeld === true,
 				combinedResult: context.parameters
 					.combinedResult as StoryWorld["combinedResult"],
 				skew: context.parameters.skew as Record<string, unknown> | undefined,
@@ -592,7 +666,7 @@ const combinedWorld = {
 // confirmation never invokes a real updater and names both expected targets.
 export const CombinedUpdateOffered: Story = {
 	parameters: { ...combinedWorld, combinedResult: "server_failed" },
-	render: () => <ReportFrame expect="Install all updates" />,
+	render: () => <ReportFrame expect="Review both updates" />,
 };
 
 export const CombinedUpdateWithoutServerNotes: Story = {
@@ -601,7 +675,144 @@ export const CombinedUpdateWithoutServerNotes: Story = {
 		offer: { ...combinedWorld.offer, releaseNotes: null },
 		combinedResult: "app_install_failed",
 	},
-	render: () => <ReportFrame expect="Install all updates" />,
+	render: () => <ReportFrame expect="Review both updates" />,
+};
+
+export const CombinedUpdateHeldProgress: Story = {
+	parameters: {
+		...combinedWorld,
+		combinedHeld: true,
+		combinedResult: "app_install_failed",
+	},
+	render: () => <ReportFrame expect="Review both updates" fixtureControls />,
+};
+
+export const CombinedUpdateInteraction: Story = {
+	...CombinedUpdateHeldProgress,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const notice = await waitFor(() => {
+			const node = canvasElement.querySelector<HTMLElement>(
+				"[data-update-notice]",
+			);
+			if (!node) throw new Error("Expected the existing update notice");
+			expect(
+				within(node).getByRole("button", { name: "Review both updates" }),
+			).toBeVisible();
+			return node;
+		});
+		const noticeEntry = within(notice).getByRole("button", {
+			name: "Review both updates",
+		});
+		const settingsEntry = (
+			await canvas.findAllByRole("button", { name: "Review both updates" })
+		).find((button) => button !== noticeEntry);
+		if (!settingsEntry) throw new Error("Expected a Settings entry");
+		const assertSingleNotice = () => {
+			expect(
+				canvasElement.querySelectorAll("[data-update-notice]"),
+			).toHaveLength(1);
+			expect(canvasElement.querySelector("[data-update-notice]")).toBe(notice);
+			expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+		};
+		await userEvent.click(settingsEntry);
+		assertSingleNotice();
+		expect(
+			within(notice).getByRole("button", { name: "Cancel" }),
+		).toHaveFocus();
+		expect(
+			within(notice).getByRole("link", {
+				name: "View full release notes Desktop app 0.23.0",
+			}),
+		).toHaveAttribute(
+			"href",
+			expect.stringContaining("local-operator-ui/releases/tag/v0.23.0"),
+		);
+		expect(
+			within(notice).getByRole("link", {
+				name: "View full release notes Local Operator server 0.54.44",
+			}),
+		).toHaveAttribute(
+			"href",
+			expect.stringContaining("local-operator/releases/tag/v0.54.44"),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(settingsEntry).toHaveFocus());
+		expect(updaterRef()?.combinedCounts()).toEqual({
+			combinedCalls: 0,
+			backendCalls: 0,
+		});
+		await userEvent.click(
+			within(notice).getByRole("button", { name: "Review both updates" }),
+		);
+		await userEvent.click(
+			within(notice).getByRole("button", { name: "Cancel" }),
+		);
+		await waitFor(() =>
+			expect(
+				within(notice).getByRole("button", { name: "Review both updates" }),
+			).toHaveFocus(),
+		);
+		await userEvent.click(settingsEntry);
+		await userEvent.click(
+			within(notice).getByRole("button", { name: "Install both updates" }),
+		);
+		assertSingleNotice();
+		expect(within(notice).getByRole("progressbar")).toHaveAttribute(
+			"aria-valuenow",
+			"42",
+		);
+		expect(
+			within(notice).getByRole("heading", { name: "Installing updates…" }),
+		).toHaveFocus();
+		const outside = canvas.getByRole("button", {
+			name: "Advance fixture update",
+		});
+		await userEvent.click(outside);
+		expect(outside).toHaveFocus();
+		expect(within(notice).getByRole("status")).toHaveTextContent("Verifying");
+		for (const text of [
+			"Staging",
+			"Updating server",
+			"Restarting the server",
+			"Starting the installer",
+		]) {
+			updaterRef()?.advanceCombined();
+			await waitFor(() =>
+				expect(within(notice).getByRole("status")).toHaveTextContent(text),
+			);
+		}
+		expect(outside).toHaveFocus();
+		await userEvent.click(settingsEntry); // Re-enters the same progress surface, and puts focus back in it.
+		await userEvent.keyboard("{Escape}"); // An in-flight update cannot be cancelled here.
+		expect(
+			within(notice).getByRole("heading", { name: "Installing updates…" }),
+		).toHaveFocus();
+		updaterRef()?.advanceCombined();
+		await waitFor(() =>
+			expect(within(notice).getByRole("alert")).toHaveTextContent(
+				"The server update was confirmed",
+			),
+		);
+		expect(within(notice).getByRole("button", { name: "Close" })).toHaveFocus();
+		expect(updaterRef()?.combinedCounts()).toEqual({
+			combinedCalls: 1,
+			backendCalls: 0,
+		});
+		await userEvent.click(
+			within(notice).getByRole("button", { name: "Close" }),
+		);
+		await waitFor(() => expect(settingsEntry).toHaveFocus());
+		await userEvent.click(
+			within(notice).getByRole("button", { name: "Update server" }),
+		);
+		await waitFor(() =>
+			expect(updaterRef()?.combinedCounts()).toEqual({
+				combinedCalls: 1,
+				backendCalls: 1,
+			}),
+		);
+	},
 };
 
 /**

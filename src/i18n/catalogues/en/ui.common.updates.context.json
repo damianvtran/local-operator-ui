@@ -1,6 +1,6 @@
 {
 	"ui.common.updates.combined.install_all": {
-		"role": "button and dialog title",
+		"role": "button and update notice heading",
 		"note": "Opens the combined desktop app and Local Operator server release notes. Does not start updating."
 	},
 	"ui.common.updates.combined.install_both": {
@@ -25,11 +25,15 @@
 	},
 	"ui.common.updates.combined.notes_unavailable": {
 		"role": "empty release notes state",
-		"note": "Shown separately for either release when that version has no supplied notes."
+		"note": "Shown separately when the update feed has not supplied notes. The official release link is still offered."
 	},
 	"ui.common.updates.combined.in_progress": {
 		"role": "progress status",
 		"note": "The operation has started; this is not a completion claim."
+	},
+	"ui.common.updates.combined.restarting_server": {
+		"role": "progress status",
+		"note": "From the owned daemon's restart until the updater proves the exact version running. Not a completion claim."
 	},
 	"ui.common.updates.combined.busy": {
 		"role": "update refusal",
@@ -45,11 +49,11 @@
 	},
 	"ui.common.updates.combined.server_failed": {
 		"role": "partial update error",
-		"note": "The target version of the running server was not proven; the desktop app did not quit. Does not assert that the on-disk server is unchanged."
+		"note": "The target version of the running server was not proven; the desktop app did not quit. Does not assert that the on-disk server is unchanged. Close the notice and run the usual Check for updates action to get a fresh version reading."
 	},
 	"ui.common.updates.combined.app_install_failed": {
 		"role": "partial update error",
-		"note": "The target server was verified before handoff, but the desktop update did not start."
+		"note": "The target server was verified before handoff, but the desktop update did not start. Do not assert that the server is still reachable after a failed handoff."
 	},
 	"ui.common.updates.combined.request_failed": {
 		"role": "update connection error",

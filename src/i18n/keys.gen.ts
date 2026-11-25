@@ -9350,6 +9350,7 @@ export type MessageParams = {
 	"ui.common.updates.combined.notes_unavailable": undefined;
 	"ui.common.updates.combined.offer_changed": undefined;
 	"ui.common.updates.combined.request_failed": undefined;
+	"ui.common.updates.combined.restarting_server": undefined;
 	"ui.common.updates.combined.server_failed": undefined;
 	"ui.common.updates.combined.server_version": { version: string };
 	"ui.common.updates.completion.sessions": { count: number; countText: string };

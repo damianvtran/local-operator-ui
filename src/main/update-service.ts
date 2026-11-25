@@ -4319,6 +4319,7 @@ export class UpdateService {
 	 */
 	private async stageInstallerHandoff(
 		info: UpdateInfo | null,
+		allowNativeFallback = true,
 	): Promise<StageOutcome> {
 		/*
 		 * Every refusal here falls back to Squirrel's own path, which is the whole
@@ -4328,9 +4329,24 @@ export class UpdateService {
 		 * So each one is logged with the reason rather than thrown, and the caller
 		 * cannot tell a refusal from an absent precondition - which is the intent.
 		 */
+		// A strict attempt never passes an unverified tree to another installer.
+		// Discard only the scratch path this staging call created.
+		let ownedStagingRoot: string | null = null;
+		const discardRefusedStage = () => {
+			if (allowNativeFallback || !ownedStagingRoot) return;
+			try {
+				rmSync(ownedStagingRoot, { recursive: true, force: true });
+			} catch (error) {
+				logger.warn(
+					`Could not discard refused update staging: ${String(error)}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+		};
 		const refuse = (reason: string): StageOutcome => {
+			discardRefusedStage();
 			logger.info(
-				`Not staging the update for the installer: ${reason}. The install will be handed to Squirrel's own path instead, which takes minutes but is the same install.`,
+				`Not staging the update for the installer: ${reason}. ${allowNativeFallback ? "Using Squirrel's own path instead." : "Refusing the combined update before touching the server."}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return { kind: "fallback" };
@@ -4345,6 +4361,7 @@ export class UpdateService {
 			message: string,
 			remedy: string,
 		): StageOutcome => {
+			discardRefusedStage();
 			logger.warn(
 				`Refusing to install the staged update: ${detail}`,
 				LogFileType.UPDATE_SERVICE,
@@ -4423,6 +4440,7 @@ export class UpdateService {
 		}
 		try {
 			mkdirSync(stagingRoot, { recursive: true });
+			ownedStagingRoot = stagingRoot;
 		} catch (error) {
 			return refuse(`the staging root could not be created: ${String(error)}`);
 		}
@@ -4608,10 +4626,19 @@ export class UpdateService {
 				stdio: "ignore",
 				env: { ...process.env, ...plan.env },
 			});
+			// Node emits spawn failures asynchronously even when pid is already
+			// absent. The caller handles the refusal; don't let it crash the app.
+			child.on("error", (error) => {
+				logger.error(
+					"Direct installer spawn failed",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+			});
 			child.unref();
 			if (child.pid == null) {
 				logger.error(
-					"The installer was spawned but reported no pid; falling back to Squirrel's own install path.",
+					"The direct installer reported no pid.",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return null;
@@ -4643,7 +4670,7 @@ export class UpdateService {
 		try {
 			process.kill(pid, "SIGTERM");
 			logger.warn(
-				`Stopped the installer (pid ${pid}) because this app could not record the install it was started for.`,
+				`Stopped the installer (pid ${pid}) because this app could not complete its installer handoff.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 		} catch (error) {
@@ -5467,7 +5494,7 @@ export class UpdateService {
 		const before = this.servingRecordReadings();
 		const health = await this.readRunningBackend();
 		const after = this.servingRecordReadings();
-		const install = this.readServingInstall(health);
+		const install = this.readServingInstall(health, { exactPackage: true });
 		return Boolean(
 			before.instanceId &&
 				before.instanceId === after.instanceId &&
@@ -5475,10 +5502,10 @@ export class UpdateService {
 				after.bootVersion &&
 				health.version &&
 				install.appOwned &&
-				install.version &&
-				// Do not silently accept a release other than the one reviewed.
-				compareVersions(install.version, target) === 0 &&
-				compareVersions(after.bootVersion, target) === 0 &&
+				// The ordering comparator intentionally drops release suffixes. A
+				// reviewed target is an identity, not a numeric ordering threshold.
+				install.version === target &&
+				after.bootVersion === target &&
 				this.backendService &&
 				!this.backendService.isUsingExternalBackend() &&
 				this.backendIsAppOwned(),
@@ -5546,8 +5573,11 @@ export class UpdateService {
 				this.combinedAppOfferVersion !== appTarget
 			)
 				return { status: failure };
-			prepared = await this.prepareAppInstall(info);
-			if (!prepared) return { status: failure };
+			prepared = await this.prepareAppInstall(info, false);
+			// Native fallback cannot prove its deferred quit/install request was
+			// accepted. A staged handoff also proves the exact bundle and its seal;
+			// do not move the server without both. Standalone can still try native.
+			if (!prepared?.handoff) return { status: failure };
 			if (
 				!this.isUpdateOwner(event) ||
 				this.lastUpdateInfo?.version !== appTarget ||
@@ -5610,8 +5640,11 @@ export class UpdateService {
 						);
 					}
 				}
+				release();
 			}
-			release();
+			// A direct child and marker now own the bounded normal quit. Keep
+			// the lease even if Electron is still closing windows, rather than
+			// admitting a different installer to an already-committed attempt.
 		}
 	}
 
@@ -5688,6 +5721,7 @@ export class UpdateService {
 	// before it touches the server.
 	private async prepareAppInstall(
 		info: UpdateInfo | null,
+		allowNativeFallback = true,
 	): Promise<PreparedAppInstall | null> {
 		/*
 		 * An unpackaged instance never starts an install, and stating it here is what
@@ -5733,7 +5767,10 @@ export class UpdateService {
 			 */
 			if (!block) {
 				this.reportInstallProgress("staging");
-				const staged = await this.stageInstallerHandoff(info);
+				const staged = await this.stageInstallerHandoff(
+					info,
+					allowNativeFallback,
+				);
 				if (staged.kind === "staged") handoff = staged.handoff;
 				if (staged.kind === "blocked") block = staged.block;
 			}
@@ -5751,6 +5788,7 @@ export class UpdateService {
 			this.sendInstallBlock(block, info?.version);
 			return null;
 		}
+		if (!handoff && !allowNativeFallback) return null;
 		return { targetVersion: info?.version ?? app.getVersion(), handoff };
 	}
 
@@ -5802,9 +5840,26 @@ export class UpdateService {
 		 */
 		if (handoff) this.reportInstallProgress("starting");
 		const installerPid = handoff ? this.startInstaller(handoff) : null;
-		const watchdogPid = this.launchWatchdog(targetVersion, installerPid);
+		// Combined already moved the server by this point. Never accept the
+		// void/deferred native fallback here: the caller restores the serving
+		// backend and releases its hold. No marker or watchdog has been written.
+		if (stillAuthorized && installerPid == null) return false;
+		let watchdogPid: number | null = null;
+		const abortHandoff = () => {
+			if (installerPid != null) this.abortInstaller(installerPid);
+			// This is the watchdog started for this attempt, never an adopted PID.
+			if (watchdogPid != null) {
+				try {
+					process.kill(watchdogPid, "SIGTERM");
+				} catch {
+					/* already gone */
+				}
+			}
+			this.updateStage = "idle";
+		};
 		let marker: PendingInstallMarker;
 		try {
+			watchdogPid = this.launchWatchdog(targetVersion, installerPid);
 			/*
 			 * The locale the NEXT process needs for its pre-window notices. The
 			 * store's own source is the gate: only a tag the BACKEND resolved is
@@ -5838,17 +5893,7 @@ export class UpdateService {
 			 * forever. Killing it leaves this handler exactly as it was before the
 			 * change: the error reaches the renderer and nothing is half-started.
 			 */
-			if (installerPid != null) this.abortInstaller(installerPid);
-			// The watchdog is the direct child just started for this attempt. A
-			// cancelled attempt has no marker to supervise and must not relaunch.
-			if (watchdogPid != null) {
-				try {
-					process.kill(watchdogPid, "SIGTERM");
-				} catch {
-					/* already gone */
-				}
-			}
-			this.updateStage = "idle";
+			abortHandoff();
 			throw error;
 		}
 		logger.info(
@@ -5869,8 +5914,16 @@ export class UpdateService {
 			 * false (see the constructor), which is the flag MacUpdater checks before
 			 * triggering Squirrel on a quit, so quitting is quitting.
 			 */
-			app.quit();
-			return true;
+			try {
+				app.quit();
+				return true;
+			} catch (error) {
+				// A synchronous refusal is still ours. Without recovery this marker would
+				// hold the next launch for a spawner that never got a real quit.
+				abortHandoff();
+				clearPendingInstallMarker(this.markerDir());
+				throw error;
+			}
 		}
 		autoUpdater.quitAndInstall(false, true);
 		return true;
@@ -6914,7 +6967,10 @@ export class UpdateService {
 	 * as "the serving install could not be identified" rather than falling back to
 	 * an install the app can name - which is the reported defect.
 	 */
-	private readServingInstall(reading: RunningBackendReading): ServingInstall {
+	private readServingInstall(
+		reading: RunningBackendReading,
+		{ exactPackage = false }: { exactPackage?: boolean } = {},
+	): ServingInstall {
 		const prefix = reading.prefix;
 		if (!prefix) {
 			return {
@@ -6955,11 +7011,18 @@ export class UpdateService {
 			 * version is not evidence that the install is behind, and the `Unknown`
 			 * sentinel an older backend answers must not become the subject here.
 			 */
-			version =
-				(markers.editable || markers.sourceRef) &&
-				isReadableVersion(reading.version)
-					? reading.version
-					: markers.version;
+			if (exactPackage && (markers.editable || markers.sourceRef)) {
+				// A combined install needs independent on-disk package evidence. The
+				// general Settings reading may use health for a source checkout; this
+				// transaction must never count that fallback as a second proof.
+				version = null;
+			} else {
+				version =
+					(markers.editable || markers.sourceRef) &&
+					isReadableVersion(reading.version)
+						? reading.version
+						: markers.version;
+			}
 		} catch (error) {
 			logger.warn(
 				`Could not read the install at ${prefix}: ${(error as Error).message}`,
@@ -10353,9 +10416,22 @@ export class UpdateService {
 		});
 	}
 
+	// Both the shared operation lease and the server-specific guard answer a
+	// second standalone press through the existing actionable error channel.
+	private reportServerUpdateBusy(): false {
+		logger.warn("An update is already running", LogFileType.UPDATE_SERVICE);
+		this.sendToRenderer("backend-update-error", {
+			message: t("ui.updates.service.already_running.message"),
+			phase: "update",
+			authored: "message",
+			logPath: serverUpdateLogPath(),
+		});
+		return false;
+	}
+
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
 		const release = acquireUpdateOperation("server");
-		if (!release) return false;
+		if (!release) return this.reportServerUpdateBusy();
 		try {
 			return await this.runBackendUpdate(targetVersion);
 		} finally {
@@ -10690,19 +10766,7 @@ export class UpdateService {
 	private async updateAppOwnedEnvironment(
 		targetVersion: string | null,
 	): Promise<boolean> {
-		if (this.serverUpdateInFlight) {
-			logger.warn(
-				"A server update is already running; refusing to start a second beside it",
-				LogFileType.UPDATE_SERVICE,
-			);
-			this.sendToRenderer("backend-update-error", {
-				message: t("ui.updates.service.already_running.message"),
-				phase: "update",
-				authored: "message",
-				logPath: serverUpdateLogPath(),
-			});
-			return false;
-		}
+		if (this.serverUpdateInFlight) return this.reportServerUpdateBusy();
 		this.serverUpdateInFlight = true;
 		try {
 			return await this.runAppOwnedUpdateAttempt(targetVersion);
