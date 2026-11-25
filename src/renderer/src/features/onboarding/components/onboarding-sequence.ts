@@ -55,6 +55,20 @@ export function onboardingSequence({
 }
 
 /**
+ * Whether the optional telemetry consent checkbox shows on `step`: on the LAST
+ * step of the live sequence only - Meet when Aida is available, otherwise Search,
+ * otherwise the default-model step (operator request, 2026-11-24: "add at the
+ * end"). A step outside the sequence (a persisted step about to be moved by
+ * `fallbackStep`) never shows it.
+ */
+export function showsTelemetryConsent(
+	step: OnboardingStep,
+	sequence: readonly OnboardingStep[],
+): boolean {
+	return sequence.length > 0 && sequence[sequence.length - 1] === step;
+}
+
+/**
  * Whether the census shows a connected Radient account - the one fact that
  * takes the search step out of the walk.
  *

@@ -51,6 +51,41 @@ try {
 }
 
 /*
+ * The onboarding wizard's two events carry ids only - `step` (an
+ * `OnboardingStep` value) and `provider` (a catalogue id). Pinned EXACTLY so a
+ * property added to either list is a reviewed change to this test, not a silent
+ * widening of what leaves the app (onboarding refresh PR #2090, review round 3
+ * M1; product-events.ts).
+ */
+test("onboarding step events allow exactly step and provider (M1)", async () => {
+	const events = await build({
+		entryPoints: [
+			join(repo, "src/renderer/src/shared/analytics/product-events.ts"),
+		],
+		bundle: true,
+		format: "esm",
+		platform: "browser",
+		write: false,
+	});
+	const eventsDir = mkdtempSync(join(tmpdir(), "telemetry-allowlist-events-"));
+	try {
+		const path = join(eventsDir, "events.mjs");
+		writeFileSync(path, events.outputFiles[0].text);
+		const { PRODUCT_EVENT_PROPERTIES } = await import(pathToFileURL(path).href);
+		assert.deepEqual(PRODUCT_EVENT_PROPERTIES.onboarding_step_viewed, [
+			"step",
+			"provider",
+		]);
+		assert.deepEqual(PRODUCT_EVENT_PROPERTIES.onboarding_step_completed, [
+			"step",
+			"provider",
+		]);
+	} finally {
+		rmSync(eventsDir, { recursive: true, force: true });
+	}
+});
+
+/*
  * The packaged app loads from `file://`, but jsdom gives `file://` an opaque
  * origin with no localStorage, and the options' `persistence: "localStorage"`
  * is part of what is under test. So the same leak-shaped parts (a username in

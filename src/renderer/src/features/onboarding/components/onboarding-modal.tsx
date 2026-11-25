@@ -62,7 +62,9 @@ import {
 	fallbackStep,
 	onboardingSequence,
 	radientConnected,
+	showsTelemetryConsent,
 } from "./onboarding-sequence";
+import { OnboardingTelemetryConsent } from "./onboarding-telemetry-consent";
 import {
 	ConnectProviderStep,
 	connectedSubscriptionBrands,
@@ -657,6 +659,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({
 			footerStart={footerStart}
 			footerEnd={footerEnd}
 			footerNote={footer.reason}
+			/* Last step of the live sequence only: Meet, else Search, else Model. */
+			footerLead={
+				showsTelemetryConsent(currentStep, sequence) ? (
+					<OnboardingTelemetryConsent />
+				) : null
+			}
 			onDismiss={finish}
 		>
 			{stepContent}
