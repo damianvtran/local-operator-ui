@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "आपने खारिज करें चुना।",
 	"ui.teamBridge.holds.state.not_applied": "आपका फ़ैसला लागू नहीं हो सका।",
 	"ui.teamBridge.holds.details_unavailable": "यह संदेश यहाँ लोड नहीं हो सका, इसलिए इसे अभी पहुँचाया या खारिज नहीं किया जा सकता।",
+	"ui.teamBridge.holds.details_unavailable_hide": "यह संदेश यहाँ लोड नहीं हो सका, इसलिए इसे पहुँचाया या खारिज नहीं किया जा सकता। आप इसे इस डिवाइस पर छिपा सकते हैं।",
 	"ui.teamBridge.holds.deliver": "पहुँचाएँ",
 	"ui.teamBridge.holds.discard": "खारिज करें",
 	"ui.teamBridge.holds.deliver_label": "यह संदेश पहुँचाएँ ({sender})",

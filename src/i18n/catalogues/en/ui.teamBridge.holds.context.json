@@ -245,6 +245,13 @@
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. The sender and content could not be read, so the buttons are not offered."
 	},
+	"ui.teamBridge.holds.details_unavailable_hide": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown instead of details_unavailable when the message could not be loaded and no receipt will ever arrive, so the only way out is the 'Hide on this device' button just below. Do not suggest waiting or retrying. 'hide it on this device' should match the hide_local button."
+	},
 	"ui.teamBridge.holds.deliver": {
 		"role": "button",
 		"tone": "neutral",
@@ -384,7 +391,7 @@
 		"tone": "calm",
 		"length": "one sentence",
 		"placeholders": {},
-		"note": "Team Bridge Approvals, Held messages section. The message text was withheld, so only Discard is possible. Deliver and Discard match the button names."
+		"note": "Team Bridge Approvals, Held messages section. The message text was withheld, or could not be loaded here (Try again may still show it), so only Discard is possible. Deliver and Discard match the button names."
 	},
 	"ui.teamBridge.holds.read_first": {
 		"role": "status line",

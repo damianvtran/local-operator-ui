@@ -88,6 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Выберите человека",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "Владелец: {owner}",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "Такое же имя, как у другой записи",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "Разрешён — блокировка важнее",
 	"ui.agentMessages.settings.allowlist.directory_loading": "Загрузка людей и агентов…",
 	"ui.agentMessages.settings.allowlist.directory_error": "Не удалось загрузить людей и агентов. Вы по-прежнему можете ввести ID.",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "Нет агентов для выбора. Вы по-прежнему можете ввести ID агента.",

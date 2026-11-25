@@ -49,7 +49,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint,desktopRequestSchema} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal"; export {allowlistDirectoryChoices,allowlistDirectoryKey,selectionIsCurrent} from "./src/renderer/src/features/agent-messages/allowlist-directory"; export {teamBridgeDirectorySchema} from "./src/shared/team-bridge-contract";',
+			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint,desktopRequestSchema} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal"; export {allowlistDirectoryChoices,allowlistDirectoryKey,allowlistEntryNames,selectionIsCurrent} from "./src/renderer/src/features/agent-messages/allowlist-directory"; export {teamBridgeDirectorySchema} from "./src/shared/team-bridge-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -2117,7 +2117,16 @@ test("an empty directory says so once; a roster with people but no agents names 
 
 test("the directory note is ONE polite live region for the whole editor, and Try again re-reads", async (t) => {
 	let fail = true;
-	const directory = directoryApi(() => {
+	// #2014 code R3 M2: a held answer, so the Loading step between the press
+	// and the settle is observable rather than skipped.
+	let release = () => {};
+	let held = false;
+	const directory = directoryApi(async () => {
+		if (held) {
+			await new Promise((done) => {
+				release = done;
+			});
+		}
 		if (fail) throw new Error("directory refused");
 		return DIRECTORY_RAW;
 	});
@@ -2135,17 +2144,130 @@ test("the directory note is ONE polite live region for the whole editor, and Try
 	assert.ok(!note.contains(retry), "the action is not read as the status");
 	assert.equal(directory.reads.length, 1);
 
+	// #2014 UX R2 U10: a keyboard user who presses Try again keeps focus on
+	// it while the read runs and when it fails again, not on <body>.
+	held = true;
+	retry.focus();
+	await press(retry);
+	await flush();
+	assert.equal(directory.reads.length, 2, "Try again re-runs the same read");
+	assert.equal(directoryNote().textContent, "Loading people and agents…");
+	assert.equal(document.activeElement, retry, "focus kept while loading");
+	assert.equal(retry.getAttribute("aria-disabled"), "true");
+	release();
+	await flush();
+	await flush();
+	assert.match(directoryNote().textContent, /^Couldn’t load people and agents/);
+	assert.equal(document.activeElement, retry, "focus kept on a second failure");
+
 	fail = false;
 	await press(retry);
 	await flush();
+	assert.equal(directoryNote().textContent, "Loading people and agents…");
+	release();
 	await flush();
-	assert.equal(directory.reads.length, 2, "Try again re-runs the same read");
+	await flush();
+	assert.equal(directory.reads.length, 3);
 	assert.equal(directoryNote().textContent, "", "ready: nothing to say");
 	assert.equal(
 		document.querySelector("button[data-agent-messages-directory-retry]"),
 		null,
 	);
+	assert.notEqual(document.activeElement, document.body, "focus not dropped");
+	assert.ok(
+		document.activeElement.contains(directoryNote()),
+		"focus lands on the note's own container",
+	);
 	assert.ok(directoryPicker(blockForm().form), "the roster is offered now");
+});
+
+test("two same-name agents of one owner get distinct Remove names (M1)", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const { group, form } = blockForm();
+	for (const id of ["bep_ada_one", "bep_ada_two"]) {
+		await openAndChoose(directoryPicker(form), id);
+		await press(button("Add", form));
+		await flush();
+	}
+	const names = ["bep_ada_one", "bep_ada_two"].map((id) =>
+		group
+			.querySelector(`[data-agent-messages-entry="${id}"] button`)
+			.getAttribute("aria-label"),
+	);
+	assert.deepEqual(names, [
+		"Remove Helper, Run by Ada Park, bep_ada_one",
+		"Remove Helper, Run by Ada Park, bep_ada_two",
+	]);
+});
+
+test("an unnamed agent is not given its id as a name, so the row shows the id once (N1)", () => {
+	const directory = mod.teamBridgeDirectorySchema.parse({
+		members: [
+			{
+				account_id: "acc_cy",
+				display_label: "Cy Ode",
+				role: "member",
+				bridge_enabled: true,
+				bridge_state: "active",
+				agent: { endpoint_id: "bep_cy", name: "  ", state: "active" },
+			},
+		],
+	});
+	const names = mod.allowlistEntryNames(directory);
+	assert.equal(names.get("endpoint\u0000bep_cy"), undefined);
+	assert.deepEqual(names.get("account\u0000acc_cy"), { label: "Cy Ode" });
+});
+
+test("directory options are named by their aria-label, not Radix's run-together text (U9)", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const picker = directoryPicker(blockForm().form);
+	picker.focus();
+	await press(picker, "keydown", { key: "ArrowDown" });
+	await flush();
+	const options = [...document.querySelectorAll('[role="option"]')];
+	assert.ok(options.length > 0);
+	for (const option of options) {
+		// aria-labelledby outranks aria-label in the accessible-name algorithm.
+		assert.equal(option.getAttribute("aria-labelledby"), null);
+		assert.match(option.getAttribute("aria-label"), /, /);
+	}
+	await press(document.activeElement, "keydown", { key: "Escape" });
+	await flush();
+});
+
+test("Block marks an agent already allowed in that direction: blocking wins (U11)", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const legend = "Who you can message";
+	const group = directionGroup(legend);
+	const allowLabel = [...group.querySelectorAll("label")].find(
+		(entry) => entry.textContent === "Allow an agent or person",
+	);
+	await openAndChoose(directoryPicker(allowLabel.parentElement), "bep_ada_one");
+	await press(button("Add", allowLabel.parentElement));
+	await flush();
+
+	const picker = directoryPicker(blockForm(legend).form);
+	picker.focus();
+	await press(picker, "keydown", { key: "ArrowDown" });
+	await flush();
+	const option = (id) =>
+		document.querySelector(
+			`[role="option"][data-agent-messages-directory-choice="${id}"]`,
+		);
+	assert.match(
+		option("bep_ada_one").textContent,
+		/Allowed — blocking overrides it/,
+	);
+	assert.match(
+		option("bep_ada_one").getAttribute("aria-label"),
+		/, Allowed — blocking overrides it$/,
+	);
+	assert.doesNotMatch(option("bep_ada_two").textContent, /Allowed/);
+	await press(document.activeElement, "keydown", { key: "Escape" });
+	await flush();
 });
 
 test("an added choice shows its name and owner with the id underneath; Remove is named by it; an unknown id falls back to the id", async (t) => {
@@ -2162,7 +2284,10 @@ test("an added choice shows its name and owner with the id underneath; Remove is
 	assert.match(row.textContent, /^HelperRun by Ada Park/);
 	assert.match(row.textContent, /Agent IDbep_ada_two/, "the id stays visible");
 	assert.ok(
-		row.querySelector('button[aria-label="Remove Helper, Run by Ada Park"]'),
+		// "Helper" repeats in the roster, so the name also carries the id (M1).
+		row.querySelector(
+			'button[aria-label="Remove Helper, Run by Ada Park, bep_ada_two"]',
+		),
 	);
 	// The saved fixture entry is a person id the roster does not hold.
 	const unknown = group.querySelector(
