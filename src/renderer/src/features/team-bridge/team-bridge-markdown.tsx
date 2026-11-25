@@ -31,15 +31,17 @@ import { EXTERNAL_HREF } from "./team-bridge-external-href";
  * drops images, active elements and attributes; `rehype-raw` is not enabled.
  * Attachments, when Team Bridge has them, will be a separate, explicit surface.
  */
+const BridgeLink: NonNullable<Components["a"]> = ({ href, children }) =>
+	typeof href === "string" && EXTERNAL_HREF.test(href) ? (
+		<a href={href} target="_blank" rel="noreferrer">
+			{children}
+		</a>
+	) : (
+		<span className="font-mono text-mono-sm">{children}</span>
+	);
+
 const COMPONENTS: Components = {
-	a: ({ href, children }) =>
-		typeof href === "string" && EXTERNAL_HREF.test(href) ? (
-			<a href={href} target="_blank" rel="noreferrer">
-				{children}
-			</a>
-		) : (
-			<span className="font-mono text-mono-sm">{children}</span>
-		),
+	a: BridgeLink,
 	img: ({ alt, src }) => (
 		<span className="text-ink-muted">
 			{alt || (typeof src === "string" ? src : "")}
@@ -48,9 +50,31 @@ const COMPONENTS: Components = {
 	table: MarkdownTable,
 };
 
+// A Deliver binds more than the link label. In the approval inbox, print the
+// destination too, but retain the normal external-link and no-image policies.
+const PROOF_COMPONENTS: Components = {
+	...COMPONENTS,
+	a: ({ href, children }) => (
+		<>
+			<BridgeLink href={href}>{children}</BridgeLink>
+			{href && href !== children && (
+				<span className="text-ink-muted"> ({href})</span>
+			)}
+		</>
+	),
+	img: ({ alt, src }) => (
+		<span className="text-ink-muted">
+			{alt}
+			{src && (alt ? ` (${src})` : src)}
+		</span>
+	),
+};
+
 export const TeamBridgeMarkdown: FC<{
 	children: string;
 	className?: string;
+	/** Only the hold inbox uses this; ordinary messages keep concise labels. */
+	showDestinations?: boolean;
 	/** @-mention runs to highlight (`mentions/use-message-mentions.ts`). */
 	mentions?: readonly MessageMentionRun[];
 	/**
@@ -63,25 +87,30 @@ export const TeamBridgeMarkdown: FC<{
 	 */
 	/* Custom properties are legal in a style object but not in `CSSProperties`. */
 	style?: CSSProperties & Record<`--${string}`, string>;
-}> = memo(({ children, className, mentions, style }) => {
-	const plugins = useMemo(
-		() =>
-			mentions?.length
-				? [remarkGfm, remarkTableHtml, remarkTeamBridgeMentions(mentions)]
-				: [remarkGfm, remarkTableHtml],
-		[mentions],
-	);
-	return (
-		/* A Team Bridge message body: user content, as the chat transcript's
+}> = memo(
+	({ children, className, mentions, style, showDestinations = false }) => {
+		const plugins = useMemo(
+			() =>
+				mentions?.length
+					? [remarkGfm, remarkTableHtml, remarkTeamBridgeMentions(mentions)]
+					: [remarkGfm, remarkTableHtml],
+			[mentions],
+		);
+		return (
+			/* A Team Bridge message body: user content, as the chat transcript's
 		   `MarkdownRenderer` (review round 1, Q2). */
-		<div
-			className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
-			style={style}
-		>
-			<ReactMarkdown remarkPlugins={plugins} components={COMPONENTS}>
-				{children}
-			</ReactMarkdown>
-		</div>
-	);
-});
+			<div
+				className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
+				style={style}
+			>
+				<ReactMarkdown
+					remarkPlugins={plugins}
+					components={showDestinations ? PROOF_COMPONENTS : COMPONENTS}
+				>
+					{children}
+				</ReactMarkdown>
+			</div>
+		);
+	},
+);
 TeamBridgeMarkdown.displayName = "TeamBridgeMarkdown";

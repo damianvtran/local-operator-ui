@@ -12,13 +12,9 @@
  * already shows the owner for the same message (sender, time, the body, its
  * attachments). The hold list itself is metadata only and adds nothing to it.
  *
- * DELIVER NEEDS THE WHOLE MESSAGE SEEN (security S-1/S-2, UX U3). A long body
- * is clamped and a message with attachments shows neither in full until the
- * owner expands it; Deliver arms only once it has been seen whole, and never
- * for a body the audit withheld. Both decisions take an in-app second step
- * that states the consequence (UX U2) - never an OS or biometric prompt
- * (decision a-856f); whatever presence policy the daemon's key carries is the
- * daemon's. Refusals show fixed copy, never the daemon's sentence.
+ * Deliver binds the hash of the entire visible body; the row never clamps or
+ * hides it. The daemon still owns allowed words, the signed disposition and
+ * whether that disposition applied. Discard alone may use a no-body receipt.
  */
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge } from "@shared/components/ui/badge";
@@ -27,7 +23,15 @@ import { observedRadientAuthority } from "@shared/hooks/radient-account-authorit
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { UserRound } from "lucide-react";
+import {
+	type ReactNode,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
@@ -40,31 +44,32 @@ import {
 } from "./team-bridge-held-hide-preference";
 import { holdsKey } from "./team-bridge-holds-keys";
 import {
+	type HoldDecisionView,
 	type HoldItem,
 	type HoldProof,
 	type HoldWord,
 	type HoldsPage,
-	armedWords,
 	canHideHoldLocally,
-	decisionNotApplied,
-	hasHiddenCharacters,
-	holdAffordance,
 	holdAttachmentCounts,
 	holdDecideProof,
+	holdDecisionStatus,
 	holdReason,
 	holdReasonLabel,
 	holdReference,
-	needsExpand,
+	holdRowProofs,
+	needsLiteralHoldBody,
 	projectHeldMessages,
-	receiptDiscardArmed,
-	sortHolds,
+	sortHoldInbox,
 } from "./team-bridge-holds-model";
 import {
 	type DiscardSnapshotEntry,
 	captureDiscardSnapshot,
 } from "./team-bridge-holds-model";
+import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { memberStoredName } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
+import { TeamBridgeAvatar } from "./team-bridge-profile-card";
+import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
 	type HeldMessageDetail,
 	useHeldMessageDetails,
@@ -75,6 +80,14 @@ import {
 
 type ListState = "loading" | "error" | "ready";
 type Busy = { id: string; word: HoldWord } | null;
+type HoldTab = "waiting" | "history";
+export type HeldInbox = {
+	waiting: ReactNode;
+	history: ReactNode;
+	count: number;
+	hasHistory: boolean;
+	waitingState: ListState;
+};
 type LocalHideControls = {
 	hiddenItems: readonly HoldItem[];
 	recoveryPending?: boolean;
@@ -125,8 +138,8 @@ export function HeldMessagesView({
 	accountId = null,
 	hideWhenEmpty = false,
 	now,
-	initialExpanded,
-	initialConfirm,
+	tab = "waiting",
+	recorded,
 	onBatchDecide,
 	initialBatch,
 	localHide,
@@ -150,9 +163,10 @@ export function HeldMessagesView({
 	hideWhenEmpty?: boolean;
 	/** Fixed clock for stories and frames. */
 	now?: number;
-	/** Stories: rows opened in full / showing their confirm step. */
-	initialExpanded?: readonly string[];
-	initialConfirm?: Readonly<Record<string, HoldWord>>;
+	/** History retains receipts and local recovery, never decision buttons. */
+	tab?: HoldTab;
+	/** Only an actual signed POST receipt (reconciled with the list) is feedback. */
+	recorded?: readonly HoldItem[];
 	onBatchDecide?: (
 		entries: readonly DiscardSnapshotEntry[],
 		onResult: (result: DiscardBatchResult) => void,
@@ -165,17 +179,59 @@ export function HeldMessagesView({
 	const [batchStarted, setBatchStarted] = useState(Boolean(initialBatch));
 	const hiddenItems = localHide?.hiddenItems ?? [];
 	const [hideFailed, setHideFailed] = useState(false);
+	const [pressed, setPressed] = useState<string | null>(null);
+	const recordedDecision = recorded?.find(
+		(row) => row.message_id === pressed,
+	)?.decision;
+	const receiptLabel = recordedDecision ? decisionCopy(recordedDecision) : null;
+	const receiptRef = useRef<HTMLOutputElement>(null);
 	const titleRef = useRef<HTMLHeadingElement>(null);
 	const hiddenTitleRef = useRef<HTMLHeadingElement>(null);
-	const moveFocus = useRef<"hidden" | "queue" | null>(null);
+	const moveFocus = useRef<"hidden" | "queue" | "decision" | null>(null);
+	const origin = useRef<{
+		control: Element | null;
+		tabId: string | null;
+	} | null>(null);
+	const captureFocus = () => {
+		origin.current = {
+			control: document.activeElement,
+			tabId:
+				titleRef.current
+					?.closest('[role="tabpanel"]')
+					?.getAttribute("aria-labelledby") ?? null,
+		};
+	};
 	useEffect(() => {
-		if (moveFocus.current === "hidden") hiddenTitleRef.current?.focus();
-		if (moveFocus.current === "queue") titleRef.current?.focus();
+		if (!moveFocus.current) return;
+		if (
+			moveFocus.current === "decision" &&
+			!receiptLabel &&
+			!refusals[pressed ?? ""]
+		)
+			return;
+		const from = origin.current;
+		const active = document.activeElement;
+		// Do not steal focus if the reader moved to another row/tab while the
+		// signature was in flight. An emptied Waiting pane returns to its tab.
+		if (active === document.body || active === from?.control) {
+			const destination =
+				moveFocus.current === "hidden"
+					? hiddenTitleRef.current
+					: moveFocus.current === "decision"
+						? receiptRef.current
+						: null;
+			(
+				destination ??
+				titleRef.current ??
+				(from?.tabId ? document.getElementById(from.tabId) : null)
+			)?.focus({ preventScroll: true });
+		}
 		moveFocus.current = null;
 	});
 	const changeVisibility = (item: HoldItem, hide: boolean) => {
 		// Both actions remove their own button. Move focus only for a user-initiated
 		// change, not when a background read recovers the details.
+		captureFocus();
 		moveFocus.current = hide ? "hidden" : "queue";
 		const changed = localHide?.onChange(item, hide) ?? false;
 		if (!changed) moveFocus.current = null;
@@ -187,13 +243,15 @@ export function HeldMessagesView({
 		hideWhenEmpty &&
 		!batchBlocking &&
 		!batchStarted &&
+		!receiptLabel &&
 		!localHide?.recoveryPending &&
 		listState === "ready" &&
 		items.length === 0 &&
 		hiddenItems.length === 0
 	)
 		return null;
-	const ordered = sortHolds(items, now);
+	const historical = tab === "history";
+	const ordered = sortHoldInbox(items, tab);
 	return (
 		<section
 			className="flex flex-col gap-3"
@@ -206,10 +264,12 @@ export function HeldMessagesView({
 			>
 				{t("ui.teamBridge.holds.title")}
 			</h3>
-			<p className="max-w-prose text-sm text-ink-muted">
-				{t("ui.teamBridge.holds.intro")}
-			</p>
-			{keyProtection === "file_only" && items.length > 0 && (
+			{!historical && (!receiptLabel || items.length > 0) && (
+				<p className="max-w-prose text-sm text-ink-muted">
+					{t("ui.teamBridge.holds.intro")}
+				</p>
+			)}
+			{!historical && keyProtection === "file_only" && items.length > 0 && (
 				/* Security S-3: core's D3 disclosure. A file-only key can be read
 				   by any process running as this user, which could then record a
 				   decision too; this section is now the only card that says so. */
@@ -217,7 +277,7 @@ export function HeldMessagesView({
 					{t("ui.teamBridge.holds.key_file_only")}
 				</p>
 			)}
-			{!enabled && items.length > 0 && (
+			{!historical && !enabled && items.length > 0 && (
 				<p className="text-sm text-ink-muted">
 					{t("ui.teamBridge.holds.release_off")}
 				</p>
@@ -254,6 +314,15 @@ export function HeldMessagesView({
 					)}
 				</div>
 			)}
+			{receiptLabel && (
+				<output
+					ref={receiptRef}
+					tabIndex={-1}
+					className="text-sm text-ink-muted"
+				>
+					<DecisionLine copy={receiptLabel} />
+				</output>
+			)}
 			{(hideFailed || localHide?.recoveryPending) && (
 				<p role="alert" className="text-sm text-ink-muted">
 					{t("ui.teamBridge.holds.hide_failed")}
@@ -273,13 +342,14 @@ export function HeldMessagesView({
 					)}
 				</div>
 			) : items.length === 0 ? (
+				!receiptLabel &&
 				hiddenItems.length === 0 && (
 					<p className="text-sm text-ink-muted">
 						{t("ui.teamBridge.holds.empty")}
 					</p>
 				)
 			) : (
-				<ul className="flex flex-col gap-2">
+				<ul className="flex flex-col divide-y divide-hairline">
 					{ordered.map((item) => (
 						<HeldRow
 							key={item.message_id}
@@ -290,7 +360,16 @@ export function HeldMessagesView({
 								(batchBlocking ? { id: "batch", word: "discard" } : null)
 							}
 							refusal={refusals[item.message_id] ?? null}
-							onDecide={onDecide}
+							onDecide={
+								!historical && enabled && listState === "ready"
+									? (item, word, proof) => {
+											captureFocus();
+											moveFocus.current = "decision";
+											setPressed(item.message_id);
+											onDecide(item, word, proof);
+										}
+									: undefined
+							}
 							onRetryDetails={onRetryDetails}
 							onHideLocal={
 								localHide && listState === "ready" && item.localHideRevision
@@ -299,8 +378,6 @@ export function HeldMessagesView({
 							}
 							accountId={accountId}
 							now={now}
-							initialExpanded={initialExpanded?.includes(item.message_id)}
-							initialConfirm={initialConfirm?.[item.message_id] ?? null}
 						/>
 					))}
 				</ul>
@@ -317,7 +394,7 @@ export function HeldMessagesView({
 						})}
 					</h4>
 					<ul className="flex flex-col gap-1">
-						{sortHolds(hiddenItems, now).map((item) => {
+						{sortHoldInbox(hiddenItems, "history").map((item) => {
 							const reference = holdReference(item.message_id);
 							return (
 								<li
@@ -347,6 +424,90 @@ export function HeldMessagesView({
 	);
 }
 
+function decisionCopy(decision: HoldDecisionView) {
+	const word =
+		decision.word === "deliver" || decision.word === "discard"
+			? decision.word
+			: null;
+	const status = holdDecisionStatus(word, decision.outcome);
+	return {
+		label:
+			status === "not_applied"
+				? t("ui.teamBridge.holds.state.not_applied")
+				: status === "local"
+					? t("ui.teamBridge.holdsBatch.local_unconfirmed")
+					: status === "pending" && word === "discard"
+						? t("ui.teamBridge.holds.state.discard_recorded")
+						: word === "discard"
+							? t("ui.teamBridge.holds.state.chose_discard")
+							: t("ui.teamBridge.holds.state.chose_deliver"),
+		pendingDeliver: status === "pending" && word === "deliver",
+	};
+}
+
+function DecisionLine({ copy }: { copy: ReturnType<typeof decisionCopy> }) {
+	return (
+		<>
+			{copy.label}
+			{copy.pendingDeliver && (
+				<span className="ms-2">{t("ui.chat.ask_panel.filter.pending")}</span>
+			)}
+		</>
+	);
+}
+
+/** A conversation plate without a profile/action popover in the decision inbox. */
+export function ApprovalSenderAvatar({
+	member,
+	label,
+	agent = false,
+	unknown = false,
+}: {
+	member?: TeamBridgeDirectoryMember;
+	label: string;
+	agent?: boolean;
+	unknown?: boolean;
+}) {
+	return (
+		<TeamBridgeAvatar
+			member={member}
+			kind={agent ? "agent" : "human"}
+			label={label}
+			className="mt-0.5"
+			fallback={unknown ? <UserRound size={18} /> : undefined}
+		/>
+	);
+}
+
+function HeldSenderAvatar({
+	message,
+	accountId,
+	tenantId,
+	label,
+	agent,
+	unknown,
+}: {
+	message: OwnerAuditMessage;
+	accountId: string;
+	tenantId: string;
+	label: string;
+	agent: boolean;
+	unknown: boolean;
+}) {
+	const directory = useTeamBridgeDirectory(tenantId, true, accountId);
+	const member = directory.data?.members.find(
+		(candidate) => candidate.account_id === message.sender.account_id,
+	);
+	return (
+		<ApprovalSenderAvatar
+			member={member}
+			label={label}
+			agent={agent}
+			unknown={unknown}
+		/>
+	);
+}
+
 function HeldRow({
 	item,
 	detail,
@@ -357,391 +518,241 @@ function HeldRow({
 	onHideLocal,
 	accountId,
 	now,
-	initialExpanded = false,
-	initialConfirm = null,
 }: {
 	item: HoldItem;
 	detail: HeldMessageDetail;
 	busy: Busy;
 	refusal: string | null;
-	onDecide: (item: HoldItem, word: HoldWord, proof: HoldProof) => void;
+	onDecide?: (item: HoldItem, word: HoldWord, proof: HoldProof) => void;
 	onRetryDetails?: () => void;
 	onHideLocal?: () => void;
 	accountId: string | null;
 	now?: number;
-	initialExpanded?: boolean;
-	initialConfirm?: HoldWord | null;
 }) {
-	const [expanded, setExpanded] = useState(initialExpanded);
-	/* Latched: once the whole message was on screen it counts as seen, so
-	   collapsing it again does not take the Deliver away. */
-	const [seen, setSeen] = useState(initialExpanded);
-	const statusRef = useRef<HTMLDivElement>(null);
 	const message = detail.state === "ready" ? detail.message : null;
-	const binding = detail.state === "ready" ? detail.binding : null;
+	const tenantId = detail.state === "ready" ? detail.tenantId : null;
+	const { affordance, binding, hidden, unread, armed, receipt } = holdRowProofs(
+		item,
+		detail,
+		now,
+	);
 	const sender = heldSenderLine(message);
-	const affordance = holdAffordance(item, now);
-	const held = stamp(item.held_at);
+	const storedName = message
+		? memberStoredName({
+				kind: message.sender.kind === "agent" ? "agent" : "human",
+				display_label: message.sender.display_label,
+			})
+		: null;
+	const isAgent =
+		message?.origin === "agent" || message?.sender.kind === "agent";
+	const name = isAgent ? sender : (storedName ?? sender);
+	const senderHasProfile =
+		message?.sender.kind === "human" || message?.sender.kind === "agent";
+	const rowTime =
+		item.decision?.decided_at ?? message?.created_at ?? item.held_at;
+	const timeLabel = stamp(rowTime);
 	const until = stamp(item.deliver_until);
 	const { images, files } = holdAttachmentCounts(message);
-	const attachments = images + files;
-	const clampable = needsExpand(message?.body, attachments);
-	const seenInFull = !clampable || seen;
-	const hidden = hasHiddenCharacters(message?.body);
-	/* #4358: a hold whose body cannot be shown may still be discarded by its
-	   receipt (Discard only; see `receiptDiscardArmed`). */
-	/* `unread` implies no hash is on hand (nothing shown, or no usable hash),
-	   so the Discard it arms binds the receipt and nothing else. */
-	const unread = receiptDiscardArmed(item, affordance, detail.state, binding);
-	const bodyArmed = binding
-		? armedWords(affordance, binding, seenInFull, hidden)
-		: { deliver: false, discard: false };
-	const armed = {
-		deliver: bodyArmed.deliver,
-		discard: bodyArmed.discard || unread,
-	};
-	const proofFor = (word: HoldWord) =>
-		holdDecideProof(word, {
-			armed,
-			binding,
-			receipt: unread ? (item.discard_receipt ?? null) : null,
-		});
-	const proofKey = (proof: HoldProof | null) =>
-		proof ? JSON.stringify(proof) : null;
-	/* The confirm step is for ONE word AND the proof it would send, latched
-	   when it opened. S-7: a background refresh that disarms the word (body now
-	   withheld, affordance changed) closes it. #4358: so does one that changes
-	   the proof (a new receipt after a re-screen, a body that now loads), so a
-	   confirmation can never be spent on a different record than the one the
-	   person confirmed. */
-	const [confirm, setConfirm] = useState<{
-		word: HoldWord;
-		key: string | null;
-	} | null>(() =>
-		initialConfirm
-			? { word: initialConfirm, key: proofKey(proofFor(initialConfirm)) }
-			: null,
-	);
-	const confirming =
-		confirm !== null &&
-		armed[confirm.word] &&
-		confirm.key !== null &&
-		proofKey(proofFor(confirm.word)) === confirm.key
-			? confirm.word
-			: null;
 	const reference = holdReference(item.message_id);
-	const confirmRef = useRef<HTMLButtonElement>(null);
+	const canHide = onHideLocal && canHideHoldLocally(item, detail, now);
+	const mine = busy?.id === item.message_id;
 	const offers =
 		affordance.state === "open" || affordance.state === "deliver_expired";
-	const mine = busy?.id === item.message_id;
-	const disabled = busy !== null;
-	const canHide = onHideLocal && canHideHoldLocally(item, detail, now);
-
-	/* UX U4: when this row's decision settles, the buttons unmount; move focus
-	   to the row's status line rather than dropping it to <body>. */
-	const wasMine = useRef(false);
-	useEffect(() => {
-		if (wasMine.current && !mine) {
-			setConfirm(null);
-			statusRef.current?.focus({ preventScroll: true });
-		}
-		wasMine.current = mine;
-	}, [mine]);
-
-	useEffect(() => {
-		if (confirm !== null && confirming === null) setConfirm(null);
-	}, [confirm, confirming]);
-	/* U10: the confirm step takes focus when it opens. */
-	useEffect(() => {
-		if (confirming) confirmRef.current?.focus({ preventScroll: true });
-	}, [confirming]);
-
-	const open = (word: HoldWord) =>
-		setConfirm({ word, key: proofKey(proofFor(word)) });
-	const press = (word: HoldWord) => {
-		const proof = proofFor(word);
-		// Only the proof that was confirmed; anything else re-asks.
-		if (proof && confirm?.key === proofKey(proof)) onDecide(item, word, proof);
-	};
 	const attachmentScope =
-		message && detail.state === "ready" && accountId
+		message && tenantId && accountId
 			? {
 					accountId,
-					tenantId: detail.tenantId,
+					tenantId,
 					conversationId: message.conversation_id,
 					messageId: message.id,
 				}
 			: null;
+	const decision = item.decision ? decisionCopy(item.decision) : null;
+	const press = (word: HoldWord) => {
+		// This handler, the rendered body, and the selected item come from the
+		// same committed render; core compares this exact proof to the current
+		// record before signing. A refresh never substitutes another proof here.
+		const proof = holdDecideProof(word, { armed, binding, receipt });
+		if (proof && !busy) onDecide?.(item, word, proof);
+	};
 
 	return (
-		/* `elevated` ground, never a border (docs/branding.md), as the request rows. */
-		<li className="flex flex-col gap-1 rounded-lg bg-elevated p-3 text-ink">
-			<p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
-				{detail.state === "loading" ? (
-					<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
-				) : (
-					/* D6: no `dir="auto"` here: the line is translated copy around
-					   the name ("From {person}"), so it takes the page direction;
-					   only the teammate's own words (the body) carry `dir="auto"`. */
-					<span className="truncate font-medium">{sender}</span>
-				)}
-				{item.unscreened === true && (
-					<Badge variant="warning">{t("ui.teamBridge.holds.unscreened")}</Badge>
-				)}
-				{held && (
-					<span className="shrink-0 text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.held_at", { time: held })}
-					</span>
-				)}
-				{/* D5/Q2/N4/Q4: a deadline only beside a Deliver that can be
-				    pressed now (seen in full, nothing hidden). */}
-				{armed.deliver && until && (
-					<span className="shrink-0 text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.deliver_until", { time: until })}
-					</span>
-				)}
-			</p>
-			{/* N1: a decided row says what was decided, not why it was held. */}
-			{affordance.state !== "decided" && !unread && (
-				<p className="text-sm text-ink">{holdReasonLabel(holdReason(item))}</p>
-			)}
-			{typeof message?.body === "string" && message.body !== "" && (
-				/* D4: `dir="auto"`: another person's text, direction unknown. */
-				<p
-					dir="auto"
-					className={
-						clampable && !expanded
-							? "line-clamp-3 whitespace-pre-wrap text-sm text-ink-muted"
-							: "whitespace-pre-wrap text-sm text-ink-muted"
-					}
-				>
-					{message.body}
-				</p>
-			)}
-			{expanded && attachments > 0 && message && (
-				<AuditAttachmentGroup
-					scope={attachmentScope}
-					attachments={message.attachments ?? []}
-					count={images}
-					files={(message.files ?? []).map(toBridgeFileDescriptor)}
-					fileCount={files}
+		<li
+			className="flex min-w-0 gap-3 py-4 text-ink"
+			data-hold-id={item.message_id}
+		>
+			{senderHasProfile && message && accountId && tenantId ? (
+				<HeldSenderAvatar
+					message={message}
+					accountId={accountId}
+					tenantId={tenantId}
+					label={name}
+					agent={isAgent}
+					unknown={!storedName}
+				/>
+			) : (
+				<ApprovalSenderAvatar
+					label={name}
+					agent={isAgent}
+					unknown={!storedName}
 				/>
 			)}
-			{message && clampable && (
-				<div>
-					<Button
-						size="sm"
-						variant="link"
-						aria-expanded={expanded}
-						onClick={() => {
-							setExpanded((open) => !open);
-							setSeen(true);
-						}}
-					>
-						{expanded
-							? t("ui.teamBridge.holds.show_less")
-							: attachments > 0
-								? t("ui.teamBridge.holds.show_full_attachments", {
-										count: attachments,
-									})
-								: t("ui.teamBridge.holds.show_full")}
-					</Button>
+			<div className="flex min-w-0 flex-1 flex-col gap-2">
+				<div className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+					{detail.state === "loading" ? (
+						<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
+					) : (
+						<span className="min-w-0 break-words font-medium" dir="auto">
+							{name}
+						</span>
+					)}
+					{timeLabel && (
+						<time
+							className="text-meta text-ink-dim"
+							dateTime={rowTime ?? undefined}
+						>
+							{timeLabel}
+						</time>
+					)}
+					{item.unscreened === true && (
+						<Badge variant="warning">
+							{t("ui.teamBridge.holds.unscreened")}
+						</Badge>
+					)}
 				</div>
-			)}
-			<div
-				ref={statusRef}
-				tabIndex={-1}
-				className="flex flex-col gap-1 outline-none"
-			>
-				{affordance.state === "decided" && (
-					/* D3/U7: system notes use the meta style, never the body's. */
-					<p className="text-meta text-ink-dim">
-						{decisionNotApplied(affordance.outcome)
-							? t("ui.teamBridge.holds.state.not_applied")
-							: affordance.word === "discard"
-								? /* Recorded here but not yet applied: say so, never
-									   that the sender was told (#4358 brief). */
-									affordance.outcome === "discarded_local_unconfirmed"
-									? t("ui.teamBridge.holdsBatch.local_unconfirmed")
-									: affordance.outcome === "pending"
-										? t("ui.teamBridge.holds.state.discard_recorded")
-										: t("ui.teamBridge.holds.state.chose_discard")
-								: t("ui.teamBridge.holds.state.chose_deliver")}
-					</p>
+				{typeof message?.body === "string" && message.body.trim() !== "" && (
+					<div dir="auto" className="min-w-0">
+						<TeamBridgeMarkdown
+							showDestinations={armed.deliver}
+							className="team-bridge-message-body text-[14px]"
+						>
+							{message.body}
+						</TeamBridgeMarkdown>
+						{/* Link targets, Markdown definitions and raw HTML can be
+						    absent from formatted prose. Keep the complete proof
+						    visible and inert before the Deliver control. */}
+						{onDecide &&
+							armed.deliver &&
+							needsLiteralHoldBody(message.body) && (
+								<div className="mt-2 border-s border-hairline ps-3">
+									<p className="text-meta text-ink-muted">
+										{t("ui.chat.canonical.raw_information")}
+									</p>
+									<pre className="whitespace-pre-wrap break-anywhere text-mono-sm text-ink-muted">
+										{message.body}
+									</pre>
+								</div>
+							)}
+					</div>
 				)}
-				{affordance.state === "not_releasable" && (
-					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.state.not_releasable")}
-					</p>
+				{images + files > 0 && message && (
+					<AuditAttachmentGroup
+						scope={attachmentScope}
+						attachments={message.attachments ?? []}
+						count={images}
+						files={(message.files ?? []).map(toBridgeFileDescriptor)}
+						fileCount={files}
+					/>
 				)}
-				{/* A receipt row says why below; this line's "the sender sees it"
-				    is not something an unloadable message can promise. */}
-				{affordance.state === "deliver_expired" && !unread && armed.discard && (
-					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.state.deliver_expired")}
-					</p>
-				)}
-				{unread && (
-					/* #4358: what the person can still do, and the reference that
-					   names this row in the confirm step. */
-					<>
-						<p className="text-meta text-ink-dim">
-							{/* Inside the Deliver window (operator report 2026-11-24)
-							    "It can no longer be delivered" would be false: the
-							    text is missing HERE, and Try again may still show it.
-							    The withheld-body line says exactly that. */}
+				<div className="flex flex-col gap-1 text-meta text-ink-muted">
+					{decision ? (
+						<p>
+							<DecisionLine copy={decision} />
+						</p>
+					) : (
+						!unread && <p>{holdReasonLabel(holdReason(item))}</p>
+					)}
+					{onDecide && armed.deliver && until && (
+						<p>{t("ui.teamBridge.holds.deliver_until", { time: until })}</p>
+					)}
+					{affordance.state === "not_releasable" && !canHide && (
+						<p>{t("ui.teamBridge.holds.state.not_releasable")}</p>
+					)}
+					{onDecide &&
+						affordance.state === "deliver_expired" &&
+						!unread &&
+						armed.discard && (
+							<p>{t("ui.teamBridge.holds.state.deliver_expired")}</p>
+						)}
+					{unread && (
+						<p>
 							{affordance.state === "open" && affordance.deliver
 								? t("ui.teamBridge.holds.body_withheld")
 								: t("ui.teamBridge.holds.receipt_only")}
 						</p>
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.reference", { reference })}
-						</p>
-					</>
-				)}
-				{/* Try again on EVERY row whose details failed to load, receipt rows
-				    included (PR #2017 r1 M1/S-1/Q-1): a failure can be transient,
-				    and an unread Discard must never be the only way forward. A
-				    receipt row drops only the "can't be discarded yet" sentence,
-				    which its own line above contradicts. */}
-				{offers && detail.state === "unavailable" && (
-					<div className="flex flex-wrap items-baseline gap-x-2">
-						{!unread && (
-							<p className="text-meta text-ink-dim">
-								{/* #2087 UX U1: "…discarded yet" says waiting helps, but
-								    a row offered Hide (an older core: no receipt ever
-								    comes) is cleared only by that button, so the line
-								    points to it instead. */}
-								{canHide
-									? t("ui.teamBridge.holds.details_unavailable_hide")
-									: t("ui.teamBridge.holds.details_unavailable")}
-							</p>
-						)}
-						{onRetryDetails && item.conversation_id && (
-							<Button size="sm" variant="link" onClick={onRetryDetails}>
-								{t("ui.teamBridge.list.retry")}
-							</Button>
-						)}
-					</div>
-				)}
-				{offers && binding?.state === "mismatch" && (
-					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.cannot_verify")}
-					</p>
-				)}
-				{/* C11/Q3: "you can still discard it" only where Discard IS armed
-				    (withheld); with no usable hash at all, nothing is. */}
-				{offers &&
-					affordance.deliver &&
-					binding?.state === "withheld" &&
-					armed.discard && (
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.body_withheld")}
+					)}
+					{!message && detail.state !== "loading" && (
+						<p>{t("ui.teamBridge.holds.reference", { reference })}</p>
+					)}
+					{!item.decision && detail.state === "unavailable" && (
+						<div className="flex flex-wrap items-baseline gap-x-2">
+							{!unread && (
+								<p>
+									{t(
+										canHide
+											? "ui.teamBridge.holds.details_unavailable_hide"
+											: "ui.teamBridge.holds.details_unavailable",
+									)}
+								</p>
+							)}
+							{onRetryDetails && item.conversation_id && (
+								<Button size="sm" variant="link" onClick={onRetryDetails}>
+									{t("ui.teamBridge.list.retry")}
+								</Button>
+							)}
+						</div>
+					)}
+					{offers && binding?.state === "mismatch" && (
+						<p>{t("ui.teamBridge.holds.cannot_verify")}</p>
+					)}
+					{offers && !unread && binding?.state === "none" && (
+						<p>
+							{t(
+								canHide
+									? "ui.teamBridge.holds.details_unavailable_hide"
+									: "ui.teamBridge.holds.details_unavailable",
+							)}
 						</p>
 					)}
-				{offers && binding?.state === "none" && !unread && (
-					<p className="text-meta text-ink-dim">
-						{canHide
-							? t("ui.teamBridge.holds.details_unavailable_hide")
-							: t("ui.teamBridge.holds.details_unavailable")}
-					</p>
-				)}
-				{offers && affordance.deliver && hidden && armed.discard && (
-					/* S-6: Discard only, and the owner is told why. C16: the line
-					   says "you can still discard it", so only where Discard is
-					   armed (a mismatched hash arms nothing). */
-					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.hidden_characters")}
-					</p>
-				)}
-				{offers &&
-					affordance.deliver &&
-					binding?.state === "shown" &&
-					!hidden &&
-					!seenInFull && (
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.read_first")}
-						</p>
+					{offers &&
+						affordance.deliver &&
+						armed.discard &&
+						binding?.state === "withheld" && (
+							<p>{t("ui.teamBridge.holds.body_withheld")}</p>
+						)}
+					{offers && affordance.deliver && hidden && armed.discard && (
+						<p>{t("ui.teamBridge.holds.hidden_characters")}</p>
 					)}
-				{refusal && (
-					<p role="alert" className="text-meta text-ink-dim">
-						{refusal}
-					</p>
-				)}
-			</div>
-			{confirming ? (
-				/* UX U2: the in-app second step. It names the consequence before
-				   an irreversible write; no OS or biometric prompt (a-856f).
-				   U10: Escape cancels it. */
-				<div
-					className="flex flex-col gap-2 pt-1"
-					onKeyDown={(event) => {
-						if (event.key === "Escape" && !mine) {
-							event.stopPropagation();
-							setConfirm(null);
-						}
-					}}
-				>
-					<p className="text-sm text-ink">
-						{confirming === "deliver"
-							? t("ui.teamBridge.holds.confirm.deliver")
-							: /* #4358: a receipt Discard names the ONE message by its
-								   reference and says the text was never shown; it
-								   promises nothing about the sender, whom an expired
-								   hub copy may never reach. */
-								unread
-								? t("ui.teamBridge.holds.confirm.discard_unread", {
-										reference,
-									})
-								: t("ui.teamBridge.holds.confirm.discard")}
-					</p>
-					<div className="flex gap-2">
-						<Button
-							ref={confirmRef}
-							size="sm"
-							variant={confirming === "deliver" ? "primary" : "secondary"}
-							disabled={disabled}
-							onClick={() => press(confirming)}
-						>
-							{mine
-								? busy?.word === "deliver"
-									? t("ui.teamBridge.holds.delivering")
-									: t("ui.teamBridge.holds.discarding")
-								: confirming === "deliver"
-									? t("ui.teamBridge.holds.confirm.deliver_action")
-									: t("ui.teamBridge.holds.confirm.discard_action")}
-						</Button>
-						<Button
-							size="sm"
-							variant="ghost"
-							disabled={mine}
-							onClick={() => setConfirm(null)}
-						>
-							{t("ui.teamBridge.holds.confirm.cancel")}
-						</Button>
-					</div>
+					{refusal && <p role="alert">{refusal}</p>}
+					{mine && (
+						<output>
+							{t(
+								busy.word === "deliver"
+									? "ui.teamBridge.holds.delivering"
+									: "ui.teamBridge.holds.discarding",
+							)}
+						</output>
+					)}
 				</div>
-			) : (
-				(armed.deliver || armed.discard || canHide) && (
-					<div className="flex flex-wrap gap-2 pt-1">
-						{armed.deliver && (
-							/* D2: Deliver mirrors Approve (primary); Discard mirrors Deny
-							   (secondary), so both always read as buttons. */
+				{((onDecide && (armed.deliver || armed.discard)) || canHide) && (
+					<div className="flex flex-wrap gap-2">
+						{onDecide && armed.deliver && (
 							<Button
 								size="sm"
 								variant="primary"
-								disabled={disabled}
+								disabled={busy !== null}
 								aria-label={t("ui.teamBridge.holds.deliver_label", { sender })}
-								onClick={() => open("deliver")}
+								onClick={() => press("deliver")}
 							>
 								{t("ui.teamBridge.holds.deliver")}
 							</Button>
 						)}
-						{armed.discard && (
+						{onDecide && armed.discard && (
 							<Button
 								size="sm"
 								variant="secondary"
-								disabled={disabled}
+								disabled={busy !== null}
+								onClick={() => press("discard")}
 								aria-label={
 									unread
 										? t("ui.teamBridge.holds.discard_unread_label", {
@@ -749,7 +760,6 @@ function HeldRow({
 											})
 										: t("ui.teamBridge.holds.discard_label", { sender })
 								}
-								onClick={() => open("discard")}
 							>
 								{t("ui.teamBridge.holds.discard")}
 							</Button>
@@ -758,7 +768,7 @@ function HeldRow({
 							<Button
 								size="sm"
 								variant="ghost"
-								disabled={disabled}
+								disabled={busy !== null}
 								onClick={onHideLocal}
 								aria-label={t("ui.teamBridge.holds.hide_local_label", {
 									reference,
@@ -768,8 +778,8 @@ function HeldRow({
 							</Button>
 						)}
 					</div>
-				)
-			)}
+				)}
+			</div>
 		</li>
 	);
 }
@@ -777,22 +787,46 @@ function HeldRow({
 /** The section, wired: the hold list, the owner-audit join, the decide. */
 export function TeamBridgeHeldMessages({
 	hideWhenEmpty = false,
+	supported = true,
+	children,
 }: {
 	hideWhenEmpty?: boolean;
+	supported?: boolean;
+	children?: (inbox?: HeldInbox) => ReactNode;
 }) {
-	const holds = useHeldMessages(true, { panel: true });
-	const items = holds.data?.items ?? [];
-	const detail = useHeldMessageDetails(items);
+	const holds = useHeldMessages(supported, { panel: true });
+	const items = supported ? (holds.data?.items ?? []) : [];
+	const archived = supported ? (holds.data?.history ?? []) : [];
 	const decide = useHoldDecide();
+	// Do not crawl a conversation's newest page for old receipts whose signed
+	// record cannot locate the message. A sequence or root makes a join bounded
+	// to the right page/thread; active rows retain their existing lookup rules.
+	const lookupItems = new Map(items.map((item) => [item.message_id, item]));
+	for (const item of [...decide.recorded, ...archived]) {
+		if (
+			!lookupItems.has(item.message_id) &&
+			(item.seq !== null || item.thread_root_id)
+		)
+			lookupItems.set(item.message_id, item);
+	}
+	const lookup = useHeldMessageDetails([...lookupItems.values()]);
+	const detail = (item: HoldItem): HeldMessageDetail => {
+		const target = lookupItems.get(item.message_id);
+		return target && target.conversation_id === item.conversation_id
+			? lookup(target)
+			: { state: "unavailable" };
+	};
 	const retryDetails = useRetryHeldDetails();
 	const { accountId, epoch } = useTeamBridgeAccount();
 	const client = useQueryClient();
 	const hiddenRevisions = useHeldHideRevisions();
 	const recoveryPending = useHeldHideRecoveryPending();
-	const { visible, hidden, recovered } = projectHeldMessages(
+	const { waiting, history, hidden, recovered } = projectHeldMessages(
 		items,
 		hiddenRevisions,
 		detail,
+		decide.recorded,
+		archived,
 	);
 	const isCurrentAccount = () => {
 		const current = observedRadientAuthority(client);
@@ -813,13 +847,14 @@ export function TeamBridgeHeldMessages({
 		: holds.isPending
 			? "loading"
 			: "ready";
-	return (
+	const view = (tab: HoldTab) => (
 		<HeldMessagesView
-			key={accountId ?? "signed-out"}
+			key={`${accountId ?? "signed-out"}:${tab}`}
+			tab={tab}
 			listState={listState}
-			items={visible}
+			items={tab === "waiting" ? waiting : history}
 			localHide={{
-				hiddenItems: hidden,
+				hiddenItems: tab === "history" ? hidden : [],
 				recoveryPending,
 				onChange: (item, hide) => {
 					const revision = item.localHideRevision;
@@ -842,12 +877,23 @@ export function TeamBridgeHeldMessages({
 			detail={detail}
 			busy={decide.busy}
 			refusals={decide.refusals}
+			recorded={tab === "waiting" ? history : undefined}
 			onDecide={(item, word, proof) => void decide.run(item, word, proof)}
-			onBatchDecide={decide.runBatch}
+			onBatchDecide={tab === "waiting" ? decide.runBatch : undefined}
 			onRetry={() => void holds.refetch()}
 			onRetryDetails={() => void retryDetails()}
 			accountId={accountId ?? null}
-			hideWhenEmpty={hideWhenEmpty}
+			hideWhenEmpty={tab === "history" || hideWhenEmpty}
 		/>
 	);
+	if (!supported) return children?.() ?? null;
+	return children
+		? children({
+				waiting: view("waiting"),
+				history: view("history"),
+				count: waiting.length,
+				hasHistory: history.length > 0 || hidden.length > 0,
+				waitingState: listState,
+			})
+		: view("waiting");
 }

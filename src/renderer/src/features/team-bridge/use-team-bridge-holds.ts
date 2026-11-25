@@ -10,6 +10,7 @@ import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeHoldsApi } from "@shared/api/local-operator/team-bridge-holds-api";
 import { TeamBridgeOwnerAuditApi } from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
@@ -27,11 +28,13 @@ import {
 import {
 	type HoldItem,
 	type HoldProof,
+	type HoldReceipt,
 	type HoldWord,
 	type JoinedDetail,
 	addLocalHoldRevisions,
 	bindShownBody,
 	findHeldMessage,
+	holdFromReceipt,
 	holdLookupRead,
 	holdRefusalLabel,
 	resolveHoldDetail,
@@ -273,36 +276,73 @@ export function useRetryHeldDetails() {
 /** One Deliver / Discard at a time; the refusal is fixed copy by code. */
 export function useHoldDecide() {
 	const client = useQueryClient();
-	const { accountId } = useTeamBridgeAccount();
+	const { accountId, epoch: authorityEpoch } = useTeamBridgeAccount();
 	/* The word too, so the pressed button can say "Delivering..." (UX U4). */
 	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
 	const [refusals, setRefusals] = useState<Record<string, string>>({});
+	const [recorded, setRecorded] = useState<{
+		epoch: number;
+		items: readonly HoldItem[];
+	}>({ epoch: 0, items: [] });
 	// State paints the lock; the ref takes it synchronously, before React can
 	// commit another frame (two clicks in one turn must not sign twice).
 	const locked = useRef(false);
-	const owner = useRef({ accountId, epoch: 0, mounted: true });
-	if (owner.current.accountId !== accountId) {
-		owner.current = {
-			accountId,
-			epoch: owner.current.epoch + 1,
-			mounted: true,
-		};
-	}
+	const owner = useRef({ accountId, epoch: authorityEpoch, mounted: true });
+	owner.current = { ...owner.current, accountId, epoch: authorityEpoch };
+	const isCurrent = useCallback(
+		(epoch: number) => {
+			const observed = observedRadientAuthority(client);
+			return (
+				owner.current.mounted &&
+				owner.current.epoch === epoch &&
+				observed.epoch === epoch &&
+				observed.accountId === owner.current.accountId
+			);
+		},
+		[client],
+	);
 	useEffect(() => {
 		owner.current.mounted = true;
 		return () => {
 			owner.current.mounted = false;
 		};
 	}, []);
+	const record = useCallback(
+		(epoch: number, item: HoldItem, word: HoldWord, receipt: HoldReceipt) => {
+			if (!isCurrent(epoch)) return;
+			const decided = holdFromReceipt(item, word, receipt);
+			if (!decided) return;
+			setRecorded((previous) => ({
+				epoch,
+				items: [
+					decided,
+					...(previous.epoch === epoch
+						? previous.items.filter(
+								(row) => row.message_id !== decided.message_id,
+							)
+						: []),
+				],
+			}));
+		},
+		[isCurrent],
+	);
 	const run = useCallback(
 		async (item: HoldItem, word: HoldWord, proof: HoldProof) => {
-			if (!accountId || locked.current) return;
+			if (!accountId || locked.current || !isCurrent(authorityEpoch)) return;
 			locked.current = true;
+			const epoch = authorityEpoch;
 			setBusy({ id: item.message_id, word });
 			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
 			try {
-				await TeamBridgeHoldsApi.decide(accountId, word, item, proof);
+				const receipt = await TeamBridgeHoldsApi.decide(
+					accountId,
+					word,
+					item,
+					proof,
+				);
+				record(epoch, item, word, receipt);
 			} catch (error) {
+				if (!isCurrent(epoch)) return;
 				const code =
 					error instanceof DesktopControlError ? (error.code ?? null) : null;
 				setRefusals((current) => ({
@@ -315,36 +355,36 @@ export function useHoldDecide() {
 				void invalidateAfterDecision(client, accountId, item.message_id);
 			}
 		},
-		[accountId, client],
+		[accountId, authorityEpoch, client, isCurrent, record],
 	);
 	const runBatch = useCallback(
 		async (
 			entries: readonly DiscardSnapshotEntry[],
 			onResult: (result: DiscardBatchResult) => void,
 		) => {
-			if (!accountId || locked.current) {
+			if (!accountId || locked.current || !isCurrent(authorityEpoch)) {
 				for (const entry of entries)
 					onResult({ entry, recorded: false, error: holdRefusalLabel(null) });
 				return;
 			}
 			if (entries.length === 0) return;
 			locked.current = true;
-			const epoch = owner.current.epoch;
-			const isCurrentOwner = () =>
-				owner.current.mounted &&
-				owner.current.accountId === accountId &&
-				owner.current.epoch === epoch;
+			const epoch = authorityEpoch;
+			const isCurrentOwner = () => isCurrent(epoch);
 			setBusy({ id: "__batch_discard__", word: "discard" });
 			try {
 				await discardSnapshot(
 					entries,
-					(entry) =>
-						TeamBridgeHoldsApi.decide(
+					async (entry) => {
+						const receipt = await TeamBridgeHoldsApi.decide(
 							accountId,
 							"discard",
 							entry.item,
 							entry.proof,
-						),
+						);
+						record(epoch, entry.item, "discard", receipt);
+						return receipt;
+					},
 					isCurrentOwner,
 					(error, entry) =>
 						holdRefusalLabel(
@@ -370,7 +410,13 @@ export function useHoldDecide() {
 				setBusy(null);
 			}
 		},
-		[accountId, client],
+		[accountId, authorityEpoch, client, isCurrent, record],
 	);
-	return { busy, refusals, run, runBatch };
+	return {
+		busy,
+		refusals,
+		run,
+		runBatch,
+		recorded: recorded.epoch === owner.current.epoch ? recorded.items : [],
+	};
 }
