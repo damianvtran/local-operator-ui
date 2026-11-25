@@ -20,6 +20,11 @@
  *    reopened on Requests).
  * 5. U11 - with only a row locked to the other word selected, the disabled
  *    batch button reads its plain label, not "Deny 0 of 1".
+ * 6. COS-SNAP - after the badge's landing, a pick in "Your chief of staff's
+ *    messages" (a DM or a channel) stays selected across a poll and a count
+ *    change. Operator-reported twice (2026-11-18, 2026-11-24): the audit pick
+ *    cleared the target, which remounted the view while the landing latch was
+ *    still set, and the new view reopened Approvals over the pick.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -309,6 +314,120 @@ test("U11: a batch word that would send nothing reads its plain label", async ()
 			),
 			"no 'Deny 0 of 1'",
 		);
+	} finally {
+		await app.close();
+	}
+});
+
+/* Read-only chief-of-staff history rows (`team_bridge.owner_audit.*`): one DM
+   and one channel, the two row shapes in the operator's report. */
+const auditRow = (id, kind, name) => ({
+	id,
+	kind,
+	name,
+	visibility: "private",
+	status: "active",
+	last_message_at: "2026-11-17T09:00:00Z",
+	latest_seq: 4,
+	members: [
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben",
+			role: "member",
+			state: "active",
+			joined_seq: 0,
+			notify: "all",
+		},
+	],
+	member_count: 2,
+	viewers: [
+		{
+			account_id: "acct_a",
+			display_label: "acct_a",
+			reason: "agent_owner",
+			agent_member_key: "a:bep_aida",
+		},
+	],
+	agent: {
+		account_id: "acct_aida",
+		display_label: "Aida",
+		state: "active",
+		joined_seq: 1,
+	},
+});
+const CHIEF_OF_STAFF = /chief of staff/i;
+const auditRows = (host) =>
+	[...host.querySelectorAll("section[aria-label]")]
+		.filter((section) =>
+			CHIEF_OF_STAFF.test(section.getAttribute("aria-label")),
+		)
+		.flatMap((section) => [...section.querySelectorAll("li > button")]);
+
+test("COS-SNAP: with approvals pending, a chief-of-staff DM or channel pick stays selected across a poll and a count change", async () => {
+	let pending = [requestRow("bmsg_1", "Priya")];
+	const app = await mount({
+		path: "/team-bridge?view=requests",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			fixture.approvals = {
+				"team_bridge.requests.list": () => page(pending),
+			};
+			fixture.ownerAuditConversations = [
+				auditRow("bconv_audit_dm", "dm", null),
+				auditRow("bconv_audit_channel", "channel", "qa-coordination"),
+			];
+		},
+	});
+	try {
+		const { host, client } = app;
+		// Today's intended first open: the badge lands on Approvals.
+		await until(
+			() => host.textContent.includes(INTRO),
+			"the badge's landing opens Requests",
+		);
+		await settle(1500);
+		/* The fixture answers the history per organization (Shared, Other), so
+		   four rows: 0 and 1 are Shared's DM and channel. */
+		await until(
+			() => auditRows(host).length === 4,
+			"the CoS history is listed",
+		);
+		await settle(800);
+		for (const index of [0, 1]) {
+			await click(auditRows(host)[index]);
+			await settle(400);
+			const held = (when) => {
+				assert.ok(
+					!host.textContent.includes(INTRO),
+					`row ${index}: Approvals did not reopen (${when})`,
+				);
+				assert.equal(
+					auditRows(host)[index]?.getAttribute("aria-current"),
+					"page",
+					`row ${index}: the CoS pick is still selected (${when})`,
+				);
+				assert.notEqual(
+					approvalsEntry(host)?.getAttribute("aria-current"),
+					"page",
+					`row ${index}: the rail no longer marks Approvals (${when})`,
+				);
+			};
+			held("after the click");
+			// A poll tick: every read refetches, the approvals page unchanged.
+			await act(async () => {
+				await client.invalidateQueries();
+			});
+			await settle(400);
+			held("after a poll tick");
+			// The waiting count moves under the selection.
+			pending = [...pending, requestRow(`bmsg_${index + 2}`, "Ola")];
+			await act(async () => {
+				await client.invalidateQueries();
+			});
+			await settle(400);
+			held("after a count change");
+		}
 	} finally {
 		await app.close();
 	}

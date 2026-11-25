@@ -6284,6 +6284,23 @@ const TeamBridgeOwnedPage: FC<{
 			? organizations
 			: organizations.filter((row) => row.tenantId === scope),
 		onSelect: () => {
+			/*
+			 * A CHIEF-OF-STAFF HISTORY PICK ENDS THE BADGE'S LANDING, like a rail
+			 * pick does in `onTarget` (R3-01). Operator-reported twice (2026-11-18
+			 * "I can't click into the agent DMs while approvals are pending", and
+			 * again 2026-11-24): with approvals pending the nav badge opens
+			 * `?view=requests`, which latches `requestsLandingCarry`. This pick
+			 * clears the target, and the view is keyed by target, so it remounts
+			 * with `initialQuickView: "requests"` and its landing effect reopens
+			 * Approvals - which clears this very selection one frame later. The
+			 * view's own exit report never fires (it reports only with a target),
+			 * so the latch has to end here. The first open with no pick still lands
+			 * on Approvals; only an explicit pick ends it.
+			 */
+			if (requestsLandingCarry.current) {
+				requestsLandingCarry.current = false;
+				endRequestsLanding();
+			}
 			setTarget(null);
 			setThreadLink(null);
 		},
