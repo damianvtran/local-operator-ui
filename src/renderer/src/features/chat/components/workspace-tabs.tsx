@@ -41,11 +41,14 @@ const WORKSPACE_DRAG = "application/x-lo-workspace-tab";
 
 type Props = {
 	activeKey?: string;
-	activeTitle: string;
+	/** The open conversation's REAL name, or null while it has none (never a placeholder). */
+	activeTitle: string | null;
 	tabs: WorkspaceTab[];
 	autoClose: boolean;
 	onAutoCloseChange: (enabled: boolean) => void;
 	titles: Record<string, string>;
+	/** Records a real name a tab has shown, so it is kept and saved (`useWorkspaceTabs`). */
+	onTitleSeen: (key: string, title: string | null) => void;
 	focusRequested: boolean;
 	onFocusHandled: () => void;
 	onOpen: (tab: WorkspaceTab) => void;
@@ -67,6 +70,7 @@ export function WorkspaceTabs({
 	autoClose,
 	onAutoCloseChange,
 	titles,
+	onTitleSeen,
 	focusRequested,
 	onFocusHandled,
 	onOpen,
@@ -143,9 +147,25 @@ export function WorkspaceTabs({
 			<span className={className}>{title(tab)}</span>
 		);
 
+	/*
+	 * Remember every real name each tab has shown: the open conversation's
+	 * header and every catalogue row the strip can see. A row that later falls
+	 * off the head page (activity reorders it) then still names its tab - the
+	 * operator's mid-session "New chat" tabs were exactly that fall-off.
+	 */
 	useLayoutEffect(() => {
-		if (activeKey && activeTitle) titles[activeKey] = activeTitle;
-	}, [activeKey, activeTitle, titles]);
+		if (activeKey && activeTitle) onTitleSeen(activeKey, activeTitle);
+	}, [activeKey, activeTitle, onTitleSeen]);
+	useLayoutEffect(() => {
+		for (const tab of tabs) {
+			if (tab.target.kind !== "session") continue;
+			const id = tab.target.id;
+			onTitleSeen(
+				tab.key,
+				sessions.find((row) => row.session_id === id)?.title ?? null,
+			);
+		}
+	}, [tabs, sessions, onTitleSeen]);
 
 	useLayoutEffect(() => {
 		const lanes = [pinnedLane.current, regularLane.current].filter(

@@ -28,10 +28,12 @@ const {
 	resolveWorkspaceTabTitle,
 	sanitizeSavedWorkspaceTabs,
 	saveWorkspaceTabs,
+	saveWorkspaceTabsWithTitles,
 	savedWorkspaceTabsDiffer,
 	syncWorkspaceTabs,
 	translate,
 	workspaceBulkCloseKeys,
+	workspaceHeaderTitle,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
 	workspaceTarget,
@@ -682,7 +684,17 @@ function assertTitleLoadingWiring(strip, hook) {
 	);
 	assert.match(strip, /t\("ui\.chat\.canonical\.loading\.region_label"\)/);
 	assert.equal((strip.match(/\{titleSlot\(tab, /g) ?? []).length, 2);
-	assert.match(hook, /\}, \[tabs, sessions\]\);/);
+	assert.match(hook, /\}, \[tabs, sessions, seenRevision\]\);/);
+	assert.match(hook, /saveWorkspaceTabsWithTitles\(tabs, \{/);
+	// Every catalogue row a tab shows is remembered, not only the header.
+	assert.match(
+		strip,
+		/onTitleSeen\(\s*tab\.key,\s*sessions\.find\(\(row\) => row\.session_id === id\)\?\.title \?\? null,/,
+	);
+	assert.match(
+		strip,
+		/if \(activeKey && activeTitle\) onTitleSeen\(activeKey, activeTitle\);/,
+	);
 	assert.match(hook, /savedWorkspaceTabsDiffer\(saved, store\.workspaceTabs\)/);
 }
 
@@ -696,7 +708,14 @@ test("restored tabs draw a fixed-width loading placeholder and persist their tit
 		[strip.replace('className="h-2.5 w-20"', 'className="h-2.5"'), hook],
 		[strip.replace('aria-busy="true"', ""), hook],
 		[strip.replace('{titleSlot(tab, "truncate")}', "{title(tab)}"), hook],
-		[strip, hook.replace("}, [tabs, sessions]);", "}, [tabs]);")],
+		[strip, hook.replace("}, [tabs, sessions, seenRevision]);", "}, [tabs]);")],
+		[
+			strip.replace(
+				"onTitleSeen(\n\t\t\t\ttab.key,",
+				"void (\n\t\t\t\ttab.key,",
+			),
+			hook,
+		],
 	]) {
 		assert.ok(
 			mutated[0] !== strip || mutated[1] !== hook,
@@ -708,5 +727,127 @@ test("restored tabs draw a fixed-width loading placeholder and persist their tit
 	assert.notDeepEqual(
 		resolveWorkspaceTabTitle({ target: targetA, catalogueSettled: true }),
 		{ kind: "loading" },
+	);
+});
+
+/*
+ * THE INVARIANT (operator, 2026-11-24, plus QA #2099 Q1B-F1 / Q1C-F1): a tab
+ * that has shown a real title never regresses to "New chat" or a placeholder
+ * while its row is merely absent - fallen off the head page, below it, or not
+ * answered yet on a relaunch.
+ */
+const UNTITLED = "Untitled chat";
+
+test("mid-session: a tab whose row falls off the head page keeps its name and saved title", () => {
+	const tabs = [sessionA, sessionB];
+	// t0: both rows on page one; the strip remembers each row it showed.
+	const seen = { [sessionA.key]: "Quarterly model", [sessionB.key]: "Hotfix" };
+	const first = saveWorkspaceTabsWithTitles(tabs, {
+		rows: new Map([
+			[targetA.id, "Quarterly model"],
+			[targetB.id, "Hotfix"],
+		]),
+		seen: {},
+		prior: [],
+	});
+	// t1: activity pushed A off the page; B is still listed.
+	const after = saveWorkspaceTabsWithTitles(tabs, {
+		rows: new Map([[targetB.id, "Hotfix"]]),
+		seen,
+		prior: first,
+	});
+	assert.deepEqual(after, first, "absence from the page never erases a title");
+	const shown = resolveWorkspaceTabTitle({
+		target: targetA,
+		catalogueSettled: true,
+		catalogueTitle: undefined,
+		sessionTitle: seen[sessionA.key],
+		savedTitle: after[0].title,
+	});
+	assert.deepEqual(shown, { kind: "title", text: "Quarterly model" });
+	// Negative control - v0.64.0's chain for an INACTIVE tab: header (not this
+	// tab) || row (gone) || titles map (held only the active header) || fallback.
+	const shipped = (row, activeOnlyTitles) =>
+		row || activeOnlyTitles[sessionA.key] || "New chat";
+	assert.equal(shipped(undefined, {}), "New chat");
+});
+
+test("Q1B-F1: the active tab shows its saved title while the header has no real name", () => {
+	// Before the catalogue answers the header's only answer is its placeholder.
+	const header = workspaceHeaderTitle({
+		draftSentence: null,
+		liveTitle: "",
+		catalogueTitle: undefined,
+	});
+	assert.equal(header, null);
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetA,
+			activeTitle: header,
+			catalogueSettled: false,
+			savedTitle: "T00 Quarterly revenue model",
+		}),
+		{ kind: "title", text: "T00 Quarterly revenue model" },
+	);
+	// Negative control: the shipped wiring fed the placeholder string through.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetA,
+			activeTitle: UNTITLED,
+			catalogueSettled: false,
+			savedTitle: "T00 Quarterly revenue model",
+		}),
+		{ kind: "title", text: UNTITLED },
+	);
+	// Real names still pass, in the header's own order; a staged draft keeps its sentence.
+	assert.equal(
+		workspaceHeaderTitle({ liveTitle: " Live ", catalogueTitle: "Row" }),
+		"Live",
+	);
+	assert.equal(workspaceHeaderTitle({ catalogueTitle: "Row" }), "Row");
+	assert.equal(workspaceHeaderTitle({ draftSentence: "New chat" }), "New chat");
+});
+
+test("Q1C-F1: a conversation below page one is saved under its real header title", () => {
+	// Never on the page: no row, nothing saved before; only the open header named it.
+	const saved = saveWorkspaceTabsWithTitles([sessionA, sessionB], {
+		rows: new Map(),
+		seen: { [sessionB.key]: "T08 Old research" },
+		prior: [],
+	});
+	assert.deepEqual(saved[1], {
+		id: targetB.id,
+		pinned: false,
+		title: "T08 Old research",
+	});
+	assert.equal(
+		"title" in saved[0],
+		false,
+		"an unnamed tab saves no placeholder",
+	);
+	// Relaunch: the restored tab draws that name before and after the catalogue settles.
+	for (const catalogueSettled of [false, true])
+		assert.deepEqual(
+			resolveWorkspaceTabTitle({
+				target: targetB,
+				catalogueSettled,
+				savedTitle: sanitizeSavedWorkspaceTabs(saved)[1].title,
+			}),
+			{ kind: "title", text: "T08 Old research" },
+		);
+	// Precedence: a listed row (renames) > seen this run > saved before.
+	const ranked = saveWorkspaceTabsWithTitles([sessionA], {
+		rows: new Map([[targetA.id, "Renamed"]]),
+		seen: { [sessionA.key]: "Seen" },
+		prior: [{ id: targetA.id, pinned: false, title: "Old" }],
+	});
+	assert.equal(ranked[0].title, "Renamed");
+	assert.equal(
+		saveWorkspaceTabsWithTitles([sessionA], {
+			rows: new Map([[targetA.id, "  "]]),
+			seen: { [sessionA.key]: "Seen" },
+			prior: [{ id: targetA.id, pinned: false, title: "Old" }],
+		})[0].title,
+		"Seen",
 	);
 });

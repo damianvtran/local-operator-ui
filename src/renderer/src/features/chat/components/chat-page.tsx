@@ -235,7 +235,10 @@ import {
 	budgetCheckedSeam,
 	messageBudgetRefusal,
 } from "../utils/message-budget";
-import { sameWorkspaceTarget } from "../workspace-tabs-model";
+import {
+	sameWorkspaceTarget,
+	workspaceHeaderTitle,
+} from "../workspace-tabs-model";
 import { ChatContent } from "./chat-content";
 import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
 import { draftTargetChipShown } from "./chat-header-draft-target-model";
@@ -342,7 +345,7 @@ function SessionPanel({
 	routeNotice,
 }: {
 	routeNotice: ReactNode;
-	workspaceTabs: (activeTitle: string) => ReactNode;
+	workspaceTabs: (activeTitle: string | null) => ReactNode;
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
@@ -5227,7 +5230,18 @@ function SessionPanel({
 			 * remedies included, to the one place the user is already looking. */}
 			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
-					workspaceTabs={workspaceTabs(title)}
+					workspaceTabs={workspaceTabs(
+						/*
+						 * The strip gets a REAL name or null, never the header's
+						 * "Untitled chat" stand-in (QA #2099 Q1B-F1): that placeholder
+						 * outranked the tab's saved name on launch.
+						 */
+						workspaceHeaderTitle({
+							draftSentence: draftKey && !draft?.sessionId ? title : null,
+							liveTitle: canonical.frontend?.conversation_title,
+							catalogueTitle: boundRow?.title ?? forgottenTitle,
+						}),
+					)}
 					workspaceNotice={
 						<>
 							{routeNotice}
@@ -5999,7 +6013,6 @@ export function ChatPage() {
 	const workspaceActiveKey = workspace.tabs.find((tab) =>
 		sameWorkspaceTarget(tab.target, workspaceActive),
 	)?.key;
-	const workspaceTitles = useRef<Record<string, string>>({});
 	const identity = panelIdentityFor(draftKey, id);
 	// The panel's MOUNT key, which unlike `identity` survives the draft's own
 	// admission: remounting there repainted the echo the press had just painted
@@ -6102,7 +6115,8 @@ export function ChatPage() {
 								tabs={workspace.tabs}
 								autoClose={workspace.autoClose}
 								onAutoCloseChange={workspace.setAutoClose}
-								titles={workspaceTitles.current}
+								titles={workspace.titles}
+								onTitleSeen={workspace.rememberTitle}
 								focusRequested={workspace.focusRequested}
 								onFocusHandled={workspace.focusHandled}
 								onOpen={(tab) => void workspace.select(tab)}

@@ -260,6 +260,68 @@ export function saveWorkspaceTabs(
 	});
 }
 
+/**
+ * The header title the tab strip may use for the ACTIVE tab: a REAL name or
+ * null, never the header's own placeholder.
+ *
+ * WHY (QA #2099 Q1B-F1): the header falls back to "Untitled chat" while the
+ * catalogue has not answered (and forever for a conversation below page one).
+ * `resolveWorkspaceTabTitle` ranks the header first, so feeding it that
+ * placeholder beat the tab's saved name on launch, and recording it would
+ * have saved a placeholder as if it were a title. A staged draft with no
+ * conversation keeps its own sentence (`draftSentence`): that is the honest
+ * label for a tab that is genuinely a new chat.
+ */
+export function workspaceHeaderTitle(input: {
+	draftSentence?: string | null;
+	liveTitle?: string | null;
+	catalogueTitle?: string | null;
+}): string | null {
+	return (
+		savedWorkspaceTitle(input.draftSentence) ??
+		savedWorkspaceTitle(input.liveTitle) ??
+		savedWorkspaceTitle(input.catalogueTitle) ??
+		null
+	);
+}
+
+/**
+ * The persisted strip with each tab's BEST-KNOWN title, from every source this
+ * run has seen.
+ *
+ * WHY THREE SOURCES (operator, 2026-11-24: mid-session, tabs that had real
+ * names blanked to "New chat" while their neighbours kept theirs). The head
+ * catalogue page is rebuilt from each answer (`headAnswerRows` keeps only the
+ * ACTIVE session beyond the page), so as other conversations take activity an
+ * inactive tab's row falls off page one and `rows` stops naming it. The
+ * previously saved title must then stand, never be overwritten with nothing.
+ * And a conversation that was never ON page one (QA #2099 Q1C-F1) has no row
+ * at all, so the open pane's REAL header title (`seen`, keyed by tab key) is
+ * the only name it ever gets; it is recorded here so the next launch has it.
+ *
+ * Precedence: catalogue row (follows renames everywhere) > header title seen
+ * this run > what was saved before. A tab none of them name saves no title.
+ */
+export function saveWorkspaceTabsWithTitles(
+	tabs: readonly WorkspaceTab[],
+	sources: {
+		rows: ReadonlyMap<string, string | null | undefined>;
+		seen: Readonly<Record<string, string>>;
+		prior: readonly SavedWorkspaceTab[];
+	},
+): SavedWorkspaceTab[] {
+	const prior = new Map(sources.prior.map((row) => [row.id, row.title]));
+	return saveWorkspaceTabs(
+		tabs,
+		(id) =>
+			savedWorkspaceTitle(sources.rows.get(id)) ??
+			savedWorkspaceTitle(
+				sources.seen[makeWorkspaceTab({ kind: "session", id }).key],
+			) ??
+			prior.get(id),
+	);
+}
+
 /** Whether two persisted strips differ in anything a launch would restore. */
 export function savedWorkspaceTabsDiffer(
 	a: readonly SavedWorkspaceTab[],
