@@ -635,6 +635,133 @@ test("O-4b the floor's MEANING: every palette's text registers clear AA at both 
 	);
 });
 
+const FINISH_WASH =
+	/\[data-lo-floating-finish\]\s*\{\s*--lo-floating-panel-wash:\s*color-mix\(\s*in srgb,\s*(?:color-mix\(\s*in srgb,\s*)?var\(--lo-([\w-]+)\)(?:\s*,\s*light-dark\(\s*(white|black)\s*,\s*(white|black)\s*\)\s*\))?\s*([\d.]+)%,\s*transparent\s*\);\s*\}/;
+const FINISH_FADE =
+	/\[data-lo-floating-finish\]\s*\{\s*background-image:[^;]*linear-gradient\(180deg, var\(--lo-floating-panel-wash\), transparent ([\d.]+)px\);[^}]*background-size:\s*61% 1px, 100% 100%;/;
+const PANEL_HEX = /^#[\da-f]{6}$/i;
+const FORCED_FINISH_RESET =
+	/@media\s*\(forced-colors: active\)\s*\{\s*\[data-quick-picker\]\[data-picker-placement="anchored"\],\s*\[data-lo-floating-finish\]\s*\{\s*background-image:\s*none;\s*\}\s*\}/;
+const FORCED_PANEL_EDGE =
+	/@media\s*\(forced-colors: active\)\s*\{\s*\[data-lo-floating\]\s*\{\s*border:\s*1px solid CanvasText;/;
+
+test("O-4c the floating finish preserves contrast on the composited panel", async () => {
+	const { loadPalettes } = await import("./palette-source.mjs");
+	const { composite, glassFloorsForPalette, ratio } = await import(
+		"../src/shared/glass-derivation.mjs"
+	);
+	const { glassPaintFor } = await bundleOf("./src/shared/window-glass.ts");
+	const palettes = loadPalettes();
+	/* Read the source parameters rather than copying a safe colour/alpha into
+	 * the test. The older single-role paint is also readable so putting it
+	 * back fails on the contrast number, not on the shape of its CSS. */
+	const wash = CSS_NO_COMMENTS.match(FINISH_WASH);
+	assert.ok(wash, "read the actual translucent wash from the finish marker");
+	const fade = CSS_NO_COMMENTS.match(FINISH_FADE);
+	assert.ok(
+		fade,
+		"read the vertical wash stop and verify the gleam is only 1px high",
+	);
+	const [, role, light, dark, share] = wash;
+	const stop = Number(fade[1]);
+	assert.ok(stop > 0 && Number(share) > 0 && Number(share) < 100);
+	const poles = { white: "#ffffff", black: "#000000" };
+	const failures = [];
+	const variants = new Set();
+	let closedTitleContrast;
+	for (const { id, palette } of palettes) {
+		const scheme = palette.mode;
+		assert.ok(PANEL_HEX.test(palette[role]), `unknown wash role: ${role}`);
+		const pole = scheme === "light" ? light : dark;
+		const tint = pole
+			? composite(palette[role], 0.5, poles[pole])
+			: palette[role];
+		const floors = glassFloorsForPalette(palette);
+		const onPanel = (at, ground, semanticMix) => {
+			variants.add(`${scheme}/${at}`);
+			const glass = semanticMix !== null;
+			const inks = {
+				ink: palette.ink,
+				"muted text / search focus": palette.inkMuted,
+				"dim text / search icon": glass ? palette.inkMuted : palette.inkDim,
+				"refusal text": glass
+					? composite(palette.ink, semanticMix, palette.danger)
+					: palette.danger,
+				"accent/focus": palette.accent,
+			};
+			/* Sample the strongest wash (outside the one-pixel gleam), and
+			 * the actual R1 height inside the closed-seat title's text. */
+			for (const y of [1, 18]) {
+				const finished = composite(
+					tint,
+					(Number(share) / 100) * Math.max(0, 1 - y / stop),
+					ground,
+				);
+				// The bare renderer can already miss AA at maximum clarity on
+				// some palettes. The finish must preserve AA where it holds and
+				// must never spend the bare panel's margin, including those cases.
+				for (const [label, ink] of Object.entries(inks)) {
+					const bare = ratio(ink, ground);
+					const result = ratio(ink, finished);
+					if (result < bare)
+						failures.push(
+							`${id}/${scheme}/${at}/${y}px ${label}: ${result.toFixed(2)}:1 (bare ${bare.toFixed(2)}:1)`,
+						);
+				}
+				if (id === "obsidian" && at === "glass 100 worst" && y === 18)
+					closedTitleContrast = ratio(palette.inkMuted, finished);
+			}
+		};
+		onPanel("solid", palette.elevated, null);
+		for (const intensity of [0, 80, 100]) {
+			const { vars } = glassPaintFor({
+				scheme,
+				mechanism: "vibrancy",
+				material: "window",
+				coverage: "full",
+				intensity,
+				floors,
+			});
+			for (const [which, backdrop] of [
+				["worst", poles[scheme === "light" ? "black" : "white"]],
+				["opposite", poles[scheme === "light" ? "white" : "black"]],
+			]) {
+				const column = composite(
+					palette.canvas,
+					Number(vars["--lo-glass-a-canvas"]),
+					backdrop,
+				);
+				onPanel(
+					`glass ${intensity} ${which}`,
+					composite(
+						palette.elevated,
+						Number(vars["--lo-glass-a-overlay"]),
+						column,
+					),
+					Number(vars["--lo-glass-overlay-ink-mix"]),
+				);
+			}
+		}
+	}
+	assert.equal(
+		variants.size,
+		14,
+		"both schemes must exercise solid and the two backdrop extremes at three glass settings",
+	);
+	assert.ok(palettes.length >= 50, `only measured ${palettes.length} palettes`);
+	assert.ok(
+		closedTitleContrast >= 4.5,
+		`Obsidian closed-seat title at 18px on clearest glass: ${closedTitleContrast?.toFixed(2)}:1, expected at least 4.5:1`,
+	);
+	assert.equal(failures.length, 0, failures.slice(0, 18).join("\n"));
+});
+test("O-4d forced colors suppresses both decorative gradients without removing the system edge", () => {
+	assert.match(CSS_NO_COMMENTS, FORCED_FINISH_RESET);
+	// The opt-in only supplies paint; the separate [data-lo-floating] rule
+	// still owns the sole CanvasText edge (also checked by the border guard).
+	assert.match(CSS_NO_COMMENTS, FORCED_PANEL_EDGE);
+});
+
 test("O-5 the committed overlay floor is the derived one, and is not a copy of a ground rung", () => {
 	assert.deepEqual(
 		deriveOverlayFloor(FLOORS.alphaFloor),

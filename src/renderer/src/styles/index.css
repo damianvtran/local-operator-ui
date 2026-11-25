@@ -3201,10 +3201,19 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 }
 
 /* Share the finish, not the ground. A popover already owns its elevated fill,
- * glass alpha/blur and one overlay shadow. Tint only the top of that material;
- * using the composer's opaque wash here would paint a second, solid plate. */
+ * glass alpha/blur and one overlay shadow. The panel fill is at least half
+ * elevated, so mix elevated halfway toward white (light) or black (dark):
+ * the tint stays on the side of the composited ground away from the ink.
+ * An ink wash spent the last bit of muted-text contrast on clear glass and
+ * darkened light paper under its gleam. Keep only a trace of this tone so it
+ * grades the material rather than painting a solid plate.
+ * glass-overlay.test.mjs composites this wash over the actual panel fill. */
 [data-lo-floating-finish] {
-	--lo-floating-panel-wash: color-mix(in srgb, var(--lo-ink) 3%, transparent);
+	--lo-floating-panel-wash: color-mix(
+		in srgb,
+		color-mix(in srgb, var(--lo-elevated), light-dark(white, black)) 3%,
+		transparent
+	);
 }
 
 [data-quick-picker][data-picker-placement="anchored"],
