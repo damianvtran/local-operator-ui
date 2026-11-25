@@ -415,8 +415,9 @@ test("S-7 the bookend's story fixtures spell her name Aida, never Ada", () => {
 		"utf8",
 	);
 	assert.doesNotMatch(stories, /name="Ada"/);
-	// MeetAida, MeetAidaDelivered and RadientConnected (L14) each name her.
-	assert.equal((stories.match(/<AidaBridge name="Aida"/g) ?? []).length, 3);
+	// MeetAida, MeetAidaConsentOptedIn (the telemetry checkbox, checked),
+	// MeetAidaDelivered and RadientConnected (L14) each name her.
+	assert.equal((stories.match(/<AidaBridge name="Aida"/g) ?? []).length, 4);
 });
 
 /* ------------------------------------------------------------------ S-8 */

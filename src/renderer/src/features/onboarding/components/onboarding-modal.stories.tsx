@@ -35,6 +35,11 @@ import { OnboardingModal } from "./onboarding-modal";
  */
 type StoryArgs = {
 	step: OnboardingStep;
+	/**
+	 * What main reports as the user's telemetry opt-in. The consent checkbox on
+	 * the LAST step reflects it (unchecked unless already opted in).
+	 */
+	consentOptedIn?: boolean;
 	/** `skip` by default so a step story photographs the step, not the intro. */
 	introMode?: IntroMode;
 };
@@ -49,9 +54,55 @@ const OnboardingFrame = ({ step, introMode = "skip" }: StoryArgs) => {
 	return <OnboardingModal open={true} introMode={introMode} />;
 };
 
+/*
+ * A telemetry consent bridge, as the preload exposes it, so the last step's
+ * optional checkbox renders (without one it renders nothing, by design). Its
+ * `set` answers like main does, so ticking the box in the gallery works.
+ * Installed per render and restored on unmount, like `AidaBridge` below.
+ */
+const ConsentBridge = ({
+	optedIn,
+	children,
+}: {
+	optedIn: boolean;
+	children: ReactNode;
+}): ReactNode => {
+	useLayoutEffect(() => {
+		const page = window as unknown as { api?: Record<string, unknown> };
+		const api = page.api ?? {};
+		page.api = api;
+		const previous = api.telemetryConsent;
+		let state = { optedIn, launchAllows: true, effective: optedIn };
+		const listeners = new Set<(next: typeof state) => void>();
+		api.telemetryConsent = {
+			get: async () => state,
+			set: async (next: boolean) => {
+				state = { optedIn: next, launchAllows: true, effective: next };
+				for (const listener of listeners) listener(state);
+				return state;
+			},
+			onChange: (listener: (next: typeof state) => void) => {
+				listeners.add(listener);
+				return () => listeners.delete(listener);
+			},
+		};
+		return () => {
+			api.telemetryConsent = previous;
+		};
+	}, [optedIn]);
+	return children;
+};
+
 const meta: Meta<StoryArgs> = {
 	title: "Onboarding/OnboardingModal",
 	parameters: { layout: "fullscreen" },
+	decorators: [
+		(Story, context) => (
+			<ConsentBridge optedIn={context.args.consentOptedIn === true}>
+				<Story />
+			</ConsentBridge>
+		),
+	],
 	argTypes: {
 		step: { control: "select", options: Object.values(OnboardingStep) },
 	},
@@ -167,6 +218,20 @@ const AidaBridge = ({
  */
 export const MeetAida: Story = {
 	args: { step: OnboardingStep.MEET },
+	render: ({ step }) => (
+		<AidaBridge name="Aida">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * The bookend as the LAST step with the user already opted in to anonymous
+ * usage statistics (e.g. via Settings -> Privacy): the optional consent
+ * checkbox above the footer shows checked. `MeetAida` is the default, unchecked.
+ */
+export const MeetAidaConsentOptedIn: Story = {
+	args: { step: OnboardingStep.MEET, consentOptedIn: true },
 	render: ({ step }) => (
 		<AidaBridge name="Aida">
 			<OnboardingFrame step={step} />

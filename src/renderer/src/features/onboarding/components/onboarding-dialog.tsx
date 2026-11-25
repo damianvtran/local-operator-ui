@@ -108,6 +108,14 @@ export type OnboardingStageProps = {
 	footerEnd?: ReactNode;
 	/** A sentence above the footer when the step refuses to advance. */
 	footerNote?: ReactNode;
+	/**
+	 * An optional control pinned between the step body and the footer, outside
+	 * the scroll container so it stays visible beside the primary action at any
+	 * window height. The modal uses it for the telemetry consent checkbox on the
+	 * LAST step only (operator request, 2026-11-24). The step components stay
+	 * untouched: placement is the stage's concern, not Meet/Search/Model's.
+	 */
+	footerLead?: ReactNode;
 	/** Escape: ends setup (as before; the close button is gone). */
 	onDismiss?: () => void;
 };
@@ -140,6 +148,7 @@ export const OnboardingStage = ({
 	footerStart,
 	footerEnd,
 	footerNote,
+	footerLead,
 	onDismiss,
 }: OnboardingStageProps): ReactNode => {
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -270,6 +279,15 @@ export const OnboardingStage = ({
 							</div>
 						) : null}
 					</div>
+					{footerLead ? (
+						<div
+							data-stage-enter="footer"
+							data-onboarding-footer-lead=""
+							className="shrink-0 px-8 pt-2"
+						>
+							{footerLead}
+						</div>
+					) : null}
 					<footer
 						data-stage-enter="footer"
 						className="flex shrink-0 flex-col gap-2 px-6 pb-4"
