@@ -1,0 +1,25 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "7f5f04345cc5-privacy-zh-cn",
+	"date": "2026-11-24",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer session 7f5f04345cc5); not the translator (lopdev coder, anthropic/claude-opus-5-5, remediation job d7b6aa25f597). Same model family as the translator: disclosed. Read only committed bytes at 713adafbb3c, never the coder's scratch; no replacements authored.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/zh-CN.md",
+		"shipped_terms": "src/i18n/catalogues/zh-CN/*.json at 713adafbb3c"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2094,
+	"head": "713adafbb3c",
+	"scope": "All 6 keys of ui.settings.privacy read in full against the en value and en .context.json (round-2 copy: full privacy stays on; no conversations, prompts, files or session details ever collected, stored or used; turn off at any time; no added IP/personal-data claims), glossary and locale style guide; mechanically checked key parity with en, no ICU placeholders, NFC, no Cc/Cf characters, no ASCII '...'. '完全隐私保护始终开启' = full privacy stays on; '收集、存储或使用' keeps all three verbs; 会话详情 per glossary; 提示词 per glossary; 你 register; full-width ：。",
+	"namespace": "ui.settings.privacy",
+	"status": "passed",
+	"sha256": {
+		"zh-CN": "a5bffd68892cef43a7143e174c2c99bedf2f21d2c9f69f630dfaffaafd6dd475",
+		"en": "9f04ad8e7d32f0f4a99c5f2f0d67a76cf339b1841c81bd923a621cc778c88cca"
+	},
+	"context_sha256": "1599bdf3bd09d9d96fdcfd849e559d09ebd01c2af78b884f406a8c15c96daf98",
+	"findings": []
+}

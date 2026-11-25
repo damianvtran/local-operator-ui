@@ -106,6 +106,7 @@ import {
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
 import type { SessionAskFrame } from "@features/chat/session-asks";
+import { ApprovalModeChip } from "@features/chat/session-status/approval-mode-chip";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
@@ -10058,6 +10059,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 										costChannels={sessionStatus.costChannels}
 									/>
+									{/*
+									 * The approval mode, beside the readings and only for a live
+									 * session: a draft has no runtime gate to report or switch.
+									 */}
+									{slashSessionId && !sessionStatus.draft ? (
+										<ApprovalModeChip sessionId={slashSessionId} />
+									) : null}
 								</ErrorBoundary>
 							)}
 						</div>

@@ -25,10 +25,15 @@ const {
 	displayedWorkspaceTabs,
 	makeWorkspaceTab,
 	moveWorkspaceTab,
+	resolveWorkspaceTabTitle,
 	sanitizeSavedWorkspaceTabs,
 	saveWorkspaceTabs,
+	saveWorkspaceTabsWithTitles,
+	savedWorkspaceTabsDiffer,
 	syncWorkspaceTabs,
 	translate,
+	workspaceBulkCloseKeys,
+	workspaceHeaderTitle,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
 	workspaceTarget,
@@ -65,8 +70,10 @@ const MORE_TARGET =
 	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
 const TAB_FOCUS =
 	/\[data-workspace-tabs\] button:focus-visible\s*\{\s*outline: 2px solid var\(--color-accent\);\s*outline-offset: -2px;/;
+// End padding only: the start edge is the header row's `ps-6` utility (PR #2099),
+// and an unlayered start padding here would override it. lane-leading pins that.
 const HEADER_PADDING =
-	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-start: 4px;\s*padding-inline-end: 12px;\s*\}/;
+	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-end: 12px;\s*\}/;
 
 test("reopening canonical ids focuses the existing target without adding a duplicate", () => {
 	const opened = syncWorkspaceTabs([], targetA, {});
@@ -269,6 +276,62 @@ test("the 32px strip leaves 4px of settled air on both sides of the tab paint wi
 	assert.match(css, TAB_FOCUS);
 });
 
+/*
+ * THE ACTIVE-TAB TREATMENT (operator addition B on PR #2091): inactive tabs paint
+ * nothing at rest and row-hover under the pointer; the active tab alone has the
+ * opaque row-selected ground, full ink, weight 500 and a 2px accent indicator.
+ */
+function assertActiveTabTreatment(css) {
+	assert.match(
+		css,
+		/\[data-workspace-tab\] \{\s*--workspace-tab-fill: transparent;/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]:not\(\[data-active\]\):hover \{\s*--workspace-tab-fill: var\(--color-row-hover\);/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: var\(--color-row-selected\);\s*color: var\(--color-ink\);/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\] > button\[aria-current\] \{\s*font-weight: 500;/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\]::after \{[^}]*height: 2px;[^}]*background: var\(--color-accent\);/,
+	);
+	// No outline/pill: the tab block itself never draws a border.
+	const tab = css.match(/\[data-workspace-tab\] \{[^}]*\}/)[0];
+	assert.doesNotMatch(tab, /border(-width)?:/);
+}
+
+test("the active tab is the only filled tab, in full ink with an accent indicator", () => {
+	assertActiveTabTreatment(source("styles/index.css"));
+});
+
+test("negative control: the old faint tint on every tab fails the treatment check", () => {
+	const css = source("styles/index.css");
+	const faint = css
+		.replace(
+			/(\[data-workspace-tab\] \{\s*--workspace-tab-fill: )transparent;/,
+			"$1color-mix(in oklab, var(--color-canvas) 48%, var(--color-surface));",
+		)
+		.replace(
+			/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: )var\(--color-row-selected\);/,
+			"$1color-mix(in oklab, var(--color-row-selected) 44%, var(--color-surface));",
+		);
+	assert.notEqual(faint, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(faint));
+	const noIndicator = css.replace(
+		"[data-workspace-tab][data-active]::after",
+		"[data-x]::after",
+	);
+	assert.notEqual(noIndicator, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(noIndicator));
+});
+
 test("header leading padding follows direction without moving its trailing actions", () => {
 	assert.match(source("styles/index.css"), HEADER_PADDING);
 });
@@ -298,4 +361,495 @@ test("titlebar activation and actions keep one navigation owner and never trust 
 	assert.ok(hook.includes("receipt.confirmed"));
 	assert.ok(hook.includes("state.forgotten[handoff.to] !== undefined"));
 	assert.ok(!routePath.test(hook));
+});
+
+/*
+ * Bulk closes from a tab's menu (operator, 2026-11-24: "close other tabs, close
+ * tabs to the left, close tabs to the right, etc"). Fixture, displayed order:
+ * [P1 P2 | A B C D] - two pins, then four regular tabs - with B as the anchor.
+ */
+const bulkFixture = () => {
+	const make = (id, pinned = false) => ({
+		...makeWorkspaceTab({ kind: "session", id }),
+		pinned,
+	});
+	const [p1, p2, a, b, c, d] = [
+		make("00000000p001", true),
+		make("00000000p002", true),
+		make("00000000000a"),
+		make("00000000000b"),
+		make("00000000000c"),
+		make("00000000000d"),
+	];
+	// Stored order interleaves pins; the rule must follow DISPLAYED order.
+	return { tabs: [a, p1, b, c, p2, d], p1, p2, a, b, c, d };
+};
+const keysOf = (...tabs) => tabs.map((tab) => tab.key);
+
+test("bulk closes follow displayed order, spare pins, and mirror left/right in RTL", () => {
+	const { tabs, p1, p2, a, b, c, d } = bulkFixture();
+	const close = (key, action, rtl = false) =>
+		workspaceBulkCloseKeys(tabs, key, action, rtl);
+	assert.deepEqual(close(b.key, "others"), keysOf(a, c, d));
+	assert.deepEqual(close(b.key, "left"), keysOf(a));
+	assert.deepEqual(close(b.key, "right"), keysOf(c, d));
+	assert.deepEqual(close(b.key, "all"), keysOf(a, b, c, d));
+	// RTL: the strip draws displayed order right-to-left, so the visual left
+	// of B is the logical end and its visual right is the logical start.
+	assert.deepEqual(close(b.key, "left", true), keysOf(c, d));
+	assert.deepEqual(close(b.key, "right", true), keysOf(a));
+	assert.deepEqual(close(b.key, "others", true), keysOf(a, c, d));
+	// "others"/"all" from a pinned tab still never close a pin.
+	assert.deepEqual(close(p2.key, "others"), keysOf(a, b, c, d));
+	assert.deepEqual(close(p1.key, "all"), keysOf(a, b, c, d));
+	// Strip-level "Close all tabs" has no anchor tab.
+	assert.deepEqual(close("", "all"), keysOf(a, b, c, d));
+});
+
+test("a bulk close that would close nothing returns no keys, so its item disables", () => {
+	const { tabs, p1, a, d } = bulkFixture();
+	const close = (key, action, rtl = false) =>
+		workspaceBulkCloseKeys(tabs, key, action, rtl);
+	// Left of the first pin is nothing; left of the first regular tab is only pins.
+	assert.deepEqual(close(p1.key, "left"), []);
+	assert.deepEqual(close(a.key, "left"), []);
+	assert.deepEqual(close(d.key, "right"), []);
+	assert.deepEqual(close(d.key, "left", true), []);
+	const onlyPins = tabs.filter((tab) => tab.pinned);
+	for (const action of ["others", "left", "right", "all"])
+		assert.deepEqual(
+			workspaceBulkCloseKeys(onlyPins, onlyPins[0].key, action, false),
+			[],
+		);
+	// An unknown anchor closes nothing rather than guessing.
+	assert.deepEqual(close("missing", "others"), []);
+	assert.deepEqual(close("missing", "right"), []);
+});
+
+test("negative control: an order-blind, pin-blind rule fails the same expectations", () => {
+	const { tabs, b } = bulkFixture();
+	// The plausible wrong implementation: stored order, pins included, no RTL.
+	const naive = (key, action) => {
+		const at = tabs.findIndex((tab) => tab.key === key);
+		return tabs
+			.filter((_, i) => (action === "left" ? i < at : i > at))
+			.map((tab) => tab.key);
+	};
+	assert.notDeepEqual(
+		naive(b.key, "left"),
+		workspaceBulkCloseKeys(tabs, b.key, "left", false),
+	);
+	assert.notDeepEqual(
+		naive(b.key, "right"),
+		workspaceBulkCloseKeys(tabs, b.key, "right", false),
+	);
+	assert.notDeepEqual(
+		workspaceBulkCloseKeys(tabs, b.key, "left", false),
+		workspaceBulkCloseKeys(tabs, b.key, "left", true),
+	);
+});
+
+const TAB_CONTEXT_MENU =
+	/<ContextMenu key=\{key\}>\s*<ContextMenuTrigger asChild>\s*\{renderTabRow\(/;
+const KEYBOARD_OPENER_KEYS =
+	/event\.key !== "ContextMenu" && !\(event\.shiftKey && event\.key === "F10"\)/;
+const KEYBOARD_OPENER_CALL = /if \(openTabMenuFromKeyboard\(event\)\) return;/;
+const STRIP_CLOSE_ALL =
+	/data-workspace-close-all=""\s*disabled=\{closeAllKeys\.length === 0\}\s*onSelect=\{\(\) => onCloseMany\(closeAllKeys\)\}/;
+/*
+ * The ellipsis is MOUNTED on the active tab only (design D2, review R2): an
+ * opacity-hidden trigger on every tab kept a 24px hole and a Tab stop in each.
+ */
+const TAB_MORE_ACTIVE_ONLY =
+	/\{active && \(\s*<DropdownMenu>\s*<DropdownMenuTrigger asChild>\s*<button\s+type="button"\s+data-workspace-tab-more=""/;
+/* Both openers group Pin | Move left, Move right | closes with the menu separator (D3). */
+const CONTEXT_SEPARATED =
+	/startsGroup\(entries, index\) && <ContextMenuSeparator \/>\}\s*<ContextMenuItem/;
+const DROPDOWN_SEPARATED =
+	/startsGroup\(entries, index\) && <DropdownMenuSeparator \/>\}\s*<DropdownMenuItem/;
+/** The per-tab menu wiring, as a source guard over workspace-tabs.tsx. */
+const assertTabMenuWiring = (strip, hook, page) => {
+	// Right-click (and the keyboard openers) on every tab, pinned or not: the
+	// ContextMenu wraps the one row renderer both lanes use.
+	assert.match(strip, TAB_CONTEXT_MENU);
+	assert.match(strip, KEYBOARD_OPENER_KEYS);
+	assert.match(strip, KEYBOARD_OPENER_CALL);
+	// Both openers draw the SAME entries.
+	assert.equal((strip.match(/tabMenuEntries\(tab\)\.map/g) ?? []).length, 2);
+	for (const action of ["others", "left", "right", "all"])
+		assert.ok(strip.includes(`bulk("${action}"`), action);
+	assert.ok(
+		strip.includes("workspaceBulkCloseKeys(tabs, tab.key, action, rtl)"),
+	);
+	assert.ok(strip.includes("disabled: keys.length === 0"));
+	// The ellipsis lives inside the tab row, before its close button, and only
+	// the active tab mounts it.
+	const row = strip.slice(strip.indexOf("const renderTabRow"));
+	assert.ok(
+		row.indexOf('data-workspace-tab-more=""') > 0 &&
+			row.indexOf('data-workspace-tab-more=""') <
+				row.indexOf('data-workspace-close=""'),
+	);
+	assert.match(row, TAB_MORE_ACTIVE_ONLY);
+	assert.equal((row.match(/data-workspace-tab-more=""/g) ?? []).length, 1);
+	// Grouped menus: three groups, separators drawn by both openers.
+	assert.match(strip, CONTEXT_SEPARATED);
+	assert.match(strip, DROPDOWN_SEPARATED);
+	assert.equal((strip.match(/group: "pin",/g) ?? []).length, 1);
+	assert.equal((strip.match(/group: "move",/g) ?? []).length, 1);
+	assert.equal((strip.match(/group: "close",/g) ?? []).length, 2);
+	// "Close all tabs" without a right-click, in the strip-level list.
+	assert.match(strip, STRIP_CLOSE_ALL);
+	// The active tab leaves through the existing close, choosing among survivors.
+	assert.ok(hook.includes("if (active) close(active, tabs.filter(keep));"));
+	assert.ok(hook.includes("const next = workspaceNeighbor(among, tab.key);"));
+	assert.ok(page.includes("onCloseMany={workspace.closeMany}"));
+};
+
+test("every tab carries one right-click/keyboard/ellipsis menu with the bulk closes", () => {
+	assertTabMenuWiring(
+		source(`${modelPath}workspace-tabs.tsx`),
+		source(`${modelPath}use-workspace-tabs.ts`),
+		source(`${modelPath}chat-page.tsx`),
+	);
+	// No stylesheet rule hides or reveals a per-tab ellipsis any more: an inactive
+	// tab has none to hide, so it keeps no gap.
+	assert.doesNotMatch(
+		source("styles/index.css"),
+		/\[data-workspace-tab-more\]/,
+	);
+});
+
+/*
+ * The grouping rule itself, run: the entry order Pin, Move left, Move right,
+ * Close, Close others/left/right/all puts a separator before Move left and before
+ * Close, and nowhere else - two rules, three groups.
+ */
+function loadStartsGroup(strip) {
+	const fn = strip.match(/function startsGroup\([\s\S]*?\n\}/);
+	assert.ok(fn, "startsGroup located");
+	const js = fn[0]
+		.replace(/: readonly \{ group: string \}\[\]/, "")
+		.replace(/: number/, "");
+	return new Function(`${js}; return startsGroup;`)();
+}
+
+test("the per-tab menu draws separators between Pin | Move | Close groups", () => {
+	const startsGroup = loadStartsGroup(source(`${modelPath}workspace-tabs.tsx`));
+	const entries = ["pin", "move", "move", ...Array(5).fill("close")].map(
+		(group) => ({ group }),
+	);
+	const breaks = entries.flatMap((_, i) =>
+		startsGroup(entries, i) ? [i] : [],
+	);
+	assert.deepEqual(breaks, [1, 3]);
+});
+
+test("negative control: the wiring guard rejects a strip whose ellipsis left the tab or lost the keyboard opener", () => {
+	const strip = source(`${modelPath}workspace-tabs.tsx`);
+	const hook = source(`${modelPath}use-workspace-tabs.ts`);
+	const page = source(`${modelPath}chat-page.tsx`);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip.replace("if (openTabMenuFromKeyboard(event)) return;", ""),
+			hook,
+			page,
+		),
+	);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip.replace('bulk("right"', 'bulk("rite"'),
+			hook,
+			page,
+		),
+	);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip,
+			hook.replace("close(active, tabs.filter(keep))", "close(active)"),
+			page,
+		),
+	);
+	// The round-1 shape: an ellipsis mounted on every tab.
+	const everyTab = strip.replace(
+		/\{active && \(\s*<DropdownMenu>/,
+		"<DropdownMenu>",
+	);
+	assert.notEqual(everyTab, strip, "control mutation applied");
+	assert.throws(() => assertTabMenuWiring(everyTab, hook, page));
+	// A flat, ungrouped context menu.
+	const flat = strip.replace(
+		"{startsGroup(entries, index) && <ContextMenuSeparator />}",
+		"",
+	);
+	assert.notEqual(flat, strip, "control mutation applied");
+	assert.throws(() => assertTabMenuWiring(flat, hook, page));
+});
+
+test("tab titles: remembered names first, loading only while the catalogue is unsettled", () => {
+	const base = { target: targetA, catalogueSettled: false };
+	// Persisted title paints a restored tab before any page lands.
+	assert.deepEqual(resolveWorkspaceTabTitle({ ...base, savedTitle: "Aida" }), {
+		kind: "title",
+		text: "Aida",
+	});
+	// No name anywhere and no answer yet: loading, not "New chat".
+	assert.deepEqual(resolveWorkspaceTabTitle(base), { kind: "loading" });
+	assert.deepEqual(resolveWorkspaceTabTitle({ ...base, savedTitle: "  " }), {
+		kind: "loading",
+	});
+	// Loaded catalogue row outranks the remembered name; header outranks both.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			...base,
+			catalogueSettled: true,
+			catalogueTitle: "Renamed",
+			savedTitle: "Old",
+		}),
+		{ kind: "title", text: "Renamed" },
+	);
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			...base,
+			activeTitle: "Header",
+			catalogueTitle: "Row",
+		}),
+		{ kind: "title", text: "Header" },
+	);
+	// Settled (answered or failed) with no row: the existing fallback, never a spinner.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({ ...base, catalogueSettled: true }),
+		{
+			kind: "fallback",
+		},
+	);
+	// Drafts are "New chat" even before the catalogue answers, and ignore saved names.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: draft,
+			catalogueSettled: false,
+			savedTitle: "x",
+		}),
+		{ kind: "fallback" },
+	);
+});
+
+test("saved tab titles round-trip, and state written before the field still loads", () => {
+	const titles = { [targetA.id]: "  Aida ", [targetB.id]: "" };
+	const saved = saveWorkspaceTabs(
+		[sessionA, sessionB, draftTab],
+		(id) => titles[id],
+	);
+	assert.deepEqual(saved, [
+		{ id: targetA.id, pinned: false, title: "Aida" },
+		{ id: targetB.id, pinned: false },
+	]);
+	assert.deepEqual(
+		sanitizeSavedWorkspaceTabs(JSON.parse(JSON.stringify(saved))),
+		saved,
+	);
+	// Old blob: no title key at all.
+	assert.deepEqual(
+		sanitizeSavedWorkspaceTabs([{ id: targetA.id, pinned: true }]),
+		[{ id: targetA.id, pinned: true }],
+	);
+	// Non-string or oversized titles never reach the strip unbounded.
+	const [bad, long] = sanitizeSavedWorkspaceTabs([
+		{ id: targetA.id, pinned: false, title: 42 },
+		{ id: targetB.id, pinned: false, title: "x".repeat(1000) },
+	]);
+	assert.equal("title" in bad, false);
+	assert.equal(long.title.length, 300);
+	// A title change alone is a difference worth re-saving.
+	assert.equal(
+		savedWorkspaceTabsDiffer(
+			saved,
+			saved.map((row) => ({ ...row })),
+		),
+		false,
+	);
+	assert.equal(
+		savedWorkspaceTabsDiffer(saved, [
+			{ ...saved[0], title: "Other" },
+			saved[1],
+		]),
+		true,
+	);
+});
+
+function assertTitleLoadingWiring(strip, hook) {
+	assert.match(strip, /resolveWorkspaceTabTitle\(/);
+	assert.match(strip, /state\.head\.at > 0 \|\| state\.error !== null/);
+	assert.match(
+		strip,
+		/data-workspace-tab-title-loading=""\s*aria-busy="true"[\s\S]*?<Skeleton aria-hidden="true" className="h-2\.5 w-20" \/>/,
+	);
+	assert.match(strip, /t\("ui\.chat\.canonical\.loading\.region_label"\)/);
+	assert.equal((strip.match(/\{titleSlot\(tab, /g) ?? []).length, 2);
+	assert.match(hook, /\}, \[tabs, sessions, seenRevision\]\);/);
+	assert.match(hook, /saveWorkspaceTabsWithTitles\(tabs, \{/);
+	// Every catalogue row a tab shows is remembered, not only the header.
+	assert.match(
+		strip,
+		/onTitleSeen\(\s*tab\.key,\s*sessions\.find\(\(row\) => row\.session_id === id\)\?\.title \?\? null,/,
+	);
+	assert.match(
+		strip,
+		/if \(activeKey && activeTitle\) onTitleSeen\(activeKey, activeTitle\);/,
+	);
+	assert.match(hook, /savedWorkspaceTabsDiffer\(saved, store\.workspaceTabs\)/);
+}
+
+test("restored tabs draw a fixed-width loading placeholder and persist their titles", () => {
+	const strip = source("features/chat/components/workspace-tabs.tsx");
+	const hook = source("features/chat/components/use-workspace-tabs.ts");
+	assertTitleLoadingWiring(strip, hook);
+	// Negative controls: each regression shape must fail the guard.
+	for (const mutated of [
+		[strip.replace("state.head.at > 0 || state.error !== null", "false"), hook],
+		[strip.replace('className="h-2.5 w-20"', 'className="h-2.5"'), hook],
+		[strip.replace('aria-busy="true"', ""), hook],
+		[strip.replace('{titleSlot(tab, "truncate")}', "{title(tab)}"), hook],
+		[strip, hook.replace("}, [tabs, sessions, seenRevision]);", "}, [tabs]);")],
+		[
+			strip.replace(
+				"onTitleSeen(\n\t\t\t\ttab.key,",
+				"void (\n\t\t\t\ttab.key,",
+			),
+			hook,
+		],
+	]) {
+		assert.ok(
+			mutated[0] !== strip || mutated[1] !== hook,
+			"control mutation applied",
+		);
+		assert.throws(() => assertTitleLoadingWiring(...mutated));
+	}
+	// Model-level negative control: dropping the loading arm reads "fallback".
+	assert.notDeepEqual(
+		resolveWorkspaceTabTitle({ target: targetA, catalogueSettled: true }),
+		{ kind: "loading" },
+	);
+});
+
+/*
+ * THE INVARIANT (operator, 2026-11-24, plus QA #2099 Q1B-F1 / Q1C-F1): a tab
+ * that has shown a real title never regresses to "New chat" or a placeholder
+ * while its row is merely absent - fallen off the head page, below it, or not
+ * answered yet on a relaunch.
+ */
+const UNTITLED = "Untitled chat";
+
+test("mid-session: a tab whose row falls off the head page keeps its name and saved title", () => {
+	const tabs = [sessionA, sessionB];
+	// t0: both rows on page one; the strip remembers each row it showed.
+	const seen = { [sessionA.key]: "Quarterly model", [sessionB.key]: "Hotfix" };
+	const first = saveWorkspaceTabsWithTitles(tabs, {
+		rows: new Map([
+			[targetA.id, "Quarterly model"],
+			[targetB.id, "Hotfix"],
+		]),
+		seen: {},
+		prior: [],
+	});
+	// t1: activity pushed A off the page; B is still listed.
+	const after = saveWorkspaceTabsWithTitles(tabs, {
+		rows: new Map([[targetB.id, "Hotfix"]]),
+		seen,
+		prior: first,
+	});
+	assert.deepEqual(after, first, "absence from the page never erases a title");
+	const shown = resolveWorkspaceTabTitle({
+		target: targetA,
+		catalogueSettled: true,
+		catalogueTitle: undefined,
+		sessionTitle: seen[sessionA.key],
+		savedTitle: after[0].title,
+	});
+	assert.deepEqual(shown, { kind: "title", text: "Quarterly model" });
+	// Negative control - v0.64.0's chain for an INACTIVE tab: header (not this
+	// tab) || row (gone) || titles map (held only the active header) || fallback.
+	const shipped = (row, activeOnlyTitles) =>
+		row || activeOnlyTitles[sessionA.key] || "New chat";
+	assert.equal(shipped(undefined, {}), "New chat");
+});
+
+test("Q1B-F1: the active tab shows its saved title while the header has no real name", () => {
+	// Before the catalogue answers the header's only answer is its placeholder.
+	const header = workspaceHeaderTitle({
+		draftSentence: null,
+		liveTitle: "",
+		catalogueTitle: undefined,
+	});
+	assert.equal(header, null);
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetA,
+			activeTitle: header,
+			catalogueSettled: false,
+			savedTitle: "T00 Quarterly revenue model",
+		}),
+		{ kind: "title", text: "T00 Quarterly revenue model" },
+	);
+	// Negative control: the shipped wiring fed the placeholder string through.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetA,
+			activeTitle: UNTITLED,
+			catalogueSettled: false,
+			savedTitle: "T00 Quarterly revenue model",
+		}),
+		{ kind: "title", text: UNTITLED },
+	);
+	// Real names still pass, in the header's own order; a staged draft keeps its sentence.
+	assert.equal(
+		workspaceHeaderTitle({ liveTitle: " Live ", catalogueTitle: "Row" }),
+		"Live",
+	);
+	assert.equal(workspaceHeaderTitle({ catalogueTitle: "Row" }), "Row");
+	assert.equal(workspaceHeaderTitle({ draftSentence: "New chat" }), "New chat");
+});
+
+test("Q1C-F1: a conversation below page one is saved under its real header title", () => {
+	// Never on the page: no row, nothing saved before; only the open header named it.
+	const saved = saveWorkspaceTabsWithTitles([sessionA, sessionB], {
+		rows: new Map(),
+		seen: { [sessionB.key]: "T08 Old research" },
+		prior: [],
+	});
+	assert.deepEqual(saved[1], {
+		id: targetB.id,
+		pinned: false,
+		title: "T08 Old research",
+	});
+	assert.equal(
+		"title" in saved[0],
+		false,
+		"an unnamed tab saves no placeholder",
+	);
+	// Relaunch: the restored tab draws that name before and after the catalogue settles.
+	for (const catalogueSettled of [false, true])
+		assert.deepEqual(
+			resolveWorkspaceTabTitle({
+				target: targetB,
+				catalogueSettled,
+				savedTitle: sanitizeSavedWorkspaceTabs(saved)[1].title,
+			}),
+			{ kind: "title", text: "T08 Old research" },
+		);
+	// Precedence: a listed row (renames) > seen this run > saved before.
+	const ranked = saveWorkspaceTabsWithTitles([sessionA], {
+		rows: new Map([[targetA.id, "Renamed"]]),
+		seen: { [sessionA.key]: "Seen" },
+		prior: [{ id: targetA.id, pinned: false, title: "Old" }],
+	});
+	assert.equal(ranked[0].title, "Renamed");
+	assert.equal(
+		saveWorkspaceTabsWithTitles([sessionA], {
+			rows: new Map([[targetA.id, "  "]]),
+			seen: { [sessionA.key]: "Seen" },
+			prior: [{ id: targetA.id, pinned: false, title: "Old" }],
+		})[0].title,
+		"Seen",
+	);
 });

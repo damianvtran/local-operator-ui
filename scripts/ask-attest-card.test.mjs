@@ -231,6 +231,14 @@ test("main's refusals read as keyed copy, never as an owner verdict", () => {
 			"listener_refused",
 			/^Confirm again\..*didn't accept the confirmation.*won't count as your approval\.$/,
 		],
+		[
+			"listener_timeout",
+			/^Confirm again\. The conversation didn't start in time.*nothing was sent\.$/,
+		],
+		[
+			"runtime_not_started",
+			/^Confirm again\. The conversation didn't start in time.*nothing was sent\.$/,
+		],
 		["frame_refused", /^Confirm again\./],
 		["timeout", /^Confirm again\./],
 		[

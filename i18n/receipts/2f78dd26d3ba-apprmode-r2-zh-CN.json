@@ -1,0 +1,61 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "zh-CN",
+	"auditor": "reviewer",
+	"agent": "reviewer",
+	"session": "2f78dd26d3ba",
+	"instance": "2f78dd26d3ba-apprmode-r2-zh-CN",
+	"model": "anthropic/claude-opus-5-5",
+	"model_fallback": null,
+	"independence": "lopdev reviewer session 2f78dd26d3ba; did not write these values (authored by the PR #2093 lopdev coder in commits 09825ef1c8c/6b249bfb74a/ca15e0b27b5). Same model family as the coder is possible: session independence, disclosed. Read the worktree at ca15e0b27b5; edited no catalogue.",
+	"date": "2026-11-24",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2093,
+	"head": "ca15e0b27b5",
+	"base": "6323d5f7d50",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/zh-CN.md",
+		"core_counterpart": "damianvtran/local-operator@26266796 local_operator/i18n/catalogues/<l>/relay.approvals.json card.{always_ask,guardrails_still_apply,set_auto_all,set_auto_session}"
+	},
+	"scope": "Copy round 2 delta audit of the 8 keys PR #2093 adds/changes vs base 6323d5f7d50 (chip.label, chip.switch_to_ask, chip.switch_to_auto, escape.always_ask, escape.ask_saved, escape.guardrails_note, escape.set_all, escape.set_session), read against en value, en .context.json, glossary, style guide and core relay.approvals; verifies round-1 C-U1..C-U5. Other 16 keys byte-identical to base and carried from the prior row (pr1881 receipts).",
+	"checks": {
+		"meaning": "guardrails_note scopes auto to approval prompts only and states guardrail refusals and dangerous-delete review still apply, not softened; ask_saved keeps 'this request still needs an answer'; set_all/set_session read as auto-approve, matching core.",
+		"mechanical": "Key parity with en (24); placeholders identical; NFC; no Cc/Cf; fr U+202F before : and ;; zh-CN full-width punctuation."
+	},
+	"status": "passed",
+	"namespaces": {
+		"ui.chat.approval": {
+			"status": "passed",
+			"keys_audited": 8,
+			"audited_keys": [
+				"ui.chat.approval.chip.label",
+				"ui.chat.approval.chip.switch_to_ask",
+				"ui.chat.approval.chip.switch_to_auto",
+				"ui.chat.approval.escape.always_ask",
+				"ui.chat.approval.escape.ask_saved",
+				"ui.chat.approval.escape.guardrails_note",
+				"ui.chat.approval.escape.set_all",
+				"ui.chat.approval.escape.set_session"
+			],
+			"sha256": {
+				"en": "8430de20a9bb7604aaa59e983e11480025b1c1271bf8ca93bd38d9b919e4defe",
+				"zh-CN": "a9607b6986dc341967e943a02992659821fbc0581c682f8d84ee3169d2316866",
+				"context": "e3ab84f4bae0972936966e32bcfb949cf1c7a730867e078beea7bbf924d47b65"
+			},
+			"final_values": {
+				"ui.chat.approval.chip.label": "审批：{mode}",
+				"ui.chat.approval.chip.switch_to_ask": "点击后将再次在每个工具运行前询问。",
+				"ui.chat.approval.chip.switch_to_auto": "点击后本会话将自动批准工具。",
+				"ui.chat.approval.escape.always_ask": "始终询问",
+				"ui.chat.approval.escape.ask_saved": "本会话将再次在每个工具运行前询问——此请求仍需回答。",
+				"ui.chat.approval.escape.guardrails_note": "自动模式只跳过审批提示。防护规则的拒绝和危险删除审查仍然有效。",
+				"ui.chat.approval.escape.set_all": "自动批准所有会话",
+				"ui.chat.approval.escape.set_session": "本会话自动批准"
+			},
+			"findings": []
+		}
+	}
+}

@@ -66,7 +66,8 @@ import {
 	projectTitleRule,
 } from "../project-edit-model";
 import { ProjectMarkdown } from "../project-markdown";
-import { projectStatusOptions, refusalCopy } from "../project-model";
+import { projectStatusOptions } from "../project-model";
+import { projectCreateErrorCopy } from "../project-refusals";
 import {
 	authoredProjectDescription,
 	pasteMarkdownIntoDescription,
@@ -309,10 +310,13 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 			});
 			onClose();
 		} catch (error) {
-			const message =
-				error instanceof Error && error.message ? error.message : "";
+			/*
+			 * Mapped by the refusal's machine CODE, never shown as the server's
+			 * text: the backend answers in English, and the UI owns localization
+			 * (census N5 - a Vietnamese sheet read `project '…' already exists`).
+			 */
 			setRefusal(
-				refusalCopy(message) ||
+				projectCreateErrorCopy(error) ||
 					t("ui.projects.project_form_dialog.the_project_was_not_saved"),
 			);
 		} finally {

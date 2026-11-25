@@ -25,12 +25,24 @@ export type OnboardingFooter = {
 	primaryDisabled: boolean;
 };
 
+/**
+ * The steps that can refuse to advance. Step 2 needs a model; the search step
+ * refuses while its Radient option is chosen but not signed in, because Finish
+ * would otherwise apply Free under a radio that says Radient (UX round 1, U2).
+ * Sign-in has its own gate (Continue appears only once something connects) and
+ * Meet has nothing to block on, so a stray block never strands the user there.
+ */
+const BLOCKING_STEPS: ReadonlySet<OnboardingStep> = new Set([
+	OnboardingStep.DEFAULT_MODEL,
+	OnboardingStep.SEARCH,
+]);
+
 export function onboardingFooter(
 	step: OnboardingStep,
 	stepBlock: string | null,
 	continuing = false,
 ): OnboardingFooter {
-	const blocked = step === OnboardingStep.DEFAULT_MODEL && stepBlock !== null;
+	const blocked = BLOCKING_STEPS.has(step) && stepBlock !== null;
 	return {
 		blocked,
 		reason: blocked ? stepBlock : null,

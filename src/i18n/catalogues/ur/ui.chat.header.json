@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "اس نئی چیٹ کو عارضی بنائیں",
 	"ui.chat.header.temporary_toggle_off": "عارضی چیٹ بند کریں",
 	"ui.chat.header.temporary_peer_unavailable": "عارضی چیٹ ابھی کسی دوسری ڈیوائس پر شروع نہیں ہو سکتی",
-	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# منٹ} other {# منٹ}} میں حذف ہو گی"
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# منٹ} other {# منٹ}} میں حذف ہو گی",
+	"ui.chat.header.pin_tab": "ٹیب پن کریں",
+	"ui.chat.header.unpin_tab": "ٹیب کی پن ہٹائیں",
+	"ui.chat.header.close_other_tabs": "دوسرے ٹیب بند کریں",
+	"ui.chat.header.close_tabs_left": "بائیں طرف کے ٹیب بند کریں",
+	"ui.chat.header.close_tabs_right": "دائیں طرف کے ٹیب بند کریں",
+	"ui.chat.header.close_all_tabs": "تمام ٹیب بند کریں",
+	"ui.chat.header.all_tabs": "تمام ٹیب"
 }

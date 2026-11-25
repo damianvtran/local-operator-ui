@@ -86,6 +86,7 @@ const {
 	classifyGlobalInstall,
 	clearPendingInstallMarker,
 	compareVersions,
+	diskImageLaunchBlock,
 	didUpgradeLand,
 	evaluateBundleSeal,
 	evaluateLaunchDuringInstall,
@@ -99,6 +100,7 @@ const {
 	installedBundleSealBlock,
 	installLivenessNow,
 	isInstallInFlight,
+	isDiskImageLaunch,
 	isPythonBytecodePath,
 	isSourceBuildRef,
 	lastInstallAttemptPath,
@@ -106,6 +108,7 @@ const {
 	installJobState,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
+	moveToApplications,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
 	serverUpdateFailureSentence,
@@ -113,6 +116,7 @@ const {
 	pendingInstallAgeSeconds,
 	pendingInstallMarkerPath,
 	planPythonBytecodeHeal,
+	readFreeBytes,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
 	reapFailedInstall,
@@ -18919,4 +18923,231 @@ test("a missing notarization credential fails on Actions and skips locally", () 
 	const local = run({ GITHUB_ACTIONS: "" });
 	assert.equal(local.status, 0, local.stderr);
 	assert.match(local.stdout, /^Skipping disk image notarization: /m);
+});
+
+/*
+ * The 0.53.2 -> 0.63.0 report: the app ran straight from the mounted installer
+ * DMG, whose true 0.0 GiB free was reported as "free up 1.6 GiB" on a Mac with
+ * 13.4 GiB free. The disk-image launch is its own refusal, decided before the
+ * space check, and never fails open into a write to the image.
+ */
+test("a launch from the installer disk image is detected by /Volumes plus a read-only parent", () => {
+	const dmg = "/Volumes/Local Operator 0.53.2-arm64/Local Operator.app";
+	// The path with spaces and the version-stamped volume name, read-only.
+	assert.equal(
+		isDiskImageLaunch({ bundlePath: dmg, parentWritable: false }),
+		true,
+	);
+	// The normal install is never flagged, writable or not.
+	for (const parentWritable of [true, false]) {
+		assert.equal(
+			isDiskImageLaunch({
+				bundlePath: "/Applications/Local Operator.app",
+				parentWritable,
+			}),
+			false,
+		);
+	}
+	// A writable external drive under /Volumes can update in place.
+	assert.equal(
+		isDiskImageLaunch({
+			bundlePath: "/Volumes/External/Applications/Local Operator.app",
+			parentWritable: true,
+		}),
+		false,
+	);
+	// "/Volumes" as a substring elsewhere is not the mount root.
+	assert.equal(
+		isDiskImageLaunch({
+			bundlePath: "/Users/r/Volumes/Local Operator.app",
+			parentWritable: false,
+		}),
+		false,
+	);
+	assert.equal(
+		isDiskImageLaunch({ bundlePath: null, parentWritable: false }),
+		false,
+	);
+	// The bundle path is derived from the real executable shape.
+	assert.equal(
+		appBundleFromExecutable(`${dmg}/Contents/MacOS/Local Operator`),
+		dmg,
+	);
+});
+
+test("the disk-image refusal has its own code and the Applications remedy, not the disk-space one", () => {
+	const dmg = "/Volumes/Local Operator 0.53.2-arm64/Local Operator.app";
+	const block = diskImageLaunchBlock(dmg, "0.63.0");
+	assert.equal(block.code, "running-from-disk-image");
+	assert.match(block.message, /installer disk image/);
+	assert.match(block.message, /version 0\.63\.0/);
+	assert.equal(
+		block.remedy.text,
+		"Move it to Applications, then update from there.",
+	);
+	assert.doesNotMatch(block.remedy.text, /[Ff]ree up/);
+	assert.equal(block.remedy.url, undefined);
+	assert.ok(block.detail.includes(dmg));
+	assert.doesNotMatch(diskImageLaunchBlock(dmg).message, /version/);
+});
+
+/*
+ * The disk-image panel's move outcome (design round 1, D2-D4, D6). The panel is a
+ * component this suite does not render, so - like the reason-helper call-site test -
+ * this pins the source shapes the fixes depend on: an `exists*` decline disables the
+ * button (pressing again can never succeed), the outcome REPLACES the remedy rather
+ * than stacking a second identical paragraph under it, the outcome is reset whenever
+ * a block arrives or is dismissed, and its machine detail reaches the disclosure.
+ */
+test("the disk-image panel's move outcome replaces the remedy, disables a futile retry and is reset per refusal", () => {
+	const source = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.tsx",
+		),
+		"utf8",
+	);
+	assert.ok(
+		!source.includes("moveError"),
+		"the old append-only error state is gone",
+	);
+	assert.match(
+		source,
+		/moveOutcome\?\.reason === "exists" \|\|\s*moveOutcome\?\.reason === "exists-and-running"/,
+	);
+	assert.ok(source.includes("disabled={moving || moveCannotSucceed}"));
+	assert.match(
+		source,
+		/\{moveOutcome && installBlocked\.code === "running-from-disk-image" \? \([\s\S]{0,200}moveOutcome\.message[\s\S]{0,200}\) : \([\s\S]{0,120}installBlocked\.remedy\.text/,
+		"the outcome renders in place of the remedy, not after it",
+	);
+	assert.match(source, /setInstallBlocked\(info\);\s*setMoveOutcome\(null\);/);
+	assert.match(source, /setInstallBlocked\(null\);\s*setMoveOutcome\(null\);/);
+	assert.ok(
+		source.includes("moveOutcome?.detail"),
+		"the move's detail reaches PanelDetails",
+	);
+});
+
+test("a positive but too-small free-space reading still refuses with the disk-space code", () => {
+	const reading = readFreeBytes("/Applications", () => ({
+		bavail: 10,
+		bfree: 10,
+		bsize: 4096,
+	}));
+	assert.deepEqual(reading, { bytes: 40960, implausible: false, note: null });
+	const verdict = verifyStagedArtifact({
+		filePath: `/tmp/${ARTIFACT.url}`,
+		actualSize: ARTIFACT.size,
+		actualSha512: ARTIFACT.sha512,
+		metadata: ARTIFACT,
+		freeBytes: reading.bytes,
+		installedBundleSize: 1024 ** 3,
+		version: "0.63.0",
+	});
+	assert.equal(verdict.ok, false);
+	assert.equal(verdict.block.code, "insufficient-disk-space");
+});
+
+test("an impossible free-space reading on a writable volume is unreadable, not zero", () => {
+	// Zero available: fall back to bfree when that is plausible.
+	const fallback = readFreeBytes("/Applications", () => ({
+		bavail: 0,
+		bfree: 1000,
+		bsize: 4096,
+	}));
+	assert.equal(fallback.bytes, 4096000);
+	assert.equal(fallback.implausible, true);
+	assert.match(fallback.note, /bavail=0 bfree=1000 bsize=4096/);
+
+	// Zero, NaN, negative or infinite everywhere: null (callers fail open), and the
+	// warning names the directory and the raw values.
+	for (const stats of [
+		{ bavail: 0, bfree: 0, bsize: 4096 },
+		{ bavail: Number.NaN, bfree: Number.NaN, bsize: 4096 },
+		{ bavail: -1, bfree: -1, bsize: 4096 },
+		{ bavail: 1, bfree: 1, bsize: Number.POSITIVE_INFINITY },
+	]) {
+		const reading = readFreeBytes("/Applications/x", () => stats);
+		assert.equal(reading.bytes, null, JSON.stringify(stats));
+		assert.equal(reading.implausible, true);
+		assert.match(reading.note, /\/Applications\/x/);
+		assert.match(reading.note, /not refusing/);
+	}
+});
+
+test("a statfs throw is unreadable, and a missing directory is measured at its nearest parent", () => {
+	const eio = Object.assign(new Error("EIO: i/o error"), { code: "EIO" });
+	const thrown = readFreeBytes("/Applications", () => {
+		throw eio;
+	});
+	assert.equal(thrown.bytes, null);
+	assert.equal(thrown.implausible, false);
+	assert.match(thrown.note, /EIO/);
+
+	const probed = [];
+	const walked = readFreeBytes("/a/b/c", (dir) => {
+		probed.push(dir);
+		if (dir !== "/a") {
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+		}
+		return { bavail: 5, bfree: 5, bsize: 1024 };
+	});
+	assert.deepEqual(probed, ["/a/b/c", "/a/b", "/a"]);
+	assert.equal(walked.bytes, 5120);
+});
+
+test("Move to Applications: success, declined conflict, cancelled, thrown and not-on-image", () => {
+	// Success: Electron copied the bundle and is relaunching.
+	assert.deepEqual(
+		moveToApplications({ onDiskImage: true, move: () => true }),
+		{ ok: true },
+	);
+
+	// A copy already in Applications is never replaced (it is usually NEWER
+	// than the stale image): the handler answers false, the move is declined.
+	for (const [conflict, reason] of [
+		["exists", "exists"],
+		["existsAndRunning", "exists-and-running"],
+	]) {
+		let answered;
+		const result = moveToApplications({
+			onDiskImage: true,
+			move: ({ conflictHandler }) => {
+				answered = conflictHandler(conflict);
+				return answered;
+			},
+		});
+		assert.equal(answered, false);
+		assert.equal(result.ok, false);
+		assert.equal(result.reason, reason);
+		assert.match(result.message, /already in Applications/);
+	}
+
+	// Cancelled authorization or a failed copy that Electron threw about.
+	const thrown = moveToApplications({
+		onDiskImage: true,
+		move: () => {
+			throw new Error("User rejected the authorization request");
+		},
+	});
+	assert.equal(thrown.reason, "failed");
+	assert.match(thrown.message, /couldn't be moved/);
+	assert.match(thrown.detail, /authorization/);
+	assert.equal(
+		moveToApplications({ onDiskImage: true, move: () => false }).reason,
+		"failed",
+	);
+
+	// Not on an image: the mover is never called.
+	let called = false;
+	const off = moveToApplications({
+		onDiskImage: false,
+		move: () => {
+			called = true;
+			return true;
+		},
+	});
+	assert.equal(called, false);
+	assert.equal(off.reason, "not-on-disk-image");
 });

@@ -24,7 +24,12 @@ export const holdsKey = (accountId?: string) =>
 /** One owner-audit lookup for one held message (see the details hook). */
 export const holdDetailKey = (
 	accountId: string | undefined,
-	item: { conversation_id: string; message_id: string; seq: number | null },
+	item: {
+		conversation_id: string;
+		message_id: string;
+		seq: number | null;
+		thread_root_id?: string | null;
+	},
 	tenantIds: readonly string[],
 ) =>
 	[
@@ -33,6 +38,9 @@ export const holdDetailKey = (
 		item.conversation_id,
 		item.message_id,
 		item.seq,
+		// A core upgrade that starts serving the root must re-read, not reuse
+		// the timeline miss cached under the same key.
+		item.thread_root_id ?? null,
 		tenantIds.join(","),
 	] as const;
 

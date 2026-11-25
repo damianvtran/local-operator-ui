@@ -64,6 +64,13 @@ export type HoldItem = {
 	 * means no receipt Discard is offered.
 	 */
 	discard_receipt?: string | null;
+	/**
+	 * local-operator #4546: the thread root when the held message is a REPLY.
+	 * The hub keeps replies off the conversation timeline, so the owner-audit
+	 * join must read that root's replies page to find it. Null or absent (an
+	 * older core, or a top-level message) means "read the timeline".
+	 */
+	thread_root_id?: string | null;
 	/** Renderer-only fingerprint; never supplied by the holds API. */
 	localHideRevision?: string;
 };
@@ -361,15 +368,55 @@ function hasLocalHoldContent(detail: JoinedDetail<HoldContent>): boolean {
 	return Boolean(detail.message.body?.length || images + files > 0);
 }
 
-function canMatchLocalHide(
-	item: HoldItem,
-	now?: number,
-): item is HoldItem & { discard_receipt: string } {
+function hasValidReceipt(
+	item: Pick<HoldItem, "discard_receipt">,
+): item is { discard_receipt: string } {
 	return (
-		holdAffordance(item, now).state === "deliver_expired" &&
 		typeof item.discard_receipt === "string" &&
 		SHA256_HEX.test(item.discard_receipt)
 	);
+}
+
+/**
+ * Whether the row's metadata alone could ever arm a receipt Discard (the
+ * item-level half of `receiptDiscardArmed`, independent of what loaded).
+ */
+function receiptDiscardPossible(item: HoldItem, a: HoldAffordance): boolean {
+	return (
+		(a.state === "open" || a.state === "deliver_expired") &&
+		a.discard &&
+		item.actionable !== false &&
+		typeof item.conversation_id === "string" &&
+		Boolean(item.conversation_id) &&
+		hasValidReceipt(item)
+	);
+}
+
+/**
+ * Which fingerprint a local hide is keyed by, or null when no hide may match.
+ *
+ * - `receipt`: the #4358 case, an expired receipt row. Keyed by the receipt,
+ *   so a re-screen (new receipt) brings the row back. Unchanged, so hides a
+ *   person already stored keep matching.
+ * - `metadata`: an undecided row that can NEVER be discarded here (no
+ *   receipt, a malformed one, core says `actionable: false`, no conversation,
+ *   or core offers no Discard). Operator report 2026-11-24: such a row sat in
+ *   the list with only "Try again" and no way out. Keyed by its id, code and
+ *   hold time; the moment core serves a usable receipt the row stops matching
+ *   this kind, so a hide never outlives the chance to really Discard it.
+ */
+function localHideKind(
+	item: HoldItem,
+	now?: number,
+): "receipt" | "metadata" | null {
+	if (item.decision) return null;
+	const a = holdAffordance(item, now);
+	if (a.state === "deliver_expired" && hasValidReceipt(item)) return "receipt";
+	return receiptDiscardPossible(item, a) ? null : "metadata";
+}
+
+function canMatchLocalHide(item: HoldItem, now?: number): boolean {
+	return localHideKind(item, now) !== null;
 }
 
 export function canHideHoldLocally(
@@ -377,11 +424,18 @@ export function canHideHoldLocally(
 	detail: JoinedDetail<HoldContent>,
 	now?: number,
 ): boolean {
-	return (
-		canMatchLocalHide(item, now) &&
-		detail.state !== "loading" &&
-		!hasLocalHoldContent(detail)
-	);
+	const kind = localHideKind(item, now);
+	if (kind === null || detail.state === "loading") return false;
+	if (hasLocalHoldContent(detail)) return false;
+	/* A metadata row whose withheld body still carries a hash has a real,
+	   body-bound Discard; it is not stuck, so it is not hidden instead. */
+	if (
+		kind === "metadata" &&
+		detail.state === "ready" &&
+		(detail.binding.state === "shown" || detail.binding.state === "withheld")
+	)
+		return false;
+	return true;
 }
 
 /** Store a separate fingerprint, never the receipt used by a disposition. */
@@ -391,17 +445,31 @@ export async function addLocalHoldRevisions(
 ): Promise<HoldsPage> {
 	const items = await Promise.all(
 		page.items.map(async (item) => {
-			if (!accountId || !canMatchLocalHide(item)) return item;
+			const kind = accountId ? localHideKind(item) : null;
+			if (!kind) return item;
 			try {
 				const digest = await crypto.subtle.digest(
 					"SHA-256",
 					new TextEncoder().encode(
-						JSON.stringify([
-							"team-bridge-local-hold-hide-v1",
-							accountId,
-							item.message_id,
-							item.discard_receipt,
-						]),
+						JSON.stringify(
+							kind === "receipt"
+								? [
+										"team-bridge-local-hold-hide-v1",
+										accountId,
+										item.message_id,
+										item.discard_receipt,
+									]
+								: /* Distinct tag: a metadata fingerprint can never
+									   collide with a receipt one. */
+									[
+										"team-bridge-local-hold-hide-meta-v1",
+										accountId,
+										item.message_id,
+										item.conversation_id,
+										item.hold_code,
+										item.held_at,
+									],
+						),
 					),
 				);
 				const localHideRevision = Array.from(new Uint8Array(digest), (byte) =>
@@ -659,14 +727,17 @@ export function sortHolds(
  * screened; it keeps its "cannot verify" line and arms nothing, as QA Q2
  * decided). Deliver never takes this path.
  *
- * ONLY WHEN DELIVER IS CLOSED (PR #2017 round 1: code M1, security S-1, QA
- * Q-1, copy C1). `unavailable` also covers a transient failure (a 429, a
- * network error, a machine without owner-audit support) on a hold that is
- * still deliverable. Arming there would offer an irreversible unread Discard
- * of a message a retry could show and Deliver, under copy saying it can no
- * longer be delivered. So the fallback is for a hold whose Deliver window has
- * passed or that was never deliverable (`!affordance.deliver`); a fresh hold
- * that fails to load keeps "Try again" and arms nothing.
+ * ALSO INSIDE THE DELIVER WINDOW (operator report 2026-11-24; supersedes the
+ * PR #2017 round 1 choice M1/S-1/Q-1 to arm only once Deliver had closed).
+ * That choice assumed a fresh unloadable hold was transient, but some are
+ * not: a held thread REPLY is never on the timeline page the join read, so
+ * the row sat with "Try again" as its only action, no Discard, and greyed
+ * "Dismiss all". The person must never be stuck with a held message. Discard
+ * never delivers anything, so arming it here cannot leak a message to the
+ * agent; what it costs is that a retry might have shown the body, which is
+ * why "Try again" stays on the row beside it and the confirm step says the
+ * message is discarded unread. Deliver is still never armed without a
+ * shown body (and core refuses a receipt on Deliver with 422).
  *
  * ONLY WHEN CORE SAYS THE ROW IS ACTIONABLE (review m1). Core mints a receipt
  * without checking the conversation, yet the decide contract refuses an empty
@@ -688,7 +759,7 @@ export function receiptDiscardArmed(
 ): boolean {
 	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
 		return false;
-	if (affordance.deliver || !affordance.discard) return false;
+	if (!affordance.discard) return false;
 	if (item.decision) return false;
 	if (item.actionable === false) return false;
 	if (typeof item.conversation_id !== "string" || !item.conversation_id)
@@ -780,6 +851,37 @@ export function holdReference(messageId: string): string {
  * is testable (QA Q1): a hold with no conversation id has no lookup to wait
  * for, so it is `unavailable` at once, never `loading`.
  */
+/**
+ * Which owner-audit read can find this hold's message (operator report
+ * 2026-11-24). The hub keeps thread REPLIES off the conversation timeline, so
+ * a held reply looked up on the timeline page is never found and the row
+ * reads `unavailable` forever. When core names the thread root (#4546), read
+ * that root's replies newest-first up to this seq (the thread shares the
+ * timeline's seq window); otherwise read the timeline page as before.
+ */
+export type HoldLookupRead =
+	| { read: "timeline"; beforeSeq: number | undefined }
+	| { read: "replies"; rootId: string; beforeSeq: number | undefined };
+
+export function holdLookupRead(
+	item: Pick<HoldItem, "seq" | "thread_root_id">,
+): HoldLookupRead {
+	const beforeSeq =
+		typeof item.seq === "number" && item.seq >= 0 ? item.seq + 1 : undefined;
+	const rootId = item.thread_root_id;
+	return typeof rootId === "string" && rootId
+		? { read: "replies", rootId, beforeSeq }
+		: { read: "timeline", beforeSeq };
+}
+
+/** The held message among the rows a lookup read, or null (never a neighbour). */
+export function findHeldMessage<M extends { id: string }>(
+	item: Pick<HoldItem, "message_id">,
+	rows: readonly M[],
+): M | null {
+	return rows.find((row) => row.id === item.message_id) ?? null;
+}
+
 export type JoinedDetail<M> =
 	| { state: "loading" }
 	| { state: "unavailable" }

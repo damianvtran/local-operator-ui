@@ -627,26 +627,50 @@ test("a staged draft's header row does not wrap its chips onto the clipped line"
 	assert.doesNotMatch(path.className, SHRINK_0);
 });
 
-test("a workspace draft does not reserve a leading flex gap for its tab-owned title", () => {
-	const { row, title } = headerRow({
-		titleInWorkspaceTab: true,
-		renameSlotReserved: true,
-		description: "",
-		draftTargetSlot: React.createElement("button", {
-			"data-draft-target-chip": "team",
-		}),
-	});
-	assert.equal(title, null);
+/*
+ * THE INSET OWNS THE TITLE AGAIN (operator, 2026-11-24, PR #2091): #2043 hid the
+ * header's title in the workspace and left the tab as the only name, which the
+ * operator found too easy to lose. The header now draws the title, then its
+ * reserved pencil box, as the LEADING item of the row, before the agent/team
+ * chip and the device chip, and it does so with or without workspace tabs.
+ */
+/** The leading-title shape, one assertion for the real row and the control. */
+function assertLeadingTitle(row) {
 	const slot = row.firstElementChild;
-	assert.ok(slot.classList.contains("hidden"));
-	assert.equal(slot.childElementCount, 0, "no invisible pencil reserve");
+	const title = slot.querySelector("[data-header-title]");
+	assert.ok(title, "the title leads the row");
+	assert.equal(title.textContent, "New chat with Local Operator Dev");
+	assert.ok(slot.classList.contains("inline-flex"));
+	assert.ok(!slot.classList.contains("hidden"));
+	assert.ok(
+		slot.lastElementChild.classList.contains("size-5"),
+		"pencil box held",
+	);
 	assert.ok(slot.nextElementSibling.hasAttribute("data-draft-target-chip"));
 	assert.ok(row.lastElementChild.hasAttribute("data-device-chip"));
-	// A flush header still owns the title and its future inline rename slot.
-	const flushSlot = headerRow({ renameSlotReserved: true }).row
-		.firstElementChild;
-	assert.ok(flushSlot.classList.contains("inline-flex"));
-	assert.ok(flushSlot.lastElementChild.classList.contains("size-5"));
+}
+const draftChip = () =>
+	React.createElement("button", { "data-draft-target-chip": "team" });
+
+test("the header row leads with the conversation title and its pencil reserve, before the chips", () => {
+	const { row } = headerRow({
+		renameSlotReserved: true,
+		description: "",
+		draftTargetSlot: draftChip(),
+	});
+	assertLeadingTitle(row);
+});
+
+test("negative control: the #2043 shape (hidden, title-less slot) fails the leading-title check", () => {
+	const { row } = headerRow({
+		renameSlotReserved: true,
+		description: "",
+		draftTargetSlot: draftChip(),
+	});
+	const slot = row.firstElementChild;
+	slot.querySelector("[data-header-title]").remove();
+	slot.classList.replace("inline-flex", "hidden");
+	assert.throws(() => assertLeadingTitle(row));
 });
 
 test("negative control: without the agent/team chip the row keeps its wrap-and-clip", () => {

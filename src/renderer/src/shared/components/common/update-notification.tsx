@@ -450,6 +450,10 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
 		return t(
 			"ui.common.updates.update_notification.the_update_can_t_be_launched",
 		);
+	}, // A launch straight from the mounted installer DMG (the 0.53.2 -> 0.63.0
+	// report): the image is read-only, so the fix is to run the Applications copy.
+	get "running-from-disk-image"() {
+		return t("ui.updates.disk_image.heading");
 	},
 };
 
@@ -1698,6 +1702,26 @@ export const UpdateNotification = ({
 	// failure, and only one of them has an install still to save.
 	const [installBlocked, setInstallBlocked] =
 		useState<InstallBlockedInfo | null>(null);
+	/*
+	 * The disk-image refusal's one-click fix. `moving` disables the button while
+	 * Electron copies the bundle (the app relaunches from Applications on
+	 * success, so there is no success state to render); `moveOutcome` is what
+	 * main returned when the move was declined or failed: the localized
+	 * sentence, the reason (an `exists*` reason means pressing again can never
+	 * succeed, so the button is disabled - design D3) and the machine detail
+	 * for the details disclosure (D6). It belongs to ONE refusal: it is reset
+	 * whenever a block arrives or is dismissed (D4), so a later refusal never
+	 * opens with an old failure already showing.
+	 */
+	const [moving, setMoving] = useState(false);
+	const [moveOutcome, setMoveOutcome] = useState<{
+		message: string;
+		reason: string;
+		detail?: string;
+	} | null>(null);
+	const moveCannotSucceed =
+		moveOutcome?.reason === "exists" ||
+		moveOutcome?.reason === "exists-and-running";
 	const [installFailed, setInstallFailed] = useState<InstallFailedInfo | null>(
 		null,
 	);
@@ -2154,6 +2178,27 @@ export const UpdateNotification = ({
 		}
 	}, []);
 
+	const moveToApplications = useCallback(async () => {
+		setMoving(true);
+		setMoveOutcome(null);
+		try {
+			const result = await window.api.updater.moveToApplications();
+			if (!result.ok)
+				setMoveOutcome({
+					message: result.message,
+					reason: result.reason,
+					detail: result.detail,
+				});
+		} catch {
+			setMoveOutcome({
+				message: t("ui.updates.disk_image.move_failed"),
+				reason: "failed",
+			});
+		} finally {
+			setMoving(false);
+		}
+	}, []);
+
 	/** Open a remedy's page in the user's browser. */
 	const openRemedyUrl = useCallback((url: string | undefined) => {
 		if (!url) return;
@@ -2565,6 +2610,7 @@ export const UpdateNotification = ({
 		const removeInstallBlockedListener =
 			window.api.updater.onUpdateInstallBlocked((info) => {
 				setInstallBlocked(info);
+				setMoveOutcome(null);
 				setChecking(false);
 				setUpdatingBackend(false);
 				setDownloading(false);
@@ -3415,7 +3461,20 @@ export const UpdateNotification = ({
 				<p className="mb-2 text-body text-ink-muted">
 					{installBlocked.message}
 				</p>
-				<p className="mt-2 text-body text-ink">{installBlocked.remedy.text}</p>
+				{/*
+				 * A declined move's sentence REPLACES the remedy rather than following it
+				 * (design D2): both carry the same instruction, and two identical-style
+				 * paragraphs read as body text, not as the outcome of the click.
+				 */}
+				{moveOutcome && installBlocked.code === "running-from-disk-image" ? (
+					<p role="alert" className="mt-2 text-body text-ink">
+						{moveOutcome.message}
+					</p>
+				) : (
+					<p className="mt-2 text-body text-ink">
+						{installBlocked.remedy.text}
+					</p>
+				)}
 				{installBlocked.remedy.command && (
 					<CommandBlock command={installBlocked.remedy.command} />
 				)}
@@ -3425,6 +3484,7 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => {
 							setInstallBlocked(null);
+							setMoveOutcome(null);
 							/*
 							 * A dismissal is a dismissal (review R3), for the same reason the failure
 							 * panels' own dismissals already clear their surface: this panel is the
@@ -3439,7 +3499,18 @@ export const UpdateNotification = ({
 						{installBlocked.dismissLabel ??
 							t("ui.common.updates.update_notification.update_later")}
 					</Button>
-					{installBlocked.remedy.url ? (
+					{installBlocked.code === "running-from-disk-image" ? (
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => void moveToApplications()}
+							disabled={moving || moveCannotSucceed}
+						>
+							{moving
+								? t("ui.updates.disk_image.moving")
+								: t("ui.updates.disk_image.move_button")}
+						</Button>
+					) : installBlocked.remedy.url ? (
 						<Button
 							variant="primary"
 							size="sm"
@@ -3460,8 +3531,12 @@ export const UpdateNotification = ({
 						</Button>
 					)}
 				</UpdateActions>
-				{installBlocked.detail && (
-					<PanelDetails detail={installBlocked.detail} />
+				{(installBlocked.detail || moveOutcome?.detail) && (
+					<PanelDetails
+						detail={[installBlocked.detail, moveOutcome?.detail]
+							.filter(Boolean)
+							.join("\n")}
+					/>
 				)}
 			</UpdateContainer>,
 		);

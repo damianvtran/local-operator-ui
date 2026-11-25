@@ -1233,7 +1233,14 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 test("native update handoff awaits owned cleanup before markers/watchdog/install", async () => {
 	const source = readFileSync("src/main/update-service.ts", "utf8");
 	const start = source.indexOf('ipcMain.handle("quit-and-install",');
-	const end = source.indexOf("\n\t\t/**", start);
+	/*
+	 * End at the NEXT handler registration, not at the next docblock: the
+	 * handler that follows ("move-to-applications") is introduced by a `/*`
+	 * comment, so a `/**` boundary swallowed it and the slice then referenced
+	 * `moveToApplications`, which this context does not (and should not) stub.
+	 */
+	const end = source.indexOf("ipcMain.handle(", start + 1);
+	assert.ok(end > start, "no handler follows quit-and-install");
 	const code = (await transform(source.slice(start, end), { loader: "ts" }))
 		.code;
 	for (const failed of [false, true]) {
@@ -2143,7 +2150,6 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 		backendService,
 		logger: { error() {} },
 		LogFileType: { BACKEND: "backend" },
-		posthogClient: { shutdown: () => calls.push(["telemetry"]) },
 		scheduleReopenAtQuitTerminal: () => reopens.push("crash"),
 	});
 	processFixture.emit("uncaughtException", Error("fatal"));
@@ -2155,7 +2161,9 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 		"the crash exit completes a recorded reopen before the process goes (#755)",
 	);
 	processFixture.emit("exit");
-	assert.deepEqual(calls.slice(2), [["emergency"], ["telemetry"]]);
+	// Main constructs no PostHog client any more (2026-11-24, opt-in telemetry
+	// is renderer-only), so the exit path has no telemetry flush to run.
+	assert.deepEqual(calls.slice(2), [["emergency"]]);
 	assert.equal(
 		reopens.length,
 		1,

@@ -21,7 +21,7 @@ for (const key of [
 	globalThis[key] = dom.window[key];
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const PORTS =
-	/use-aida-target$|open-conversation$|desktop-hooks$|first-time-user$|react-router-dom$|onboarding-store$|steps\/(connect-provider-step|default-model-step|extras-step)$|onboarding-dialog$/;
+	/use-aida-target$|open-conversation$|desktop-hooks$|first-time-user$|react-router-dom$|onboarding-store$|steps\/(connect-provider-step|default-model-step|search-api-step|meet-aida-step)$|onboarding-dialog$/;
 const ALL = /.*/;
 const built = await build({
 	stdin: {
@@ -73,12 +73,14 @@ const built = await build({
 					else if (path === "react-router-dom")
 						contents = "export const useNavigate = () => () => {};";
 					else if (path.endsWith("onboarding-store"))
-						contents = `export const OnboardingStep = {CONNECT_PROVIDER: 'connect-provider', DEFAULT_MODEL: 'default-model', EXTRAS: 'extras'}; const state = {currentStep: OnboardingStep.CONNECT_PROVIDER, setCurrentStep() {}, completeModalOnboarding() {}}; export const useOnboardingStore = () => state;`;
+						/* The real enum's VALUES: `onboarding-sequence.ts` imports the real store, so
+						   the port and the sequence must agree on what a step is called. */
+						contents = `export const OnboardingStep = {CONNECT_PROVIDER: 'connect_provider', DEFAULT_MODEL: 'default_model', SEARCH: 'search', MEET: 'meet'}; const state = {currentStep: OnboardingStep.CONNECT_PROVIDER, setCurrentStep() {}, completeModalOnboarding() {}}; export const useOnboardingStore = () => state;`;
 					else if (path.endsWith("onboarding-dialog"))
-						contents = `import React from 'react'; export const OnboardingDialog = ({title, stepIndicators, children}) => <section><h1>{title}</h1>{stepIndicators}{children}</section>;`;
+						contents = `import React from 'react'; export const OnboardingStage = ({title, stepIndicators, children}) => <section><h1>{title}</h1>{stepIndicators}{children}</section>;`;
 					else
 						contents =
-							"export const ConnectProviderStep = () => null; export const DefaultModelStep = () => null; export const ExtrasStep = () => null;";
+							"export const ConnectProviderStep = () => null; export const DefaultModelStep = () => null; export const SearchApiStep = () => null; export const connectedSubscriptionBrands = () => []; export const stageConnected = () => false; export const meetAidaCopy = (name) => ({ title: name, subtitle: '' });";
 					return { contents, loader: "tsx", resolveDir: process.cwd() };
 				});
 			},
@@ -98,6 +100,9 @@ test("onboarding title, track names and progress follow a locale switch without 
 	setLocale("en");
 	registerCatalogue("fr", {
 		"ui.onboarding.modal.title.connect_provider": "TITLE-FR",
+		// The stage's heading on step 1 is the sign-in title; the track keeps the
+		// step's own name. Both must follow the switch.
+		"ui.onboarding.signin.title": "SIGNIN-FR",
 		"ui.onboarding.modal.step_of": "STEP-FR {current}/{total}",
 	});
 	const host = document.createElement("div");
@@ -109,7 +114,7 @@ test("onboarding title, track names and progress follow a locale switch without 
 		);
 		assert.equal(
 			host.querySelector("h1").textContent,
-			t("ui.onboarding.modal.title.connect_provider"),
+			t("ui.onboarding.signin.title"),
 		);
 		assert.ok(
 			host.textContent.includes(
@@ -119,7 +124,7 @@ test("onboarding title, track names and progress follow a locale switch without 
 		await React.act(async () => setLocale("fr"));
 		assert.equal(
 			host.querySelector("h1").textContent,
-			"TITLE-FR",
+			"SIGNIN-FR",
 			"cached title must invalidate",
 		);
 		assert.ok(

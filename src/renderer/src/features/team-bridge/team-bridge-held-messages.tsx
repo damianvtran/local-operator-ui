@@ -586,7 +586,13 @@ function HeldRow({
 					   names this row in the confirm step. */
 					<>
 						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.receipt_only")}
+							{/* Inside the Deliver window (operator report 2026-11-24)
+							    "It can no longer be delivered" would be false: the
+							    text is missing HERE, and Try again may still show it.
+							    The withheld-body line says exactly that. */}
+							{affordance.state === "open" && affordance.deliver
+								? t("ui.teamBridge.holds.body_withheld")
+								: t("ui.teamBridge.holds.receipt_only")}
 						</p>
 						<p className="text-meta text-ink-dim">
 							{t("ui.teamBridge.holds.reference", { reference })}
@@ -602,7 +608,13 @@ function HeldRow({
 					<div className="flex flex-wrap items-baseline gap-x-2">
 						{!unread && (
 							<p className="text-meta text-ink-dim">
-								{t("ui.teamBridge.holds.details_unavailable")}
+								{/* #2087 UX U1: "…discarded yet" says waiting helps, but
+								    a row offered Hide (an older core: no receipt ever
+								    comes) is cleared only by that button, so the line
+								    points to it instead. */}
+								{canHide
+									? t("ui.teamBridge.holds.details_unavailable_hide")
+									: t("ui.teamBridge.holds.details_unavailable")}
 							</p>
 						)}
 						{onRetryDetails && item.conversation_id && (
@@ -629,7 +641,9 @@ function HeldRow({
 					)}
 				{offers && binding?.state === "none" && !unread && (
 					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.details_unavailable")}
+						{canHide
+							? t("ui.teamBridge.holds.details_unavailable_hide")
+							: t("ui.teamBridge.holds.details_unavailable")}
 					</p>
 				)}
 				{offers && affordance.deliver && hidden && armed.discard && (

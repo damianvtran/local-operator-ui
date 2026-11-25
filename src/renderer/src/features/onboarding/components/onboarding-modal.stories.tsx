@@ -1,3 +1,4 @@
+import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -7,6 +8,7 @@ import { type ReactNode, useLayoutEffect } from "react";
 /* Also imported by the Storybook preview; kept here so the file is honest
    about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
+import type { IntroMode } from "./onboarding-intro";
 import { OnboardingModal } from "./onboarding-modal";
 
 /**
@@ -14,7 +16,7 @@ import { OnboardingModal } from "./onboarding-modal";
  *
  * ## Why every step has its own story
  *
- * The flow is three screens and a conversation. Pacing is a property of the sequence, and you
+ * The flow is an intro, up to four steps and a conversation. Pacing is a property of the sequence, and you
  * cannot judge a sequence you can only enter at one end.
  *
  * ## Why `data-theme` goes on `documentElement`
@@ -33,32 +35,100 @@ import { OnboardingModal } from "./onboarding-modal";
  */
 type StoryArgs = {
 	step: OnboardingStep;
+	/**
+	 * What main reports as the user's telemetry opt-in. The consent checkbox on
+	 * the LAST step reflects it (unchecked unless already opted in).
+	 */
+	consentOptedIn?: boolean;
+	/** `skip` by default so a step story photographs the step, not the intro. */
+	introMode?: IntroMode;
 };
 
-const OnboardingFrame = ({ step }: StoryArgs) => {
+const OnboardingFrame = ({ step, introMode = "skip" }: StoryArgs) => {
 	useLayoutEffect(() => {
 		const state = useOnboardingStore.getState();
 		state.resetOnboarding();
 		state.setCurrentStep(step);
 	}, [step]);
 
-	return <OnboardingModal open={true} />;
+	return <OnboardingModal open={true} introMode={introMode} />;
+};
+
+/*
+ * A telemetry consent bridge, as the preload exposes it, so the last step's
+ * optional checkbox renders (without one it renders nothing, by design). Its
+ * `set` answers like main does, so ticking the box in the gallery works.
+ * Installed per render and restored on unmount, like `AidaBridge` below.
+ */
+const ConsentBridge = ({
+	optedIn,
+	children,
+}: {
+	optedIn: boolean;
+	children: ReactNode;
+}): ReactNode => {
+	useLayoutEffect(() => {
+		const page = window as unknown as { api?: Record<string, unknown> };
+		const api = page.api ?? {};
+		page.api = api;
+		const previous = api.telemetryConsent;
+		let state = { optedIn, launchAllows: true, effective: optedIn };
+		const listeners = new Set<(next: typeof state) => void>();
+		api.telemetryConsent = {
+			get: async () => state,
+			set: async (next: boolean) => {
+				state = { optedIn: next, launchAllows: true, effective: next };
+				for (const listener of listeners) listener(state);
+				return state;
+			},
+			onChange: (listener: (next: typeof state) => void) => {
+				listeners.add(listener);
+				return () => listeners.delete(listener);
+			},
+		};
+		return () => {
+			api.telemetryConsent = previous;
+		};
+	}, [optedIn]);
+	return children;
 };
 
 const meta: Meta<StoryArgs> = {
 	title: "Onboarding/OnboardingModal",
 	parameters: { layout: "fullscreen" },
+	decorators: [
+		(Story, context) => (
+			<ConsentBridge optedIn={context.args.consentOptedIn === true}>
+				<Story />
+			</ConsentBridge>
+		),
+	],
 	argTypes: {
 		step: { control: "select", options: Object.values(OnboardingStep) },
 	},
 	args: { step: OnboardingStep.CONNECT_PROVIDER },
-	render: ({ step }) => <OnboardingFrame step={step} />,
+	render: ({ step, introMode }) => (
+		<OnboardingFrame step={step} introMode={introMode} />
+	),
 };
 
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-/** The first screen: the registry-backed provider grid. */
+/**
+ * The intro's FINAL frame, held: mark and helix at full strength, the welcome
+ * line, and the skip hint. `hold` freezes the timeline so the capture is
+ * deterministic.
+ */
+export const Intro: Story = { args: { introMode: "hold" } };
+
+/**
+ * The live timeline: intro, then the hand-off into sign-in at 2.2 s (any key or
+ * click skips). Under reduced motion this opens straight on sign-in.
+ */
+export const IntroLive: Story = { args: { introMode: "auto" } };
+
+/** Sign in, with no backend: the census is loading, so the buttons wait. */
 export const Default: Story = {};
 
 /** Step 2 without a backend: its loading branch. See `sign-in-states.stories.tsx`
@@ -67,8 +137,11 @@ export const DefaultModel: Story = {
 	args: { step: OnboardingStep.DEFAULT_MODEL },
 };
 
-/** Step 3 against a backend WITHOUT Aida: web search, then "Finish". */
-export const Extras: Story = { args: { step: OnboardingStep.EXTRAS } };
+/** Web search against a backend WITHOUT Aida: three options, then "Finish". */
+export const Search: Story = { args: { step: OnboardingStep.SEARCH } };
+
+/** Module-level so the bridge effect's dependency stays referentially stable. */
+const NO_PROVIDERS: DesktopProvider[] = [];
 
 /*
  * A desktop transport that answers the two reads the last step makes about her:
@@ -80,9 +153,12 @@ export const Extras: Story = { args: { step: OnboardingStep.EXTRAS } };
 const AidaBridge = ({
 	name,
 	greetingState,
+	providers = NO_PROVIDERS,
 	children,
 }: {
 	name: string;
+	/** The census `providers.list` serves; empty (a first run) by default. */
+	providers?: DesktopProvider[];
 	/**
 	 * The ledger's state word, when the story is about it. OMITTED BY DEFAULT so
 	 * the fixtures that predate the ledger photograph the tolerant path - an older
@@ -119,7 +195,7 @@ const AidaBridge = ({
 							name,
 						});
 					case "providers.list":
-						return ok({ providers: [] });
+						return ok({ providers });
 					default:
 						throw new Error(
 							`unexpected desktop op in this story: ${request.op}`,
@@ -130,37 +206,85 @@ const AidaBridge = ({
 		return () => {
 			api.desktop = previous;
 		};
-	}, [name, greetingState]);
+	}, [name, greetingState, providers]);
 	return children;
 };
 
 /**
- * Step 3 when setup ends in her conversation (first-run onboarding, U1/D12):
- * "Next: meet <name>" says what the primary does before it is pressed, the
- * primary reads "Meet <name>" with her LIVE name (here a renamed one, so the
- * frame proves it is read rather than spelled), and the ghost names where it
- * goes - "Skip to chat".
+ * The bookend, when setup ends in her conversation (first-run onboarding,
+ * U1/D12): the helix back at full strength, "Meet Aida" as the display heading,
+ * and the primary reading "Meet Aida" with her LIVE name from the status
+ * document. The ghost names where it goes - "Skip to chat".
  */
-export const ExtrasMeetAida: Story = {
-	args: { step: OnboardingStep.EXTRAS },
+export const MeetAida: Story = {
+	args: { step: OnboardingStep.MEET },
 	render: ({ step }) => (
-		<AidaBridge name="Ada">
+		<AidaBridge name="Aida">
 			<OnboardingFrame step={step} />
 		</AidaBridge>
 	),
 };
 
 /**
- * Step 3 on an install whose greeting is already SETTLED - delivered, or skipped
- * by someone who chose not to be greeted: the preview states what the button
- * does and does not promise a first hello the user has already had (code review
- * round 1's contract addendum, point 1; `aidaOwesGreeting`). The ledger word
- * arrives on the same status document the name does.
+ * The bookend as the LAST step with the user already opted in to anonymous
+ * usage statistics (e.g. via Settings -> Privacy): the optional consent
+ * checkbox above the footer shows checked. `MeetAida` is the default, unchecked.
  */
-export const ExtrasMeetAidaDelivered: Story = {
-	args: { step: OnboardingStep.EXTRAS },
+export const MeetAidaConsentOptedIn: Story = {
+	args: { step: OnboardingStep.MEET, consentOptedIn: true },
 	render: ({ step }) => (
-		<AidaBridge name="Ada" greetingState="delivered">
+		<AidaBridge name="Aida">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * The bookend on an install whose greeting is already SETTLED - delivered, or
+ * skipped by someone who chose not to be greeted: the sentence states what the
+ * button does and does not promise a first hello the user has already had (code
+ * review round 1's contract addendum, point 1; `aidaOwesGreeting`).
+ */
+export const MeetAidaDelivered: Story = {
+	args: { step: OnboardingStep.MEET },
+	render: ({ step }) => (
+		<AidaBridge name="Aida" greetingState="delivered">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * Radient signed in: the flags `providers.list` reports for a machine whose
+ * store holds a Radient credential (same shape as `SIGNED_IN_CENSUS` in
+ * `provider-setup.stories.tsx`), and nothing else connected.
+ */
+const RADIENT_CONNECTED_CENSUS: DesktopProvider[] = [
+	{
+		id: "radient",
+		name: "Radient",
+		storage_id: "radient",
+		search_aliases: [],
+		auth_methods: [],
+		local: false,
+		credential_optional: false,
+		has_credential: true,
+		configured: true,
+		stored_credentials: 1,
+		base_url: "https://api.radienthq.com/v1",
+	},
+];
+
+/**
+ * Sign-in once Radient is connected (design + QA round 1, ledger L14): the
+ * panel reads "Signed in", the heading and sentence switch to the connected
+ * copy, and the progress track has no web-search segment - Radient already
+ * covers search, so the walk is sign-in, model, Meet Aida. This is the frame
+ * the search-skip decision (`decideIncludeSearch`) is reviewed against.
+ */
+export const RadientConnected: Story = {
+	render: ({ step }) => (
+		<AidaBridge name="Aida" providers={RADIENT_CONNECTED_CENSUS}>
 			<OnboardingFrame step={step} />
 		</AidaBridge>
 	),

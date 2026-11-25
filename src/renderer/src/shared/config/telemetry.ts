@@ -38,10 +38,10 @@
  * applies the identical pair (the launch's switch, the key), and the two
  * processes must not answer differently to the same build.
  *
- * This module is what the renderer's two PostHog call sites read — the provider
- * in `main.tsx` and the feature-flag provider, whose neutral branch must not
- * touch `posthog-js` at all — so "off" is decided in one place rather than in
- * two files that could drift.
+ * This module is the renderer's launch-time answer, read through
+ * `telemetry-state.ts` as the fallback before the telemetry controller
+ * publishes the live opt-in state, so "off" is decided in one place. (The
+ * feature-flag provider no longer reads PostHog at all; review round 2, Q4.)
  */
 
 import { config } from "./app-config";

@@ -535,3 +535,101 @@ test("no route column draws a right rule any more", () => {
 		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step`,
 	);
 });
+
+test("the chat header's title starts on the content column's inset (operator, 2026-11-25)", () => {
+	/*
+	 * "There needs to be more left padding on the title ... it's too tight to
+	 * the left". The title leads the header row, so the row's start padding IS
+	 * the title's left edge, and it must equal the column's left inset
+	 * (`CHAT_COLUMN_INSET`, 24px = the transcript's p-4 + its 8px scrollbar
+	 * gutter; the text's own edge only below `CHAT_MEASURE`). The EFFECTIVE
+	 * value is what counts: an unlayered `[data-chat-region="header"]` rule in
+	 * index.css beats the utility, which is how QA round 3 measured 4px with
+	 * `ps-6` in the source. The padding lives on the ROW, not the h2, so the rename input
+	 * shares the edge; the h2 and the input must carry no start inset of their
+	 * own or the edit would jump.
+	 */
+	const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
+	const measure = readSource("src/renderer/src/features/chat/chat-measure.ts");
+	const inset = measure.match(/export const CHAT_COLUMN_INSET = "px-(\d+)";/);
+	assert.ok(inset, "CHAT_COLUMN_INSET must stay a px-<n> token");
+	const ROW =
+		/"@container\/chathdr flex min-h-10 shrink-0 items-center gap-3 ([^"]*)"/;
+	const leadingOf = (source) => {
+		const row = source.match(ROW);
+		assert.ok(row, "the chat header row class list must be findable");
+		const pad = row[1].match(/(?:^|\s)ps-(\d+)(?:\s|$)/);
+		return pad ? pad[1] : null;
+	};
+	const header = readSource(HEADER);
+	assert.equal(
+		leadingOf(header),
+		inset[1],
+		"the header row's logical start padding must equal the content column inset",
+	);
+	assert.doesNotMatch(
+		header,
+		/chathdr[^"]*\bpx-/,
+		"a symmetric px- would override or hide the start inset",
+	);
+	assert.doesNotMatch(
+		header,
+		/data-header-title=""[\s\S]{0,400}?className=\{cn\(\s*"[^"]*\b(?:ps|ms|pl|ml|px|mx)-/,
+		"the h2 title must carry no start inset of its own; the row owns it",
+	);
+	assert.doesNotMatch(
+		header,
+		/data-header-rename-input=""[\s\S]{0,700}?className=\{cn\(\s*"[^"]*\b(?:ps|ms|pl|ml|px|mx)-/,
+		"the rename input must carry no start inset of its own, or editing jumps",
+	);
+
+	/*
+	 * The stylesheet must not take the start edge back. Any rule whose selector
+	 * names the header region and sets a start padding (logical, physical left,
+	 * or a shorthand) either equals the inset or does not exist; only the
+	 * utility should own it, so we require none.
+	 */
+	const insetPx = Number(inset[1]) * 4;
+	const startPaddingRules = (css) => {
+		const found = [];
+		for (const [, selector, body] of css
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+			if (!/\[data-chat-region="header"\]\s*(?:,|$)/.test(selector.trim()))
+				continue;
+			const decl = body.match(
+				/(?:^|;)\s*(padding-inline-start|padding-left|padding-inline|padding)\s*:\s*([^;]+)/,
+			);
+			if (decl)
+				found.push(`${selector.trim()} { ${decl[1]}: ${decl[2].trim()} }`);
+		}
+		return found;
+	};
+	const css = readSource("src/renderer/src/styles/index.css");
+	assert.deepEqual(
+		startPaddingRules(css),
+		[],
+		`no stylesheet rule may set the chat header's start padding; the row's ps-${inset[1]} (${insetPx}px) owns it`,
+	);
+	// Negative control: the round-3 rule that overrode ps-6 with 4px.
+	const regressed = css.replace(
+		/(\[data-workspace-inset\] > \[data-chat-region="header"\] \{)/,
+		"$1\n\tpadding-inline-start: 4px;",
+	);
+	assert.notEqual(regressed, css, "control mutation applied");
+	assert.equal(
+		startPaddingRules(regressed).length,
+		1,
+		"the guard must catch the old 4px start padding",
+	);
+	// Negative control: the pre-fix `px-4` row has no matching start inset.
+	const before = header.replace(
+		ROW,
+		'"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4"',
+	);
+	assert.notEqual(
+		leadingOf(before),
+		inset[1],
+		"the guard must reject the old px-4 row",
+	);
+});

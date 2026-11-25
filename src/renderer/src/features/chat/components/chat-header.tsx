@@ -172,8 +172,6 @@ type ChatHeaderProps = {
 	 * write - and absent on every live pane, where `identity` is the switcher.
 	 */
 	draftTargetSlot?: ReactNode;
-	/** The workspace tab names the conversation; keep the existing title editor. */
-	titleInWorkspaceTab?: boolean;
 	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
@@ -581,7 +579,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	identity,
 	deviceSlot,
 	draftTargetSlot,
-	titleInWorkspaceTab = false,
 	renameSessionId,
 	renameSlotReserved = false,
 	sessionId,
@@ -652,8 +649,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		temporaryInfoShown,
 	);
 	const moveRequestedRef = useRef(false);
-	const renameRequestedRef = useRef(false);
-	const actionsControlRef = useRef<HTMLButtonElement>(null);
 	/*
 	 * THE CANVAS SLOT'S TWO DOORS, read as the rail reads them (`panel-rail.tsx`):
 	 * Projects is "open" while the canvas is drawn on its Projects view, Canvas
@@ -838,12 +833,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		 * input, and that blur must find the latch past `edit` so it cannot run a
 		 * save on the way out (the race this sequence exists for). */
 		renamePhaseRef.current = "closed";
-		if (restoreFocus) {
-			(titleInWorkspaceTab
-				? actionsControlRef
-				: renameControlRef
-			).current?.focus();
-		}
+		if (restoreFocus) renameControlRef.current?.focus();
 		setRenaming(false);
 	};
 
@@ -961,9 +951,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * unfloored title disappeared (design round 1, D1 - measured: the title's
 			 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
 			 * lets it yield before any control does).
+			 *
+			 * THE LEADING INSET IS THE COLUMN'S LEFT INSET (24px), NOT THE BAR'S 16px
+			 * (operator, 2026-11-25, on PR #2099: "There needs to be more left padding
+			 * on the title ... it's too tight to the left"). The title restored by
+			 * #2091 leads this row, so the row's start padding is the title's left
+			 * edge. `ps-6` puts it on the column's left inset, `CHAT_COLUMN_INSET`
+			 * (24px: the transcript's p-4 plus its 8px scrollbar gutter, see
+			 * `chat-measure.ts`). That is the pane-edge gutter; it equals the text's
+			 * edge only below `CHAT_MEASURE`, which centres wider content. Logical,
+			 * so RTL mirrors it. Inside the framed workspace the unlayered
+			 * `[data-workspace-inset] > [data-chat-region="header"]` rule in
+			 * `styles/index.css` sets the END padding only, so this utility stays
+			 * the one owner of the start edge (a 4px start there once beat it). Padding the ROW rather
+			 * than the h2 keeps the rename input on the same start edge as the
+			 * title, so nothing jumps when the editor opens. The trailing side keeps
+			 * `pe-4` (12px in the framed workspace, from that CSS rule): the
+			 * controls align with the bar's chrome, not the column. The extra start
+			 * padding comes out of the pane-open floor arithmetic below. `scripts/lane-leading.test.mjs` pins it.
 			 */
 			className={cn(
-				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4",
+				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 ps-6 pe-4",
 			)}
 			data-tour-tag="chat-header"
 			data-titlebar-drag=""
@@ -988,7 +996,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * and the ellipsis) is the floor the NARROWEST real row can pay, measured
 			 * rather than picked: with the browser pane up at 1380px the header is 240px
 			 * wide, its fixed parts (avatar 32, two 12px gaps, the `...` menu, the trigger,
-			 * the console, px-4) come to 200, and what is left for the title is 40.
+			 * the console, and the row's padding as it was then) came to 200, leaving the
+			 * title 40. Those figures predate the 24px start inset (see the note above):
+			 * the row's padding is now ps-6 plus the 12px framed-workspace end, so they
+			 * need re-measuring rather than re-deriving.
 			 *
 			 * AND THE ROW'S OVERFLOW IS VISIBLE, so the floor has to be one the row can pay
 			 * for: QA's round-2 Q-1 measured the pane-open header at a 900px window with the
@@ -997,7 +1008,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * that is the SHED ORDER below, and the gate here is its insurance rather than
 			 * its mechanism: at the app's own minimum window (`WINDOW_MIN_WIDTH = 800`)
 			 * the pane-open header measures 220px, its remaining fixed parts 164 and the
-			 * floor 40, which fits with 16px to spare - so at every width a person can
+			 * floor 40, which fitted with 16px to spare before the 24px start inset
+			 * (measured then; not re-measured since) - so at every width a person can
 			 * reach the floor is applied, and the gate only stops it from being the thing
 			 * that breaks a row nothing else is left to shed
 			 * (`@[13.5rem]` = 216px, beneath every width a person can reach) and the title
@@ -1107,12 +1119,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						 */}
 						<span
 							className={cn(
-								"group/title min-w-0 max-w-full items-center gap-1",
-								// The tab owns the title here. Drop an empty title slot so
-								// it can't leave a flex gap before the first selector.
-								titleInWorkspaceTab && !renaming && !avatar
-									? "hidden"
-									: "inline-flex",
+								/*
+								 * THE TITLE LINE IS BACK IN THE INSET (operator, 2026-11-24, on
+								 * PR #2091: "which tab is selected and the current conversation's
+								 * name are too subtle and easy to lose ... Restore the title line
+								 * we used to have above the conversation"). PR #2043 let the
+								 * workspace tab own the name and hid this slot; a 13px tab label
+								 * is too quiet to be the only place a conversation is named, so
+								 * the header owns the title, its hover pencil and the reserved
+								 * pencil box again, as the leading item of the row - exactly the
+								 * pre-#2043 shape. The tab keeps naming the tab; the two agree
+								 * because both read `agentName`'s session title.
+								 * `scripts/draft-target-chip.test.mjs` and
+								 * `scripts/canonical-chat.test.mjs` hold this.
+								 */
+								"group/title inline-flex min-w-0 max-w-full items-center gap-1",
 							)}
 							/*
 							 * THE TITLE IS A CLIENT-AREA SURFACE, AND THIS IS THE LINE THAT MAKES
@@ -1212,35 +1233,33 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									 * nothing, the header main drew.
 									 */}
 									{avatar}
-									{!titleInWorkspaceTab && (
-										<h2
-											ref={renameTitleRef}
-											data-header-title=""
-											onDoubleClick={renameSessionId ? startRename : undefined}
-											className={cn(
-												"min-w-0 max-w-full truncate font-medium text-body text-ink",
-												/*
-												 * Client-area now, so the two things such a text needs: no
-												 * native selection (a drag across a window title that
-												 * highlights like a document reads as broken, and a
-												 * double-click's word-select would race the select-all the
-												 * editor opens with), and the arrow cursor - a pointer
-												 * cursor would promise a single click the text does not act
-												 * on (the double-click and the pencil are the affordances).
-												 * `user-select: none` does not stop `dblclick`, which is the
-												 * event the editor opens on.
-												 */
-												"cursor-default select-none",
-												// The conversation's own name: no text in analytics or replay.
-												USER_CONTENT_CLASS,
-											)}
-										>
-											{agentName}
-										</h2>
-									)}
+									<h2
+										ref={renameTitleRef}
+										data-header-title=""
+										onDoubleClick={renameSessionId ? startRename : undefined}
+										className={cn(
+											"min-w-0 max-w-full truncate font-medium text-body text-ink",
+											/*
+											 * Client-area now, so the two things such a text needs: no
+											 * native selection (a drag across a window title that
+											 * highlights like a document reads as broken, and a
+											 * double-click's word-select would race the select-all the
+											 * editor opens with), and the arrow cursor - a pointer
+											 * cursor would promise a single click the text does not act
+											 * on (the double-click and the pencil are the affordances).
+											 * `user-select: none` does not stop `dblclick`, which is the
+											 * event the editor opens on.
+											 */
+											"cursor-default select-none",
+											// The conversation's own name: no text in analytics or replay.
+											USER_CONTENT_CLASS,
+										)}
+									>
+										{agentName}
+									</h2>
 								</>
 							)}
-							{renameSessionId && (!titleInWorkspaceTab || renaming) ? (
+							{renameSessionId ? (
 								<button
 									ref={renameControlRef}
 									type="button"
@@ -1310,10 +1329,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										// and must be visible without a pointer.
 										"transition-opacity duration-base ease-out-quart",
 										!renaming &&
-											!titleInWorkspaceTab &&
 											"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
 										!renaming &&
-											!titleInWorkspaceTab &&
 											"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
 										"hover:text-ink-muted",
 									)}
@@ -1329,9 +1346,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Pencil className={cn("size-3")} aria-hidden="true" />
 									)}
 								</button>
-							) : renameSlotReserved && !titleInWorkspaceTab ? (
-								// Workspace rename lives in the actions menu, so a draft
-								// there has no future pencil to hold room for.
+							) : renameSlotReserved ? (
 								<span aria-hidden="true" className={cn("size-5 shrink-0")} />
 							) : null}
 						</span>
@@ -1593,7 +1608,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * reach for.
 								 */
 								data-conversation-actions
-								ref={actionsControlRef}
 								aria-label={t("ui.chat.header.actions")}
 							>
 								<MoreHorizontal aria-hidden="true" />
@@ -1615,12 +1629,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * return focus itself when it closes.
 							 */
 							onCloseAutoFocus={(event) => {
-								// Let the menu finish closing before mounting and focusing the editor.
-								if (renameRequestedRef.current) {
-									renameRequestedRef.current = false;
-									event.preventDefault();
-									startRename();
-								}
 								if (moveRequestedRef.current) {
 									moveRequestedRef.current = false;
 									if (sessionId) requestPicker(sessionId);
@@ -1628,16 +1636,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								}
 							}}
 						>
-							{titleInWorkspaceTab && renameSessionId && (
-								<DropdownMenuItem
-									data-workspace-rename=""
-									onSelect={() => {
-										renameRequestedRef.current = true;
-									}}
-								>
-									{t("ui.chat.header.rename_conversation")}
-								</DropdownMenuItem>
-							)}
 							{/*
 							 * COPY SESSION ID (#893), AT THE TOP - above the transcript-display submenu
 							 * and therefore above the first separator.

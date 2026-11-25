@@ -218,7 +218,7 @@ for (const path of ["X", "Not now", "Escape", "outside"])
 			await act(async () => {
 				await new Promise((done) => setTimeout(done, 30));
 			});
-			const overlay = document.querySelector(".bg-scrim");
+			const overlay = document.querySelector(".lo-dialog-scrim");
 			// Radix defers primary-pointer outside dismissal until the matching
 			// click (react-dismissable-layer usePointerDownOutside).
 			await press(overlay, "pointerdown", { button: 0 });
@@ -415,7 +415,7 @@ for (const path of ["X", "Not now", "Escape", "outside"])
 			});
 		if (path === "outside") {
 			await act(async () => new Promise((done) => setTimeout(done, 30)));
-			const overlay = document.querySelector(".bg-scrim");
+			const overlay = document.querySelector(".lo-dialog-scrim");
 			await press(overlay, "pointerdown", { button: 0 });
 			await press(overlay, "click", { button: 0 });
 		}

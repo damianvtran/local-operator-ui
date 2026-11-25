@@ -136,14 +136,16 @@ test("Install all built-in agents is borderless at source, not by a Chat-only ru
 
 test("the sidebar's no-fill rules key off the sidebar, not the Chat route", () => {
 	assert.deepEqual(chatGatedSidebarSelectors(css), []);
-	// The rules still exist, unconditionally scoped to the shell.
+	// The rules still exist, unconditionally scoped to the shell. The hover
+	// exemption covers chat rows and the full-width text rows marked
+	// `data-sidebar-row-button` (QA round 1 Q1-1 on PR #2091).
 	assert.match(
 		css,
-		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\) \{/,
+		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\):not\(\s*:is\(\[data-chat-row\], \[data-sidebar-row-button\]\):hover\s*\) \{/,
 	);
 	assert.match(
 		css,
-		/\[data-workspace-shell\]\s*:is\(\s*\[data-session-row\]:not\(\[data-dragging\]\),[\s\S]*?\[data-workspace-launcher\] \[data-entity\] > div:first-child\s*\) \{\s*background: transparent;/,
+		/\[data-workspace-shell\]\s*:is\(\s*\[data-session-row\]:not\(\[data-dragging\]\):not\(:hover\)[\s\S]*?\[data-workspace-launcher\] \[data-entity\] > div:first-child:not\(:hover\),[\s\S]*?\) \{\s*background: transparent;/,
 	);
 	// Negative control: the round-7 gate, verbatim.
 	const gated = `${css}\n[data-workspace-shell]:has([data-chat-workspace])\n\t:is([data-entity], [data-session-row])\n\tbutton { background: transparent; }\n`;

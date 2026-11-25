@@ -70,8 +70,21 @@ const navigate = (path) => {
 	dom.window.history.replaceState({}, "", `#${path}`);
 };
 let current;
-function Fixture({ feedAvailable }) {
-	current = useWorkspaceTabs(navigate, () => {}, feedAvailable);
+/*
+ * `realDraft` swaps the no-op draft start for the page's own (`stage(undefined,
+ * true)` in chat-page.tsx: stage a fresh draft, then route to /chat), for the
+ * tests that assert the no-survivor fallback lands on a real draft.
+ */
+const pageStartDraft = () => {
+	canonical.getState().stageDraft(undefined, true);
+	navigate("/chat");
+};
+function Fixture({ feedAvailable, realDraft }) {
+	current = useWorkspaceTabs(
+		navigate,
+		realDraft ? pageStartDraft : () => {},
+		feedAvailable,
+	);
 	return createElement(
 		"output",
 		{},
@@ -102,6 +115,7 @@ async function mount(
 		drafts = {},
 		input = {},
 		pins = [],
+		realDraft = false,
 	} = {},
 ) {
 	canonical.setState({
@@ -119,7 +133,9 @@ async function mount(
 	navigate(`/chat/${A}`);
 	const root = createRoot(dom.window.document.getElementById("root"));
 	t.after(() => act(() => root.unmount()));
-	await act(() => root.render(createElement(Fixture, { feedAvailable })));
+	await act(() =>
+		root.render(createElement(Fixture, { feedAvailable, realDraft })),
+	);
 }
 
 test("active close waits for its own candidate's positive snapshot", async (t) => {
@@ -167,6 +183,33 @@ test("late confirmation after a replacement switch, a route departure, or a 404 
 	await act(() => canonical.getState().confirmSessionMissing(B));
 	assert.ok(canonical.getState().forgotten[B] !== undefined);
 	assert.ok(find(A));
+});
+
+/*
+ * A BULK CLOSE THAT INCLUDES THE ACTIVE TAB (review round 1, R1). The strip's
+ * guard reads `closeMany`'s source; this drives it. The non-active tabs in the
+ * set leave at once; the active one goes through the ordinary close, handed to a
+ * neighbour among the SURVIVORS (never a tab closing in the same gesture), and
+ * when nothing survives the workspace starts a fresh draft instead.
+ */
+test("closeMany hands an active tab in the set to a surviving neighbour", async (t) => {
+	await mount(t, { ids: [A, B, C] });
+	await act(() => current.closeMany([find(A).key, find(B).key]));
+	// B (the active tab's own neighbour) is closing too, so the handoff skips it.
+	assert.equal(dom.window.location.hash, `#/chat/${C}`);
+	assert.deepEqual(ids(), [A, C]);
+	await act(() => canonical.getState().confirmSessionLive(C));
+	assert.deepEqual(ids(), [C]);
+});
+
+test("closeMany over every tab, active included, lands on a new draft", async (t) => {
+	await mount(t, { ids: [A, B, C], realDraft: true });
+	await act(() => current.closeMany(current.tabs.map((tab) => tab.key)));
+	assert.equal(dom.window.location.hash, "#/chat");
+	assert.deepEqual(
+		current.tabs.map((tab) => tab.target.kind),
+		["draft"],
+	);
 });
 
 // Match the cold HTTP evidence at Core 9ab8d79dae: complete at baseline

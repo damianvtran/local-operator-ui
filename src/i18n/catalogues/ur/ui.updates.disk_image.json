@@ -1,0 +1,10 @@
+{
+	"ui.updates.disk_image.heading": "یہ کاپی خود کو اپ ڈیٹ نہیں کر سکتی",
+	"ui.updates.disk_image.message": "Local Operator انسٹالر ڈسک امیج سے چل رہا ہے، اس لیے اپ ڈیٹ یہاں انسٹال نہیں ہو سکتی۔",
+	"ui.updates.disk_image.message_version": "Local Operator انسٹالر ڈسک امیج سے چل رہا ہے، اس لیے ورژن {version} کی اپ ڈیٹ یہاں انسٹال نہیں ہو سکتی۔",
+	"ui.updates.disk_image.remedy": "اسے Applications میں منتقل کریں، پھر وہیں سے اپ ڈیٹ کریں۔",
+	"ui.updates.disk_image.move_button": "Applications میں منتقل کریں",
+	"ui.updates.disk_image.moving": "منتقل ہو رہا ہے…",
+	"ui.updates.disk_image.move_exists": "Local Operator پہلے سے Applications میں موجود ہے، اس لیے یہ کاپی منتقل نہیں کی گئی۔ اسے بند کریں، پھر Applications سے Local Operator کھولیں۔",
+	"ui.updates.disk_image.move_failed": "Local Operator کو Applications میں منتقل نہیں کیا جا سکا۔ اسے بند کریں، Finder میں اسے Applications میں گھسیٹیں، پھر وہیں سے کھولیں۔"
+}

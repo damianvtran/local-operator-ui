@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "آپ نے مسترد کریں چنا۔",
 	"ui.teamBridge.holds.state.not_applied": "آپ کا فیصلہ لاگو نہیں ہو سکا۔",
 	"ui.teamBridge.holds.details_unavailable": "یہ پیغام یہاں لوڈ نہیں ہو سکا، اس لیے اسے ابھی پہنچایا یا مسترد نہیں کیا جا سکتا۔",
+	"ui.teamBridge.holds.details_unavailable_hide": "یہ پیغام یہاں لوڈ نہیں ہو سکا، اس لیے اسے پہنچایا یا مسترد نہیں کیا جا سکتا۔ آپ اسے اس ڈیوائس پر چھپا سکتے ہیں۔",
 	"ui.teamBridge.holds.deliver": "پہنچائیں",
 	"ui.teamBridge.holds.discard": "مسترد کریں",
 	"ui.teamBridge.holds.deliver_label": "یہ پیغام پہنچائیں ({sender})",

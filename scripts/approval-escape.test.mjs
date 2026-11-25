@@ -50,6 +50,7 @@ const bundle = await build({
 		contents: [
 			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { ApprovalModeChipView, approvalModeFrom, approvalToggleArgs, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode-chip";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -75,6 +76,11 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const {
+	ApprovalModeChipView,
+	approvalModeFrom,
+	approvalToggleArgs,
+	approvalModeKey,
+	invalidateApprovalMode,
 	runApprovalEscape,
 	ApprovalEscapeControls,
 	APPROVAL_ESCAPE_COPY,
@@ -340,8 +346,8 @@ test("a saved default with a refused live command reports the half that did not 
 
 test("the handles are subordinate text buttons with full names", () => {
 	const html = renderControls({});
-	assert.match(html, /Set auto for this session/);
-	assert.match(html, /Set auto for all sessions/);
+	assert.match(html, /Auto-approve this session/);
+	assert.match(html, /Auto-approve all sessions/);
 	// The reserved status slot exists even when empty, so nothing reflows later.
 	assert.match(html, /data-approval-escape-status/);
 	assert.match(html, /min-h-\[2lh\]/);
@@ -356,11 +362,11 @@ test("the handles are subordinate text buttons with full names", () => {
 test("a policy call disables only its own handles", () => {
 	const html = renderControls({ busy: true });
 	assert.match(
-		buttonOpeningTag(html, "Set auto for this session"),
+		buttonOpeningTag(html, "Auto-approve this session"),
 		/ disabled(?:=""|\s|>)/,
 	);
 	assert.match(
-		buttonOpeningTag(html, "Set auto for all sessions"),
+		buttonOpeningTag(html, "Auto-approve all sessions"),
 		/ disabled(?:=""|\s|>)/,
 	);
 });
@@ -402,7 +408,7 @@ test("the reserved slot carries the confirmation or the refusal", () => {
 	assert.match(refused, /text-danger/);
 	// The failure does not leave its own handles disabled either.
 	assert.doesNotMatch(
-		buttonOpeningTag(refused, "Set auto for this session"),
+		buttonOpeningTag(refused, "Auto-approve this session"),
 		/ disabled(?:=""|\s|>)/,
 	);
 	assert.equal(APPROVAL_ESCAPE_COPY.unchanged("x"), "Unchanged: x");
@@ -448,7 +454,7 @@ test("the policy line names the effective mode and its provenance", () => {
 	assert.match(line, /Approvals: Ask — session override; global Auto\./);
 	// Above the handles, in document order.
 	assert.ok(
-		line.indexOf("Approvals: Ask") < line.indexOf("Set auto for this session"),
+		line.indexOf("Approvals: Ask") < line.indexOf("Auto-approve this session"),
 	);
 	assert.doesNotMatch(renderControls({}), /data-approval-policy-line/);
 });
@@ -465,7 +471,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.match(html, /Set auto for this session/);
+	assert.match(html, /Auto-approve this session/);
 	assert.match(html, /Approvals: Ask — session override; global Auto\./);
 	assert.doesNotMatch(
 		buttonOpeningTag(html, "Approve"),
@@ -481,7 +487,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.doesNotMatch(noSession, /Set auto for this session/);
+	assert.doesNotMatch(noSession, /Auto-approve this session/);
 	assert.doesNotMatch(noSession, /data-approval-policy-line/);
 
 	// The same omission for a gate that CARRIES the fields with the core's
@@ -497,7 +503,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 			onAnswer: () => {},
 		}),
 	);
-	assert.match(notStated, /Set auto for this session/);
+	assert.match(notStated, /Auto-approve this session/);
 	assert.doesNotMatch(notStated, /data-approval-policy-line/);
 });
 
@@ -569,7 +575,7 @@ test("the pressed handle says it is working, then says what now holds", () => {
 		buttonOpeningTag(pending, "Setting auto…"),
 		/data-approval-escape-all/,
 	);
-	assert.match(pending, /Set auto for this session/);
+	assert.match(pending, /Auto-approve this session/);
 
 	/*
 	 * D1: the in-flight handle's label IS the status, so it is refused by
@@ -590,12 +596,14 @@ test("the pressed handle says it is working, then says what now holds", () => {
 	const allTag = buttonOpeningTag(done, "Auto is now the default");
 	assert.match(allTag, /data-state="done"/);
 	assert.match(allTag, / disabled(?:=""|\s|>)/);
-	assert.match(allTag, /disabled:text-success/);
+	// D3: "auto is on" shares the chip's amber, not success green.
+	assert.match(allTag, /disabled:text-warning/);
+	assert.doesNotMatch(allTag, /text-success/);
 	assert.match(
 		buttonOpeningTag(done, "Auto is on for this session"),
 		/data-state="done"/,
 	);
-	assert.doesNotMatch(done, />Set auto for all sessions</);
+	assert.doesNotMatch(done, />Auto-approve all sessions</);
 	// U5: the receipt points at the press that actually answers the request.
 	assert.match(
 		done,
@@ -639,10 +647,128 @@ test("N3/N4: a saved state ends when the mode moves back, and the reveal scrolls
 		"src/renderer/src/features/chat/components/trace/approval-escape.tsx",
 		"utf8",
 	);
-	assert.match(
-		source,
-		/if \(approvalMode === undefined \|\| approvalMode === "auto"\) return;/,
-	);
+	// N3's behaviour (a confirmation ends when the mode moves) is now mounted
+	// for real in approval-mode-live.test.mjs; only the N4 scroll pin stays here.
 	assert.doesNotMatch(source, /scrollIntoView\?\.\(/);
 	assert.match(source, /revealInOwnScroller\(line\)/);
+});
+
+/*
+ * Operator request 2026-11-24 (Ryan Copp's feedback): a one-click way back from
+ * auto, a guardrail note on the card, and a visible mode chip in the composer.
+ */
+test("Always ask runs `approvals ask` through the owner route and never the default", async () => {
+	const calls = [];
+	const outcome = await runApprovalEscape("ask", {
+		runCommand: async (...args) => {
+			calls.push(args);
+			return {
+				outcome: {
+					kind: "notice",
+					text: "tool approvals: ask",
+					style: "info",
+					data: {},
+				},
+				result: { tone: "success", text: "tool approvals: ask" },
+			};
+		},
+		editDefault: async () => {
+			throw new Error("Always ask must not write the default");
+		},
+	});
+	assert.deepEqual(calls, [["approvals", "ask"]]);
+	assert.deepEqual(outcome, { kind: "saved" });
+	const refused = await runApprovalEscape("ask", {
+		runCommand: async () => ({
+			outcome: { kind: "error", text: "no gate", data: {} },
+			result: { tone: "error", text: "no gate" },
+		}),
+		editDefault: async () => ({ key: "", value: "" }),
+	});
+	assert.equal(refused.kind, "unchanged");
+});
+
+test("Always ask shows only while auto, and its save states the session asks again", () => {
+	const idle = renderControls({});
+	assert.doesNotMatch(idle, /data-approval-escape-ask/);
+	const onAuto = renderControls({ showAlwaysAsk: true, onAlwaysAsk: () => {} });
+	assert.match(onAuto, /data-approval-escape-ask/);
+	assert.match(onAuto, /Always ask/);
+	const saved = renderControls({ status: { kind: "ask-saved" } });
+	assert.match(saved, /asks before every tool again/);
+	assert.deepEqual(
+		policyAfterSave(
+			{ kind: "ask-saved" },
+			{ mode: "auto", provenance: "session" },
+		),
+		{ mode: "ask", provenance: "session" },
+	);
+	assert.equal(
+		approvalEscapeHandleState("ask", null, { kind: "ask-saved" }),
+		"idle",
+	);
+});
+
+test("the card says guardrails and dangerous-delete review still apply in auto", () => {
+	const html = renderControls({});
+	assert.match(html, /data-approval-guardrails-note/);
+	assert.match(
+		html,
+		/Guardrail refusals and dangerous-delete review still apply/,
+	);
+});
+
+test("the mode chip reads only the backend's row and toggles to the opposite mode", () => {
+	assert.equal(approvalModeFrom("auto"), "auto");
+	assert.equal(approvalModeFrom("ask"), "ask");
+	assert.equal(approvalModeFrom(undefined), null);
+	assert.equal(approvalModeFrom("yolo"), null);
+	assert.equal(approvalToggleArgs("auto"), "ask");
+	assert.equal(approvalToggleArgs("ask"), "auto");
+	const none = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: null, onToggle: () => {} }),
+	);
+	assert.equal(none, "", "an unknown mode hides the chip");
+	const auto = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: "auto", onToggle: () => {} }),
+	);
+	assert.match(auto, /Approvals: Auto/);
+	assert.match(auto, /data-mode="auto"/);
+	assert.match(
+		auto,
+		/dangerous-delete review/,
+		"the tooltip carries the guardrail note",
+	);
+	const ask = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: "ask", onToggle: () => {} }),
+	);
+	assert.match(ask, /Approvals: Ask/);
+});
+
+test("every approvals receipt invalidates the chip's query key", () => {
+	const seen = [];
+	invalidateApprovalMode(
+		{ invalidateQueries: async (filter) => seen.push(filter.queryKey) },
+		SESSION,
+	);
+	invalidateApprovalMode(null, SESSION);
+	invalidateApprovalMode(
+		{ invalidateQueries: async () => seen.push("x") },
+		undefined,
+	);
+	assert.deepEqual(seen, [["desktop", "entities", SESSION, "approvals"]]);
+	assert.deepEqual(approvalModeKey(SESSION).slice(0, 4), [
+		"desktop",
+		"entities",
+		SESSION,
+		"approvals",
+	]);
+	const dispatch = readFileSync(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+		"utf8",
+	);
+	assert.match(
+		dispatch,
+		/spec\.name === "approvals" && commandArgs\)\s*invalidateApprovalMode/,
+	);
 });

@@ -724,7 +724,9 @@ test("quick effort is a focused ladder without search, and keys act on its annou
 			document.querySelector("[data-quick-picker]").dataset.pickerPlacement,
 			"fallback",
 		);
-		assert.equal(document.querySelector(".bg-scrim"), null);
+		// The nonmodal quick fallback mounts no shared `DialogOverlay`; its
+		// backdrop is `lo-dialog-scrim` (dialog.tsx), not a `bg-*` utility.
+		assert.equal(document.querySelector(".lo-dialog-scrim"), null);
 		assert.equal(document.activeElement, list);
 		assert.equal(announced(list), marked());
 		assert.match(labelOf(announced(list)), /^Medium/);

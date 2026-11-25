@@ -80,6 +80,10 @@ got wrong:
   Preserve compact access, local focus indicators and the transcript anchor.
   Do not give the dock floating elevation or a resting/focus frame; matte
   changes must not alter Window glass coverage.
+- **Use one [Shared inset](docs/branding.md#shared-inset-for-primary-pages)** for
+  the primary workspace, not a card per column. Keep edge-to-edge rails,
+  title-bar controls and inner scroll cues distinct; see the
+  [workspace checklist](docs/AGENTS.md).
 - Write copy in sentence case. The Shared inset's sidebar group labels use
   uppercase presentation only. Monospace is machine voice only.
 
@@ -106,16 +110,12 @@ palette at Soft, Gentle, Strong and High too.
 
 Use one [Shared inset](docs/branding.md#shared-inset-for-primary-pages) at the route
 body boundary. The outlet keeps the frame through loading, error and content.
-Ordinary routes spend native clearance before their frame. Settings (including
-subsection links) and Agents (including saved-agent detail) opt in through their
-matched route: their frame and pane grounds paint to y0 and the bottom edge,
-with the lateral gutter intact. Each pane spends the clearance once inside its
-paint, outside its scrollport. Keep the drag lane/band above that paint and out
-of the pane's controls; do not add another pad to nested content.
-
-When the tab already names the page, keep its semantic `h1` without a visual
-title or intro track. Show the working controls first and keep meaningful state,
-selected-item titles, instructions and feedback.
+Ordinary routes spend native clearance before their frame. Settings and Agents
+keep their secondary rail edge-to-edge and their content frame evenly inset;
+each column spends the clearance once inside its ground, outside its scrollport.
+Keep the drag lane/band out of controls and do not add a second pad to nested
+content. Trim redundant route headings, not selected-item or conversation
+context, instructions or feedback.
 
 Share the frame, not the page layout: keep pane grounds, sticky bands, focus
 and local scroll ownership. Chat's tabs and Browser's tab/address rails stay
@@ -123,8 +123,7 @@ outside their own body frame; the outlet never wraps those bodies again. Team
 Bridge mounts its left rail in the shell and takes the outlet frame on the
 right. Browser reports a rectangular host fully inside the rounded clip, not
 rounded native hit testing. Keep the embedded Chat Browser unchanged. Source
-checks are not rendered or native verification; the integrated preview is held
-until the operator has seen the complete candidate and its screenshots.
+checks are not rendered or native verification.
 
 ### Panels run to the window edge
 
@@ -171,8 +170,9 @@ legacy routes, not columns inside a Shared inset.
   2.32 in `localOperatorLight`) is a field-sized difference, so one sanctioned
   mark was added — `PanelEdge`, a positioned 1px `hairline` at 75%, defined in
   `panel-edge.tsx` and specified in
-  [Panels](docs/branding.md#panels-one-seam-edge-to-edge-fading-at-the-top). A new
-  `border-l`/`border-r` on a panel is still a regression by construction: the
+  [edge-to-edge rail rules](docs/branding.md#edge-to-edge-rails-and-legacy-flush-panels).
+  An inset gutter replaces the seam. A new `border-l`/`border-r` on a panel is
+  still a regression by construction: the
   earlier removals were about a border in the wrong place, not about the idea
   of an edge, and a border costs the panel a pixel while a scroll container
   cannot spare one.

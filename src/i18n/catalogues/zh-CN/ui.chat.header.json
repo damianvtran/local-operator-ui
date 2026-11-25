@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "将此新对话设为临时对话",
 	"ui.chat.header.temporary_toggle_off": "关闭临时对话",
 	"ui.chat.header.temporary_peer_unavailable": "暂不支持在其他设备上开始临时对话",
-	"ui.chat.header.temporary_ends_in": "{minutes, plural, other {# 分钟}}后删除"
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, other {# 分钟}}后删除",
+	"ui.chat.header.pin_tab": "置顶标签页",
+	"ui.chat.header.unpin_tab": "取消置顶标签页",
+	"ui.chat.header.close_other_tabs": "关闭其他标签页",
+	"ui.chat.header.close_tabs_left": "关闭左侧标签页",
+	"ui.chat.header.close_tabs_right": "关闭右侧标签页",
+	"ui.chat.header.close_all_tabs": "关闭所有标签页",
+	"ui.chat.header.all_tabs": "所有标签页"
 }

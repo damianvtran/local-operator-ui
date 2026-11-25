@@ -55,7 +55,7 @@ const PATHS = [
 		"steps/connect-provider-step.tsx",
 		"steps/default-model-plan.ts",
 		"steps/default-model-step.tsx",
-		"steps/extras-step.tsx",
+		"steps/meet-aida-step.tsx",
 		"steps/search-api-step.tsx",
 	].map((file) => `src/renderer/src/features/onboarding/components/${file}`),
 ];

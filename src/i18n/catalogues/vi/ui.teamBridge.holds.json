@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "Bạn đã chọn Loại bỏ.",
 	"ui.teamBridge.holds.state.not_applied": "Không thể áp dụng quyết định của bạn.",
 	"ui.teamBridge.holds.details_unavailable": "Không thể tải tin nhắn này ở đây nên chưa thể chuyển hoặc loại bỏ.",
+	"ui.teamBridge.holds.details_unavailable_hide": "Không thể tải tin nhắn này ở đây nên không thể chuyển hoặc loại bỏ. Bạn có thể ẩn tin nhắn này trên thiết bị này.",
 	"ui.teamBridge.holds.deliver": "Chuyển",
 	"ui.teamBridge.holds.discard": "Loại bỏ",
 	"ui.teamBridge.holds.deliver_label": "Chuyển tin nhắn này ({sender})",

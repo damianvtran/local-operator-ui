@@ -12,7 +12,7 @@ import { JSDOM } from "jsdom";
  * latched by the backend, and the backend refuses `approvals auto` there
  * (`data.ok: false, approval_reason: "bridge_latched"`; the desktop command
  * carries no `bridge_ack`). The card nevertheless offered "Set auto for this
- * session" / "Set auto for all sessions". Both presses failed, and "all
+ * session" / "Auto-approve all sessions". Both presses failed, and "all
  * sessions" wrote the machine default (`settings.edit`) before the session half
  * was refused. The card now mounts neither link on a latched gate and says why.
  *
@@ -108,6 +108,14 @@ window.HTMLCanvasElement.prototype.getContext = () => null;
  * what comes back is not the subject, what was SENT is.
  */
 const sent = [];
+/*
+ * The policy WRITES the card made. Since the card reads the live mode through
+ * the shared `useApprovalMode` query (the chip's read), the bridge also sees
+ * `commands.entities` reads, before and after a press re-invalidates them. They
+ * change no policy, so the press assertions count only what could loosen it.
+ */
+const policyWrites = () =>
+	sent.filter((request) => request.op !== "commands.entities");
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -227,7 +235,7 @@ const UNLATCHED_GATE = {
 	bridge_latched: false,
 };
 
-const SET_AUTO_FOR = /Set auto for/;
+const SET_AUTO_FOR = /Auto-approve (this|all) session/;
 const NOTE =
 	"Allow all and auto are off in this conversation. To turn auto on, type /approvals auto in the terminal, or use /new for a fresh conversation.";
 
@@ -269,6 +277,14 @@ after(async () => {
 	await act(async () => {
 		root?.unmount();
 	});
+	/*
+	 * The card now reads the shared `useApprovalMode` query, so the client holds
+	 * cached `commands.entities` queries whose garbage-collection timers (React
+	 * Query's default gcTime, 5 min) keep the event loop alive after unmount: the
+	 * file then idled until the runner cancelled it at ~300 s. Clearing the
+	 * cache cancels those timers so the process exits when the tests do.
+	 */
+	queryClient.clear();
 	for (const [key, descriptor] of originals) {
 		if (descriptor === undefined) delete globalThis[key];
 		else Object.defineProperty(globalThis, key, descriptor);
@@ -297,7 +313,7 @@ test("a latched approval offers no auto link, says why once, and still answers",
 	const answered = [];
 	await render(LATCHED_GATE, (label) => answered.push(label));
 
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.doesNotMatch(document.body.textContent, SET_AUTO_FOR);
 	const notes = document.querySelectorAll("[data-approval-latched-note]");
 	assert.equal(notes.length, 1, "exactly one inline note");
@@ -328,7 +344,7 @@ test("a gate with only approval_suspended: bridge hides the links too", async ()
 	sent.length = 0;
 	const { bridge_latched: _omitted, ...gate } = SUSPENDED_GATE;
 	await render(gate);
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
 		1,
@@ -339,7 +355,7 @@ test("a gate with only approval_suspended: bridge hides the links too", async ()
 
 test("the full published suspended payload (latched AND suspended) hides them", async () => {
 	await render(SUSPENDED_GATE);
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
 		1,
@@ -349,8 +365,8 @@ test("the full published suspended payload (latched AND suspended) hides them", 
 test("NEGATIVE CONTROL: an unlatched approval still offers both links and they still send their commands", async () => {
 	sent.length = 0;
 	await render(UNLATCHED_GATE);
-	const session = buttonNamed("Set auto for this session");
-	const all = buttonNamed("Set auto for all sessions");
+	const session = buttonNamed("Auto-approve this session");
+	const all = buttonNamed("Auto-approve all sessions");
 	assert.ok(session && all, "both links render on an unlatched card");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
@@ -359,20 +375,22 @@ test("NEGATIVE CONTROL: an unlatched approval still offers both links and they s
 	);
 
 	await press(session);
-	assert.equal(sent.length, 1);
-	assert.equal(sent[0].op, "sessions.command");
-	assert.equal(sent[0].command, "approvals");
-	assert.equal(sent[0].args, "auto");
+	const sessionWrites = policyWrites();
+	assert.equal(sessionWrites.length, 1);
+	assert.equal(sessionWrites[0].op, "sessions.command");
+	assert.equal(sessionWrites[0].command, "approvals");
+	assert.equal(sessionWrites[0].args, "auto");
 
 	sent.length = 0;
-	await press(buttonNamed("Set auto for all sessions"));
+	await press(buttonNamed("Auto-approve all sessions"));
+	const allWrites = policyWrites();
 	assert.deepEqual(
-		sent.map((request) => request.op),
+		allWrites.map((request) => request.op),
 		["settings.edit", "sessions.command"],
 		"the default is written first, then this conversation is asked to follow",
 	);
-	assert.equal(sent[0].key, "tool_approval_mode");
-	assert.equal(sent[0].value, "auto");
+	assert.equal(allWrites[0].key, "tool_approval_mode");
+	assert.equal(allWrites[0].value, "auto");
 });
 
 test("NEGATIVE CONTROL: bridge flags that are explicitly false or absent leave the card as before", async () => {
@@ -381,9 +399,9 @@ test("NEGATIVE CONTROL: bridge flags that are explicitly false or absent leave t
 		taint_raised: false,
 		bridge_latched: false,
 	});
-	assert.ok(buttonNamed("Set auto for this session"));
+	assert.ok(buttonNamed("Auto-approve this session"));
 	// taint_raised alone does not latch: it says why THIS call asked, not that
 	// the conversation is latched.
 	await render({ ...UNLATCHED_GATE, taint_raised: true });
-	assert.ok(buttonNamed("Set auto for this session"));
+	assert.ok(buttonNamed("Auto-approve this session"));
 });

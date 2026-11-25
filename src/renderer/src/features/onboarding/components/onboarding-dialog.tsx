@@ -1,130 +1,129 @@
 /**
- * OnboardingDialog Component
+ * OnboardingStage
  *
- * The frame every onboarding step renders inside: a title, an optional step
- * indicator row, the step itself, and the actions.
+ * The frame first-run setup renders in: the WHOLE WINDOW, from the intro to the
+ * last step (onboarding refresh, 2026-11; design spec § 2).
  *
- * It is deliberately plain. This is the first screen a new user sees, so the
- * only things drawing attention are the words and the primary action — the
- * panel is one ground step above the scrim with the system's single overlay
- * shadow, and the two hairlines that remain are the ones separating the fixed
- * header and footer from content that scrolls under them.
+ * ## Why a stage and not a dialog
+ *
+ * Setup used to be a 640px panel over a black scrim, which framed it as a
+ * settings form - the operator's words were "flat and unexciting", with "too
+ * much use of rounded cards". A stage lets the new-chat helix (the brand's own
+ * motif, already shipping behind the composer) open setup and then carry on as
+ * the header of every step, so the first screen a user sees and the first chat
+ * they land in share one visual language.
+ *
+ * ## What it keeps from the dialog
+ *
+ * The Radix `Dialog`, in its `stage` variant: the focus trap, `aria-modal`,
+ * Escape and the title wiring all still come from it. It is NOT a floating
+ * surface (no `data-lo-floating`, no shadow, no plate), and it is opaque even
+ * with Window glass on, because there is no app content behind setup yet.
+ *
+ * ## Layout (spec § 2.1)
+ *
+ * A 32px drag band (macOS traffic lights sit over it, so nothing interactive
+ * goes there), the persistent horizon slot, the step's title and subtitle, ONE
+ * scrolling 30rem column, and a pinned footer. The column is top-anchored, so
+ * the horizon never moves when a step's content height changes.
+ *
+ * `data-onboarding-modal` stays on the content: the renderer driver's state
+ * probe (`src/renderer/src/dev-driver/install.ts`) answers "is the first-run
+ * wizard up?" by looking for it.
  */
 
+import "../onboarding-stage.css";
 import {
 	BackendStartupPanel,
 	startupPanelPhase,
 } from "@shared/components/common/backend-startup-panel";
+import { NewChatHorizon } from "@shared/components/composer/new-chat-horizon";
 import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, type RefObject, forwardRef, useRef } from "react";
+import type { StagePhase } from "./onboarding-intro";
+import { ONBOARDING_COLUMN_WIDTH } from "./onboarding-layout";
 
 /**
- * The panel measure, per step SHAPE, each clamped against the viewport.
+ * The stage's h1: the dialog's accessible title, at the step's size.
  *
- * TWO SHAPES, because the flow has two. Every step but one is a form: it asks
- * for a name, a URL, a choice, and 560px is the measure the whole flow was
- * composed at — wide enough for a sentence of explanation, narrow enough that
- * one decision fills the frame. A two-field form in a 940px box reads as a web
- * signup page rather than as a desktop setup dialog (Raycast, Cron and Things
- * all run first run at roughly that measure), which is why that number is kept
- * rather than moved for the one step that wants more.
- *
- * The provider step is not a form. It is a grid of the registry's rows, and it
- * wants the measure that fits a third column of cards. That arithmetic, taken
- * from the frames' own captions rather than from these class names: the panel's
- * 1px border and the body's 24px inset each side come to 50px of a 960px panel,
- * so the grid is 910px; three 280px cards and two 12px gaps are 864px; and a
- * CLASSIC (space-taking) scrollbar then takes 15px off the body, leaving 895px.
- * That 31px of margin is the whole reason the number is 960 rather than the 928
- * that also looks plausible — at 928 the same sum leaves 863px, one pixel short
- * of three columns, and the grid would silently drop to two on any platform that
- * reserves scrollbar space.
- *
- * WHY BOTH MEASURES ARE `min()`ed AGAINST `100vw - 4rem`. `DialogContent` is
- * `w-full` (shared/components/ui/dialog.tsx) and this frame used to clamp only
- * its HEIGHT, so raising the provider step's cap from 560 to 960 made the
- * panel's own border land on column 0 of an 800px window: a zero side gutter
- * under a panel that kept 32px above and below, standing closer to the window's
- * edge than its own content stands to the panel's (24px). Mirroring the height
- * clamp costs nothing the width was buying — at 800px the panel is 736px, the
- * grid 686px, and the layout falls to two 337px cards rather than losing its
- * frame (design round 1, D1).
+ * THE SIZE GOES THROUGH `DialogTitle`'s OWN `className`, never the `asChild`
+ * child's (design round 1, D2). Radix's `Slot` CONCATENATES the two class lists,
+ * so `text-heading` (the primitive's default) and `text-display` both landed on
+ * the h1 and the stylesheet's order picked `text-heading`: the Meet Aida bookend
+ * rendered at 16px. `DialogTitle` merges its className through `cn`, whose
+ * tailwind-merge knows the type ramp, so the size asked for here is the only one
+ * left.
  */
-/**
- * ONE measure for the whole flow.
- *
- * It used to be two (`form` 35rem, `grid` 60rem) and the step that took the grid's
- * changed the dialog's width by about 200px when Continue was pressed, so the
- * title, the step indicator and the close button jumped inward mid-flow (design
- * round 1 D6). 40rem is the measure step 1's rows were measured to fit at
- * (`narrow-dialog.png` in the design round's frames), so one value covers all
- * three steps and the frame that holds them stays still.
- */
-export const ONBOARDING_PANEL_WIDTHS = {
-	single: "max-w-[min(40rem,calc(100vw-4rem))]",
-} as const;
+export const StageTitle = forwardRef<
+	HTMLHeadingElement,
+	{ size: "title" | "display"; children: ReactNode }
+>(({ size, children }, ref) => (
+	<DialogTitle
+		asChild
+		className={cn(
+			"font-medium text-ink outline-none!",
+			size === "display" ? "text-display" : "text-title",
+		)}
+	>
+		<h1 ref={ref} tabIndex={-1}>
+			{children}
+		</h1>
+	</DialogTitle>
+));
+StageTitle.displayName = "StageTitle";
 
-/** Which of those measures a step asks for. */
-export type OnboardingPanelWidth = keyof typeof ONBOARDING_PANEL_WIDTHS;
-
-/**
- * Props for the OnboardingDialog component
- */
-export type OnboardingDialogProps = {
-	/**
-	 * Whether the dialog is open
-	 */
+export type OnboardingStageProps = {
 	open: boolean;
+	/** Where the intro timeline is (`useStageIntro`). */
+	phase: StagePhase;
+	/** Whether the intro was skipped, which compresses the hand-off. */
+	skipped?: boolean;
 	/**
-	 * Dialog title content (can be string or JSX)
+	 * The Meet Aida bookend: the helix returns to full strength and the mark to
+	 * its intro size, the visual echo of the opening (spec § 4.2, Meet Aida).
 	 */
-	title?: ReactNode;
-	/**
-	 * Progress for the current flow, rendered on the title's row at its right
-	 * edge. Omitted on the steps that come before the numbered flow.
-	 */
+	bookend?: boolean;
+	/** The step's title; also the dialog's accessible name. */
+	title: ReactNode;
+	/** One or two lines under the title. */
+	subtitle?: ReactNode;
+	/** `display` for the bookend's larger heading. */
+	titleSize?: "title" | "display";
+	/** Focused after the hand-off and on each step change, so it is announced. */
+	headingRef?: RefObject<HTMLHeadingElement>;
+	/** Bumped on step change: the body re-enters (only after the hand-off). */
+	stepKey: string;
+	/** Whether the body should play its step-change entrance. */
+	animateStep?: boolean;
+	/** The progress track, centred in the footer. */
 	stepIndicators?: ReactNode;
+	/** The step body. Omitted on the bookend, which has none. */
+	children?: ReactNode;
+	/** Footer start slot (Skip / Back). */
+	footerStart?: ReactNode;
+	/** Footer end slot (primary, and the last step's ghost). */
+	footerEnd?: ReactNode;
+	/** A sentence above the footer when the step refuses to advance. */
+	footerNote?: ReactNode;
 	/**
-	 * Dialog main content
+	 * An optional control pinned between the step body and the footer, outside
+	 * the scroll container so it stays visible beside the primary action at any
+	 * window height. The modal uses it for the telemetry consent checkbox on the
+	 * LAST step only (operator request, 2026-11-24). The step components stay
+	 * untouched: placement is the stage's concern, not Meet/Search/Model's.
 	 */
-	children: ReactNode;
-	/**
-	 * Dialog action buttons (e.g., next, back)
-	 */
-	actions?: ReactNode;
-	/**
-	 * How wide the panel may be. Defaults to the form measure, which is every
-	 * step's; see {@link ONBOARDING_PANEL_WIDTHS} for the two shapes and why the
-	 * grid step is not measured like the rest.
-	 */
-	width?: OnboardingPanelWidth;
-	/**
-	 * Extra classes for the dialog panel
-	 */
-	className?: string;
-	/**
-	 * Called when the user dismisses the dialog (Escape or the close button).
-	 * Setup used to swallow both and offered no close button (UX U9), so a
-	 * user who did not want to connect anything yet had no way out.
-	 * Dismissing is now "skip setup": the caller decides what that means
-	 * (onboarding lands in the chat, where the connect card waits). Omit it and
-	 * the dialog keeps the old non-dismissible behaviour.
-	 */
+	footerLead?: ReactNode;
+	/** Escape: ends setup (as before; the close button is gone). */
 	onDismiss?: () => void;
 };
 
 /**
- * The app's start-up band, inside the modal (UX round 1, U3).
- *
- * The band itself lives in the shell (`BackendStartupGate`), and this dialog is
- * a modal: everything outside it is inert under the scrim. A server that died
- * while setup was open therefore showed Restart as dimmed, unreachable chrome,
- * and the 01a170cf replay is a user rage-clicking the step's own Retry in that
- * window. Drawn here too, the band is reachable; the shell's copy stays behind
- * the scrim, inert, so only this one can be pressed.
+ * The app's start-up band, inside the stage (UX round 1, U3). The shell's copy
+ * sits behind the modal, inert; drawn here too, Restart stays reachable when
+ * the server dies while setup is open.
  */
 const OnboardingStartupBand = () => {
 	const { data } = useServerHealth();
@@ -133,31 +132,29 @@ const OnboardingStartupBand = () => {
 	return <BackendStartupPanel snapshot={snapshot} />;
 };
 
-/**
- * OnboardingDialog component
- *
- * @param props - OnboardingDialogProps
- * @returns ReactNode
- */
-export const OnboardingDialog = ({
+export const OnboardingStage = ({
 	open,
+	phase,
+	skipped = false,
+	bookend = false,
 	title,
+	subtitle,
+	titleSize = "title",
+	headingRef,
+	stepKey,
+	animateStep = false,
 	stepIndicators,
 	children,
-	actions,
-	width = "single",
-	className,
+	footerStart,
+	footerEnd,
+	footerNote,
+	footerLead,
 	onDismiss,
-}: OnboardingDialogProps): ReactNode => {
-	const contentRef = useRef<HTMLDivElement>(null);
+}: OnboardingStageProps): ReactNode => {
+	const rootRef = useRef<HTMLDivElement>(null);
+	const intro = phase === "intro";
 
 	return (
-		/*
-		 * Dismissible when the caller says what dismissing means (`onDismiss`):
-		 * Escape and the close button end setup. Without it, the three refusals
-		 * the old dialog relied on still apply. Outside presses are always
-		 * refused; see the note on `onPointerDownOutside`.
-		 */
 		<Dialog
 			open={open}
 			onOpenChange={(next) => {
@@ -165,103 +162,151 @@ export const OnboardingDialog = ({
 			}}
 		>
 			<DialogContent
-				/*
-				 * A hook for a HARNESS rather than for the app: the renderer driver's state
-				 * probe answers "is the first-run wizard up?" by looking for this, and the
-				 * Radix content it portals in carries `role="dialog"` - which the command
-				 * palette and every other modal in the app carry too, so a probe on that
-				 * would report whichever dialog happened to be open as the wizard. Nothing
-				 * styles or sizes it. See `src/renderer/src/dev-driver/install.ts`, which
-				 * reads it as `onboardingVisible`.
-				 */
+				ref={rootRef}
+				variant="stage"
 				data-onboarding-modal=""
-				showClose={onDismiss !== undefined}
+				data-lo-onboarding-stage=""
+				data-phase={phase}
+				data-skipped={skipped ? "" : undefined}
+				data-bookend={bookend ? "" : undefined}
+				showClose={false}
+				/* No scrim: the stage is opaque and covers the window itself. */
+				overlayClassName="bg-transparent"
+				tabIndex={-1}
 				onEscapeKeyDown={(event) => {
-					if (!onDismiss) event.preventDefault();
+					// During the intro a key SKIPS it (see `useStageIntro`); Escape
+					// must not also end setup on the same press.
+					if (!onDismiss || intro) event.preventDefault();
 				}}
-				/*
-				 * An outside press never dismisses, even when Escape does: a stray
-				 * click beside a sign-in panel mid-flow would end setup, and the
-				 * close button plus Escape are the deliberate exits.
-				 */
+				/* There is no "outside" any more; keep refusing it regardless. */
 				onPointerDownOutside={(event) => event.preventDefault()}
 				onInteractOutside={(event) => event.preventDefault()}
 				/*
-				 * Focus starts on the step itself, not on whatever happens to be the
-				 * first focusable thing in it. Radix's default reached the step
-				 * indicator dots, which opened one of their tooltips the instant the
-				 * dialog appeared. The step body is focusable only programmatically,
-				 * so this also gives the arrow keys something to scroll.
+				 * Focus starts on the stage itself, never on the first focusable: a
+				 * focus ring flashing on arrival breaks the opening, and Enter on an
+				 * autofocused "Continue with Radient" would open a browser blind. The
+				 * heading takes focus once the steps are showing (the modal).
 				 */
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
-					contentRef.current?.focus();
+					rootRef.current?.focus();
 				}}
-				className={cn(
-					/*
-					 * The measure comes from the step's own shape (see
-					 * `ONBOARDING_PANEL_WIDTHS`); the rest of this string is the frame
-					 * every step shares — a cap at the window's height, and no padding of
-					 * its own because the header, body and actions each own theirs.
-					 */
-					"max-h-[calc(100vh-4rem)] gap-0 overflow-hidden p-0",
-					ONBOARDING_PANEL_WIDTHS[width],
-					className,
-				)}
+				/* `outline-none!`: a scripted focus counts as focus-visible after a
+				   key press, and the ring would frame the whole window. The `!` beats
+				   the MUI baseline's unlayered rule (docs/branding.md § 8). */
+				className="outline-none!"
 			>
+				<div className="onboarding-stage__atmosphere" aria-hidden="true" />
 				{/*
-				 * Title and progress share one row. They were two stacked bands, so
-				 * the eye crossed a title, a rule, a row of dots and then finally
-				 * the step — three horizontal divisions before any content. The
-				 * progress belongs beside the title because it qualifies it.
-				 */}
-				{(title || stepIndicators) && (
-					<div
-						className={cn(
-							"flex shrink-0 items-center justify-between gap-4 border-hairline border-b px-6 py-4",
-							// The close button sits at the corner; keep the step track clear of it.
-							onDismiss && "pr-14",
-						)}
-					>
-						{title ? (
-							<DialogTitle className="text-title">{title}</DialogTitle>
-						) : (
-							<DialogTitle className="sr-only">
-								{t("ui.onboarding.dialog.setup")}
-							</DialogTitle>
-						)}
-						{stepIndicators}
-					</div>
-				)}
-				<OnboardingStartupBand />
-
-				{/*
-				 * `outline-none!` because this element is focused programmatically on
-				 * open, and Chrome counts a scripted `.focus()` as focus-visible when
-				 * the last input was not a pointer — so the app's accent ring was
-				 * drawn around the whole scrolling body of the dialog, appearing as a
-				 * 2px green line directly under the title on the first frame a new
-				 * user ever sees. It is a scroll container, not a control; the ring
-				 * marks nothing actionable.
-				 *
-				 * The `!` is required rather than tidy: the ring is re-asserted by an
-				 * unlayered `html :focus-visible` rule injected by the MUI baseline,
-				 * which outranks every Tailwind utility regardless of specificity.
-				 * See docs/branding.md § 8, "MUI wins specificity fights".
+				 * The drag band. Empty on purpose: a control inside a drag region
+				 * is swallowed as a window drag. No `onContextMenu` either - the system
+				 * menu on right-click is what a frameless window needs there.
 				 */}
 				<div
-					ref={contentRef}
-					tabIndex={-1}
-					className="min-h-0 flex-1 overflow-y-auto px-6 py-6 outline-none!"
-				>
-					{children}
+					data-titlebar-drag=""
+					aria-hidden="true"
+					className="absolute inset-x-0 top-0 h-8"
+				/>
+
+				<div className="onboarding-stage__horizon">
+					<NewChatHorizon
+						quiet={false}
+						dimmed={!intro && !bookend}
+						suppressed={false}
+						paperSelector="[data-lo-onboarding-stage]"
+					/>
 				</div>
 
-				{actions && (
-					<div className="shrink-0 border-hairline border-t px-6 py-4">
-						{actions}
+				{/* The intro's words: decorative timing aside, the welcome is real
+				    text and is read once, then hidden with the rest of the intro. */}
+				<div className="onboarding-stage__intro" aria-hidden={!intro}>
+					<p className="onboarding-stage__intro-title text-display text-ink">
+						{t("ui.onboarding.intro.title")}
+					</p>
+					<p className="onboarding-stage__intro-sub text-body text-ink-muted">
+						{t("ui.onboarding.intro.subtitle")}
+					</p>
+				</div>
+				<p
+					className="onboarding-stage__intro-hint text-ink-dim text-meta"
+					aria-hidden="true"
+				>
+					{t("ui.onboarding.intro.skip_hint")}
+				</p>
+
+				<div
+					className="onboarding-stage__steps flex min-h-0 flex-1 flex-col"
+					aria-hidden={intro ? true : undefined}
+				>
+					{/* Clear of the drag band, the horizon slot and a 24px gap. */}
+					<div
+						className="shrink-0"
+						style={{ height: "calc(var(--stage-rest-top) + 40px + 24px)" }}
+					/>
+					<OnboardingStartupBand />
+					<header
+						data-stage-enter="header"
+						className="flex shrink-0 flex-col items-center gap-2 px-8 text-center"
+						key={`header-${stepKey}`}
+						data-stage-step-enter={animateStep ? "" : undefined}
+					>
+						<StageTitle ref={headingRef} size={titleSize}>
+							{title}
+						</StageTitle>
+						{subtitle ? (
+							<p className="line-clamp-3 max-w-[34rem] text-body text-ink-muted">
+								{subtitle}
+							</p>
+						) : null}
+					</header>
+					{/*
+					 * The ONE scroll container. Top-anchored; edge cues mark content
+					 * past either edge. Short windows (800x600) scroll here while the
+					 * footer, and so the primary action, stays pinned.
+					 */}
+					<div
+						className="mt-8 min-h-0 flex-1 overflow-y-auto px-8 pb-6"
+						data-lo-pane-edge-cues=""
+					>
+						{children ? (
+							<div
+								key={`body-${stepKey}`}
+								data-stage-enter="body"
+								data-stage-step-enter={animateStep ? "" : undefined}
+								className={cn("mx-auto", ONBOARDING_COLUMN_WIDTH)}
+							>
+								{children}
+							</div>
+						) : null}
 					</div>
-				)}
+					{footerLead ? (
+						<div
+							data-stage-enter="footer"
+							data-onboarding-footer-lead=""
+							className="shrink-0 px-8 pt-2"
+						>
+							{footerLead}
+						</div>
+					) : null}
+					<footer
+						data-stage-enter="footer"
+						className="flex shrink-0 flex-col gap-2 px-6 pb-4"
+					>
+						{footerNote ? (
+							<p className="text-center text-ink-dim text-meta">{footerNote}</p>
+						) : null}
+						{/* Three columns so the track is centred whatever the two
+						    sides hold; the end slot reserves 104px so Continue
+						    appearing on step 1 does not shift the track. */}
+						<div className="grid min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-3">
+							<div className="flex justify-start">{footerStart}</div>
+							<div className="flex justify-center">{stepIndicators}</div>
+							<div className="flex min-w-[104px] flex-wrap items-center justify-end gap-2">
+								{footerEnd}
+							</div>
+						</div>
+					</footer>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

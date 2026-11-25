@@ -1,0 +1,62 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 (copy-reviewer round 1 findings re-checked on final bytes)",
+	"locale": "es",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-20",
+	"head": "d16d7f83ec4c62d504f1bdd1ed82d0dc01d29359",
+	"instance": "pr2014-r2-es-agentmessages-settings-45a6d3f0",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 7bcc857d7769 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 11 new keys were drafted by the coder (implementer) per the PR #2014 body, and remediated by coder job 7aa83d555a35 at d16d7f83ec. Judgement from English, the context sidecar and the namespace's shipped glossary (kind_person, person_id, identifier_help_*); no MT used. This auditor authored no catalogue line.",
+		"instance": "pr2014-r2-es-agentmessages-settings-45a6d3f0"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"severity": "NIT",
+			"id": "C6",
+			"key": "ui.agentMessages.settings.allowlist.directory_error / directory_empty_agent / directory_empty_person",
+			"issue": "'introducir' differed from the shipped hint verb 'Escribe'",
+			"fix": "'Aún puedes escribir un ID…'",
+			"fixed_in": "d16d7f83ec",
+			"authored_by": "coder (implementer), not this auditor"
+		},
+		{
+			"severity": "NIT",
+			"id": "C8",
+			"key": "ui.agentMessages.settings.allowlist.directory_stale",
+			"issue": "Still 'introduce un ID' while the three sibling notes now say 'escribir'; meaning is correct, verb drifts within the new group",
+			"fix": "'Esa opción ya no está disponible. Vuelve a elegir o escribe un ID.'",
+			"status": "deferred — NIT, not round-forcing; follow-up for the next audited change to this namespace"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_label": "Elegir de {organization}",
+		"ui.agentMessages.settings.allowlist.directory_label_unnamed": "Elegir de tu organización",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_agent": "Elige un agente",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Elige una persona",
+		"ui.agentMessages.settings.allowlist.directory_agent_owner": "Gestionado por {owner}",
+		"ui.agentMessages.settings.allowlist.directory_same_name": "Mismo nombre que otra entrada",
+		"ui.agentMessages.settings.allowlist.directory_loading": "Cargando personas y agentes…",
+		"ui.agentMessages.settings.allowlist.directory_error": "No se pudieron cargar las personas y los agentes. Aún puedes escribir un ID.",
+		"ui.agentMessages.settings.allowlist.directory_empty_agent": "No hay agentes para elegir. Aún puedes escribir un ID de agente.",
+		"ui.agentMessages.settings.allowlist.directory_empty_person": "No hay personas para elegir. Aún puedes escribir un ID de persona.",
+		"ui.agentMessages.settings.allowlist.directory_stale": "Esa opción ya no está disponible. Vuelve a elegir o introduce un ID."
+	},
+	"binding": "Verified at d16d7f83ec4c by sha256 of the committed bytes: target src/i18n/catalogues/es/ui.agentMessages.settings.json sha256 ea8221a663da2b735140e86710b3f91788b46898d718fab5e52051853bb79f2c; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe; context sha256 ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975. Key set equals English; ICU placeholders identical to English. Only the 11 allowlist.directory_* values differ from the bytes the prior ledger row audited (base 53d86477e3 target hash matched the ledger).",
+	"scope": "PR #2014: 11 new ui.agentMessages.settings.allowlist.directory_* keys (delta audit); previously audited unchanged messages retain their PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+	"context_sha256": "ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975",
+	"target_sha256": "ea8221a663da2b735140e86710b3f91788b46898d718fab5e52051853bb79f2c",
+	"sha256": {
+		"es": "ea8221a663da2b735140e86710b3f91788b46898d718fab5e52051853bb79f2c",
+		"en": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe"
+	}
+}

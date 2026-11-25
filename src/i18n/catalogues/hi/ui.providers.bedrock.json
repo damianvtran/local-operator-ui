@@ -23,7 +23,7 @@
 	"ui.providers.bedrock.error_region_invalid": "उस क्षेत्र में Amazon Bedrock उपलब्ध नहीं है",
 	"ui.providers.bedrock.how_to_connect": "Amazon Bedrock से कैसे कनेक्ट करें",
 	"ui.providers.bedrock.kind_assume_role": "ग्रहण किया गया रोल",
-	"ui.providers.bedrock.kind_login": "AWS login",
+	"ui.providers.bedrock.kind_login": "AWS साइन-इन",
 	"ui.providers.bedrock.kind_other": "अन्य",
 	"ui.providers.bedrock.kind_process": "क्रेडेंशियल प्रोसेस",
 	"ui.providers.bedrock.kind_sso": "SSO",

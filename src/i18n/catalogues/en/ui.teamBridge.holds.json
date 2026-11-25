@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "You chose Discard.",
 	"ui.teamBridge.holds.state.not_applied": "Your decision could not be applied.",
 	"ui.teamBridge.holds.details_unavailable": "This message could not be loaded here, so it can’t be delivered or discarded yet.",
+	"ui.teamBridge.holds.details_unavailable_hide": "This message could not be loaded here, so it can’t be delivered or discarded. You can hide it on this device.",
 	"ui.teamBridge.holds.deliver": "Deliver",
 	"ui.teamBridge.holds.discard": "Discard",
 	"ui.teamBridge.holds.deliver_label": "Deliver this message ({sender})",

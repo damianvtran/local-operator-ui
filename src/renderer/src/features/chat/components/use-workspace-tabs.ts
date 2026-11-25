@@ -10,7 +10,9 @@ import {
 	makeWorkspaceTab,
 	moveWorkspaceTab,
 	sameWorkspaceTarget,
-	saveWorkspaceTabs,
+	saveWorkspaceTabsWithTitles,
+	savedWorkspaceTabsDiffer,
+	savedWorkspaceTitle,
 	syncWorkspaceTabs,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
@@ -141,20 +143,45 @@ export function useWorkspaceTabs(
 		};
 	}, [settleClose]);
 
+	/*
+	 * EVERY REAL NAME A TAB HAS SHOWN THIS RUN, keyed by tab key. The strip
+	 * records the open conversation's real header title and each catalogue row
+	 * it saw here (`rememberTitle`), so a tab whose row later falls off the head
+	 * page - activity reordering, the operator's mid-session "New chat" husks -
+	 * keeps the name it showed. It lives in the hook rather than the page so a
+	 * newly seen header title also re-saves (`seenRevision`): a conversation
+	 * below page one has no catalogue row, and the header is its only name
+	 * (QA #2099 Q1C-F1).
+	 */
+	const titles = useRef<Record<string, string>>({});
+	const [seenRevision, setSeenRevision] = useState(0);
+	const rememberTitle = useCallback((key: string, text: string | null) => {
+		const title = savedWorkspaceTitle(text);
+		if (!title || titles.current[key] === title) return;
+		titles.current[key] = title;
+		setSeenRevision((revision) => revision + 1);
+	}, []);
+
+	/*
+	 * Re-save when the catalogue or a seen title changes too, not only the
+	 * strip: that is how a tab's remembered title follows a rename or the first
+	 * answer, so the NEXT launch draws real names before any page lands. A tab
+	 * whose row is absent from the current page never has its saved title
+	 * overwritten with nothing (`saveWorkspaceTabsWithTitles` states the order).
+	 */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	useLayoutEffect(() => {
+		void seenRevision;
 		const store = useUiPreferencesStore.getState();
-		const saved = saveWorkspaceTabs(tabs);
-		if (
-			saved.length !== store.workspaceTabs.length ||
-			saved.some(
-				({ id, pinned }, i) =>
-					id !== store.workspaceTabs[i].id ||
-					pinned !== store.workspaceTabs[i].pinned,
-			)
-		) {
+		const saved = saveWorkspaceTabsWithTitles(tabs, {
+			rows: new Map(sessions.map((row) => [row.session_id, row.title])),
+			seen: titles.current,
+			prior: store.workspaceTabs,
+		});
+		if (savedWorkspaceTabsDiffer(saved, store.workspaceTabs)) {
 			store.setWorkspaceTabs(saved);
 		}
-	}, [tabs]);
+	}, [tabs, sessions, seenRevision]);
 
 	const open = ({ target }: WorkspaceTab, ticket?: object) => {
 		if (target.kind === "draft") {
@@ -180,7 +207,9 @@ export function useWorkspaceTabs(
 				setFocusRequested(true);
 		}
 	};
-	const close = (tab: WorkspaceTab) => {
+	// `among` lets a bulk close reuse this exact handoff: the successor is picked
+	// from the tabs that survive the bulk close, never one it is removing.
+	const close = (tab: WorkspaceTab, among: readonly WorkspaceTab[] = tabs) => {
 		closeHandoff.current = null;
 		const ticket = {};
 		tabIntent.current = ticket;
@@ -194,7 +223,7 @@ export function useWorkspaceTabs(
 			setFocusRequested(true);
 			return;
 		}
-		const next = workspaceNeighbor(tabs, tab.key);
+		const next = workspaceNeighbor(among, tab.key);
 		if (!next) {
 			startDraft();
 			if (
@@ -232,10 +261,31 @@ export function useWorkspaceTabs(
 		autoClose,
 		setAutoClose,
 		tabs,
+		titles: titles.current,
+		rememberTitle,
 		focusRequested,
 		focusHandled,
 		select,
 		close,
+		/**
+		 * Bulk close (others/left/right/all). Inactive tabs only leave the strip
+		 * (as a single inactive close does); the active one, if included, goes
+		 * through `close` so navigation, the confirmed-open handoff and the
+		 * no-successor draft fallback stay one implementation.
+		 */
+		closeMany: (keys: readonly string[]) => {
+			const closing = new Set(keys);
+			const current = targetOf(useCanonicalSessionsStore.getState());
+			const active = tabs.find(
+				(tab) =>
+					closing.has(tab.key) && sameWorkspaceTarget(tab.target, current),
+			);
+			const keep = (tab: WorkspaceTab) =>
+				!closing.has(tab.key) || tab.key === active?.key;
+			setTabs((items) => items.filter(keep));
+			if (active) close(active, tabs.filter(keep));
+			else setFocusRequested(true);
+		},
 		pin: (key: string) => {
 			setTabs((items) =>
 				items.map((item) =>

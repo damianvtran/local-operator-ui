@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "Elegiste Descartar.",
 	"ui.teamBridge.holds.state.not_applied": "No se pudo aplicar tu decisión.",
 	"ui.teamBridge.holds.details_unavailable": "Este mensaje no se pudo cargar aquí, así que todavía no se puede entregar ni descartar.",
+	"ui.teamBridge.holds.details_unavailable_hide": "Este mensaje no se pudo cargar aquí, así que no se puede entregar ni descartar. Puedes ocultarlo en este dispositivo.",
 	"ui.teamBridge.holds.deliver": "Entregar",
 	"ui.teamBridge.holds.discard": "Descartar",
 	"ui.teamBridge.holds.deliver_label": "Entregar este mensaje ({sender})",

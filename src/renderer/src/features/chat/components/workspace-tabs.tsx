@@ -7,13 +7,32 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@shared/components/ui/context-menu";
+import { Skeleton } from "@shared/components/ui/skeleton";
 import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { Ellipsis, Pin, X } from "lucide-react";
-import { type DragEvent, useLayoutEffect, useRef, useState } from "react";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { ChevronDown, Ellipsis, Pin, X } from "lucide-react";
 import {
+	type DragEvent,
+	Fragment,
+	type KeyboardEvent,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
+import {
+	type WorkspaceBulkClose,
 	type WorkspaceTab,
 	displayedWorkspaceTabs,
+	resolveWorkspaceTabTitle,
+	workspaceBulkCloseKeys,
 } from "../workspace-tabs-model";
 
 import { WORKSPACE_INACTIVE_MINUTES } from "../workspace-tab-cleanup";
@@ -22,18 +41,27 @@ const WORKSPACE_DRAG = "application/x-lo-workspace-tab";
 
 type Props = {
 	activeKey?: string;
-	activeTitle: string;
+	/** The open conversation's REAL name, or null while it has none (never a placeholder). */
+	activeTitle: string | null;
 	tabs: WorkspaceTab[];
 	autoClose: boolean;
 	onAutoCloseChange: (enabled: boolean) => void;
 	titles: Record<string, string>;
+	/** Records a real name a tab has shown, so it is kept and saved (`useWorkspaceTabs`). */
+	onTitleSeen: (key: string, title: string | null) => void;
 	focusRequested: boolean;
 	onFocusHandled: () => void;
 	onOpen: (tab: WorkspaceTab) => void;
 	onClose: (tab: WorkspaceTab) => void;
+	onCloseMany: (keys: string[]) => void;
 	onPin: (key: string) => void;
 	onMove: (from: string, to: string) => void;
 };
+
+/** A separator goes before the first entry of each group after the first (D3). */
+function startsGroup(entries: readonly { group: string }[], index: number) {
+	return index > 0 && entries[index - 1].group !== entries[index].group;
+}
 
 export function WorkspaceTabs({
 	activeKey,
@@ -42,10 +70,12 @@ export function WorkspaceTabs({
 	autoClose,
 	onAutoCloseChange,
 	titles,
+	onTitleSeen,
 	focusRequested,
 	onFocusHandled,
 	onOpen,
 	onClose,
+	onCloseMany,
 	onPin,
 	onMove,
 }: Props) {
@@ -55,22 +85,87 @@ export function WorkspaceTabs({
 	const buttons = useRef(new Map<string, HTMLButtonElement>());
 	const draggedKey = useRef<string | null>(null);
 	const menuFocusKey = useRef<string>();
+	const strip = useRef<HTMLElement>(null);
+	const tabMenuByKeyboard = useRef(false);
+	const tabMenuActed = useRef(false);
 	const ordered = displayedWorkspaceTabs(tabs);
 	const pinned = ordered.filter((tab) => tab.pinned);
 	const regular = ordered.filter((tab) => !tab.pinned);
 	const activePosition = ordered.findIndex(({ key }) => key === activeKey);
-	const selected = ordered[activePosition];
+	// Pins survive "close all" by contract; the item disables when only pins remain.
+	const closeAllKeys = workspaceBulkCloseKeys(tabs, "", "all", false);
 	const [overflow, setOverflow] = useState(false);
-	const title = ({ target, key }: WorkspaceTab) =>
-		(key === activeKey && activeTitle) ||
-		(target.kind === "session" &&
-			sessions.find((row) => row.session_id === target.id)?.title) ||
-		titles[key] ||
-		t("ui.shell.sidebar_navigation.new_chat");
+	const savedTabs = useUiPreferencesStore((state) => state.workspaceTabs);
+	/*
+	 * The catalogue has SETTLED once a head answer landed (`head.at` is its
+	 * stamp) or the read failed (`error`). Until then a tab with no known name
+	 * is loading, not "New chat"; after it, an absent row settles to the
+	 * fallback so a gone conversation never shimmers forever.
+	 */
+	const catalogueSettled = useCanonicalSessionsStore(
+		(state) => state.head.at > 0 || state.error !== null,
+	);
+	const resolveTitle = ({ target, key }: WorkspaceTab) =>
+		resolveWorkspaceTabTitle({
+			target,
+			activeTitle: key === activeKey ? activeTitle : undefined,
+			catalogueTitle:
+				target.kind === "session"
+					? sessions.find((row) => row.session_id === target.id)?.title
+					: undefined,
+			sessionTitle: titles[key],
+			savedTitle:
+				target.kind === "session"
+					? savedTabs.find((row) => row.id === target.id)?.title
+					: undefined,
+			catalogueSettled,
+		});
+	/** Plain text for labels; a loading tab reads "Loading conversation". */
+	const title = (tab: WorkspaceTab) => {
+		const resolved = resolveTitle(tab);
+		if (resolved.kind === "title") return resolved.text;
+		return resolved.kind === "loading"
+			? t("ui.chat.canonical.loading.region_label")
+			: t("ui.shell.sidebar_navigation.new_chat");
+	};
+	/*
+	 * The visible title slot. A loading tab draws the shared Skeleton at a
+	 * FIXED width so the strip does not reflow when names arrive in a burst;
+	 * the sr-only text keeps the button's accessible name.
+	 */
+	const titleSlot = (tab: WorkspaceTab, className: string) =>
+		resolveTitle(tab).kind === "loading" ? (
+			<span
+				data-workspace-tab-title-loading=""
+				aria-busy="true"
+				className="flex items-center"
+			>
+				<Skeleton aria-hidden="true" className="h-2.5 w-20" />
+				<span className="sr-only">{title(tab)}</span>
+			</span>
+		) : (
+			<span className={className}>{title(tab)}</span>
+		);
 
+	/*
+	 * Remember every real name each tab has shown: the open conversation's
+	 * header and every catalogue row the strip can see. A row that later falls
+	 * off the head page (activity reorders it) then still names its tab - the
+	 * operator's mid-session "New chat" tabs were exactly that fall-off.
+	 */
 	useLayoutEffect(() => {
-		if (activeKey && activeTitle) titles[activeKey] = activeTitle;
-	}, [activeKey, activeTitle, titles]);
+		if (activeKey && activeTitle) onTitleSeen(activeKey, activeTitle);
+	}, [activeKey, activeTitle, onTitleSeen]);
+	useLayoutEffect(() => {
+		for (const tab of tabs) {
+			if (tab.target.kind !== "session") continue;
+			const id = tab.target.id;
+			onTitleSeen(
+				tab.key,
+				sessions.find((row) => row.session_id === id)?.title ?? null,
+			);
+		}
+	}, [tabs, sessions, onTitleSeen]);
 
 	useLayoutEffect(() => {
 		const lanes = [pinnedLane.current, regularLane.current].filter(
@@ -112,6 +207,115 @@ export function WorkspaceTabs({
 			lane.findIndex((item) => item.key === tab.key) + (rtl ? -delta : delta)
 		];
 	};
+	// Menus portal outside the strip, so read the direction the strip renders in.
+	const stripRtl = () =>
+		strip.current
+			? getComputedStyle(strip.current).direction === "rtl"
+			: document.documentElement.dir === "rtl";
+
+	/**
+	 * ONE action list for a tab, drawn by both openers: the right-click
+	 * ContextMenu and the in-tab ellipsis DropdownMenu. The two Radix primitives
+	 * need their own item components, so this returns data rather than JSX and
+	 * each opener maps it onto its own item; the labels, enablement and actions
+	 * cannot drift between them. Left/right follow the rendered direction.
+	 *
+	 * `group` is the menu's grouping, Pin | Move left, Move right | the five
+	 * closes (design round 1, D3): the grouping browser tab menus use, drawn with
+	 * the menu's own separator by both openers (`menuGroupBreaks`).
+	 */
+	const tabMenuEntries = (tab: WorkspaceTab) => {
+		const rtl = stripRtl();
+		const bulk = (action: WorkspaceBulkClose, label: string) => {
+			const keys = workspaceBulkCloseKeys(tabs, tab.key, action, rtl);
+			return {
+				id: `close-${action}`,
+				group: "close",
+				label,
+				disabled: keys.length === 0,
+				run: () => onCloseMany(keys),
+			};
+		};
+		const move = (delta: -1 | 1) => {
+			const next = physicalNeighbor(tab, delta, rtl);
+			return {
+				id: delta === -1 ? "move-left" : "move-right",
+				group: "move",
+				label: t(
+					delta === -1
+						? "ui.browser.chrome.move_left"
+						: "ui.browser.chrome.move_right",
+				),
+				disabled: !next,
+				run: () => next && onMove(tab.key, next.key),
+			};
+		};
+		return [
+			{
+				id: "pin",
+				group: "pin",
+				label: t(
+					tab.pinned ? "ui.chat.header.unpin_tab" : "ui.chat.header.pin_tab",
+				),
+				disabled: false,
+				run: () => onPin(tab.key),
+			},
+			move(-1),
+			move(1),
+			{
+				id: "close",
+				group: "close",
+				label: t("ui.browser.browser_tab_strip.close_tab"),
+				disabled: false,
+				run: () => onClose(tab),
+			},
+			bulk("others", t("ui.chat.header.close_other_tabs")),
+			bulk("left", t("ui.chat.header.close_tabs_left")),
+			bulk("right", t("ui.chat.header.close_tabs_right")),
+			bulk("all", t("ui.chat.header.close_all_tabs")),
+		];
+	};
+	// Radix restores focus to the menu's trigger after a delay. After an act that
+	// would undo the hook's focus handoff, and for the context menu the trigger
+	// is the non-focusable tab row; so focus the opening tab's own button. A
+	// dismissed ellipsis menu keeps Radix's default (back to the ellipsis). When
+	// an act removed the opener, the hook's focus request owns the outcome.
+	const restoreTabFocus = (event: Event, opener: string, row: boolean) => {
+		const acted = tabMenuActed.current;
+		tabMenuActed.current = false;
+		tabMenuByKeyboard.current = false;
+		if (!acted && !row) return;
+		event.preventDefault();
+		const button = buttons.current.get(opener);
+		if (button?.isConnected) button.focus({ preventScroll: true });
+	};
+	const runTabEntry = (run: () => void) => () => {
+		tabMenuActed.current = true;
+		run();
+	};
+	/**
+	 * Shift+F10 and the ContextMenu key open the same menu as a right-click.
+	 * Stated rather than left to the browser (as in canonical-transcript and
+	 * accent-row): Chromium only sometimes turns them into `contextmenu`, and
+	 * entering Radix's own handler keeps one menu and one positioning path.
+	 */
+	const openTabMenuFromKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
+		if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10"))
+			return false;
+		event.preventDefault();
+		tabMenuByKeyboard.current = true;
+		const box = event.currentTarget.getBoundingClientRect();
+		event.currentTarget.dispatchEvent(
+			new MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				clientX: box.left,
+				clientY: box.bottom,
+			}),
+		);
+		return true;
+	};
+
 	const acceptDrop = (event: DragEvent, tab: WorkspaceTab) => {
 		const source = ordered.find((item) => item.key === draggedKey.current);
 		if (
@@ -128,9 +332,60 @@ export function WorkspaceTabs({
 	const renderTab = (tab: WorkspaceTab) => {
 		const { key } = tab;
 		const active = key === activeKey;
+		const menuContentProps = {
+			// Portalled outside the strip's privacy boundary; see the strip menu.
+			className: `${USER_CONTENT_CLASS} max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto`,
+			onCloseAutoFocus: (event: Event) => restoreTabFocus(event, key, false),
+		};
+		return (
+			<ContextMenu key={key}>
+				<ContextMenuTrigger asChild>
+					{renderTabRow(tab, active, menuContentProps)}
+				</ContextMenuTrigger>
+				<ContextMenuContent
+					data-workspace-tab-context-menu=""
+					onCloseAutoFocus={(event) => restoreTabFocus(event, key, true)}
+					className={`${USER_CONTENT_CLASS} max-h-[var(--radix-context-menu-content-available-height)] overflow-y-auto`}
+					onFocus={(event) => {
+						// A keyboard opener lands on the first item, as the sidebar row menu does.
+						if (!tabMenuByKeyboard.current) return;
+						if (event.target !== event.currentTarget) return;
+						tabMenuByKeyboard.current = false;
+						event.currentTarget
+							.querySelector<HTMLElement>(
+								'[role="menuitem"]:not([data-disabled])',
+							)
+							?.focus();
+					}}
+				>
+					{tabMenuEntries(tab).map((entry, index, entries) => (
+						<Fragment key={entry.id}>
+							{startsGroup(entries, index) && <ContextMenuSeparator />}
+							<ContextMenuItem
+								data-workspace-tab-action={entry.id}
+								disabled={entry.disabled}
+								onSelect={runTabEntry(entry.run)}
+							>
+								{entry.label}
+							</ContextMenuItem>
+						</Fragment>
+					))}
+				</ContextMenuContent>
+			</ContextMenu>
+		);
+	};
+
+	const renderTabRow = (
+		tab: WorkspaceTab,
+		active: boolean,
+		menuContentProps: {
+			className: string;
+			onCloseAutoFocus: (event: Event) => void;
+		},
+	) => {
+		const { key } = tab;
 		return (
 			<div
-				key={key}
 				data-workspace-tab=""
 				data-active={active ? "" : undefined}
 				data-titlebar-no-drag=""
@@ -163,6 +418,7 @@ export function WorkspaceTabs({
 						draggedKey.current = null;
 					}}
 					onKeyDown={(event) => {
+						if (openTabMenuFromKeyboard(event)) return;
 						if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
 						const rtl =
 							getComputedStyle(event.currentTarget).direction === "rtl";
@@ -180,8 +436,60 @@ export function WorkspaceTabs({
 					}}
 				>
 					{tab.pinned && <Pin aria-hidden="true" className="size-3 shrink-0" />}
-					<span className="truncate">{title(tab)}</span>
+					{titleSlot(tab, "truncate")}
 				</button>
+				{/*
+				 * The tab's own actions live INSIDE the tab, beside its close button, so
+				 * the control reads as this tab's and not the strip's (operator,
+				 * 2026-11-24: the strip-end ellipsis looked like an all-tabs menu yet
+				 * acted on the selected tab).
+				 *
+				 * MOUNTED ON THE ACTIVE TAB ONLY (design round 1, D2; review R2). An
+				 * opacity-hidden trigger on every inactive tab kept its 24px in layout
+				 * - a 42px dead gap between title and close - and added a third Tab stop
+				 * per tab. Inactive tabs reach the same entries by right-click,
+				 * Shift+F10 and the ContextMenu key (the ContextMenu around this row).
+				 * The width it adds is the active tab's own, as a browser's active tab
+				 * shows controls the others do not: the other tabs keep their widths,
+				 * and the `max-width` cap means a long title truncates rather than
+				 * growing the tab. `scripts/workspace-tabs.test.mjs` holds this.
+				 */}
+				{active && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								data-workspace-tab-more=""
+								className="relative grid size-6 shrink-0 place-items-center rounded-sm"
+							>
+								<Ellipsis aria-hidden="true" className="size-3" />
+								<span className="sr-only">
+									{t("ui.browser.browser_tab_strip.tab_actions", {
+										title: title(tab),
+									})}
+								</span>
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="start"
+							data-workspace-tab-menu=""
+							{...menuContentProps}
+						>
+							{tabMenuEntries(tab).map((entry, index, entries) => (
+								<Fragment key={entry.id}>
+									{startsGroup(entries, index) && <DropdownMenuSeparator />}
+									<DropdownMenuItem
+										data-workspace-tab-action={entry.id}
+										disabled={entry.disabled}
+										onSelect={runTabEntry(entry.run)}
+									>
+										{entry.label}
+									</DropdownMenuItem>
+								</Fragment>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<button
 					type="button"
 					data-workspace-close=""
@@ -200,6 +508,7 @@ export function WorkspaceTabs({
 	};
 	return (
 		<nav
+			ref={strip}
 			data-workspace-tabs=""
 			className={USER_CONTENT_CLASS}
 			aria-label={t("ui.command_palette.palette_search.chats")}
@@ -218,7 +527,15 @@ export function WorkspaceTabs({
 					{regular.map(renderTab)}
 				</div>
 			)}
-			{(overflow || selected) && (
+			{/*
+			 * STRIP-LEVEL control, deliberately distinct from the per-tab ellipsis:
+			 * a chevron at the strip's end (the browser "list all tabs" idiom) that
+			 * holds only strip-wide things - the overflowed tab list, "Close all
+			 * tabs" (reachable without a right-click) and the auto-close setting.
+			 * Per-tab acts live in each tab's own menu, so nothing here acts on
+			 * "the selected tab" while looking like it governs every tab.
+			 */}
+			{tabs.length > 0 && (
 				<DropdownMenu
 					onOpenChange={(open) => {
 						if (open) menuFocusKey.current = undefined;
@@ -231,19 +548,17 @@ export function WorkspaceTabs({
 							data-titlebar-no-drag=""
 							className="relative grid size-7 shrink-0 place-items-center rounded-sm text-ink-muted"
 						>
-							<Ellipsis aria-hidden="true" className="size-4" />
+							<ChevronDown aria-hidden="true" className="size-4" />
 							<span className="sr-only">
 								{overflow
 									? t("ui.browser.browser_surface.show_all_tabs")
-									: t("ui.browser.browser_tab_strip.tab_actions", {
-											title: activeTitle,
-										})}
+									: t("ui.chat.header.all_tabs")}
 							</span>
 						</button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
-						align="start"
-						data-workspace-tab-menu=""
+						align="end"
+						data-workspace-strip-menu=""
 						// The portal is outside the strip's privacy boundary. Keep names
 						// in text (including sr-only text), since replay masks text, not attributes.
 						// One scrollport keeps Radix's full roving list and tail actions reachable.
@@ -266,53 +581,22 @@ export function WorkspaceTabs({
 										menuFocusKey.current = tab.key;
 										onOpen(tab);
 									}}
-									aria-current={tab === selected ? "page" : undefined}
+									aria-current={tab.key === activeKey ? "page" : undefined}
 								>
 									{tab.pinned && (
 										<Pin aria-hidden="true" className="size-3 shrink-0" />
 									)}
-									<span className="max-w-56 truncate">{title(tab)}</span>
+									{titleSlot(tab, "max-w-56 truncate")}
 								</DropdownMenuItem>
 							))}
-						{selected && overflow && <DropdownMenuSeparator />}
-						{selected && (
-							<>
-								<DropdownMenuItem
-									data-workspace-pin=""
-									onSelect={() => {
-										menuFocusKey.current = selected.key;
-										onPin(selected.key);
-									}}
-								>
-									{t(
-										selected.pinned
-											? "ui.chat.sidebar.pins.unpin_label"
-											: "ui.chat.sidebar.pins.pin_label",
-										{ title: title(selected) },
-									)}
-								</DropdownMenuItem>
-								{([-1, 1] as const).map((delta) => {
-									const rtl = document.documentElement.dir === "rtl";
-									const next = physicalNeighbor(selected, delta, rtl);
-									return (
-										<DropdownMenuItem
-											key={delta}
-											disabled={!next}
-											onSelect={() => next && onMove(selected.key, next.key)}
-										>
-											{t(
-												delta === -1
-													? "ui.browser.chrome.move_left"
-													: "ui.browser.chrome.move_right",
-											)}
-										</DropdownMenuItem>
-									);
-								})}
-								<DropdownMenuItem onSelect={() => onClose(selected)}>
-									{t("ui.browser.browser_tab_strip.close_tab")}
-								</DropdownMenuItem>
-							</>
-						)}
+						{overflow && <DropdownMenuSeparator />}
+						<DropdownMenuItem
+							data-workspace-close-all=""
+							disabled={closeAllKeys.length === 0}
+							onSelect={() => onCloseMany(closeAllKeys)}
+						>
+							{t("ui.chat.header.close_all_tabs")}
+						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuCheckboxItem
 							checked={autoClose}

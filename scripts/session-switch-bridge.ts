@@ -565,6 +565,7 @@ export function installPreloadStubs() {
 		downloadUpdate: async () => [],
 		quitAndInstall: () => {},
 		quitForUpdateInstall: async () => true,
+		moveToApplications: async () => true,
 		getLastInstallAttempt: async () => null,
 		/*
 		 * Every subscription the shell's update banner takes on mount, from the

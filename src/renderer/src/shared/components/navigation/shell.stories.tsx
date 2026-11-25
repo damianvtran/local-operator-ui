@@ -455,6 +455,7 @@ const UPDATER_STUB = {
 	downloadUpdate: async () => [],
 	quitAndInstall: () => {},
 	quitForUpdateInstall: async () => true,
+	moveToApplications: async () => true,
 	getLastInstallAttempt: async () => null,
 	onUpdateAvailable: noopUnsubscribe,
 	onUpdateNotAvailable: noopUnsubscribe,

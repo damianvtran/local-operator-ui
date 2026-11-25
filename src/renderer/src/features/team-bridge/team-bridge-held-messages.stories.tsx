@@ -409,11 +409,14 @@ export const UnloadableExpired: Story = {
 const localStoryRevision = "d".repeat(64);
 const localStoryItems = [{ ...orphan, localHideRevision: localStoryRevision }];
 
-function LocalHideStory(args: ComponentProps<typeof HeldMessagesView>) {
+function LocalHideStory({
+	storyItems = localStoryItems,
+	...args
+}: ComponentProps<typeof HeldMessagesView> & { storyItems?: HoldItem[] }) {
 	// Presentation fixture only: no app account, desktop transport or real storage.
 	const [hidden, setHidden] = useState(() => new Set<string>());
 	const { visible, hidden: hiddenItems } = projectHeldMessages(
-		localStoryItems,
+		storyItems,
 		hidden,
 		orphanDetail,
 	);
@@ -424,8 +427,15 @@ function LocalHideStory(args: ComponentProps<typeof HeldMessagesView>) {
 			detail={orphanDetail}
 			localHide={{
 				hiddenItems,
-				onChange: (_item, hide) => {
-					setHidden(new Set(hide ? [localStoryRevision] : []));
+				onChange: (item, hide) => {
+					const revision = item.localHideRevision;
+					if (!revision) return false;
+					setHidden((current) => {
+						const next = new Set(current);
+						if (hide) next.add(revision);
+						else next.delete(revision);
+						return next;
+					});
 					return true;
 				},
 			}}
@@ -438,12 +448,21 @@ export const HideAndRestoreLocally: Story = {
 	render: (args) => <LocalHideStory {...args} />,
 };
 
-/* PR #2017 r1 (M1/S-1/Q-1): a still-deliverable hold whose details failed to
-   load (a 429 or network blip) keeps "Try again" and arms NO receipt Discard,
-   even though core serves it a receipt. */
+/* Operator report 2026-11-24 (supersedes PR #2017 r1 M1/S-1/Q-1): a
+   still-deliverable hold whose details could not load, like the held thread
+   reply that read "can't be delivered or discarded yet" with only Try again.
+   With a receipt it now offers Discard (never Deliver) beside Try again, says
+   the text isn't available here, and counts toward Dismiss all. */
 export const UnloadableFresh: Story = {
 	args: {
-		items: [{ ...fresh, discard_receipt: RECEIPT }],
+		items: [
+			{
+				...fresh,
+				hold_code: "work_scope_hold",
+				discard_receipt: RECEIPT,
+				thread_root_id: "bcmsg_b01f2381a44a4335bcb7f9e4808710e0",
+			},
+		],
 		detail: () => ({ state: "unavailable" }),
 		onRetryDetails: () => {},
 	},
@@ -507,19 +526,23 @@ export const UnloadableStaleReceipt: Story = {
 	},
 };
 
-/* An older core serves no receipt: the row stays as it was (nothing armed,
-   "can't be delivered or discarded yet"); this side cannot settle it. */
-export const UnloadableOlderCore: Story = {
-	args: {
-		items: [
-			hold("bcmsg_orphan_legacy", {
-				held_at: "2026-11-10T14:23:00Z",
-				can_deliver: false,
-				deliver_until: "2026-11-17T14:23:00Z",
-			}),
-		],
-		detail: orphanDetail,
+/* An older core serves no receipt: no Discard can be armed, and this side
+   cannot settle it on the daemon. Operator report 2026-11-24: it is still
+   never stuck; "Hide on this device" takes it off the list and the badge, and
+   Restore brings it back. */
+const legacyItems: HoldItem[] = [
+	{
+		...hold("bcmsg_orphan_legacy", {
+			held_at: "2026-11-10T14:23:00Z",
+			can_deliver: false,
+			deliver_until: "2026-11-17T14:23:00Z",
+		}),
+		localHideRevision: "e".repeat(64),
 	},
+];
+export const UnloadableOlderCore: Story = {
+	args: { onRetryDetails: () => {} },
+	render: (args) => <LocalHideStory {...args} storyItems={legacyItems} />,
 };
 
 const batchItems = [orphan, fresh];

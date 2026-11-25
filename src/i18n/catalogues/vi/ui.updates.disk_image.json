@@ -1,0 +1,10 @@
+{
+	"ui.updates.disk_image.heading": "Bản sao này không thể tự cập nhật",
+	"ui.updates.disk_image.message": "Local Operator đang chạy từ ảnh đĩa cài đặt nên không thể cài bản cập nhật tại đây.",
+	"ui.updates.disk_image.message_version": "Local Operator đang chạy từ ảnh đĩa cài đặt nên không thể cài bản cập nhật lên phiên bản {version} tại đây.",
+	"ui.updates.disk_image.remedy": "Hãy chuyển ứng dụng vào thư mục Ứng dụng, rồi cập nhật từ đó.",
+	"ui.updates.disk_image.move_button": "Chuyển vào Ứng dụng",
+	"ui.updates.disk_image.moving": "Đang chuyển…",
+	"ui.updates.disk_image.move_exists": "Local Operator đã có trong thư mục Ứng dụng nên bản này không được chuyển. Hãy thoát bản này, rồi mở Local Operator từ thư mục Ứng dụng.",
+	"ui.updates.disk_image.move_failed": "Không thể chuyển Local Operator vào thư mục Ứng dụng. Hãy thoát ứng dụng, kéo nó vào Ứng dụng trong Finder, rồi mở từ đó."
+}

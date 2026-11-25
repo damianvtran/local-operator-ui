@@ -1,4 +1,48 @@
 {
+	"ui.chat.approval.chip.label": {
+		"length": "2-3 words",
+		"note": "{mode} is the localized mode word (Auto / Ask).",
+		"placeholders": {
+			"mode": "localized approval mode name"
+		},
+		"role": "composer status chip naming this session's tool-approval mode",
+		"tone": "label, no trailing period"
+	},
+	"ui.chat.approval.chip.switch_to_ask": {
+		"length": "one sentence",
+		"note": "Tooltip first sentence; followed by the guardrail note.",
+		"placeholders": {},
+		"role": "tooltip on the approval chip while the session is on auto",
+		"tone": "plain instruction"
+	},
+	"ui.chat.approval.chip.switch_to_auto": {
+		"length": "one sentence",
+		"note": "Tooltip first sentence; followed by the guardrail note.",
+		"placeholders": {},
+		"role": "tooltip on the approval chip while the session asks",
+		"tone": "plain instruction"
+	},
+	"ui.chat.approval.escape.always_ask": {
+		"length": "",
+		"note": "Switches this conversation back to asking before each tool; the opposite of auto.",
+		"placeholders": {},
+		"role": "link under an approval request, shown while the session is on auto, that turns approval prompts back on",
+		"tone": "short imperative, sentence case, no trailing period"
+	},
+	"ui.chat.approval.escape.always_ask_scope": {
+		"length": "2-4 words",
+		"note": "Says the 'Always ask' link changes only this conversation, not every session; it sits next to the all-sessions link.",
+		"placeholders": {},
+		"role": "tooltip on the 'Always ask' link under an approval request",
+		"tone": "plain, no trailing period"
+	},
+	"ui.chat.approval.escape.ask_saved": {
+		"length": "",
+		"note": "The pending request is still unanswered; keep that clause.",
+		"placeholders": {},
+		"role": "status after the session was switched back to asking",
+		"tone": "plain statement"
+	},
 	"ui.chat.approval.escape.bridge_latched": {
 		"length": "",
 		"note": "Names two typed terminal commands, /approvals auto and /new; keep them exactly as written. Do not translate them.",
@@ -30,6 +74,13 @@
 		},
 		"role": "line on an approval request naming the effective mode when it comes from the global default",
 		"tone": "short label, em dash, source; ends with a full stop"
+	},
+	"ui.chat.approval.escape.guardrails_note": {
+		"length": "one line",
+		"note": "'guardrail' = the user's protective rules that block tool calls; 'dangerous-delete review' = the built-in review of destructive deletes. Auto mode does not disable either.",
+		"placeholders": {},
+		"role": "quiet note under the approval-mode links explaining what auto does not switch off",
+		"tone": "reassuring, factual"
 	},
 	"ui.chat.approval.escape.not_changed": {
 		"length": "",
@@ -84,7 +135,7 @@
 		"length": "",
 		"note": "'auto' refers to the Auto mode name.",
 		"placeholders": {},
-		"role": "link under an approval request that switches this conversation to automatic approvals",
+		"role": "link under an approval request that switches this conversation to automatic approvals (no prompts)",
 		"tone": "short imperative, sentence case, no trailing period"
 	},
 	"ui.chat.approval.escape.unchanged": {

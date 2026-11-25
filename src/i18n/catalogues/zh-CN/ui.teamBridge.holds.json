@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "你已选择丢弃。",
 	"ui.teamBridge.holds.state.not_applied": "无法执行你的决定。",
 	"ui.teamBridge.holds.details_unavailable": "无法在此加载这条消息，因此暂时无法送达或丢弃。",
+	"ui.teamBridge.holds.details_unavailable_hide": "无法在此加载这条消息，因此无法送达或丢弃。你可以在此设备上隐藏它。",
 	"ui.teamBridge.holds.deliver": "送达",
 	"ui.teamBridge.holds.discard": "丢弃",
 	"ui.teamBridge.holds.deliver_label": "送达这条消息（{sender}）",

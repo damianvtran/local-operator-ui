@@ -798,8 +798,10 @@ test("Q1: dock - the pair is pinned outside every scroll region; secondary rows 
 		"pair before secondary",
 	);
 	// Secondary holds the policy links and the key hint, and yields first.
+	// The loosening handles ("Auto-approve this session / all sessions"; the
+	// pre-one-click copy read "Set auto ...").
 	const setAuto = [...card.querySelectorAll("button")].filter((b) =>
-		/Set auto/i.test(b.textContent),
+		/Auto-approve/i.test(b.textContent),
 	);
 	assert.ok(setAuto.length >= 1, "the policy links are drawn with a session");
 	for (const link of setAuto) assert.ok(secondary.contains(link));
@@ -1242,12 +1244,12 @@ test("S6: a collapsed secondary region takes no gap and is inert, so nothing hid
 						),
 					].filter((el) => !el.closest("[inert]") && !el.disabled);
 					const setAuto = focusables.filter((b) =>
-						/Set auto/i.test(b.textContent),
+						/Auto-approve/i.test(b.textContent),
 					);
 					assert.equal(
 						setAuto.length > 0,
 						!collapsed,
-						"Set auto focusable only when shown",
+						"Auto-approve focusable only when shown",
 					);
 					await v.unmount();
 				},

@@ -184,6 +184,7 @@ import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
 import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
 import enUiSettingsNotifications from "./catalogues/en/ui.settings.notifications.json";
+import enUiSettingsPrivacy from "./catalogues/en/ui.settings.privacy.json";
 import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
@@ -205,6 +206,7 @@ import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeRename from "./catalogues/en/ui.teamBridge.rename.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
 import enUiTeamBridgeTrial from "./catalogues/en/ui.teamBridgeTrial.json";
+import enUiUpdatesDiskImage from "./catalogues/en/ui.updates.disk_image.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import enUiUpdatesService from "./catalogues/en/ui.updates.service.json";
 import enUiUpdatesStatus from "./catalogues/en/ui.updates.status.json";
@@ -371,6 +373,7 @@ import esUiSettingsModel from "./catalogues/es/ui.settings.model.json";
 import esUiSettingsModelProviderCallout from "./catalogues/es/ui.settings.model.provider_callout.json";
 import esUiSettingsNavigation from "./catalogues/es/ui.settings.navigation.json";
 import esUiSettingsNotifications from "./catalogues/es/ui.settings.notifications.json";
+import esUiSettingsPrivacy from "./catalogues/es/ui.settings.privacy.json";
 import esUiSettingsSearch from "./catalogues/es/ui.settings.search.json";
 import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
@@ -392,6 +395,7 @@ import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeRename from "./catalogues/es/ui.teamBridge.rename.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
 import esUiTeamBridgeTrial from "./catalogues/es/ui.teamBridgeTrial.json";
+import esUiUpdatesDiskImage from "./catalogues/es/ui.updates.disk_image.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import esUiUpdatesService from "./catalogues/es/ui.updates.service.json";
 import esUiUpdatesStatus from "./catalogues/es/ui.updates.status.json";
@@ -558,6 +562,7 @@ import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
 import frUiSettingsModelProviderCallout from "./catalogues/fr/ui.settings.model.provider_callout.json";
 import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
 import frUiSettingsNotifications from "./catalogues/fr/ui.settings.notifications.json";
+import frUiSettingsPrivacy from "./catalogues/fr/ui.settings.privacy.json";
 import frUiSettingsSearch from "./catalogues/fr/ui.settings.search.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
@@ -579,6 +584,7 @@ import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeRename from "./catalogues/fr/ui.teamBridge.rename.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
 import frUiTeamBridgeTrial from "./catalogues/fr/ui.teamBridgeTrial.json";
+import frUiUpdatesDiskImage from "./catalogues/fr/ui.updates.disk_image.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import frUiUpdatesService from "./catalogues/fr/ui.updates.service.json";
 import frUiUpdatesStatus from "./catalogues/fr/ui.updates.status.json";
@@ -745,6 +751,7 @@ import hiUiSettingsModel from "./catalogues/hi/ui.settings.model.json";
 import hiUiSettingsModelProviderCallout from "./catalogues/hi/ui.settings.model.provider_callout.json";
 import hiUiSettingsNavigation from "./catalogues/hi/ui.settings.navigation.json";
 import hiUiSettingsNotifications from "./catalogues/hi/ui.settings.notifications.json";
+import hiUiSettingsPrivacy from "./catalogues/hi/ui.settings.privacy.json";
 import hiUiSettingsSearch from "./catalogues/hi/ui.settings.search.json";
 import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
@@ -766,6 +773,7 @@ import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeRename from "./catalogues/hi/ui.teamBridge.rename.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
 import hiUiTeamBridgeTrial from "./catalogues/hi/ui.teamBridgeTrial.json";
+import hiUiUpdatesDiskImage from "./catalogues/hi/ui.updates.disk_image.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import hiUiUpdatesService from "./catalogues/hi/ui.updates.service.json";
 import hiUiUpdatesStatus from "./catalogues/hi/ui.updates.status.json";
@@ -932,6 +940,7 @@ import ruUiSettingsModel from "./catalogues/ru/ui.settings.model.json";
 import ruUiSettingsModelProviderCallout from "./catalogues/ru/ui.settings.model.provider_callout.json";
 import ruUiSettingsNavigation from "./catalogues/ru/ui.settings.navigation.json";
 import ruUiSettingsNotifications from "./catalogues/ru/ui.settings.notifications.json";
+import ruUiSettingsPrivacy from "./catalogues/ru/ui.settings.privacy.json";
 import ruUiSettingsSearch from "./catalogues/ru/ui.settings.search.json";
 import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
@@ -953,6 +962,7 @@ import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeRename from "./catalogues/ru/ui.teamBridge.rename.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
 import ruUiTeamBridgeTrial from "./catalogues/ru/ui.teamBridgeTrial.json";
+import ruUiUpdatesDiskImage from "./catalogues/ru/ui.updates.disk_image.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import ruUiUpdatesService from "./catalogues/ru/ui.updates.service.json";
 import ruUiUpdatesStatus from "./catalogues/ru/ui.updates.status.json";
@@ -1119,6 +1129,7 @@ import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
 import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
 import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
 import urUiSettingsNotifications from "./catalogues/ur/ui.settings.notifications.json";
+import urUiSettingsPrivacy from "./catalogues/ur/ui.settings.privacy.json";
 import urUiSettingsSearch from "./catalogues/ur/ui.settings.search.json";
 import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
@@ -1140,6 +1151,7 @@ import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeRename from "./catalogues/ur/ui.teamBridge.rename.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
 import urUiTeamBridgeTrial from "./catalogues/ur/ui.teamBridgeTrial.json";
+import urUiUpdatesDiskImage from "./catalogues/ur/ui.updates.disk_image.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import urUiUpdatesService from "./catalogues/ur/ui.updates.service.json";
 import urUiUpdatesStatus from "./catalogues/ur/ui.updates.status.json";
@@ -1306,6 +1318,7 @@ import viUiSettingsModel from "./catalogues/vi/ui.settings.model.json";
 import viUiSettingsModelProviderCallout from "./catalogues/vi/ui.settings.model.provider_callout.json";
 import viUiSettingsNavigation from "./catalogues/vi/ui.settings.navigation.json";
 import viUiSettingsNotifications from "./catalogues/vi/ui.settings.notifications.json";
+import viUiSettingsPrivacy from "./catalogues/vi/ui.settings.privacy.json";
 import viUiSettingsSearch from "./catalogues/vi/ui.settings.search.json";
 import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
@@ -1327,6 +1340,7 @@ import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeRename from "./catalogues/vi/ui.teamBridge.rename.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
 import viUiTeamBridgeTrial from "./catalogues/vi/ui.teamBridgeTrial.json";
+import viUiUpdatesDiskImage from "./catalogues/vi/ui.updates.disk_image.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import viUiUpdatesService from "./catalogues/vi/ui.updates.service.json";
 import viUiUpdatesStatus from "./catalogues/vi/ui.updates.status.json";
@@ -1493,6 +1507,7 @@ import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
 import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
 import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
 import zhCNUiSettingsNotifications from "./catalogues/zh-CN/ui.settings.notifications.json";
+import zhCNUiSettingsPrivacy from "./catalogues/zh-CN/ui.settings.privacy.json";
 import zhCNUiSettingsSearch from "./catalogues/zh-CN/ui.settings.search.json";
 import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
@@ -1514,6 +1529,7 @@ import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeRename from "./catalogues/zh-CN/ui.teamBridge.rename.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
 import zhCNUiTeamBridgeTrial from "./catalogues/zh-CN/ui.teamBridgeTrial.json";
+import zhCNUiUpdatesDiskImage from "./catalogues/zh-CN/ui.updates.disk_image.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 import zhCNUiUpdatesService from "./catalogues/zh-CN/ui.updates.service.json";
 import zhCNUiUpdatesStatus from "./catalogues/zh-CN/ui.updates.status.json";
@@ -1683,6 +1699,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
 	...enUiSettingsNotifications,
+	...enUiSettingsPrivacy,
 	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -1704,6 +1721,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeRename,
 	...enUiTeamBridgeThreadRow,
 	...enUiTeamBridgeTrial,
+	...enUiUpdatesDiskImage,
 	...enUiUpdatesPanel,
 	...enUiUpdatesService,
 	...enUiUpdatesStatus,
@@ -1878,6 +1896,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsModelProviderCallout,
 		...esUiSettingsNavigation,
 		...esUiSettingsNotifications,
+		...esUiSettingsPrivacy,
 		...esUiSettingsSearch,
 		...esUiSettingsShortcuts,
 		...esUiSettingsSpeech,
@@ -1899,6 +1918,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeRename,
 		...esUiTeamBridgeThreadRow,
 		...esUiTeamBridgeTrial,
+		...esUiUpdatesDiskImage,
 		...esUiUpdatesPanel,
 		...esUiUpdatesService,
 		...esUiUpdatesStatus,
@@ -2067,6 +2087,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsModelProviderCallout,
 		...frUiSettingsNavigation,
 		...frUiSettingsNotifications,
+		...frUiSettingsPrivacy,
 		...frUiSettingsSearch,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
@@ -2088,6 +2109,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeRename,
 		...frUiTeamBridgeThreadRow,
 		...frUiTeamBridgeTrial,
+		...frUiUpdatesDiskImage,
 		...frUiUpdatesPanel,
 		...frUiUpdatesService,
 		...frUiUpdatesStatus,
@@ -2256,6 +2278,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsModelProviderCallout,
 		...hiUiSettingsNavigation,
 		...hiUiSettingsNotifications,
+		...hiUiSettingsPrivacy,
 		...hiUiSettingsSearch,
 		...hiUiSettingsShortcuts,
 		...hiUiSettingsSpeech,
@@ -2277,6 +2300,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeRename,
 		...hiUiTeamBridgeThreadRow,
 		...hiUiTeamBridgeTrial,
+		...hiUiUpdatesDiskImage,
 		...hiUiUpdatesPanel,
 		...hiUiUpdatesService,
 		...hiUiUpdatesStatus,
@@ -2445,6 +2469,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsModelProviderCallout,
 		...ruUiSettingsNavigation,
 		...ruUiSettingsNotifications,
+		...ruUiSettingsPrivacy,
 		...ruUiSettingsSearch,
 		...ruUiSettingsShortcuts,
 		...ruUiSettingsSpeech,
@@ -2466,6 +2491,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeRename,
 		...ruUiTeamBridgeThreadRow,
 		...ruUiTeamBridgeTrial,
+		...ruUiUpdatesDiskImage,
 		...ruUiUpdatesPanel,
 		...ruUiUpdatesService,
 		...ruUiUpdatesStatus,
@@ -2634,6 +2660,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsModelProviderCallout,
 		...urUiSettingsNavigation,
 		...urUiSettingsNotifications,
+		...urUiSettingsPrivacy,
 		...urUiSettingsSearch,
 		...urUiSettingsShortcuts,
 		...urUiSettingsSpeech,
@@ -2655,6 +2682,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeRename,
 		...urUiTeamBridgeThreadRow,
 		...urUiTeamBridgeTrial,
+		...urUiUpdatesDiskImage,
 		...urUiUpdatesPanel,
 		...urUiUpdatesService,
 		...urUiUpdatesStatus,
@@ -2823,6 +2851,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsModelProviderCallout,
 		...viUiSettingsNavigation,
 		...viUiSettingsNotifications,
+		...viUiSettingsPrivacy,
 		...viUiSettingsSearch,
 		...viUiSettingsShortcuts,
 		...viUiSettingsSpeech,
@@ -2844,6 +2873,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeRename,
 		...viUiTeamBridgeThreadRow,
 		...viUiTeamBridgeTrial,
+		...viUiUpdatesDiskImage,
 		...viUiUpdatesPanel,
 		...viUiUpdatesService,
 		...viUiUpdatesStatus,
@@ -3012,6 +3042,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsModelProviderCallout,
 		...zhCNUiSettingsNavigation,
 		...zhCNUiSettingsNotifications,
+		...zhCNUiSettingsPrivacy,
 		...zhCNUiSettingsSearch,
 		...zhCNUiSettingsShortcuts,
 		...zhCNUiSettingsSpeech,
@@ -3033,6 +3064,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeRename,
 		...zhCNUiTeamBridgeThreadRow,
 		...zhCNUiTeamBridgeTrial,
+		...zhCNUiUpdatesDiskImage,
 		...zhCNUiUpdatesPanel,
 		...zhCNUiUpdatesService,
 		...zhCNUiUpdatesStatus,
@@ -3083,8 +3115,10 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
 	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
 	"ui.agentMessages.settings.allowlist.agent_id": undefined;
+	"ui.agentMessages.settings.allowlist.allow_explainer": undefined;
 	"ui.agentMessages.settings.allowlist.allowed_empty": undefined;
 	"ui.agentMessages.settings.allowlist.allowed_heading": undefined;
+	"ui.agentMessages.settings.allowlist.already_listed": undefined;
 	"ui.agentMessages.settings.allowlist.anyone": undefined;
 	"ui.agentMessages.settings.allowlist.blocked_empty": undefined;
 	"ui.agentMessages.settings.allowlist.blocked_heading": undefined;
@@ -3092,6 +3126,22 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.cue_listed_only": undefined;
 	"ui.agentMessages.settings.allowlist.cue_remove": undefined;
 	"ui.agentMessages.settings.allowlist.description": undefined;
+	"ui.agentMessages.settings.allowlist.directory_agent_owner": {
+		owner: string;
+	};
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": undefined;
+	"ui.agentMessages.settings.allowlist.directory_empty": undefined;
+	"ui.agentMessages.settings.allowlist.directory_empty_agent": undefined;
+	"ui.agentMessages.settings.allowlist.directory_error": undefined;
+	"ui.agentMessages.settings.allowlist.directory_label": {
+		organization: string;
+	};
+	"ui.agentMessages.settings.allowlist.directory_label_unnamed": undefined;
+	"ui.agentMessages.settings.allowlist.directory_loading": undefined;
+	"ui.agentMessages.settings.allowlist.directory_placeholder_agent": undefined;
+	"ui.agentMessages.settings.allowlist.directory_placeholder_person": undefined;
+	"ui.agentMessages.settings.allowlist.directory_same_name": undefined;
+	"ui.agentMessages.settings.allowlist.directory_stale": undefined;
 	"ui.agentMessages.settings.allowlist.identifier": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;
@@ -4948,10 +4998,17 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.chip.label": { mode: string };
+	"ui.chat.approval.chip.switch_to_ask": undefined;
+	"ui.chat.approval.chip.switch_to_auto": undefined;
+	"ui.chat.approval.escape.always_ask": undefined;
+	"ui.chat.approval.escape.always_ask_scope": undefined;
+	"ui.chat.approval.escape.ask_saved": undefined;
 	"ui.chat.approval.escape.bridge_latched": undefined;
 	"ui.chat.approval.escape.default_saved": undefined;
 	"ui.chat.approval.escape.default_saved_session_failed": { detail: string };
 	"ui.chat.approval.escape.global_default": { mode: string };
+	"ui.chat.approval.escape.guardrails_note": undefined;
 	"ui.chat.approval.escape.not_changed": undefined;
 	"ui.chat.approval.escape.pinned_run": { mode: string };
 	"ui.chat.approval.escape.session_override": { mode: string };
@@ -5016,6 +5073,7 @@ export type MessageParams = {
 	"ui.chat.ask_attest.refusal.not_consent_bearing": undefined;
 	"ui.chat.ask_attest.refusal.not_eligible": undefined;
 	"ui.chat.ask_attest.refusal.not_running": undefined;
+	"ui.chat.ask_attest.refusal.not_started": undefined;
 	"ui.chat.ask_attest.refusal.refused": undefined;
 	"ui.chat.ask_attest.refusal.retry": undefined;
 	"ui.chat.ask_attest.refusal.secret": undefined;
@@ -6190,13 +6248,18 @@ export type MessageParams = {
 	"ui.chat.fast_mode.turned_off": undefined;
 	"ui.chat.fast_mode.unsupported_stays_off": undefined;
 	"ui.chat.header.actions": undefined;
+	"ui.chat.header.all_tabs": undefined;
 	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
 	"ui.chat.header.archived_hint": undefined;
 	"ui.chat.header.auto_close_inactive_tabs": { minutes: number };
 	"ui.chat.header.cancel_rename": undefined;
 	"ui.chat.header.canonical_chat": undefined;
+	"ui.chat.header.close_all_tabs": undefined;
+	"ui.chat.header.close_other_tabs": undefined;
 	"ui.chat.header.close_run_details": undefined;
+	"ui.chat.header.close_tabs_left": undefined;
+	"ui.chat.header.close_tabs_right": undefined;
 	"ui.chat.header.conversation_name": undefined;
 	"ui.chat.header.copy_id": undefined;
 	"ui.chat.header.delete": undefined;
@@ -6204,6 +6267,7 @@ export type MessageParams = {
 	"ui.chat.header.new_chat": undefined;
 	"ui.chat.header.new_chat_with": { target: string };
 	"ui.chat.header.open_run_details": undefined;
+	"ui.chat.header.pin_tab": undefined;
 	"ui.chat.header.rename_conversation": undefined;
 	"ui.chat.header.restore_conversation": undefined;
 	"ui.chat.header.saving_conversation_name": undefined;
@@ -6217,6 +6281,7 @@ export type MessageParams = {
 	"ui.chat.header.temporary_toggle_off": undefined;
 	"ui.chat.header.temporary_toggle_on": undefined;
 	"ui.chat.header.transcript_display": undefined;
+	"ui.chat.header.unpin_tab": undefined;
 	"ui.chat.header_menu.close_asks": undefined;
 	"ui.chat.header_menu.close_browser": undefined;
 	"ui.chat.header_menu.close_canvas": undefined;
@@ -11416,7 +11481,6 @@ export type MessageParams = {
 		skipped: number;
 		pending: number;
 	};
-	"ui.onboarding.connect.intro": undefined;
 	"ui.onboarding.default_model.block.loading_models": undefined;
 	"ui.onboarding.default_model.block.pick_a_model": undefined;
 	"ui.onboarding.default_model.change": undefined;
@@ -11430,15 +11494,15 @@ export type MessageParams = {
 	"ui.onboarding.default_model.provider_fallback": undefined;
 	"ui.onboarding.default_model.tag.applied": undefined;
 	"ui.onboarding.default_model.tag.suggested": undefined;
-	"ui.onboarding.dialog.setup": undefined;
-	"ui.onboarding.extras.greeting_done": { name: string };
-	"ui.onboarding.extras.greeting_owed": { name: string };
-	"ui.onboarding.extras.next_meet": { name: string };
+	"ui.onboarding.intro.skip_hint": undefined;
+	"ui.onboarding.intro.subtitle": undefined;
+	"ui.onboarding.intro.title": undefined;
+	"ui.onboarding.meet.done": undefined;
+	"ui.onboarding.meet.owed": undefined;
 	"ui.onboarding.modal.action.back": undefined;
 	"ui.onboarding.modal.action.continue": undefined;
 	"ui.onboarding.modal.action.finish": undefined;
 	"ui.onboarding.modal.action.meet": { name: string };
-	"ui.onboarding.modal.action.skip": undefined;
 	"ui.onboarding.modal.action.skip_for_now": undefined;
 	"ui.onboarding.modal.action.skip_to_chat": undefined;
 	"ui.onboarding.modal.error.aida_open_failed": { name: string };
@@ -11446,9 +11510,10 @@ export type MessageParams = {
 	"ui.onboarding.modal.steps_total": { total: number };
 	"ui.onboarding.modal.title.connect_provider": undefined;
 	"ui.onboarding.modal.title.default_model": undefined;
-	"ui.onboarding.modal.title.extras": undefined;
-	"ui.onboarding.modal.title.extras_with_name": { name: string };
 	"ui.onboarding.modal.title.fallback": undefined;
+	"ui.onboarding.modal.title.meet": { name: string };
+	"ui.onboarding.modal.title.search": undefined;
+	"ui.onboarding.search.block.radient": undefined;
 	"ui.onboarding.search.each_key_saved": undefined;
 	"ui.onboarding.search.intro": undefined;
 	"ui.onboarding.search.mode.free": undefined;
@@ -11456,6 +11521,12 @@ export type MessageParams = {
 	"ui.onboarding.search.mode.keys": undefined;
 	"ui.onboarding.search.mode.keys_detail": undefined;
 	"ui.onboarding.search.mode.label": undefined;
+	"ui.onboarding.search.mode.not_needed": undefined;
+	"ui.onboarding.search.mode.radient": undefined;
+	"ui.onboarding.search.mode.radient_action": undefined;
+	"ui.onboarding.search.mode.radient_detail": undefined;
+	"ui.onboarding.search.mode.radient_done": undefined;
+	"ui.onboarding.search.mode.radient_done_detail": undefined;
 	"ui.onboarding.search.recommended": undefined;
 	"ui.onboarding.search.row.get_your": { name: string };
 	"ui.onboarding.search.row.not_saved": { message: string };
@@ -11463,6 +11534,34 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.onboarding.signin.announce_connected": { brand: string };
+	"ui.onboarding.signin.chatgpt.action": undefined;
+	"ui.onboarding.signin.claude.action": undefined;
+	"ui.onboarding.signin.connected": undefined;
+	"ui.onboarding.signin.divider": undefined;
+	"ui.onboarding.signin.error.detail": undefined;
+	"ui.onboarding.signin.error.retry": undefined;
+	"ui.onboarding.signin.error.title": undefined;
+	"ui.onboarding.signin.more": undefined;
+	"ui.onboarding.signin.more_detail": undefined;
+	"ui.onboarding.signin.radient.action": undefined;
+	"ui.onboarding.signin.radient.action_add": undefined;
+	"ui.onboarding.signin.radient.benefit.fallbacks": undefined;
+	"ui.onboarding.signin.radient.benefit.routing": undefined;
+	"ui.onboarding.signin.radient.benefit.search": undefined;
+	"ui.onboarding.signin.radient.benefit.skills": undefined;
+	"ui.onboarding.signin.radient.credit": undefined;
+	"ui.onboarding.signin.radient.eyebrow": undefined;
+	"ui.onboarding.signin.radient.eyebrow_in_addition": undefined;
+	"ui.onboarding.signin.radient.eyebrow_signed_in": undefined;
+	"ui.onboarding.signin.radient.nudge": { brands: string };
+	"ui.onboarding.signin.subscriptions_note": undefined;
+	"ui.onboarding.signin.subtitle": undefined;
+	"ui.onboarding.signin.subtitle_connected": undefined;
+	"ui.onboarding.signin.subtitle_radient_connected": undefined;
+	"ui.onboarding.signin.title": undefined;
+	"ui.onboarding.signin.title_connected": undefined;
+	"ui.onboarding.signin.waiting": undefined;
 	"ui.onboarding.tour.action.back": undefined;
 	"ui.onboarding.tour.action.close": undefined;
 	"ui.onboarding.tour.action.finish": undefined;
@@ -14043,6 +14142,12 @@ export type MessageParams = {
 	"ui.settings.notifications.volume.reset": undefined;
 	"ui.settings.notifications.volume.system": undefined;
 	"ui.settings.notifications.volume.valuetext": { value: number };
+	"ui.settings.privacy.description": undefined;
+	"ui.settings.privacy.launch_off": undefined;
+	"ui.settings.privacy.save_failed": undefined;
+	"ui.settings.privacy.title": undefined;
+	"ui.settings.privacy.usage_explanation": undefined;
+	"ui.settings.privacy.usage_label": undefined;
 	"ui.settings.search.empty.shortcut": { shortcut: string };
 	"ui.settings.search.empty.summary": undefined;
 	"ui.settings.search.field.label": undefined;
@@ -14558,6 +14663,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.deliver_until": { time: string };
 	"ui.teamBridge.holds.delivering": undefined;
 	"ui.teamBridge.holds.details_unavailable": undefined;
+	"ui.teamBridge.holds.details_unavailable_hide": undefined;
 	"ui.teamBridge.holds.discard": undefined;
 	"ui.teamBridge.holds.discard_label": { sender: string };
 	"ui.teamBridge.holds.discard_unread_label": { reference: string };
@@ -15165,6 +15271,14 @@ export type MessageParams = {
 	"ui.teamBridgeTrial.paused.note": { date: string };
 	"ui.teamBridgeTrial.paused.note_member": { date: string };
 	"ui.teamBridgeTrial.subscribe": undefined;
+	"ui.updates.disk_image.heading": undefined;
+	"ui.updates.disk_image.message": undefined;
+	"ui.updates.disk_image.message_version": { version: string };
+	"ui.updates.disk_image.move_button": undefined;
+	"ui.updates.disk_image.move_exists": undefined;
+	"ui.updates.disk_image.move_failed": undefined;
+	"ui.updates.disk_image.moving": undefined;
+	"ui.updates.disk_image.remedy": undefined;
 	"ui.updates.panel.artifact.damaged.message": undefined;
 	"ui.updates.panel.artifact.damaged.message_version": { version: string };
 	"ui.updates.panel.artifact.metadata_missing.message": undefined;

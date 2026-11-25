@@ -432,16 +432,20 @@ async function loadWorkspaceTabs(require) {
 		packages: "external",
 		jsx: "automatic",
 		define: { "import.meta.env": "{}" },
-		alias: {
-			"@shared/components/ui":
-				"./src/renderer/src/shared/components/ui/dropdown-menu.tsx",
-		},
 		tsconfig: "tsconfig.app.json",
 		write: false,
 		plugins: [
 			{
 				name: "workspace-fixture-ports",
 				setup(b) {
+					// The barrel exactly, not by prefix (esbuild `alias` is a prefix
+					// match and would also rewrite `@shared/components/ui/context-menu`).
+					b.onResolve({ filter: /^@shared\/components\/ui$/ }, () => ({
+						path: join(
+							repo,
+							"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+						),
+					}));
 					b.onResolve(
 						{
 							filter:
@@ -451,7 +455,13 @@ async function loadWorkspaceTabs(require) {
 					);
 					b.onLoad({ filter: /.*/, namespace: "ports" }, ({ path }) => ({
 						contents: path.endsWith("canonical-sessions-store")
-							? "export const useCanonicalSessionsStore = (select) => select({sessions: []});"
+							? // Mirrors the real store's shape for every field WorkspaceTabs
+								// selects: `head` is always present there (initial state
+								// carries `at: 0`, every write spreads `...state.head`).
+								// `at: 1` is a SETTLED catalogue with no rows, so an
+								// unnamed tab falls back to "New chat" as the click
+								// assertions below expect, not the loading label.
+								"export const useCanonicalSessionsStore = (select) => select({sessions: [], head: {at: 1}, error: null});"
 							: "export const useMeasuredBrowserViewPanel = () => () => {};",
 					}));
 				},
@@ -737,8 +747,12 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			onAutoCloseChange() {},
 			focusRequested: false,
 			onFocusHandled() {},
+			// Required by WorkspaceTabs: it reports each title it sees so the
+			// saved strip can remember names across a relaunch.
+			onTitleSeen() {},
 			onOpen() {},
 			onClose() {},
+			onCloseMany() {},
 			onPin() {},
 			onMove() {},
 		};
@@ -776,7 +790,7 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		await clickNode(close);
 		await clickNode(trigger);
 		await keydown(trigger, "ArrowDown");
-		const menu = body.querySelector("[data-workspace-tab-menu]");
+		const menu = body.querySelector("[data-workspace-strip-menu]");
 		assert.ok(
 			menu && !nav.contains(menu),
 			"this is the real separately portaled menu",
@@ -828,7 +842,7 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		// has no layout, so supply a synthetic scrollbox and check the lock lets
 		// wheel through inside it without letting it scroll the page underneath.
 		await keydown(trigger, "ArrowDown");
-		const reopened = body.querySelector("[data-workspace-tab-menu]");
+		const reopened = body.querySelector("[data-workspace-strip-menu]");
 		assert.ok(
 			reopened.classList.contains(
 				"max-h-[var(--radix-dropdown-menu-content-available-height)]",
@@ -900,8 +914,18 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 				);
 			},
 		});
-		await keydown(trigger, "ArrowDown");
-		const pinAction = body.querySelector("[data-workspace-pin]");
+		// Pin is a per-tab act now: it lives in the tab's own in-tab menu, which
+		// portals outside the strip and must carry the same privacy boundary.
+		const tabMore = nav.querySelector(
+			"[data-workspace-tab][data-active] [data-workspace-tab-more]",
+		);
+		await keydown(tabMore, "ArrowDown");
+		const tabMenu = body.querySelector("[data-workspace-tab-menu]");
+		assert.ok(tabMenu && !nav.contains(tabMenu));
+		assert.ok(tabMenu.classList.contains("ph-mask"));
+		const pinAction = tabMenu.querySelector(
+			'[data-workspace-tab-action="pin"]',
+		);
 		await act(() => pinAction.focus());
 		await keydown(pinAction, "Enter");
 		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));

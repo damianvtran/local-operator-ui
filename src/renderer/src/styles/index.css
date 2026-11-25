@@ -4217,10 +4217,15 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	display: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] {
-	/* With the normal 8px gutter the first tab and frame share an edge.
-	 * The selector's glyph already sits 4px into its button, so pay only
-	 * the other half of the tab label's 8px inset here. */
-	padding-inline-start: 4px;
+	/* END ONLY. The start edge belongs to the row's `ps-6` utility in
+	 * chat-header.tsx: the title leads the row, and the operator asked for it
+	 * to sit on the column's left inset (`CHAT_COLUMN_INSET`, 24px), not 4px
+	 * off the frame (PR #2099, 2026-11-25: "too tight to the left"). This rule
+	 * is unlayered, so any start padding here silently beats the utility -
+	 * which is how the first fix measured 4px. `scripts/lane-leading.test.mjs`
+	 * fails if a start padding comes back here. The trailing 12px is
+	 * unchanged from #2043's header alignment (fc4021f) and still wins over
+	 * the row's `pe-4` inside the framed workspace. */
 	padding-inline-end: 12px;
 }
 [data-workspace-inset] {
@@ -4261,6 +4266,30 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * filled current rows and pill buttons everywhere but Chat. They now apply in
  * the shell on every route; only the panel rail - which only Chat mounts - keeps
  * the Chat gate. `scripts/chat-sidebar-route-invariant.test.mjs` holds this.
+ *
+ * THE RESETS TAKE THE RESTING PAINT, NEVER THE POINTER'S (v0.63.0 regression,
+ * operator: "we seem to have lost the highlight interaction on hover on the
+ * left sidebar items"). These rules are UNLAYERED, and an unlayered declaration
+ * beats every `@layer utilities` one whatever its specificity - so while they
+ * matched a row at all times, the rows' own `hover:bg-row-hover` (and a current
+ * row's `hover:bg-row-selected`) could never paint: pinned, chat, Agents and
+ * Teams rows all went dead under the pointer. What the inset removes is the
+ * pill chrome on icon buttons and the filled CURRENT row at rest; the pointer's
+ * ground is the component's to draw. So:
+ *   - a `[data-chat-row]` button (the row itself, on entity/launcher/temporary
+ *     rows) and a `[data-sidebar-row-button]` (a full-width text row that is not
+ *     a chat: "Create team", "Show N more", QA round 1 Q1-1) are released from
+ *     the reset while hovered; icon buttons inside a row (new chat, history,
+ *     pin, more) keep it - no pills. A data attribute rather than a class match,
+ *     so a respelled utility cannot silently re-break it (review R3);
+ *   - a row's BOX is reset only at rest (`:not(:hover)`), and the menu's held
+ *     ground (`bg-row-hover` while the row's menu is open) is never reset;
+ *   - where the box paints, its row button stays transparent even while hovered
+ *     (a session box carrying `hover:bg-row-hover`, any current box, a staged
+ *     entity wrapper), so translucent glass grounds never stack two ink layers;
+ *   - a dragged row is still never reset (`rowDragging` owns its ground).
+ * Keyboard focus is the accent outline below, which these resets never touched.
+ * `scripts/sidebar-row-hover.test.mjs` holds this.
  */
 [data-workspace-inset]
 	> [data-chat-region="header"]
@@ -4273,20 +4302,45 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 		[data-workspace-launcher],
 		[data-session-row]
 	)
-	button:not([data-lo-floating] *) {
+	button:not([data-lo-floating] *):not(
+		:is([data-chat-row], [data-sidebar-row-button]):hover
+	) {
 	background: transparent;
 	border-width: 0;
 	box-shadow: none;
 }
 [data-workspace-shell]
 	:is(
-		[data-session-row]:not([data-dragging]),
-		[data-temporary-row] > [data-chat-row][aria-current="page"],
-		[data-workspace-current]:not([data-dragging]),
+		[data-session-row]:not([data-dragging]):not(:hover):not(
+				[class~="bg-row-hover"]
+			),
+		[data-session-row][class~="hover:bg-row-hover"] > [data-chat-row],
+		[data-temporary-row] > [data-chat-row][aria-current="page"]:not(:hover),
+		[data-workspace-current]:not([data-dragging]):not(:hover),
 		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
-		[data-workspace-launcher] [data-entity] > div:first-child
+		[data-workspace-launcher] [data-entity] > div:first-child:not(:hover),
+		[data-entity] > [data-entity-staged] > [data-chat-row]
 	) {
 	background: transparent;
+}
+/*
+ * THE CURRENT ROW HOVERS LIKE EVERY OTHER ROW (design round 1, D5). The inset
+ * resets a current row's fill at rest (above), which left `rowCurrent`'s
+ * `hover:bg-row-selected` as the only ground it ever painted: the selected fill
+ * appeared under the pointer alone, a stronger step than any other row's hover.
+ * Here the hovered current box takes `row-hover`, the same ground as its
+ * neighbours. It is ONE layer: the box paints, and the rule above keeps its row
+ * button transparent (a temporary row has no box, so its button is the layer).
+ * A dragged row is excluded - `rowDragging` owns that ground.
+ * `scripts/sidebar-row-hover.test.mjs` holds this.
+ */
+[data-workspace-shell]
+	:is(
+		[data-workspace-current]:not([data-dragging]):hover,
+		[data-temporary-row] > [data-chat-row][aria-current="page"]:hover,
+		[data-workspace-launcher] [data-entity] > [data-entity-staged]:hover
+	) {
+	background-color: var(--color-row-hover);
 }
 [data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
 [data-workspace-launcher] button:focus-visible,
@@ -4359,12 +4413,21 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 [data-workspace-pinned]:has(+ [data-workspace-regular]) {
 	max-width: 50%;
 }
+/*
+ * THE ACTIVE TAB READS AS ACTIVE (operator, 2026-11-24, PR #2091: "Strengthen
+ * the selected-tab treatment so it clearly reads as active against its
+ * neighbours, in both light and dark themes and with translucency on"). The
+ * old pair - every tab on a canvas/surface mix, the active one on a 44% tint of
+ * `row-selected` - differed by a few RGB steps, and under translucency both
+ * blended into the strip. So the contrast is now made by ABSENCE as much as by
+ * fill: an inactive tab paints nothing at rest (muted ink) and takes the
+ * sidebar's `row-hover` only under the pointer; the active tab alone carries an
+ * opaque `row-selected` ground, full ink at weight 500, and a 2px accent rule
+ * along its bottom edge. Tokens only, no border or pill outline (design
+ * direction). `scripts/workspace-tabs.test.mjs` holds this.
+ */
 [data-workspace-tab] {
-	--workspace-tab-fill: color-mix(
-		in oklab,
-		var(--color-canvas) 48%,
-		var(--color-surface)
-	);
+	--workspace-tab-fill: transparent;
 	position: relative;
 	isolation: isolate;
 	display: flex;
@@ -4387,13 +4450,24 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	background: var(--workspace-tab-fill);
 	pointer-events: none;
 }
+[data-workspace-tab]:not([data-active]):hover {
+	--workspace-tab-fill: var(--color-row-hover);
+}
 [data-workspace-tab][data-active] {
-	--workspace-tab-fill: color-mix(
-		in oklab,
-		var(--color-row-selected) 44%,
-		var(--color-surface)
-	);
+	--workspace-tab-fill: var(--color-row-selected);
 	color: var(--color-ink);
+}
+/* The indicator sits inside the paint's 2px inset, inset 8px from each end so
+ * it reads as a mark on the tab, not a strip-wide underline. */
+[data-workspace-tab][data-active]::after {
+	content: "";
+	position: absolute;
+	inset-block-end: 2px;
+	inset-inline: 8px;
+	height: 2px;
+	border-radius: 1px;
+	background: var(--color-accent);
+	pointer-events: none;
 }
 [data-workspace-tab][data-active] > button[aria-current] {
 	font-weight: 500;
@@ -4446,4 +4520,69 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
  * or next to whole regions. Hidden groups do not leave their own margin. */
 .sidebar-section-stack > :not(:last-child) {
 	margin-block-end: calc(var(--spacing) * 4);
+}
+
+/*
+ * THE DIALOG SURFACE - the one surface every centred popup dialog wears.
+ *
+ * Applied by `DialogContent` (shared/components/ui/dialog.tsx) and nowhere else:
+ * a popup that wants this look renders through the shared Dialog rather than
+ * copying these rules. The first-run stage's glass panel is where the treatment
+ * came from (operator, 2026-11-24: "the subtle gradient and soft outline, darker
+ * backdrop ... it looks much nicer"), adapted to an OPAQUE floating panel:
+ *
+ *   - A subtle vertical gradient over the `elevated` ground: a faint sheen at
+ *     the top in dark palettes, a faint settling tint toward `sunken` at the
+ *     bottom in light ones (white over a near-white plate would show nothing).
+ *     Both stay within a few percent of `elevated`, so every ink keeps its
+ *     floor against the plate (`scripts/dialog-surface.test.mjs` measures the
+ *     worst stop across the shipped palettes).
+ *   - A soft outline and a top specular edge, drawn as INSET shadows through
+ *     Tailwind's own `--tw-inset-*` slots. That composes with `shadow-overlay`
+ *     instead of replacing it (O-7's "one shadow" still holds: the contact layer
+ *     and ambient are untouched), and it declares no `border`, so the floating-
+ *     surface rules (O-1..O-4) are unchanged. The outline is deliberately an
+ *     ink at single-digit alpha: this is the soft edge the operator asked for,
+ *     not the lighter-than-surface stroke the floating-surface rules removed
+ *     from menus, and it stays OFF every other floating surface (popovers,
+ *     menus, sheets, toasts).
+ *   - Forced colours drops the sheen; the existing `[data-lo-floating]`
+ *     forced-colours edge is the boundary there.
+ *
+ * `.lo-dialog-scrim` is the darker backdrop for the same dialogs only: the
+ * palette's `scrim` composited a step further toward black, so the dialog reads
+ * as the one thing in focus. Sheets keep the plain `bg-scrim`.
+ */
+/* In `components`, so a caller's utility (an overlay's `bg-transparent`, a
+   panel's own ground) still wins over the default, as it did before. */
+@layer components {
+	.lo-dialog-surface {
+		background-image: linear-gradient(
+			to bottom,
+			light-dark(transparent, color-mix(in oklab, white 4%, transparent)),
+			transparent 7rem,
+			transparent 60%,
+			light-dark(
+				color-mix(in oklab, var(--lo-sunken) 35%, transparent),
+				transparent
+			)
+		);
+		--tw-inset-shadow: inset 0 1px 0
+			light-dark(
+				color-mix(in oklab, white 70%, transparent),
+				color-mix(in oklab, white 7%, transparent)
+			);
+		--tw-inset-ring-shadow: inset 0 0 0 1px
+			color-mix(in oklab, var(--lo-ink) 7%, transparent);
+	}
+
+	.lo-dialog-scrim {
+		background-color: color-mix(in srgb, var(--lo-scrim), black 30%);
+	}
+}
+
+@media (forced-colors: active) {
+	.lo-dialog-surface {
+		background-image: none;
+	}
 }
