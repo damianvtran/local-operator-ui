@@ -11,6 +11,7 @@ import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@shared/components/ui/context-menu";
 import { t } from "@shared/i18n";
@@ -18,6 +19,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { ChevronDown, Ellipsis, Pin, X } from "lucide-react";
 import {
 	type DragEvent,
+	Fragment,
 	type KeyboardEvent,
 	useLayoutEffect,
 	useRef,
@@ -49,6 +51,11 @@ type Props = {
 	onPin: (key: string) => void;
 	onMove: (from: string, to: string) => void;
 };
+
+/** A separator goes before the first entry of each group after the first (D3). */
+function startsGroup(entries: readonly { group: string }[], index: number) {
+	return index > 0 && entries[index - 1].group !== entries[index].group;
+}
 
 export function WorkspaceTabs({
 	activeKey,
@@ -144,6 +151,10 @@ export function WorkspaceTabs({
 	 * need their own item components, so this returns data rather than JSX and
 	 * each opener maps it onto its own item; the labels, enablement and actions
 	 * cannot drift between them. Left/right follow the rendered direction.
+	 *
+	 * `group` is the menu's grouping, Pin | Move left, Move right | the five
+	 * closes (design round 1, D3): the grouping browser tab menus use, drawn with
+	 * the menu's own separator by both openers (`menuGroupBreaks`).
 	 */
 	const tabMenuEntries = (tab: WorkspaceTab) => {
 		const rtl = stripRtl();
@@ -151,6 +162,7 @@ export function WorkspaceTabs({
 			const keys = workspaceBulkCloseKeys(tabs, tab.key, action, rtl);
 			return {
 				id: `close-${action}`,
+				group: "close",
 				label,
 				disabled: keys.length === 0,
 				run: () => onCloseMany(keys),
@@ -160,6 +172,7 @@ export function WorkspaceTabs({
 			const next = physicalNeighbor(tab, delta, rtl);
 			return {
 				id: delta === -1 ? "move-left" : "move-right",
+				group: "move",
 				label: t(
 					delta === -1
 						? "ui.browser.chrome.move_left"
@@ -172,6 +185,7 @@ export function WorkspaceTabs({
 		return [
 			{
 				id: "pin",
+				group: "pin",
 				label: t(
 					tab.pinned ? "ui.chat.header.unpin_tab" : "ui.chat.header.pin_tab",
 				),
@@ -182,6 +196,7 @@ export function WorkspaceTabs({
 			move(1),
 			{
 				id: "close",
+				group: "close",
 				label: t("ui.browser.browser_tab_strip.close_tab"),
 				disabled: false,
 				run: () => onClose(tab),
@@ -275,15 +290,17 @@ export function WorkspaceTabs({
 							?.focus();
 					}}
 				>
-					{tabMenuEntries(tab).map((entry) => (
-						<ContextMenuItem
-							key={entry.id}
-							data-workspace-tab-action={entry.id}
-							disabled={entry.disabled}
-							onSelect={runTabEntry(entry.run)}
-						>
-							{entry.label}
-						</ContextMenuItem>
+					{tabMenuEntries(tab).map((entry, index, entries) => (
+						<Fragment key={entry.id}>
+							{startsGroup(entries, index) && <ContextMenuSeparator />}
+							<ContextMenuItem
+								data-workspace-tab-action={entry.id}
+								disabled={entry.disabled}
+								onSelect={runTabEntry(entry.run)}
+							>
+								{entry.label}
+							</ContextMenuItem>
+						</Fragment>
 					))}
 				</ContextMenuContent>
 			</ContextMenu>
@@ -357,41 +374,54 @@ export function WorkspaceTabs({
 				 * The tab's own actions live INSIDE the tab, beside its close button, so
 				 * the control reads as this tab's and not the strip's (operator,
 				 * 2026-11-24: the strip-end ellipsis looked like an all-tabs menu yet
-				 * acted on the selected tab). Shown on the active tab and revealed on
-				 * hover/focus of others by CSS, without changing the tab's width.
+				 * acted on the selected tab).
+				 *
+				 * MOUNTED ON THE ACTIVE TAB ONLY (design round 1, D2; review R2). An
+				 * opacity-hidden trigger on every inactive tab kept its 24px in layout
+				 * - a 42px dead gap between title and close - and added a third Tab stop
+				 * per tab. Inactive tabs reach the same entries by right-click,
+				 * Shift+F10 and the ContextMenu key (the ContextMenu around this row).
+				 * The width it adds is the active tab's own, as a browser's active tab
+				 * shows controls the others do not: the other tabs keep their widths,
+				 * and the `max-width` cap means a long title truncates rather than
+				 * growing the tab. `scripts/workspace-tabs.test.mjs` holds this.
 				 */}
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<button
-							type="button"
-							data-workspace-tab-more=""
-							className="relative grid size-6 shrink-0 place-items-center rounded-sm"
-						>
-							<Ellipsis aria-hidden="true" className="size-3" />
-							<span className="sr-only">
-								{t("ui.browser.browser_tab_strip.tab_actions", {
-									title: title(tab),
-								})}
-							</span>
-						</button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						align="start"
-						data-workspace-tab-menu=""
-						{...menuContentProps}
-					>
-						{tabMenuEntries(tab).map((entry) => (
-							<DropdownMenuItem
-								key={entry.id}
-								data-workspace-tab-action={entry.id}
-								disabled={entry.disabled}
-								onSelect={runTabEntry(entry.run)}
+				{active && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								data-workspace-tab-more=""
+								className="relative grid size-6 shrink-0 place-items-center rounded-sm"
 							>
-								{entry.label}
-							</DropdownMenuItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+								<Ellipsis aria-hidden="true" className="size-3" />
+								<span className="sr-only">
+									{t("ui.browser.browser_tab_strip.tab_actions", {
+										title: title(tab),
+									})}
+								</span>
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="start"
+							data-workspace-tab-menu=""
+							{...menuContentProps}
+						>
+							{tabMenuEntries(tab).map((entry, index, entries) => (
+								<Fragment key={entry.id}>
+									{startsGroup(entries, index) && <DropdownMenuSeparator />}
+									<DropdownMenuItem
+										data-workspace-tab-action={entry.id}
+										disabled={entry.disabled}
+										onSelect={runTabEntry(entry.run)}
+									>
+										{entry.label}
+									</DropdownMenuItem>
+								</Fragment>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<button
 					type="button"
 					data-workspace-close=""

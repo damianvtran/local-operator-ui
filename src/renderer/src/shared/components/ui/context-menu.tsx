@@ -141,3 +141,21 @@ export const ContextMenuItem = forwardRef<
 	/>
 ));
 ContextMenuItem.displayName = "ContextMenuItem";
+
+/*
+ * The group rule, spelled exactly as `DropdownMenuSeparator` (inset `mx-2` to the
+ * item labels, `divider-inset` hairline; that component carries the reasons), for
+ * the same copy-verbatim rule as `panelClasses` above: a menu that opens by
+ * right-click and its twin opened from a control must draw one divider.
+ */
+export const ContextMenuSeparator = forwardRef<
+	ElementRef<typeof ContextMenuPrimitive.Separator>,
+	ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+	<ContextMenuPrimitive.Separator
+		ref={ref}
+		className={cn("mx-2 my-1 h-px divider-inset", className)}
+		{...props}
+	/>
+));
+ContextMenuSeparator.displayName = "ContextMenuSeparator";

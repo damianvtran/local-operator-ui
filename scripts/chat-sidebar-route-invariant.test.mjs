@@ -136,10 +136,12 @@ test("Install all built-in agents is borderless at source, not by a Chat-only ru
 
 test("the sidebar's no-fill rules key off the sidebar, not the Chat route", () => {
 	assert.deepEqual(chatGatedSidebarSelectors(css), []);
-	// The rules still exist, unconditionally scoped to the shell.
+	// The rules still exist, unconditionally scoped to the shell. The hover
+	// exemption covers chat rows and the full-width text rows marked
+	// `data-sidebar-row-button` (QA round 1 Q1-1 on PR #2091).
 	assert.match(
 		css,
-		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\):not\(\[data-chat-row\]:hover\) \{/,
+		/\[data-workspace-shell\]\s*:is\(\s*\[data-sidebar-band\],\s*\[data-entity\],\s*\[data-workspace-launcher\],\s*\[data-session-row\]\s*\)\s*button:not\(\[data-lo-floating\] \*\):not\(\s*:is\(\[data-chat-row\], \[data-sidebar-row-button\]\):hover\s*\) \{/,
 	);
 	assert.match(
 		css,

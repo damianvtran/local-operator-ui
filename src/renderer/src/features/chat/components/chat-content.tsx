@@ -2675,7 +2675,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				identity={identity}
 				deviceSlot={deviceSlot}
 				draftTargetSlot={draftTargetSlot}
-				titleInWorkspaceTab={Boolean(workspaceTabs)}
 				renameSessionId={renameSessionId}
 				renameSlotReserved={renameSlotReserved}
 				/*

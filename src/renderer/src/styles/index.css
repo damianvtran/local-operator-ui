@@ -4272,8 +4272,11 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * pill chrome on icon buttons and the filled CURRENT row at rest; the pointer's
  * ground is the component's to draw. So:
  *   - a `[data-chat-row]` button (the row itself, on entity/launcher/temporary
- *     rows) is released from the reset while hovered; icon buttons inside a row
- *     (new chat, history, pin, more) keep it - no pills;
+ *     rows) and a `[data-sidebar-row-button]` (a full-width text row that is not
+ *     a chat: "Create team", "Show N more", QA round 1 Q1-1) are released from
+ *     the reset while hovered; icon buttons inside a row (new chat, history,
+ *     pin, more) keep it - no pills. A data attribute rather than a class match,
+ *     so a respelled utility cannot silently re-break it (review R3);
  *   - a row's BOX is reset only at rest (`:not(:hover)`), and the menu's held
  *     ground (`bg-row-hover` while the row's menu is open) is never reset;
  *   - where the box paints, its row button stays transparent even while hovered
@@ -4294,7 +4297,9 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 		[data-workspace-launcher],
 		[data-session-row]
 	)
-	button:not([data-lo-floating] *):not([data-chat-row]:hover) {
+	button:not([data-lo-floating] *):not(
+		:is([data-chat-row], [data-sidebar-row-button]):hover
+	) {
 	background: transparent;
 	border-width: 0;
 	box-shadow: none;
@@ -4309,9 +4314,28 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 		[data-workspace-current]:not([data-dragging]):not(:hover),
 		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
 		[data-workspace-launcher] [data-entity] > div:first-child:not(:hover),
-		[data-entity] > div[class~="bg-row-selected"] > [data-chat-row]
+		[data-entity] > [data-entity-staged] > [data-chat-row]
 	) {
 	background: transparent;
+}
+/*
+ * THE CURRENT ROW HOVERS LIKE EVERY OTHER ROW (design round 1, D5). The inset
+ * resets a current row's fill at rest (above), which left `rowCurrent`'s
+ * `hover:bg-row-selected` as the only ground it ever painted: the selected fill
+ * appeared under the pointer alone, a stronger step than any other row's hover.
+ * Here the hovered current box takes `row-hover`, the same ground as its
+ * neighbours. It is ONE layer: the box paints, and the rule above keeps its row
+ * button transparent (a temporary row has no box, so its button is the layer).
+ * A dragged row is excluded - `rowDragging` owns that ground.
+ * `scripts/sidebar-row-hover.test.mjs` holds this.
+ */
+[data-workspace-shell]
+	:is(
+		[data-workspace-current]:not([data-dragging]):hover,
+		[data-temporary-row] > [data-chat-row][aria-current="page"]:hover,
+		[data-workspace-launcher] [data-entity] > [data-entity-staged]:hover
+	) {
+	background-color: var(--color-row-hover);
 }
 [data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
 [data-workspace-launcher] button:focus-visible,
@@ -4384,12 +4408,21 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 [data-workspace-pinned]:has(+ [data-workspace-regular]) {
 	max-width: 50%;
 }
+/*
+ * THE ACTIVE TAB READS AS ACTIVE (operator, 2026-11-24, PR #2091: "Strengthen
+ * the selected-tab treatment so it clearly reads as active against its
+ * neighbours, in both light and dark themes and with translucency on"). The
+ * old pair - every tab on a canvas/surface mix, the active one on a 44% tint of
+ * `row-selected` - differed by a few RGB steps, and under translucency both
+ * blended into the strip. So the contrast is now made by ABSENCE as much as by
+ * fill: an inactive tab paints nothing at rest (muted ink) and takes the
+ * sidebar's `row-hover` only under the pointer; the active tab alone carries an
+ * opaque `row-selected` ground, full ink at weight 500, and a 2px accent rule
+ * along its bottom edge. Tokens only, no border or pill outline (design
+ * direction). `scripts/workspace-tabs.test.mjs` holds this.
+ */
 [data-workspace-tab] {
-	--workspace-tab-fill: color-mix(
-		in oklab,
-		var(--color-canvas) 48%,
-		var(--color-surface)
-	);
+	--workspace-tab-fill: transparent;
 	position: relative;
 	isolation: isolate;
 	display: flex;
@@ -4412,28 +4445,27 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	background: var(--workspace-tab-fill);
 	pointer-events: none;
 }
+[data-workspace-tab]:not([data-active]):hover {
+	--workspace-tab-fill: var(--color-row-hover);
+}
 [data-workspace-tab][data-active] {
-	--workspace-tab-fill: color-mix(
-		in oklab,
-		var(--color-row-selected) 44%,
-		var(--color-surface)
-	);
+	--workspace-tab-fill: var(--color-row-selected);
 	color: var(--color-ink);
+}
+/* The indicator sits inside the paint's 2px inset, inset 8px from each end so
+ * it reads as a mark on the tab, not a strip-wide underline. */
+[data-workspace-tab][data-active]::after {
+	content: "";
+	position: absolute;
+	inset-block-end: 2px;
+	inset-inline: 8px;
+	height: 2px;
+	border-radius: 1px;
+	background: var(--color-accent);
+	pointer-events: none;
 }
 [data-workspace-tab][data-active] > button[aria-current] {
 	font-weight: 500;
-}
-/* The per-tab ellipsis belongs to its tab: always shown on the active tab,
- * revealed on hover/focus of another (and while its menu is open). Opacity,
- * not display, so revealing it never reflows the strip; the slot stays a real
- * focus/click target, and focusing it reveals it via :focus-within. */
-[data-workspace-tab]:not([data-active]) > [data-workspace-tab-more] {
-	opacity: 0;
-}
-[data-workspace-tab]:hover > [data-workspace-tab-more],
-[data-workspace-tab]:focus-within > [data-workspace-tab-more],
-[data-workspace-tab] > [data-workspace-tab-more][data-state="open"] {
-	opacity: 1;
 }
 [data-workspace-tabs] button:focus-visible {
 	outline: 2px solid var(--color-accent);

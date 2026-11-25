@@ -270,6 +270,62 @@ test("the 32px strip leaves 4px of settled air on both sides of the tab paint wi
 	assert.match(css, TAB_FOCUS);
 });
 
+/*
+ * THE ACTIVE-TAB TREATMENT (operator addition B on PR #2091): inactive tabs paint
+ * nothing at rest and row-hover under the pointer; the active tab alone has the
+ * opaque row-selected ground, full ink, weight 500 and a 2px accent indicator.
+ */
+function assertActiveTabTreatment(css) {
+	assert.match(
+		css,
+		/\[data-workspace-tab\] \{\s*--workspace-tab-fill: transparent;/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]:not\(\[data-active\]\):hover \{\s*--workspace-tab-fill: var\(--color-row-hover\);/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: var\(--color-row-selected\);\s*color: var\(--color-ink\);/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\] > button\[aria-current\] \{\s*font-weight: 500;/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\]::after \{[^}]*height: 2px;[^}]*background: var\(--color-accent\);/,
+	);
+	// No outline/pill: the tab block itself never draws a border.
+	const tab = css.match(/\[data-workspace-tab\] \{[^}]*\}/)[0];
+	assert.doesNotMatch(tab, /border(-width)?:/);
+}
+
+test("the active tab is the only filled tab, in full ink with an accent indicator", () => {
+	assertActiveTabTreatment(source("styles/index.css"));
+});
+
+test("negative control: the old faint tint on every tab fails the treatment check", () => {
+	const css = source("styles/index.css");
+	const faint = css
+		.replace(
+			/(\[data-workspace-tab\] \{\s*--workspace-tab-fill: )transparent;/,
+			"$1color-mix(in oklab, var(--color-canvas) 48%, var(--color-surface));",
+		)
+		.replace(
+			/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: )var\(--color-row-selected\);/,
+			"$1color-mix(in oklab, var(--color-row-selected) 44%, var(--color-surface));",
+		);
+	assert.notEqual(faint, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(faint));
+	const noIndicator = css.replace(
+		"[data-workspace-tab][data-active]::after",
+		"[data-x]::after",
+	);
+	assert.notEqual(noIndicator, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(noIndicator));
+});
+
 test("header leading padding follows direction without moving its trailing actions", () => {
 	assert.match(source("styles/index.css"), HEADER_PADDING);
 });
@@ -394,10 +450,17 @@ const KEYBOARD_OPENER_KEYS =
 const KEYBOARD_OPENER_CALL = /if \(openTabMenuFromKeyboard\(event\)\) return;/;
 const STRIP_CLOSE_ALL =
 	/data-workspace-close-all=""\s*disabled=\{closeAllKeys\.length === 0\}\s*onSelect=\{\(\) => onCloseMany\(closeAllKeys\)\}/;
-const TAB_MORE_HIDDEN =
-	/\[data-workspace-tab\]:not\(\[data-active\]\) > \[data-workspace-tab-more\] \{\s*opacity: 0;/;
-const TAB_MORE_FOCUS_REVEAL =
-	/\[data-workspace-tab\]:focus-within > \[data-workspace-tab-more\]/;
+/*
+ * The ellipsis is MOUNTED on the active tab only (design D2, review R2): an
+ * opacity-hidden trigger on every tab kept a 24px hole and a Tab stop in each.
+ */
+const TAB_MORE_ACTIVE_ONLY =
+	/\{active && \(\s*<DropdownMenu>\s*<DropdownMenuTrigger asChild>\s*<button\s+type="button"\s+data-workspace-tab-more=""/;
+/* Both openers group Pin | Move left, Move right | closes with the menu separator (D3). */
+const CONTEXT_SEPARATED =
+	/startsGroup\(entries, index\) && <ContextMenuSeparator \/>\}\s*<ContextMenuItem/;
+const DROPDOWN_SEPARATED =
+	/startsGroup\(entries, index\) && <DropdownMenuSeparator \/>\}\s*<DropdownMenuItem/;
 /** The per-tab menu wiring, as a source guard over workspace-tabs.tsx. */
 const assertTabMenuWiring = (strip, hook, page) => {
 	// Right-click (and the keyboard openers) on every tab, pinned or not: the
@@ -413,13 +476,22 @@ const assertTabMenuWiring = (strip, hook, page) => {
 		strip.includes("workspaceBulkCloseKeys(tabs, tab.key, action, rtl)"),
 	);
 	assert.ok(strip.includes("disabled: keys.length === 0"));
-	// The ellipsis lives inside the tab row, before its close button.
+	// The ellipsis lives inside the tab row, before its close button, and only
+	// the active tab mounts it.
 	const row = strip.slice(strip.indexOf("const renderTabRow"));
 	assert.ok(
 		row.indexOf('data-workspace-tab-more=""') > 0 &&
 			row.indexOf('data-workspace-tab-more=""') <
 				row.indexOf('data-workspace-close=""'),
 	);
+	assert.match(row, TAB_MORE_ACTIVE_ONLY);
+	assert.equal((row.match(/data-workspace-tab-more=""/g) ?? []).length, 1);
+	// Grouped menus: three groups, separators drawn by both openers.
+	assert.match(strip, CONTEXT_SEPARATED);
+	assert.match(strip, DROPDOWN_SEPARATED);
+	assert.equal((strip.match(/group: "pin",/g) ?? []).length, 1);
+	assert.equal((strip.match(/group: "move",/g) ?? []).length, 1);
+	assert.equal((strip.match(/group: "close",/g) ?? []).length, 2);
 	// "Close all tabs" without a right-click, in the strip-level list.
 	assert.match(strip, STRIP_CLOSE_ALL);
 	// The active tab leaves through the existing close, choosing among survivors.
@@ -434,9 +506,37 @@ test("every tab carries one right-click/keyboard/ellipsis menu with the bulk clo
 		source(`${modelPath}use-workspace-tabs.ts`),
 		source(`${modelPath}chat-page.tsx`),
 	);
-	const css = source("styles/index.css");
-	assert.match(css, TAB_MORE_HIDDEN);
-	assert.match(css, TAB_MORE_FOCUS_REVEAL);
+	// No stylesheet rule hides or reveals a per-tab ellipsis any more: an inactive
+	// tab has none to hide, so it keeps no gap.
+	assert.doesNotMatch(
+		source("styles/index.css"),
+		/\[data-workspace-tab-more\]/,
+	);
+});
+
+/*
+ * The grouping rule itself, run: the entry order Pin, Move left, Move right,
+ * Close, Close others/left/right/all puts a separator before Move left and before
+ * Close, and nowhere else - two rules, three groups.
+ */
+function loadStartsGroup(strip) {
+	const fn = strip.match(/function startsGroup\([\s\S]*?\n\}/);
+	assert.ok(fn, "startsGroup located");
+	const js = fn[0]
+		.replace(/: readonly \{ group: string \}\[\]/, "")
+		.replace(/: number/, "");
+	return new Function(`${js}; return startsGroup;`)();
+}
+
+test("the per-tab menu draws separators between Pin | Move | Close groups", () => {
+	const startsGroup = loadStartsGroup(source(`${modelPath}workspace-tabs.tsx`));
+	const entries = ["pin", "move", "move", ...Array(5).fill("close")].map(
+		(group) => ({ group }),
+	);
+	const breaks = entries.flatMap((_, i) =>
+		startsGroup(entries, i) ? [i] : [],
+	);
+	assert.deepEqual(breaks, [1, 3]);
 });
 
 test("negative control: the wiring guard rejects a strip whose ellipsis left the tab or lost the keyboard opener", () => {
@@ -464,4 +564,18 @@ test("negative control: the wiring guard rejects a strip whose ellipsis left the
 			page,
 		),
 	);
+	// The round-1 shape: an ellipsis mounted on every tab.
+	const everyTab = strip.replace(
+		/\{active && \(\s*<DropdownMenu>/,
+		"<DropdownMenu>",
+	);
+	assert.notEqual(everyTab, strip, "control mutation applied");
+	assert.throws(() => assertTabMenuWiring(everyTab, hook, page));
+	// A flat, ungrouped context menu.
+	const flat = strip.replace(
+		"{startsGroup(entries, index) && <ContextMenuSeparator />}",
+		"",
+	);
+	assert.notEqual(flat, strip, "control mutation applied");
+	assert.throws(() => assertTabMenuWiring(flat, hook, page));
 });
