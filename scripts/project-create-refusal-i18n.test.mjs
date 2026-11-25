@@ -215,7 +215,25 @@ test("N5: the same code reads in English under en", async (t) => {
 
 test("unmapped refusals keep the fallback: message as written, else the sheet's own sentence", async (t) => {
 	setLocale("vi");
+	/*
+	 * `project_invalid` is no longer unmapped (i18n slice a maps it by code to
+	 * `ui.projects.project_refusals.project_invalid`, pinned in
+	 * `scripts/i18n-projects-remote-literals.test.mjs`), so the as-written
+	 * fallback is exercised with a code the mapping does not know.
+	 */
 	assert.equal(
+		await refusalAfterSubmit(
+			t,
+			new DesktopControlError(
+				422,
+				"target_date must not precede start_date",
+				undefined,
+				"project_some_future_code",
+			),
+		),
+		"target_date must not precede start_date",
+	);
+	assert.notEqual(
 		await refusalAfterSubmit(
 			t,
 			new DesktopControlError(
@@ -226,6 +244,7 @@ test("unmapped refusals keep the fallback: message as written, else the sheet's 
 			),
 		),
 		"target_date must not precede start_date",
+		"project_invalid is mapped by code, never shown as the backend's English",
 	);
 	assert.equal(
 		await refusalAfterSubmit(t, new Error("")),

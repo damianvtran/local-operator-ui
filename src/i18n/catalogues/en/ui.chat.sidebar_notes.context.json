@@ -27,6 +27,15 @@
 		"role": "note on a chat row that an unnamed agent started this conversation",
 		"tone": "lowercase clause, no full stop"
 	},
+	"ui.chat.sidebar_notes.opened_by_anonymous_in": {
+		"length": "short; one line in a tooltip about 256px wide",
+		"note": "Follows the chat's status in the row's hover flyout, after a list comma the app supplies. Use the language's own quotation marks around the conversation name.",
+		"placeholders": {
+			"label": "the name of the conversation the agent was working in; shown verbatim"
+		},
+		"role": "note on a chat row that an unnamed agent started this conversation from another named conversation",
+		"tone": "lowercase clause, no full stop"
+	},
 	"ui.chat.sidebar_notes.opened_by_named": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
@@ -35,6 +44,58 @@
 		},
 		"role": "note on a chat row that an agent started this conversation",
 		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.sidebar_notes.opened_by_named_in": {
+		"length": "short; one line in a tooltip about 256px wide",
+		"note": "Follows the chat's status in the row's hover flyout, after a list comma the app supplies. Use the language's own quotation marks around the conversation name.",
+		"placeholders": {
+			"agent": "the agent's name, e.g. coder; shown verbatim",
+			"label": "the name of the conversation the agent was working in; shown verbatim"
+		},
+		"role": "note on a chat row that a named agent started this conversation from another named conversation",
+		"tone": "lowercase clause, no full stop"
+	},
+	"ui.chat.sidebar_notes.remote_another_device": {
+		"length": "two or three words",
+		"note": "Fallback device name when the session's device has no name or id; it fills {device} in the remote_on_device messages.",
+		"placeholders": {},
+		"role": "noun phrase naming an unknown remote computer",
+		"tone": "lowercase noun phrase"
+	},
+	"ui.chat.sidebar_notes.remote_on_device": {
+		"length": "short; one line in a tooltip about 256px wide",
+		"note": "Shown on its own line in a chat row's hover flyout and read by screen readers after a list comma, for a chat that runs on another of the user's computers.",
+		"placeholders": {
+			"device": "the other computer's name, e.g. cloud-node-1; shown verbatim"
+		},
+		"role": "location clause for a chat running on another device",
+		"tone": "lowercase prepositional phrase, no full stop"
+	},
+	"ui.chat.sidebar_notes.remote_on_device_network": {
+		"length": "short; one line in a tooltip about 256px wide",
+		"note": "Same as remote_on_device with the device's network added. Keep the middle dot ( · ) as the separator between device and network.",
+		"placeholders": {
+			"device": "the other computer's name, e.g. cloud-node-1; shown verbatim",
+			"network": "the name of the device network it belongs to, e.g. damian-mesh; shown verbatim"
+		},
+		"role": "location clause for a chat running on another device, with its network",
+		"tone": "lowercase prepositional phrase, no full stop"
+	},
+	"ui.chat.sidebar_notes.remote_unreachable_no_answer": {
+		"length": "short; one line in a tooltip about 256px wide",
+		"note": "Shown when the other computer could not be reached and gave no reason. Keep the middle dot ( · ) after the status word.",
+		"placeholders": {},
+		"role": "status line for a remote chat whose device did not respond",
+		"tone": "lowercase status word, middle dot, short clause; no full stop"
+	},
+	"ui.chat.sidebar_notes.remote_unreachable_reason": {
+		"length": "short; the reason may be long and wraps",
+		"note": "Shown when the other computer could not be reached. Keep the middle dot ( · ) between the status word and the reason.",
+		"placeholders": {
+			"reason": "the runtime's own reason text or a machine token such as connect_failed:timeout; shown verbatim, untranslated"
+		},
+		"role": "status line for a remote chat whose device could not be reached, with the reason",
+		"tone": "lowercase status word, middle dot, then the reason; no full stop"
 	},
 	"ui.chat.sidebar_notes.running_none": {
 		"length": "",

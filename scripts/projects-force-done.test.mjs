@@ -70,7 +70,7 @@ const {
 	forcedCloseToastText,
 	refusalCopy,
 	PROJECT_DONE_INCOMPLETE_CODE,
-	PROJECT_NOT_MOVED_COPY,
+	projectNotMovedCopy,
 } = model;
 const { runStatusMove } = move;
 const { doneGateRefusalOf, projectGoneError, projectMoveErrorCopy } = refusals;
@@ -345,7 +345,7 @@ test("the refusal copy and the not-moved fallback are in the app's voice", () =>
 		refusalCopy(SENTENCE),
 		/^This can't be marked done yet: 2 milestones are still incomplete/,
 	);
-	assert.match(PROJECT_NOT_MOVED_COPY, /^The project was not moved\./);
+	assert.match(projectNotMovedCopy(), /^The project was not moved\./);
 });
 
 /* ------------------------------------------------------------ retry policy */

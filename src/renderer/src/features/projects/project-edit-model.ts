@@ -196,6 +196,45 @@ export function projectTagsFieldRule(raw: string): {
 export const PROJECT_NAME_CONFLICT_CODE = "project_name_exists";
 
 /**
+ * The project routes' machine refusal codes (core
+ * `local_operator/server/routes/desktop_projects.py`, `_refusal`), each mapped
+ * to the app's own translated sentence.
+ *
+ * WHY CODES, NOT PROSE (i18n slice a, 2026-11-25): the backend answers in
+ * English (`detail.text` / `error.message`), and localization is the UI's job,
+ * so the dialogs switch on `detail.code` and never parse or show the English.
+ *
+ * `project_invalid` carries no machine field or reason: its only param is
+ * `error`, the store's English sentence. So it gets ONE generic sentence; the
+ * sheets validate key, tags, dates and lengths locally before sending, which is
+ * where the field-specific copy lives. `project_done_incomplete` is NOT here:
+ * it has its own choice dialog (`doneGateRefusal`). Any code not listed keeps
+ * the previous behaviour (the message through `refusalCopy`).
+ */
+const PROJECT_REFUSAL_CODE_KEYS = {
+	[PROJECT_NAME_CONFLICT_CODE]:
+		"ui.projects.project_edit_model.a_project_with_this_key_already_exists",
+	project_invalid: "ui.projects.project_refusals.project_invalid",
+	project_store_busy: "ui.projects.project_refusals.project_store_busy",
+	project_schema_newer: "ui.projects.project_refusals.project_schema_newer",
+} as const;
+
+/** The translated sentence for a known refusal code, else `null`. */
+export function projectRefusalCodeCopy(
+	code: string | null | undefined,
+): string | null {
+	// Own keys only: the code is wire data, and `constructor` must not match.
+	if (
+		typeof code !== "string" ||
+		!Object.prototype.hasOwnProperty.call(PROJECT_REFUSAL_CODE_KEYS, code)
+	)
+		return null;
+	return t(
+		PROJECT_REFUSAL_CODE_KEYS[code as keyof typeof PROJECT_REFUSAL_CODE_KEYS],
+	);
+}
+
+/**
  * A refused project write, as the sentence to show beside the field.
  *
  * The name conflict gets the app's crafted sentence because the backend's own
@@ -209,10 +248,8 @@ export function projectRefusalCopy(input: {
 	code?: string | null;
 	message: string;
 }): string {
-	if (input.code === PROJECT_NAME_CONFLICT_CODE)
-		return t(
-			"ui.projects.project_edit_model.a_project_with_this_key_already_exists",
-		);
+	const coded = projectRefusalCodeCopy(input.code);
+	if (coded !== null) return coded;
 	return (
 		refusalCopy(input.message) ||
 		t("ui.projects.project_edit_model.the_project_was_not_saved")

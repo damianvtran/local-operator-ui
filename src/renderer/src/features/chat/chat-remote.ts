@@ -21,6 +21,16 @@
  * zero stamp is no usable time - lives on in the arrangement's `byNewest` and
  * in the tests that moved with it.
  */
+/*
+ * EVERY SENTENCE HERE IS KEYED (i18n slice a, 2026-11-25). These clauses are
+ * read by the sidebar flyout AND by the row's `sr-only` accessible name, so an
+ * English literal here was English in every language's screen-reader text (ur
+ * and zh-CN included). Each clause is ONE ICU message with its device, network
+ * and reason as placeholders - never English fragments concatenated around a
+ * translated word - so a translator can reorder the whole clause. `t()` is read
+ * per call, i.e. per render, so a language switch re-spells them.
+ */
+import { t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { deviceName } from "./device/chat-device-model";
 /** The device a remote row is spoken of by: the wire's own name when it carried
@@ -34,7 +44,7 @@ export function remoteDeviceLabel(row: CanonicalSessionRow): string {
 		deviceName(
 			typeof row.owner_device_name === "string" ? row.owner_device_name : "",
 			typeof row.owner_device === "string" ? row.owner_device : "",
-		) || "another device"
+		) || t("ui.chat.sidebar_notes.remote_another_device")
 	);
 }
 
@@ -85,7 +95,12 @@ export function remoteClause(
 ): string {
 	const label = remoteDeviceLabel(row);
 	const network = (networkName ?? "").trim();
-	return network ? `on ${label} · ${network}` : `on ${label}`;
+	return network
+		? t("ui.chat.sidebar_notes.remote_on_device_network", {
+				device: label,
+				network,
+			})
+		: t("ui.chat.sidebar_notes.remote_on_device", { device: label });
 }
 
 /**
@@ -111,5 +126,12 @@ export function remoteUnreachableClause(row: CanonicalSessionRow): string {
 		typeof row.unreachable_reason === "string"
 			? row.unreachable_reason.trim()
 			: "";
-	return `unreachable · ${reason || "it did not answer"}`;
+	/*
+	 * Two messages rather than one with a nested default: the wire's reason is
+	 * shown verbatim (the runtime's text, not ours to translate), while the
+	 * fallback is the app's own sentence and must be translated whole.
+	 */
+	return reason
+		? t("ui.chat.sidebar_notes.remote_unreachable_reason", { reason })
+		: t("ui.chat.sidebar_notes.remote_unreachable_no_answer");
 }

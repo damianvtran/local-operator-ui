@@ -78,7 +78,7 @@ const {
 	startSessionPrompt,
 	sessionTargetLabel,
 	refusalCopy,
-	NO_TEAM_LABEL,
+	noTeamLabel,
 	projectTeamName,
 	groupByTeam,
 } = model;
@@ -629,7 +629,7 @@ test("a row files under its team, its owner as the fallback, or the bucket", () 
 	assert.equal(projectTeamName({ team: "   ", owner: "\t" }), null);
 	assert.equal(projectTeamName({ team: "  platform  " }), "platform");
 	/* The bucket has one spelling. */
-	assert.equal(NO_TEAM_LABEL, "No team");
+	assert.equal(noTeamLabel(), "No team");
 });
 
 test("groups sort by name case-insensitively, the bucket last, input order inside", () => {

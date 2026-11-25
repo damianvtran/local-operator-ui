@@ -8299,7 +8299,17 @@ export type MessageParams = {
 	"ui.chat.sidebar_notes.draft_sending_why": undefined;
 	"ui.chat.sidebar_notes.loading_more": undefined;
 	"ui.chat.sidebar_notes.opened_by_anonymous": undefined;
+	"ui.chat.sidebar_notes.opened_by_anonymous_in": { label: string };
 	"ui.chat.sidebar_notes.opened_by_named": { agent: string };
+	"ui.chat.sidebar_notes.opened_by_named_in": { agent: string; label: string };
+	"ui.chat.sidebar_notes.remote_another_device": undefined;
+	"ui.chat.sidebar_notes.remote_on_device": { device: string };
+	"ui.chat.sidebar_notes.remote_on_device_network": {
+		device: string;
+		network: string;
+	};
+	"ui.chat.sidebar_notes.remote_unreachable_no_answer": undefined;
+	"ui.chat.sidebar_notes.remote_unreachable_reason": { reason: string };
 	"ui.chat.sidebar_notes.running_none": undefined;
 	"ui.chat.sidebar_notes.running_unread": undefined;
 	"ui.chat.sidebar_notes.stale_list": { message: string };
@@ -12175,6 +12185,9 @@ export type MessageParams = {
 	"ui.projects.project_quick_send.send_to": undefined;
 	"ui.projects.project_quick_send.sending": undefined;
 	"ui.projects.project_quick_send.the_session_is_working_this_message_steers_the_running_turn": undefined;
+	"ui.projects.project_refusals.project_invalid": undefined;
+	"ui.projects.project_refusals.project_schema_newer": undefined;
+	"ui.projects.project_refusals.project_store_busy": undefined;
 	"ui.projects.project_refusals.this_project_could_not_be_found_it_may_have_been_deleted": undefined;
 	"ui.projects.project_request_update_button.request_update": undefined;
 	"ui.projects.project_request_update_button.requested": undefined;
