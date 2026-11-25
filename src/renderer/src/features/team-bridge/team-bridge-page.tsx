@@ -6629,18 +6629,14 @@ const TeamBridgeOwnedPage: FC<{
 	 * the seed never reaches the DOM - whether the inputs were cached at mount or
 	 * arrive later and lift the hold.
 	 *
-	 * The seed's restored view goes with it. The mount restored the seed scope's
-	 * remembered conversation into `target` (so a one-org open paints it in its
-	 * first frame), and a selection is not inert: its history read answers and the
-	 * mark-read effect advances its cursor, clearing unread the reader never saw
-	 * (Q2). So with several organizations - where the seed can be another org's -
-	 * nothing is restored while held, and a move drops the seed's restore. The
-	 * DECIDED scope's own record - the only one that belongs to it - is restored
-	 * in the same render pass that decides it, not left to the landing effect:
-	 * that effect needs rows, and a held list has none, which would lose the
-	 * remembered conversation's parallel history read (first-open latency) and
-	 * its first-frame paint. With one organization every record belongs to it,
-	 * so a move (e.g. union to that org) keeps the mount's restore.
+	 * The mount restored the seed scope's view, and a selection is not inert:
+	 * its history read answers and the mark-read effect advances its cursor,
+	 * clearing unread the reader never saw (Q2). So with several organizations
+	 * nothing is restored while held. Any opening scope move drops the seed's
+	 * view: All and the org can remember different targets even with one tenant.
+	 * Restore the decided scope's own record before commit, not in the landing
+	 * effect. That effect needs list rows, so waiting for it would lose the
+	 * remembered conversation's parallel history read and first-frame paint.
 	 *
 	 * Every update is conditional on the value differing, so the re-run converges
 	 * (React refuses an unconditional render-phase update as a loop).
@@ -6648,7 +6644,7 @@ const TeamBridgeOwnedPage: FC<{
 	const openingMoving =
 		openingUnsettled && !openingHeld && openingScope !== scope;
 	if (openingUnsettled && (openingHeld || openingMoving)) {
-		if (openingOrganizations > 1) {
+		if (openingMoving || openingOrganizations > 1) {
 			restoredScopes.current.clear();
 			pendingLanding.current = null;
 			restoredTarget.current = null;

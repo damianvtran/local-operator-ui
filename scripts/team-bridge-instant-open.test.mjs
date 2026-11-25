@@ -515,6 +515,85 @@ const history = (conversation) =>
 		origin: "human",
 		created_at: "2026-10-23T12:00:00Z",
 	}));
+// A cold open starts at All even when the last passive view names Shared.
+// Both rail records can be valid for the same tenant; the rail scope, not
+// the conversation's tenant, decides which target belongs to the opening.
+for (const holdList of [false, true])
+	test(`single-org cold open ${holdList ? "with a held list starts remembered history in parallel" : "restores its own view instead of All's"}`, async () => {
+		const allId = "bcv_all_view";
+		const orgId = "bcv_org_view";
+		const gate = holdList ? deferred() : null;
+		const app = await mount({
+			path: "/team-bridge",
+			waitReady: false,
+			strict: true,
+			memberships: [SHARED_MEMBER],
+			tenants: [SHARED],
+			seed: ({ fixture }) => {
+				fixture.listGate = gate;
+				fixture.listFor = () => ({
+					conversations: [
+						row({ id: allId, name: "All's remembered conversation" }),
+						row({ id: orgId, name: "Shared's remembered conversation" }),
+					],
+					has_more: false,
+				});
+				const view = (id) => ({
+					target: { type: "conversation", id },
+					tenantId: "org_shared",
+				});
+				localStorage.setItem(
+					"lo.teamBridge.view.v1",
+					JSON.stringify({
+						acct_a: {
+							scope: "org_shared",
+							scopes: {
+								...(holdList ? {} : { all: view(allId) }),
+								org_shared: view(orgId),
+							},
+						},
+					}),
+				);
+			},
+		});
+		const historyIds = () =>
+			app.fixture.calls
+				.filter((call) => call.op === "team_bridge.messages.list")
+				.map((call) => call.conversation_id);
+		try {
+			if (gate) {
+				await until(() => listScopes(app).length > 0, "a list request");
+				await until(
+					() => historyIds().length > 0,
+					"a history request before the list is released",
+				);
+				// Once the list answers, background warming may read other rows.
+				assert.deepEqual([...new Set(historyIds())], [orgId]);
+				await act(async () => gate.resolve());
+			}
+			await until(
+				() =>
+					app.frames.some(
+						(frame) =>
+							frame.scopeTitle === "Organization: Shared" && frame.selectedId,
+					),
+				"Shared paints with a selected conversation",
+			);
+			assert.deepEqual(listScopes(app), ["org_shared"]);
+			assert.deepEqual(
+				[
+					...new Set(
+						app.frames.map((frame) => frame.selectedId).filter(Boolean),
+					),
+				],
+				[orgId],
+				"every committed selection belongs to the chosen rail's saved view",
+			);
+		} finally {
+			await app.close();
+		}
+	});
+
 /*
  * Each case also runs under <React.StrictMode>, which the app's renderer root
  * opts into (review round 4, R4-1 on ui#1970): StrictMode renders an update
