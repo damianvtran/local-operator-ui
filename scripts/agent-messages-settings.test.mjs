@@ -49,7 +49,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint,desktopRequestSchema} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
+			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint,desktopRequestSchema} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal"; export {allowlistDirectoryChoices,allowlistDirectoryKey,selectionIsCurrent} from "./src/renderer/src/features/agent-messages/allowlist-directory"; export {teamBridgeDirectorySchema} from "./src/shared/team-bridge-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1661,4 +1661,641 @@ test("the screening block reads leniently: bad rows drop, a bad block reads as a
 		screening: "nope",
 	});
 	assert.equal(broken.screening, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// Reach editor: directory choices (people and their agents by name)
+//
+// The directory is read through the section's injected `api.directory` (the
+// same seam every other call here uses), and each fake answer goes through the
+// REAL `teamBridgeDirectorySchema`, so a shape the contract would refuse cannot
+// pass here. The invariants under test: choosing grants nothing (only Add then
+// Save writes, with the full id), duplicate names stay distinguishable, nothing
+// is read while the editor is ineligible, and a choice never outlives the
+// tenant/account/kind it was made under.
+// ---------------------------------------------------------------------------
+
+const DIRECTORY_RAW = {
+	members: [
+		{
+			account_id: "acc_ada_one",
+			display_label: "Ada Park",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: { endpoint_id: "bep_ada_one", name: "Helper", state: "active" },
+		},
+		{
+			account_id: "acc_ada_two",
+			display_label: "Ada Park",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: { endpoint_id: "bep_ada_two", name: "Helper", state: "active" },
+		},
+		{
+			account_id: "acc_bo",
+			display_label: "Bo Chen",
+			role: "admin",
+			bridge_enabled: false,
+			bridge_state: "disabled",
+		},
+	],
+};
+
+function directoryApi(answer = () => DIRECTORY_RAW) {
+	const reads = [];
+	return {
+		reads,
+		directory: async (tenantId) => {
+			reads.push(tenantId);
+			return mod.teamBridgeDirectorySchema.parse(await answer(tenantId));
+		},
+	};
+}
+
+const blockForm = (legend = "Who can message you") => {
+	const group = directionGroup(legend);
+	const label = [...group.querySelectorAll("label")].find(
+		(entry) => entry.textContent === "Block an agent or person",
+	);
+	assert.ok(label, "expected the block form");
+	return {
+		group,
+		form: label.parentElement,
+		input: document.getElementById(label.htmlFor),
+	};
+};
+
+// D1/U6: the roster state is said once for the whole editor.
+const directoryNote = () => {
+	const notes = document.querySelectorAll(
+		"[data-agent-messages-directory-note]",
+	);
+	assert.equal(notes.length, 1, "exactly one directory note");
+	return notes[0];
+};
+
+const directoryPicker = (scope) =>
+	scope.querySelector("button[data-agent-messages-directory-picker]");
+
+// The organization label is visible text above the picker, and the picker's
+// accessible name is built from it plus the trigger's own visible text
+// (aria-labelledby), never from a separate aria-label only a screen reader
+// hears (copy review round 1, C2).
+function directoryPickerLabel(picker) {
+	assert.equal(picker.getAttribute("aria-label"), null, "no hidden-only name");
+	const ids = (picker.getAttribute("aria-labelledby") ?? "").split(/\s+/);
+	// UX round 1, U5: the form's own label comes first, so three pickers that
+	// share the organization label still say which list they add to.
+	const formLabel = document.getElementById(ids[0]);
+	assert.equal(formLabel?.tagName, "LABEL", "first by the form's own label");
+	const label = document.getElementById(ids[1]);
+	assert.ok(label, "the picker is labelled by an element on the page");
+	assert.ok(
+		label.hasAttribute("data-agent-messages-directory-label"),
+		"by the visible organization label",
+	);
+	assert.equal(ids[2], picker.id, "and by its own visible text");
+	return label.textContent;
+}
+
+async function openAndChoose(picker, id) {
+	assert.ok(picker, "expected the directory picker");
+	picker.focus();
+	await press(picker, "keydown", { key: "ArrowDown" });
+	await flush();
+	const option = document.querySelector(
+		`[role="option"][data-agent-messages-directory-choice="${id}"]`,
+	);
+	assert.ok(option, `expected the directory option ${id}`);
+	await act(async () => option.click());
+	await flush();
+}
+
+const tenantNamed = (name) =>
+	statusWith({
+		surface_state: "C",
+		local: { enabled: true },
+		status: {
+			...statusFixture.status,
+			tenants: [
+				{
+					tenant_id: "tnt_bridge_e2e",
+					tenant_name: name,
+					eligible: true,
+					endpoint: null,
+				},
+			],
+		},
+	});
+
+test("directory choices: names with owner and full id, repeated names marked, invalid ids dropped", () => {
+	const directory = mod.teamBridgeDirectorySchema.parse({
+		members: [
+			...DIRECTORY_RAW.members,
+			{
+				account_id: "acc has space",
+				display_label: "Bad Row",
+				role: "member",
+				bridge_enabled: true,
+				bridge_state: "active",
+			},
+		],
+	});
+	const agents = mod.allowlistDirectoryChoices(directory, "endpoint");
+	assert.deepEqual(
+		agents.map(({ id, label, owner, duplicateLabel }) => ({
+			id,
+			label,
+			owner,
+			duplicateLabel,
+		})),
+		[
+			{
+				id: "bep_ada_one",
+				label: "Helper",
+				owner: "Ada Park",
+				duplicateLabel: true,
+			},
+			{
+				id: "bep_ada_two",
+				label: "Helper",
+				owner: "Ada Park",
+				duplicateLabel: true,
+			},
+		],
+	);
+	const people = mod.allowlistDirectoryChoices(directory, "account");
+	assert.deepEqual(
+		people.map((choice) => [choice.id, choice.duplicateLabel]),
+		[
+			["acc_ada_one", true],
+			["acc_ada_two", true],
+			["acc_bo", false],
+		],
+		"a person is offered whether or not they run an agent; an id the validator refuses is not",
+	);
+	const key = mod.allowlistDirectoryKey({ tenantId: "t1", accountId: "a1" });
+	const selection = { key, kind: "endpoint", id: "bep_ada_one" };
+	assert.equal(
+		mod.selectionIsCurrent(selection, {
+			key,
+			kind: "endpoint",
+			choices: agents,
+		}),
+		true,
+	);
+	for (const [why, current] of [
+		[
+			"other tenant",
+			{
+				key: mod.allowlistDirectoryKey({ tenantId: "t2", accountId: "a1" }),
+				kind: "endpoint",
+				choices: agents,
+			},
+		],
+		[
+			"other account",
+			{
+				key: mod.allowlistDirectoryKey({ tenantId: "t1", accountId: "a2" }),
+				kind: "endpoint",
+				choices: agents,
+			},
+		],
+		["other kind", { key, kind: "account", choices: people }],
+		[
+			"id left the directory",
+			{ key, kind: "endpoint", choices: agents.slice(1) },
+		],
+	]) {
+		assert.equal(mod.selectionIsCurrent(selection, current), false, why);
+	}
+});
+
+test("choosing from the directory grants nothing; Add then Save writes exactly the chosen full id", async (t) => {
+	const directory = directoryApi();
+	const { writes } = await mount(t, {
+		status: tenantNamed("Example organization"),
+		overrides: { directory: directory.directory },
+	});
+	assert.deepEqual(
+		directory.reads,
+		["tnt_bridge_e2e"],
+		"one read, for the editor's tenant",
+	);
+	const { form, input } = blockForm();
+	const picker = directoryPicker(form);
+	assert.equal(
+		directoryPickerLabel(picker),
+		"Choose from Example organization",
+	);
+
+	await openAndChoose(picker, "bep_ada_two");
+	const options = [...document.querySelectorAll('[role="option"]')];
+	assert.equal(options.length, 0, "the list closes on a choice");
+	assert.equal(
+		input.value,
+		"bep_ada_two",
+		"a choice fills the full id, visibly",
+	);
+	assert.deepEqual(writes.allowlist, [], "choosing alone writes nothing");
+	assert.equal(
+		button("Save reach settings").disabled,
+		true,
+		"and changes no draft",
+	);
+
+	await press(
+		[...form.querySelectorAll("button")].find(
+			(entry) => entry.textContent === "Add",
+		),
+	);
+	await flush();
+	assert.deepEqual(writes.allowlist, [], "Add alone still writes nothing");
+	await press(button("Save reach settings"));
+	await flush();
+	assert.equal(writes.allowlist.length, 1);
+	const added = writes.allowlist[0].entries.filter(
+		(entry) => entry.direction === "receive" && entry.effect === "deny",
+	);
+	assert.deepEqual(
+		added.map((entry) => entry.target),
+		[{ account_id: "account-blocked" }, { endpoint_id: "bep_ada_two" }],
+	);
+});
+
+test("the open directory list shows owner, full id and a same-name marker on each repeated name", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const { form } = blockForm();
+	const picker = directoryPicker(form);
+	assert.equal(
+		directoryPickerLabel(picker),
+		"Choose from your organization",
+		"no organization name in status: the unnamed label",
+	);
+	picker.focus();
+	await press(picker, "keydown", { key: "ArrowDown" });
+	await flush();
+	// The accessible name carries real separators (U5): the visual gaps are
+	// CSS margins, which the computed text content runs together.
+	const names = [...document.querySelectorAll('[role="option"]')].map((entry) =>
+		entry.getAttribute("aria-label"),
+	);
+	assert.deepEqual(names, [
+		"Helper, Run by Ada Park, bep_ada_one, Same name as another entry",
+		"Helper, Run by Ada Park, bep_ada_two, Same name as another entry",
+	]);
+	assert.equal(
+		document.getElementById(
+			picker.getAttribute("aria-labelledby").split(" ")[0],
+		).textContent,
+		"Block an agent or person",
+		"the picker's name starts with the list it adds to",
+	);
+	await press(document.activeElement, "keydown", { key: "Escape" });
+	await flush();
+});
+
+test("a kind switch drops the held choice and the id it filled; a typed id is kept", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const { form, input } = blockForm();
+	await openAndChoose(directoryPicker(form), "bep_ada_one");
+	assert.equal(input.value, "bep_ada_one");
+	const kind = form.querySelector('button[role="combobox"][aria-label="Kind"]');
+	kind.focus();
+	await press(kind, "keydown", { key: "ArrowDown" });
+	await flush();
+	const person = [...document.querySelectorAll('[role="option"]')].find(
+		(entry) => entry.textContent.trim() === "Person",
+	);
+	await act(async () => person.click());
+	await flush();
+	await flush();
+	assert.equal(
+		input.value,
+		"",
+		"an agent id chosen for Agent does not survive as a Person id",
+	);
+	assert.equal(
+		directoryPicker(form).getAttribute("data-agent-messages-directory-picker"),
+		"account",
+	);
+
+	await setInput(input, "acc_typed_by_hand");
+	const kindAgain = form.querySelector(
+		'button[role="combobox"][aria-label="Kind"]',
+	);
+	kindAgain.focus();
+	await press(kindAgain, "keydown", { key: "ArrowDown" });
+	await flush();
+	await act(async () =>
+		[...document.querySelectorAll('[role="option"]')]
+			.find((entry) => entry.textContent.trim() === "Agent")
+			.click(),
+	);
+	await flush();
+	assert.equal(
+		input.value,
+		"acc_typed_by_hand",
+		"the operator's own typing is never cleared",
+	);
+});
+
+test("an account switch drops the old choice, reads nothing while mismatched, then re-reads under the new pairing", async (t) => {
+	const held = [];
+	const reads = [];
+	const directory = async (tenantId) => {
+		reads.push(tenantId);
+		if (reads.length > 1) {
+			// Every read after account-a's first is held back, so the test can see
+			// that account-a's roster is never offered to account-b in flight.
+			await new Promise((resolve) => held.push(resolve));
+		}
+		return mod.teamBridgeDirectorySchema.parse(DIRECTORY_RAW);
+	};
+	const { rerender } = await mount(t, { overrides: { directory } });
+	const first = blockForm();
+	await openAndChoose(directoryPicker(first.form), "bep_ada_one");
+	assert.equal(first.input.value, "bep_ada_one");
+
+	// Phase 1: the shell's account moved but status still belongs to account-a.
+	// The editor is ineligible: no read, no roster, and the choice is dropped.
+	await rerender({ accountId: "account-b" });
+	const mismatched = blockForm();
+	assert.equal(
+		mismatched.input.value,
+		"",
+		"a choice made as account-a is gone",
+	);
+	assert.equal(directoryPicker(mismatched.form), null);
+	assert.equal(
+		reads.length,
+		1,
+		"nothing is read while the status is another account's",
+	);
+
+	// Phase 2: status now belongs to account-b. One fresh read; until it lands
+	// the form says Loading and offers no roster.
+	await rerender({
+		accountId: "account-b",
+		status: statusWith({
+			account_id: "account-b",
+			surface_state: "C",
+			local: { enabled: true },
+		}),
+	});
+	// The section re-reads settings on an account change and remounts the
+	// editor, so the new pairing may be read more than once; an unmounted
+	// read's answer is discarded by the effect's `live` flag either way.
+	assert.ok(reads.length >= 2, "a fresh read for the new pairing");
+	assert.ok(reads.every((tenant) => tenant === "tnt_bridge_e2e"));
+	const loading = blockForm();
+	assert.equal(directoryPicker(loading.form), null);
+	assert.match(directoryNote().textContent, /Loading people and agents…/);
+	for (const resolve of held) resolve();
+	await flush();
+	await flush();
+	assert.ok(
+		directoryPicker(blockForm().form),
+		"account-b's own answer is offered",
+	);
+});
+
+test("a failed or empty directory says so and leaves the typed-ID path working", async (t) => {
+	const failing = directoryApi(() => {
+		throw new Error("directory refused");
+	});
+	const { writes } = await mount(t, {
+		overrides: { directory: failing.directory },
+	});
+	const { form, input } = blockForm();
+	assert.equal(directoryPicker(form), null);
+	assert.match(
+		directoryNote().textContent,
+		/Couldn’t load people and agents\. You can still enter an ID\./,
+	);
+	await setInput(input, "bep_typed");
+	await press(
+		[...form.querySelectorAll("button")].find(
+			(entry) => entry.textContent === "Add",
+		),
+	);
+	await flush();
+	await press(button("Save reach settings"));
+	await flush();
+	assert.equal(writes.allowlist.length, 1);
+	assert.ok(
+		writes.allowlist[0].entries.some(
+			(entry) => entry.target.endpoint_id === "bep_typed",
+		),
+	);
+});
+
+test("an empty directory says so once; a roster with people but no agents names the agent gap", async (t) => {
+	const empty = directoryApi(() => ({ members: [] }));
+	await mount(t, { overrides: { directory: empty.directory } });
+	const { form } = blockForm();
+	assert.equal(directoryPicker(form), null);
+	assert.equal(
+		directoryNote().textContent,
+		"No people or agents to choose from. You can still enter an ID.",
+	);
+	document.body.innerHTML = "";
+
+	const peopleOnly = directoryApi(() => ({
+		members: [DIRECTORY_RAW.members[2]],
+	}));
+	await mount(t, { overrides: { directory: peopleOnly.directory } });
+	assert.equal(
+		directoryNote().textContent,
+		"No agents to choose from. You can still enter an agent ID.",
+	);
+});
+
+test("the directory note is ONE polite live region for the whole editor, and Try again re-reads", async (t) => {
+	let fail = true;
+	const directory = directoryApi(() => {
+		if (fail) throw new Error("directory refused");
+		return DIRECTORY_RAW;
+	});
+	await mount(t, { overrides: { directory: directory.directory } });
+	const note = directoryNote();
+	assert.equal(note.tagName, "OUTPUT", "an implicit polite status region");
+	assert.ok(
+		!note.closest("fieldset"),
+		"said at the Reach level, not inside a direction group",
+	);
+	const retry = document.querySelector(
+		"button[data-agent-messages-directory-retry]",
+	);
+	assert.equal(retry?.textContent, "Try again");
+	assert.ok(!note.contains(retry), "the action is not read as the status");
+	assert.equal(directory.reads.length, 1);
+
+	fail = false;
+	await press(retry);
+	await flush();
+	await flush();
+	assert.equal(directory.reads.length, 2, "Try again re-runs the same read");
+	assert.equal(directoryNote().textContent, "", "ready: nothing to say");
+	assert.equal(
+		document.querySelector("button[data-agent-messages-directory-retry]"),
+		null,
+	);
+	assert.ok(directoryPicker(blockForm().form), "the roster is offered now");
+});
+
+test("an added choice shows its name and owner with the id underneath; Remove is named by it; an unknown id falls back to the id", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const { group, form, input } = blockForm();
+	await openAndChoose(directoryPicker(form), "bep_ada_two");
+	await press(button("Add", form));
+	await flush();
+
+	const row = group.querySelector('[data-agent-messages-entry="bep_ada_two"]');
+	assert.ok(row, "the chosen entry is listed");
+	assert.ok(row.hasAttribute("data-agent-messages-entry-named"));
+	assert.match(row.textContent, /^HelperRun by Ada Park/);
+	assert.match(row.textContent, /Agent IDbep_ada_two/, "the id stays visible");
+	assert.ok(
+		row.querySelector('button[aria-label="Remove Helper, Run by Ada Park"]'),
+	);
+	// The saved fixture entry is a person id the roster does not hold.
+	const unknown = group.querySelector(
+		'[data-agent-messages-entry="account-blocked"]',
+	);
+	assert.equal(unknown.hasAttribute("data-agent-messages-entry-named"), false);
+	assert.ok(
+		unknown.querySelector('button[aria-label="Remove account-blocked"]'),
+		"no name is guessed for an id the directory lacks",
+	);
+
+	await setInput(input, "bep_typed_unknown");
+	await press(button("Add", form));
+	await flush();
+	const typed = group.querySelector(
+		'[data-agent-messages-entry="bep_typed_unknown"]',
+	);
+	assert.equal(typed.hasAttribute("data-agent-messages-entry-named"), false);
+	assert.ok(
+		typed.querySelector('button[aria-label="Remove bep_typed_unknown"]'),
+	);
+});
+
+test("a person entry shows the person's name; no owner line", async (t) => {
+	const directory = directoryApi();
+	await mount(t, { overrides: { directory: directory.directory } });
+	const { group, form } = blockForm();
+	const kind = form.querySelector('button[role="combobox"][aria-label="Kind"]');
+	kind.focus();
+	await press(kind, "keydown", { key: "ArrowDown" });
+	await flush();
+	await act(async () =>
+		[...document.querySelectorAll('[role="option"]')]
+			.find((entry) => entry.textContent.trim() === "Person")
+			.click(),
+	);
+	await flush();
+	await openAndChoose(directoryPicker(form), "acc_bo");
+	await press(button("Add", form));
+	await flush();
+	const row = group.querySelector('[data-agent-messages-entry="acc_bo"]');
+	assert.match(row.textContent, /^Bo ChenPerson IDacc_bo/);
+	assert.ok(row.querySelector('button[aria-label="Remove Bo Chen"]'));
+});
+
+test("a listed entry is not offered again, and adding it twice gives one row", async (t) => {
+	const directory = directoryApi();
+	const { writes } = await mount(t, {
+		overrides: { directory: directory.directory },
+	});
+	const { group, form, input } = blockForm();
+	await openAndChoose(directoryPicker(form), "bep_ada_one");
+	await press(button("Add", form));
+	await flush();
+
+	const picker = directoryPicker(form);
+	picker.focus();
+	await press(picker, "keydown", { key: "ArrowDown" });
+	await flush();
+	assert.deepEqual(
+		[...document.querySelectorAll('[role="option"]')].map((entry) =>
+			entry.getAttribute("data-agent-messages-directory-choice"),
+		),
+		["bep_ada_two"],
+		"the listed id is no longer offered in this list",
+	);
+	await press(document.activeElement, "keydown", { key: "Escape" });
+	await flush();
+
+	await setInput(input, "bep_ada_one");
+	await press(button("Add", form));
+	await flush();
+	assert.equal(
+		group.querySelectorAll('[data-agent-messages-entry="bep_ada_one"]').length,
+		1,
+	);
+	assert.match(
+		form.textContent,
+		/That agent or person is already in this list\./,
+	);
+
+	// The other list is separate: the same agent is still offered there.
+	const otherPicker = directoryPicker(blockForm("Who you can message").form);
+	otherPicker.focus();
+	await press(otherPicker, "keydown", { key: "ArrowDown" });
+	await flush();
+	assert.ok(
+		document.querySelector(
+			'[role="option"][data-agent-messages-directory-choice="bep_ada_one"]',
+		),
+		"another list still offers it",
+	);
+	await press(document.activeElement, "keydown", { key: "Escape" });
+	await flush();
+
+	await press(button("Save reach settings"));
+	await flush();
+	const denied = writes.allowlist[0].entries.filter(
+		(entry) => entry.direction === "receive" && entry.effect === "deny",
+	);
+	assert.deepEqual(
+		denied.map((entry) => entry.target),
+		[{ account_id: "account-blocked" }, { endpoint_id: "bep_ada_one" }],
+		"one write per grant",
+	);
+});
+
+test("Reach says what allowing means, once", async (t) => {
+	await mount(t);
+	const lines = document.querySelectorAll(
+		"[data-agent-messages-allow-explainer]",
+	);
+	assert.equal(lines.length, 1);
+	assert.equal(
+		lines[0].textContent,
+		"Allowing someone in one direction also lets the other side reply in that conversation.",
+	);
+});
+
+test("no directory read while the editor is read-only, and none without the api member", async (t) => {
+	const directory = directoryApi();
+	await mount(t, {
+		status: statusWith({
+			surface_state: "F",
+			read_only: true,
+			local: { enabled: true },
+		}),
+		overrides: { directory: directory.directory },
+	});
+	assert.ok(document.querySelector("[data-agent-messages-allowlist]"));
+	assert.deepEqual(directory.reads, [], "read-only: nothing fetched");
+	assert.equal(
+		document.querySelector("button[data-agent-messages-directory-picker]"),
+		null,
+	);
 });
