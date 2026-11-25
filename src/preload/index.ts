@@ -7,6 +7,12 @@ import {
 } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import {
+	TELEMETRY_CONSENT_CHANGED_CHANNEL,
+	TELEMETRY_CONSENT_GET_CHANNEL,
+	TELEMETRY_CONSENT_SET_CHANNEL,
+	type TelemetryConsentState,
+} from "../main/telemetry-consent";
+import {
 	readAppVersionArgument,
 	readTelemetryArgument,
 } from "../main/telemetry-launch";
@@ -472,6 +478,27 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/*
+	 * THE USER'S OPT-IN (2026-11-24, `src/main/telemetry-consent.ts`). Main owns
+	 * the persisted choice; `telemetryEnabled` above is only the answer at window
+	 * creation. `set` persists and main broadcasts the new state to every window,
+	 * which is how analytics start or stop LIVE without a restart. Only the main
+	 * window's trusted frame is admitted by main; elsewhere the calls reject.
+	 */
+	telemetryConsent: {
+		get: (): Promise<TelemetryConsentState> =>
+			ipcRenderer.invoke(TELEMETRY_CONSENT_GET_CHANNEL),
+		set: (optedIn: boolean): Promise<TelemetryConsentState> =>
+			ipcRenderer.invoke(TELEMETRY_CONSENT_SET_CHANNEL, optedIn === true),
+		onChange: (listener: (state: TelemetryConsentState) => void) => {
+			const handler = (_event: unknown, state: TelemetryConsentState) =>
+				listener(state);
+			ipcRenderer.on(TELEMETRY_CONSENT_CHANGED_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(TELEMETRY_CONSENT_CHANGED_CHANNEL, handler);
+			};
+		},
+	},
 	/*
 	 * The installed app's version (`app.getVersion()` in main), read from the
 	 * same argv and for the same reason: the renderer registers it as PostHog's

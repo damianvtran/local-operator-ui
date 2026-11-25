@@ -1,0 +1,8 @@
+{
+	"ui.settings.privacy.title": "Privacy",
+	"ui.settings.privacy.description": "What Local Operator may share about how it is used. Nothing is shared unless you turn it on.",
+	"ui.settings.privacy.usage_label": "Share anonymous usage statistics",
+	"ui.settings.privacy.usage_explanation": "Only used to count how many people actively use Local Operator. Full privacy stays on: no conversations, prompts, files or session details are ever collected, stored or used. You can turn this off at any time.",
+	"ui.settings.privacy.save_failed": "Could not save your privacy choice. Nothing changed.",
+	"ui.settings.privacy.launch_off": "Usage statistics are switched off for this launch, so nothing is sent regardless of this setting."
+}

@@ -84,6 +84,7 @@ import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { useQuery } from "@tanstack/react-query";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
 import type { BackendSettings } from "../../../../../shared/desktop-contract";
+import { consentBridge } from "../../../shared/analytics/use-telemetry-consent";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	TEAM_BRIDGE_ENABLED_SETTING_KEY,
@@ -106,6 +107,7 @@ import {
 import { DefaultEffortSelect } from "./default-effort-select";
 import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
+import { PrivacySection } from "./privacy-section";
 
 import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
 import { AppearanceLayers } from "./appearance-layers";
@@ -517,8 +519,12 @@ export const SettingsPage: FC = () => {
 		() =>
 			DEFAULT_SETTINGS_SECTIONS.filter(
 				(section) =>
-					section.id !== "agent-messages" ||
-					agentMessagesAvailability !== "absent",
+					(section.id !== "agent-messages" ||
+						agentMessagesAvailability !== "absent") &&
+					// `PrivacySection` renders nothing without the desktop bridge
+					// (Storybook, a bare renderer), so its rail entry would point at
+					// nothing (design round 1, D3).
+					(section.id !== "privacy" || consentBridge() !== undefined),
 			),
 		[agentMessagesAvailability],
 	);
@@ -581,6 +587,7 @@ export const SettingsPage: FC = () => {
 		"agent-messages": useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		imports: useRef<HTMLDivElement>(null),
+		privacy: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
 	}).current;
 
@@ -2132,6 +2139,12 @@ export const SettingsPage: FC = () => {
 									>
 										<ImportSettingsSection />
 									</div>
+
+									{/*
+									 * Opt-in usage statistics (default off). In the System group,
+									 * ahead of updates, so the rail's order matches the document.
+									 */}
+									<PrivacySection sectionRef={sectionRefs.privacy} />
 
 									<div
 										ref={sectionRefs.updates}

@@ -184,6 +184,7 @@ import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
 import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
 import enUiSettingsNotifications from "./catalogues/en/ui.settings.notifications.json";
+import enUiSettingsPrivacy from "./catalogues/en/ui.settings.privacy.json";
 import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
@@ -371,6 +372,7 @@ import esUiSettingsModel from "./catalogues/es/ui.settings.model.json";
 import esUiSettingsModelProviderCallout from "./catalogues/es/ui.settings.model.provider_callout.json";
 import esUiSettingsNavigation from "./catalogues/es/ui.settings.navigation.json";
 import esUiSettingsNotifications from "./catalogues/es/ui.settings.notifications.json";
+import esUiSettingsPrivacy from "./catalogues/es/ui.settings.privacy.json";
 import esUiSettingsSearch from "./catalogues/es/ui.settings.search.json";
 import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
@@ -558,6 +560,7 @@ import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
 import frUiSettingsModelProviderCallout from "./catalogues/fr/ui.settings.model.provider_callout.json";
 import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
 import frUiSettingsNotifications from "./catalogues/fr/ui.settings.notifications.json";
+import frUiSettingsPrivacy from "./catalogues/fr/ui.settings.privacy.json";
 import frUiSettingsSearch from "./catalogues/fr/ui.settings.search.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
@@ -745,6 +748,7 @@ import hiUiSettingsModel from "./catalogues/hi/ui.settings.model.json";
 import hiUiSettingsModelProviderCallout from "./catalogues/hi/ui.settings.model.provider_callout.json";
 import hiUiSettingsNavigation from "./catalogues/hi/ui.settings.navigation.json";
 import hiUiSettingsNotifications from "./catalogues/hi/ui.settings.notifications.json";
+import hiUiSettingsPrivacy from "./catalogues/hi/ui.settings.privacy.json";
 import hiUiSettingsSearch from "./catalogues/hi/ui.settings.search.json";
 import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
@@ -932,6 +936,7 @@ import ruUiSettingsModel from "./catalogues/ru/ui.settings.model.json";
 import ruUiSettingsModelProviderCallout from "./catalogues/ru/ui.settings.model.provider_callout.json";
 import ruUiSettingsNavigation from "./catalogues/ru/ui.settings.navigation.json";
 import ruUiSettingsNotifications from "./catalogues/ru/ui.settings.notifications.json";
+import ruUiSettingsPrivacy from "./catalogues/ru/ui.settings.privacy.json";
 import ruUiSettingsSearch from "./catalogues/ru/ui.settings.search.json";
 import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
@@ -1119,6 +1124,7 @@ import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
 import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
 import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
 import urUiSettingsNotifications from "./catalogues/ur/ui.settings.notifications.json";
+import urUiSettingsPrivacy from "./catalogues/ur/ui.settings.privacy.json";
 import urUiSettingsSearch from "./catalogues/ur/ui.settings.search.json";
 import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
@@ -1306,6 +1312,7 @@ import viUiSettingsModel from "./catalogues/vi/ui.settings.model.json";
 import viUiSettingsModelProviderCallout from "./catalogues/vi/ui.settings.model.provider_callout.json";
 import viUiSettingsNavigation from "./catalogues/vi/ui.settings.navigation.json";
 import viUiSettingsNotifications from "./catalogues/vi/ui.settings.notifications.json";
+import viUiSettingsPrivacy from "./catalogues/vi/ui.settings.privacy.json";
 import viUiSettingsSearch from "./catalogues/vi/ui.settings.search.json";
 import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
@@ -1493,6 +1500,7 @@ import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
 import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
 import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
 import zhCNUiSettingsNotifications from "./catalogues/zh-CN/ui.settings.notifications.json";
+import zhCNUiSettingsPrivacy from "./catalogues/zh-CN/ui.settings.privacy.json";
 import zhCNUiSettingsSearch from "./catalogues/zh-CN/ui.settings.search.json";
 import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
@@ -1683,6 +1691,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
 	...enUiSettingsNotifications,
+	...enUiSettingsPrivacy,
 	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -1878,6 +1887,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsModelProviderCallout,
 		...esUiSettingsNavigation,
 		...esUiSettingsNotifications,
+		...esUiSettingsPrivacy,
 		...esUiSettingsSearch,
 		...esUiSettingsShortcuts,
 		...esUiSettingsSpeech,
@@ -2067,6 +2077,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsModelProviderCallout,
 		...frUiSettingsNavigation,
 		...frUiSettingsNotifications,
+		...frUiSettingsPrivacy,
 		...frUiSettingsSearch,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
@@ -2256,6 +2267,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsModelProviderCallout,
 		...hiUiSettingsNavigation,
 		...hiUiSettingsNotifications,
+		...hiUiSettingsPrivacy,
 		...hiUiSettingsSearch,
 		...hiUiSettingsShortcuts,
 		...hiUiSettingsSpeech,
@@ -2445,6 +2457,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsModelProviderCallout,
 		...ruUiSettingsNavigation,
 		...ruUiSettingsNotifications,
+		...ruUiSettingsPrivacy,
 		...ruUiSettingsSearch,
 		...ruUiSettingsShortcuts,
 		...ruUiSettingsSpeech,
@@ -2634,6 +2647,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsModelProviderCallout,
 		...urUiSettingsNavigation,
 		...urUiSettingsNotifications,
+		...urUiSettingsPrivacy,
 		...urUiSettingsSearch,
 		...urUiSettingsShortcuts,
 		...urUiSettingsSpeech,
@@ -2823,6 +2837,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsModelProviderCallout,
 		...viUiSettingsNavigation,
 		...viUiSettingsNotifications,
+		...viUiSettingsPrivacy,
 		...viUiSettingsSearch,
 		...viUiSettingsShortcuts,
 		...viUiSettingsSpeech,
@@ -3012,6 +3027,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsModelProviderCallout,
 		...zhCNUiSettingsNavigation,
 		...zhCNUiSettingsNotifications,
+		...zhCNUiSettingsPrivacy,
 		...zhCNUiSettingsSearch,
 		...zhCNUiSettingsShortcuts,
 		...zhCNUiSettingsSpeech,
@@ -14043,6 +14059,12 @@ export type MessageParams = {
 	"ui.settings.notifications.volume.reset": undefined;
 	"ui.settings.notifications.volume.system": undefined;
 	"ui.settings.notifications.volume.valuetext": { value: number };
+	"ui.settings.privacy.description": undefined;
+	"ui.settings.privacy.launch_off": undefined;
+	"ui.settings.privacy.save_failed": undefined;
+	"ui.settings.privacy.title": undefined;
+	"ui.settings.privacy.usage_explanation": undefined;
+	"ui.settings.privacy.usage_label": undefined;
 	"ui.settings.search.empty.shortcut": { shortcut: string };
 	"ui.settings.search.empty.summary": undefined;
 	"ui.settings.search.field.label": undefined;
