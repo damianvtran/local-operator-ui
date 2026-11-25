@@ -4955,6 +4955,143 @@ test("a pending draft console moves to the new conversation with its pty and his
 	}
 });
 
+/*
+ * A FAILED MOVE LEAVES EVERY BYTE WHERE IT WAS (agent review round 1, R4).
+ *
+ * The move is a batch now: all logs, then all sidecars, then the source sidecars
+ * go last, under an undo journal. This drives the late failure the review's fault
+ * probe found — the SECOND surface's destination sidecar unwritable — and asserts
+ * the whole batch rolled back, byte for byte, across two surfaces: nothing is
+ * under the target owner, both source logs and sidecars are intact, and the
+ * registry still holds both surfaces pending. Then it removes the fault and
+ * retries, which is the recovery the renderer promises its user ("the shells stay
+ * pending"): the same bytes arrive under the conversation, once.
+ */
+test("a late failure during the move rolls the whole batch back, and the retry carries the same bytes", () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, registry, spawned } = makeHost({ history });
+	const target = "session-atomic";
+	const digests = (paths) =>
+		paths.map((path) =>
+			createHash("sha256").update(readFileSync(path)).digest("hex"),
+		);
+	try {
+		const first = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+			retain: true,
+		});
+		const second = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+			retain: true,
+		});
+		spawned[0].pty.emit("first surface bytes\r\n");
+		spawned[1].pty.emit("second surface bytes\r\n");
+		host.flush(first.surface);
+		host.flush(second.surface);
+
+		const sourceLogs = [first.surface, second.surface].map((surface) =>
+			logPath(root, DRAFT_CONSOLE_OWNER, surface),
+		);
+		const sourceSidecars = [first.surface, second.surface].map((surface) =>
+			sidecarPath(root, DRAFT_CONSOLE_OWNER, surface),
+		);
+		const beforeLogs = digests(sourceLogs);
+		const beforeSidecars = digests(sourceSidecars);
+
+		/*
+		 * THE FAULT: the second surface's DESTINATION sidecar name is a directory,
+		 * so `writeMeta`'s staged rename fails with EISDIR — the same shape the
+		 * review injected. It is created only after the first surface's destination
+		 * sidecar has been written, which is what makes it a LATE failure.
+		 */
+		mkdirSync(sidecarPath(root, target, second.surface), { recursive: true });
+
+		assert.throws(() => host.adoptPendingConsole(target));
+
+		assert.deepEqual(
+			digests(sourceLogs),
+			beforeLogs,
+			"every source log is byte-identical after the rollback",
+		);
+		assert.deepEqual(
+			digests(sourceSidecars),
+			beforeSidecars,
+			"every source sidecar is byte-identical after the rollback",
+		);
+		assert.equal(
+			existsSync(logPath(root, target, first.surface)),
+			false,
+			"the log the batch had already renamed is back under the pending owner",
+		);
+		assert.equal(
+			existsSync(sidecarPath(root, target, first.surface)),
+			false,
+			"the destination sidecar written before the failure is gone",
+		);
+		assert.equal(host.list(DRAFT_CONSOLE_OWNER).length, 2, "both stay pending");
+		assert.equal(host.list(target).length, 0, "the target owns nothing");
+		assert.equal(spawned.length, 2, "no pty was restarted or replaced");
+
+		/*
+		 * AND THE WATERMARK STILL DESCRIBES THE FILES IT POINTS AT. The host appends
+		 * from a byte count per surface, so the failure mode the review found was a
+		 * moved prefix: the old directory kept the mark, the bytes were elsewhere,
+		 * and the next flush appended the tail to a fresh file — the prefix never
+		 * reaching either. A rollback makes the count true again, which this asserts
+		 * by writing MORE bytes after the failure and finding both in one file.
+		 */
+		spawned[0].pty.emit("bytes after the failed move\r\n");
+		host.flush(first.surface);
+		const grown = readFileSync(sourceLogs[0], "utf8");
+		assert.match(grown, /first surface bytes/);
+		assert.match(grown, /bytes after the failed move/);
+		const grownDigests = digests(sourceLogs);
+
+		/*
+		 * THE RETRY, AFTER THE FAULT IS REMOVED: the same batch commits, and the
+		 * bytes are the ones the surfaces wrote — not a fresh log starting empty.
+		 * That is the contract the host's persisted-byte watermark rests on: it is
+		 * a count per surface, so a move that did not happen must leave the paths
+		 * the count describes untouched.
+		 */
+		rmSync(sidecarPath(root, target, second.surface), {
+			recursive: true,
+			force: true,
+		});
+		const retried = host.adoptPendingConsole(target);
+		assert.deepEqual(
+			retried.adopted.sort(),
+			[first.surface, second.surface].sort(),
+		);
+		assert.deepEqual(
+			digests(
+				[first.surface, second.surface].map((surface) =>
+					logPath(root, target, surface),
+				),
+			),
+			grownDigests,
+			"the retry moved exactly the bytes that were written, including the ones after the failure",
+		);
+		for (const surface of [first.surface, second.surface]) {
+			assert.match(
+				readFileSync(sidecarPath(root, target, surface), "utf8"),
+				new RegExp(`"session_id": "${target}"`),
+			);
+		}
+		assert.equal(history.listMetadata(DRAFT_CONSOLE_OWNER).length, 0);
+		assert.equal(
+			registry.require(first.surface).record.sessionId,
+			target,
+			"the record moved with the files",
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
 test("adopting with nothing pending is a no-op, and the pending owner is not a target", () => {
 	const { host } = makeHost();
 	try {

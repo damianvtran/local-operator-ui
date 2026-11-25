@@ -83,7 +83,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { DRAFT_CONSOLE_OWNER } from "../../../../../shared/console-owner";
+import {
+	DRAFT_CONSOLE_OWNER,
+	isDraftConsoleOwner,
+} from "../../../../../shared/console-owner";
 import {
 	type CanonicalFrontendState,
 	type CanonicalModel,
@@ -378,6 +381,29 @@ type ChatContentProps = {
 	 * the identity a backend route can resolve. See `CanvasProps.sessionId`.
 	 */
 	sessionId?: string;
+	/**
+	 * The CONSOLE this pane is showing — a conversation's id, or the pending
+	 * local draft's owner (`DRAFT_CONSOLE_OWNER`) while the pane is still a
+	 * draft view.
+	 *
+	 * A SEPARATE PROP FROM `sessionId` BECAUSE THEY STOP AGREEING MID-SEND (QA
+	 * round 1's Q1, UX round 1's U1): the draft's first send patches the created
+	 * session id onto the draft row before the message is admitted, so `sessionId`
+	 * names a conversation the pane has not been adopted into yet. The transcript
+	 * half of this component must follow that id (it is where the message will
+	 * land), while the console pane must keep reading and creating under the
+	 * pending owner — the surfaces are still there, and main moves them only on an
+	 * accepted message. Read as `sessionId ?? DRAFT_CONSOLE_OWNER`, the pane would
+	 * have switched to the new conversation's empty console on the create's
+	 * answer, and a REFUSED first send left the user with “no console” while both
+	 * of their shells were running. Derived once by the page
+	 * (`consoleOwnerForView`) so every console reading below — the listing, the
+	 * open request, liveness, the unseen marks — asks about one owner.
+	 *
+	 * Absent means “derive it from `sessionId`”, the legacy reading, for callers
+	 * that have no draft (the Storybook panes).
+	 */
+	consoleOwner?: string | null;
 	/**
 	 * How many turns the canonical stream has seen end, forwarded to the canvas
 	 * so the code-memory panel can re-read when a cell finishes; see
@@ -1035,6 +1061,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		messageInputRef,
 		cwd,
 		sessionId,
+		consoleOwner: consoleOwnerProp,
 		turnTerminal,
 		cwdWritePath,
 		cwdPending,
@@ -2208,12 +2235,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * where the conversation's identity lives.
 		 */
 		const consoleUnseenAll = useUiPreferencesStore((s) => s.consoleUnseen);
+		const consoleOwner = consoleOwnerProp ?? sessionId ?? DRAFT_CONSOLE_OWNER;
 		const consoleUnseenMarks = useMemo(
-			() =>
-				consoleUnseenAll.filter(
-					(mark) => mark.sessionId === (sessionId ?? DRAFT_CONSOLE_OWNER),
-				),
-			[consoleUnseenAll, sessionId],
+			() => consoleUnseenAll.filter((mark) => mark.sessionId === consoleOwner),
+			[consoleUnseenAll, consoleOwner],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
 		/*
@@ -2227,7 +2252,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		const consoleLiveCount =
 			consoleLiveSurface !== null &&
-			consoleLiveSurface.sessionId === (sessionId ?? DRAFT_CONSOLE_OWNER)
+			consoleLiveSurface.sessionId === consoleOwner
 				? consoleLiveSurface.count
 				: 0;
 
@@ -2792,7 +2817,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * must not take the keyboard.
 								 */
 								setConsolePaneOpen(true);
-								requestConsoleOpen(sessionId);
+								requestConsoleOpen(consoleOwner);
 							}
 						: /*
 							 * ON A DRAFT THE PRESS OPENS A REAL TERMINAL NOW (the pending local
@@ -2816,7 +2841,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									return;
 								}
 								setConsolePaneOpen(true);
-								requestConsoleOpen(DRAFT_CONSOLE_OWNER);
+								requestConsoleOpen(consoleOwner);
 							}
 				}
 				onOpenCodeReview={
@@ -4223,8 +4248,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							tourTag="console-pane-slot"
 						>
 							<ConsolePane
-								sessionId={sessionId ?? null}
-								draft={sessionId ? null : { cwd }}
+								/*
+								 * THE PANE'S API IS `null` FOR A DRAFT, which is what arms its
+								 * Escape rule and its draft copy; the owner itself is the pending
+								 * constant, so a draft view is passed as “no session”. See
+								 * `consoleOwner`: it is the pending owner even after the draft's
+								 * create answered, which is the state this split exists for.
+								 */
+								sessionId={
+									isDraftConsoleOwner(consoleOwner) ? null : consoleOwner
+								}
+								draft={isDraftConsoleOwner(consoleOwner) ? { cwd } : null}
 								onClose={() => setConsolePaneOpen(false)}
 								allowCommandSubmit={allowCommandSubmit}
 							/>

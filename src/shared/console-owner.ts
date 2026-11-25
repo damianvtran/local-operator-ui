@@ -44,3 +44,35 @@ export const DRAFT_CONSOLE_OWNER = "draft:local-console";
 export const isDraftConsoleOwner = (
 	sessionId: string | null | undefined,
 ): boolean => sessionId === DRAFT_CONSOLE_OWNER;
+
+/**
+ * Which console a chat pane is showing, from the two facts the pane has.
+ *
+ * A DRAFT VIEW OWNS THE PENDING CONSOLE EVEN WHEN A SESSION ID EXISTS FOR IT, and
+ * that is the whole reason this is a function rather than `sessionId ?? DRAFT`.
+ * A draft's first send creates the conversation BEFORE the message is admitted
+ * (`canonical-sessions-store` patches the row's `sessionId` at the create's
+ * answer, so a retry addresses the same session), which means the pane holds a
+ * real session id for a row that is still an unsent, unadopted draft. Read as
+ * `sessionId ?? DRAFT`, the pane would switch to the new conversation's console
+ * the instant the create answered — empty, because main has not moved the
+ * surfaces yet and must not until the send is accepted — and a REFUSED first
+ * send would leave the user staring at “no console” while their shells are still
+ * running under the pending owner (QA round 1's Q1, UX round 1's U1).
+ *
+ * THE OWNER FLIPS AT THE RETIRE, NOT AT THE CREATE: `draftView` is the page's
+ * `activeDraftKey` (null once `finishDraft` retires the row), which the send path
+ * also reads as “a staged new conversation is still the view”. So create,
+ * in-flight admission and refusal all keep the pending owner on screen, and the
+ * conversation's own pane takes over on the commit that shows the conversation.
+ *
+ * A LIVE SESSION IS NEVER THE PENDING OWNER: with no draft view the answer is the
+ * session id, or null when the pane has neither (no console to scope).
+ */
+export function consoleOwnerForView(
+	draftView: boolean,
+	sessionId: string | null | undefined,
+): string | null {
+	if (draftView) return DRAFT_CONSOLE_OWNER;
+	return sessionId ?? null;
+}

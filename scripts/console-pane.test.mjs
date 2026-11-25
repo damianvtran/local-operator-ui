@@ -63,6 +63,10 @@ const bundle = await build({
 			// whether the open request survives being written to disk.
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
+			// The one rule behind the pane's owner on a draft: the pane reads and
+			// creates under the pending owner while the view is still a draft, even
+			// after the draft's create has answered with a session id.
+			'export * from "./src/shared/console-owner";',
 			'export {localOperatorDark,localOperatorLight} from "./src/renderer/src/shared/themes/palettes/local-operator";',
 			'export {applyContrast} from "./src/shared/theme-engine/contrast.mjs";',
 			'export {glassPaintFor} from "./src/shared/window-glass";',
@@ -108,6 +112,9 @@ const {
 	useUiPreferencesStore,
 	persistedUiPreferences,
 	kebabRole,
+	consoleOwnerForView,
+	isDraftConsoleOwner,
+	DRAFT_CONSOLE_OWNER,
 	readConsoleSnapshot,
 	readConsoleSurface,
 	surfacesForSession,
@@ -1389,4 +1396,36 @@ test("terminal-only glass adaptation covers two schemes, true presets, intensity
 		globalThis.getComputedStyle = previous;
 	}
 	assert.equal(measured, 36);
+});
+
+/*
+ * THE PANE'S CONSOLE OWNER ON A DRAFT (agent review round 1, R2; QA round 1, Q1;
+ * UX round 1, U1).
+ *
+ * The state this pins is the one that hid a user's terminals: a draft's first
+ * send creates the conversation and patches its id onto the draft row BEFORE the
+ * message is admitted, so from the create's answer until the row retires the pane
+ * holds a real session id for a draft that has not been adopted. Read as
+ * `sessionId ?? DRAFT`, the pane switched to the new conversation's empty console
+ * and a REFUSED send left “no console” over two live shells. The owner therefore
+ * follows the VIEW, and the view is a draft until the draft retires.
+ */
+test("a draft view keeps the pending console owner through create, refusal and a later retry", () => {
+	// Create answered: a session id exists, the message has not been accepted.
+	assert.equal(
+		consoleOwnerForView(true, "333333333333"),
+		DRAFT_CONSOLE_OWNER,
+		"a materialised but unsent draft still reads its pending shells",
+	);
+	// No session yet — the same answer, which is why one rule covers both.
+	assert.equal(consoleOwnerForView(true, undefined), DRAFT_CONSOLE_OWNER);
+	// The draft retired (the accepted send moved the UI to the conversation).
+	assert.equal(consoleOwnerForView(false, "333333333333"), "333333333333");
+	// A pane with neither: no console to scope.
+	assert.equal(consoleOwnerForView(false, null), null);
+	assert.equal(
+		isDraftConsoleOwner(consoleOwnerForView(true, "333333333333")),
+		true,
+		"the pane's draft API (null session) is derived from the owner, not from the id's presence",
+	);
 });
