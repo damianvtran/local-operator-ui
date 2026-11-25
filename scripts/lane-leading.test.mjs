@@ -535,3 +535,56 @@ test("no route column draws a right rule any more", () => {
 		`${AGENTS_SIDEBAR} draws the roster's right rule again: the roster's \`surface\` against the \`canvas\` content is a tone step`,
 	);
 });
+
+test("the chat header's title starts on the content column's inset (operator, 2026-11-25)", () => {
+	/*
+	 * "There needs to be more left padding on the title ... it's too tight to
+	 * the left". The title leads the header row, so the row's start padding IS
+	 * the title's left edge, and it must equal the transcript/composer inset
+	 * (`CHAT_COLUMN_INSET`, 24px = the transcript's p-4 + its 8px scrollbar
+	 * gutter). The padding lives on the ROW, not the h2, so the rename input
+	 * shares the edge; the h2 and the input must carry no start inset of their
+	 * own or the edit would jump.
+	 */
+	const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
+	const measure = readSource("src/renderer/src/features/chat/chat-measure.ts");
+	const inset = measure.match(/export const CHAT_COLUMN_INSET = "px-(\d+)";/);
+	assert.ok(inset, "CHAT_COLUMN_INSET must stay a px-<n> token");
+	const ROW =
+		/"@container\/chathdr flex min-h-10 shrink-0 items-center gap-3 ([^"]*)"/;
+	const leadingOf = (source) => {
+		const row = source.match(ROW);
+		assert.ok(row, "the chat header row class list must be findable");
+		const pad = row[1].match(/(?:^|\s)ps-(\d+)(?:\s|$)/);
+		return pad ? pad[1] : null;
+	};
+	const header = readSource(HEADER);
+	assert.equal(
+		leadingOf(header),
+		inset[1],
+		"the header row's logical start padding must equal the content column inset",
+	);
+	assert.doesNotMatch(
+		header,
+		/chathdr[^"]*\bpx-/,
+		"a symmetric px- would override or hide the start inset",
+	);
+	assert.doesNotMatch(
+		header,
+		/data-header-title=""[\s\S]{0,400}?className=\{cn\(\s*"[^"]*\b(?:ps|ms|pl|ml|px|mx)-/,
+	);
+	assert.doesNotMatch(
+		header,
+		/data-header-rename-input=""[\s\S]{0,700}?className=\{cn\(\s*"[^"]*\b(?:ps|ms|pl|ml|px|mx)-/,
+	);
+	// Negative control: the pre-fix `px-4` row has no matching start inset.
+	const before = header.replace(
+		ROW,
+		'"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4"',
+	);
+	assert.notEqual(
+		leadingOf(before),
+		inset[1],
+		"the guard must reject the old px-4 row",
+	);
+});

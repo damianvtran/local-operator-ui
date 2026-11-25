@@ -951,9 +951,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * unfloored title disappeared (design round 1, D1 - measured: the title's
 			 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
 			 * lets it yield before any control does).
+			 *
+			 * THE LEADING INSET IS THE CONTENT COLUMN'S 24px, NOT THE BAR'S 16px
+			 * (operator, 2026-11-25, on PR #2099: "There needs to be more left padding
+			 * on the title ... it's too tight to the left"). The title restored by
+			 * #2091 leads this row, so the row's start padding is the title's left
+			 * edge; at `px-4` it sat 8px outside the transcript and composer text,
+			 * which both inset by `CHAT_COLUMN_INSET` (24px: the transcript's p-4
+			 * plus its 8px scrollbar gutter, see `chat-measure.ts`). `ps-6` matches
+			 * that total and is logical so RTL mirrors it. Padding the ROW rather
+			 * than the h2 keeps the rename input on the same start edge as the
+			 * title, so nothing jumps when the editor opens. The trailing side keeps
+			 * `pe-4`: the controls align with the bar's chrome, not the column.
+			 * This costs the pane-open floor arithmetic below 8px of its 16px
+			 * spare. `scripts/lane-leading.test.mjs` pins it.
 			 */
 			className={cn(
-				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4",
+				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 ps-6 pe-4",
 			)}
 			data-tour-tag="chat-header"
 			data-titlebar-drag=""
