@@ -192,6 +192,7 @@ globalThis.window = {
 			onUpdateProgress: () => () => undefined,
 			quitAndInstall: () => () => undefined,
 			quitForUpdateInstall: () => () => undefined,
+			moveToApplications: () => () => undefined,
 			updateBackend: async () => true,
 		},
 		backend: {

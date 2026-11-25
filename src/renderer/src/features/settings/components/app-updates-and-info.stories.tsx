@@ -94,6 +94,7 @@ const updaterStub = () => ({
 	downloadUpdate: async () => ({}),
 	quitAndInstall: async () => ({}),
 	quitForUpdateInstall: async () => ({}),
+	moveToApplications: async () => ({}),
 	onUpdateAvailable: () => () => {},
 	onUpdateNotAvailable: () => () => {},
 	onUpdateDevMode: () => () => {},
