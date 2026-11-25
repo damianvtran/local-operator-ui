@@ -1,5 +1,6 @@
 import { t } from "@shared/i18n";
 import type { AtSpan } from "./at-token";
+import { SUGGESTION_ROW_PITCH } from "./composer-suggestion-style";
 
 /**
  * The `@` list's contract, pure and I/O-free: what a key means, the row budget,
@@ -34,7 +35,7 @@ import type { AtSpan } from "./at-token";
  * exists to prevent all the same, and it is worse when the clipped row is the
  * highlighted one, whose 2px accent bar then starts below the last whole row.
  */
-export const AT_ROW_PITCH = 35.5;
+export const AT_ROW_PITCH = SUGGESTION_ROW_PITCH;
 
 /**
  * The picker's header and footer strips, both `py-1` + `text-meta`, plus the
@@ -82,8 +83,9 @@ export function atRowBudget(anchorTop: number, clipTop: number): number {
 }
 
 /**
- * One section header's height, in px: `pt-2 pb-1` (12) plus the header's
- * `text-meta` line box.
+ * One section header's height, in px: `pt-2 pb-1` (12) plus a 17px line box.
+ * Use an explicit line height on section labels so a fractional meta line box
+ * cannot drift away from the cap this constant budgets.
  *
  * MEASURED rather than derived, the way `AT_ROW_PITCH` above was: design round
  * 1's D1 read the two headers of a merged listing at 29px each on the built
@@ -92,6 +94,15 @@ export function atRowBudget(anchorTop: number, clipTop: number): number {
  * a cap that quietly overflows by a slice of a row.
  */
 export const AT_SECTION_HEADER_PITCH = 29;
+
+const LEADING_MARKDOWN_HEADING = /^(?:[ \t]*\r?\n)* {0,3}#{1,6}[ \t]+/;
+
+/** Strip only an opening Markdown heading marker from the one-line preview.
+ * The project store and the picked token keep their original strings. In
+ * particular, identifiers like #123, C# and later Markdown are not ours to edit. */
+export function projectDescriptionPreview(description: string): string {
+	return description.replace(LEADING_MARKDOWN_HEADING, "");
+}
 
 /**
  * The row runs of a merged listing, in draw order: one count per section, the
