@@ -11,8 +11,15 @@ import { t } from "@shared/i18n";
  */
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
-import { projectRefusalCopy } from "./project-edit-model";
-import { type DoneGateRefusal, doneGateRefusal } from "./project-model";
+import {
+	PROJECT_NAME_CONFLICT_CODE,
+	projectRefusalCopy,
+} from "./project-edit-model";
+import {
+	type DoneGateRefusal,
+	doneGateRefusal,
+	refusalCopy,
+} from "./project-model";
 
 /**
  * A refused write, as the sentence beside the field.
@@ -30,6 +37,33 @@ export function projectWriteErrorCopy(error: unknown): string {
 		message: error instanceof Error ? error.message : "",
 	});
 }
+/**
+ * A refused CREATE, as the sentence under the New-project sheet, or `""` when
+ * nothing is known (the dialog then says its own "not saved" sentence).
+ *
+ * WHY THE CODE, NOT THE SERVER'S TEXT (i18n census N5, 2026-11-25): the
+ * backend speaks English - a taken key comes back as `project 'x' already
+ * exists` whatever language the app is in - and localization is the UI's job.
+ * The route declares the category on the wire (`detail.code` =
+ * `project_name_exists`, carried here as `DesktopControlError.code`), so the
+ * dialog maps that code to the app's own, translated sentence, the same one
+ * the detail page's Key editor shows. Never match the English sentence to pick
+ * a translation: the i18n contract forbids parsing prose the backend owns.
+ *
+ * Every other refusal keeps the dialog's previous behaviour exactly: the
+ * message through `refusalCopy` (which re-speaks only the done-gate tail),
+ * otherwise as written.
+ */
+export function projectCreateErrorCopy(error: unknown): string {
+	const message = error instanceof Error && error.message ? error.message : "";
+	if (
+		error instanceof DesktopControlError &&
+		error.code === PROJECT_NAME_CONFLICT_CODE
+	)
+		return projectRefusalCopy({ code: error.code, message });
+	return refusalCopy(message);
+}
+
 /**
  * Is this failure "the row is gone"? The daemon declares it as
  * `project_not_found`; a bare 404 on a project route means the same thing, and
