@@ -127,7 +127,7 @@ def main():
 /** The entry every fixture bundle builds: the manager and the launch plan under
  * test, with `electron`, `logger` and `config` replaced by stubs. */
 const FIXTURE_ENTRY =
-	'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch"; export * from "./src/main/quit-exit-deadline";';
+	'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch"; export * from "./src/main/quit-exit-deadline"; export { SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS } from "./src/main/shell-path"; export { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./src/main/backend/discovery"; export { createHeadlessFirstRunSetup } from "./src/main/window-mode";';
 
 /**
  * The one substitution set the whole file shares.
@@ -192,6 +192,12 @@ const {
 	READINESS_POLL_INTERVAL_MS,
 	LAUNCHER_PROBE_WORST_MS,
 	READINESS_BUDGET_MS,
+	READINESS_WALL_WORST_MS,
+	SHELL_PATH_TIMEOUT_MS,
+	SHELL_PATH_ANSWER_GRACE_MS,
+	OWNED_RECORD_WINDOW_MS,
+	PROBE_TIMEOUT_MS,
+	createHeadlessFirstRunSetup,
 	createQuitExitDeadline,
 	quitExitDeadlineMs,
 	readinessPollDelayMs,
@@ -1021,6 +1027,34 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			OWNED_STOP_WORST_MS,
 			READINESS_POLL_INTERVAL_MS,
 			LAUNCHER_PROBE_WORST_MS,
+			/*
+			 * The headless first-run deadline sits between the quit failsafe and the
+			 * before-quit handler in index.ts, so the extracted slice evaluates it and
+			 * the handler reads its `failed()`. Supplying the terms below is the
+			 * same rule the binds above follow: the SHIPPED constants and factory,
+			 * never a paraphrase of them - the slice's own arithmetic is what the
+			 * assertions at the foot of this test tie to `quitExitDeadlineMs`.
+			 */
+			READINESS_WALL_WORST_MS,
+			SHELL_PATH_TIMEOUT_MS,
+			SHELL_PATH_ANSWER_GRACE_MS,
+			OWNED_RECORD_WINDOW_MS,
+			PROBE_TIMEOUT_MS,
+			createHeadlessFirstRunSetup,
+			/*
+			 * The mode is a REAL member of the shipped union and the one that leaves
+			 * the setup idle: `begin()` arms only on `headless`. This test is about
+			 * the quit paths of a launched, windowed run, and `headless` is covered
+			 * by `scripts/window-mode.test.mjs` and the first-run tests.
+			 */
+			windowLaunch: { mode: "normal" },
+			/*
+			 * Inert by construction: an idle setup never calls `onFailure`, so this
+			 * closure is named at slice-evaluation time and can never run. Left as a
+			 * recorder rather than a silent no-op - were it ever reached, `app.quit`
+			 * would move and the `quit === 0` assertion below would say so.
+			 */
+			endHeadlessRun: (why) => errors.push(String(why)),
 			createQuitExitDeadline: (input) => {
 				deadlineConstructions.push(input);
 				return createQuitExitDeadline(input);
