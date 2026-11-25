@@ -1339,6 +1339,16 @@ export const CleanupWide: Story = {
 };
 
 /**
+ * THE SAME CARD WHERE MAIN OFFERS ITS CONFIRMATION SHEET: `More actions` gains
+ * `Confirm and send…` beside Decline and Dismiss…, and the line under the row says
+ * why it matters. Open the menu to see all three.
+ */
+export const CleanupConfirmOffered: Story = {
+	parameters: { drawerWidth: 400 },
+	args: { ...CleanupNarrow.args, onConfirm: noop },
+};
+
+/**
  * THE SETTLED HALF AT THE FLOOR: each row shows its status chip, the full
  * question (no clamp, per Ben's a-427e decision), the answer preview, and the ask
  * id at the row's end. Open one to see the id move to the frame's foot with its
