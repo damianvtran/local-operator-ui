@@ -4501,8 +4501,8 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * THE SIDEBAR'S ROWS ARE KEYED OFF THE SIDEBAR, NOT THE CHAT ROUTE (design
  * round 7, D1). These sidebar selectors used to sit under
  * `[data-workspace-shell]:has([data-chat-workspace])`, so the same sidebar drew
- * filled current rows and pill buttons everywhere but Chat. They now apply in
- * the shell on every route; only the panel rail - which only Chat mounts - keeps
+ * different row fills and pill buttons outside Chat. They now apply in the
+ * shell on every route; only the panel rail - which only Chat mounts - keeps
  * the Chat gate. `scripts/chat-sidebar-route-invariant.test.mjs` holds this.
  *
  * THE RESETS TAKE THE RESTING PAINT, NEVER THE POINTER'S (v0.63.0 regression,
@@ -4511,20 +4511,19 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * beats every `@layer utilities` one whatever its specificity - so while they
  * matched a row at all times, the rows' own `hover:bg-row-hover` (and a current
  * row's `hover:bg-row-selected`) could never paint: pinned, chat, Agents and
- * Teams rows all went dead under the pointer. What the inset removes is the
- * pill chrome on icon buttons and the filled CURRENT row at rest; the pointer's
- * ground is the component's to draw. So:
+ * Teams rows all went dead under the pointer. Strip the pill chrome on icon
+ * buttons, not the hover or the current conversation's ground. So:
  *   - a `[data-chat-row]` button (the row itself, on entity/launcher/temporary
  *     rows) and a `[data-sidebar-row-button]` (a full-width text row that is not
  *     a chat: "Create team", "Show N more", QA round 1 Q1-1) are released from
  *     the reset while hovered; icon buttons inside a row (new chat, history,
  *     pin, more) keep it - no pills. A data attribute rather than a class match,
  *     so a respelled utility cannot silently re-break it (review R3);
- *   - a row's BOX is reset only at rest (`:not(:hover)`), and the menu's held
- *     ground (`bg-row-hover` while the row's menu is open) is never reset;
+ *   - a row's BOX is reset only at rest (`:not(:hover)`), except that current
+ *     conversations and menu-held rows also need their ground at rest;
  *   - where the box paints, its row button stays transparent even while hovered
- *     (a session box carrying `hover:bg-row-hover`, any current box, a staged
- *     entity wrapper), so translucent glass grounds never stack two ink layers;
+ *     (a session box carrying `hover:bg-row-hover` or `bg-row-hover`, a current
+ *     box, a staged entity wrapper), so translucent glass never stacks ink;
  *   - a dragged row is still never reset (`rowDragging` owns its ground).
  * Keyboard focus is the accent outline below, which these resets never touched.
  * `scripts/sidebar-row-hover.test.mjs` holds this.
@@ -4550,34 +4549,75 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 [data-workspace-shell]
 	:is(
 		[data-session-row]:not([data-dragging]):not(:hover):not(
-				[class~="bg-row-hover"]
-			),
+				[data-workspace-current]
+			):not([class~="bg-row-hover"]),
 		[data-session-row][class~="hover:bg-row-hover"] > [data-chat-row],
-		[data-temporary-row] > [data-chat-row][aria-current="page"]:not(:hover),
-		[data-workspace-current]:not([data-dragging]):not(:hover),
+		[data-session-row][class~="bg-row-hover"] > [data-chat-row],
 		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
 		[data-workspace-launcher] [data-entity] > div:first-child:not(:hover),
 		[data-entity] > [data-entity-staged] > [data-chat-row]
 	) {
 	background: transparent;
 }
-/*
- * THE CURRENT ROW HOVERS LIKE EVERY OTHER ROW (design round 1, D5). The inset
- * resets a current row's fill at rest (above), which left `rowCurrent`'s
- * `hover:bg-row-selected` as the only ground it ever painted: the selected fill
- * appeared under the pointer alone, a stronger step than any other row's hover.
- * Here the hovered current box takes `row-hover`, the same ground as its
- * neighbours. It is ONE layer: the box paints, and the rule above keeps its row
- * button transparent (a temporary row has no box, so its button is the layer).
- * A dragged row is excluded - `rowDragging` owns that ground.
- * `scripts/sidebar-row-hover.test.mjs` holds this.
- */
+/* A brighter hover must not catch up to selection. Lift both dark opaque
+ * fills by the same small ink mix so the palette still sets their separation.
+ * Resolve the roles on the sidebar, where glass remaps them to ink alpha.
+ * Glass gets its dark hover lift from part of the existing alpha interval
+ * instead: the default selected overlay already budgets for text legibility
+ * on a bright backdrop. Light keeps the authored row fills in both modes. */
+[data-workspace-shell] [data-chat-region="sidebar"] {
+	--sidebar-conversation-hover: light-dark(
+		var(--color-row-hover),
+		color-mix(in srgb, var(--color-row-hover), var(--lo-ink) 3%)
+	);
+	--sidebar-conversation-current: light-dark(
+		var(--color-row-selected),
+		color-mix(in srgb, var(--color-row-selected), var(--lo-ink) 3%)
+	);
+}
+html[data-glass~="sidebar"]
+	[data-workspace-shell]
+	[data-chat-region="sidebar"][data-glass-region="sidebar"] {
+	--sidebar-conversation-hover: light-dark(
+		var(--color-row-hover),
+		color-mix(in srgb, var(--color-row-hover), var(--color-row-selected) 24%)
+	);
+	--sidebar-conversation-current: var(--color-row-selected);
+}
+/* The current conversation keeps its fill even under the pointer. The box
+ * paints for saved conversations; the temporary row has no painted wrapper.
+ * Dragged rows keep the component's own held ground. */
 [data-workspace-shell]
 	:is(
-		[data-workspace-current]:not([data-dragging]):hover,
-		[data-temporary-row] > [data-chat-row][aria-current="page"]:hover,
-		[data-workspace-launcher] [data-entity] > [data-entity-staged]:hover
+		[data-workspace-current]:not([data-dragging]),
+		[data-temporary-row] > [data-chat-row][aria-current="page"]
 	) {
+	background-color: var(--sidebar-conversation-current);
+}
+/* Follow the existing paint owner: when a box handles hover/menu hold it also
+ * covers the action hit areas; when it has no fill, its button does the work.
+ * Full-width non-conversation buttons and staged launchers keep their roles. */
+[data-workspace-shell]
+	:is(
+		[data-session-row]:not([data-workspace-current]):not(
+				[data-dragging]
+			)[class~="hover:bg-row-hover"]:hover,
+		[data-session-row]:not([data-workspace-current]):not(
+				[data-dragging]
+			)[class~="bg-row-hover"],
+		[data-session-row-button]:not([aria-current="page"]):not(
+				[data-session-row][class~="hover:bg-row-hover"] > *,
+				[data-session-row][class~="bg-row-hover"] > *,
+				[data-session-row][data-dragging] > *
+			):hover,
+		[data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover
+	) {
+	background-color: var(--sidebar-conversation-hover);
+}
+[data-workspace-shell]
+	[data-workspace-launcher]
+	[data-entity]
+	> [data-entity-staged]:hover {
 	background-color: var(--color-row-hover);
 }
 [data-workspace-inset] > [data-chat-region="header"] button:focus-visible,

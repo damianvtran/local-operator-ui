@@ -5252,7 +5252,10 @@ export function ChatSidebar({
 		const rowButton = (
 			<button
 				type="button"
+				/* When the box has no hover fill this button paints it. Keep that
+				   scope separate from launcher buttons, which also use data-chat-row. */
 				data-chat-row
+				data-session-row-button
 				/* Named for the driver, which has to OPEN a conversation before the chat
 				   header - and so the right slot's three triggers - exists at all
 				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
