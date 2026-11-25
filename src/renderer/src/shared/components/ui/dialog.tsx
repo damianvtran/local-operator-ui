@@ -14,13 +14,21 @@ import { Button } from "./button";
 /**
  * Modal dialog.
  *
- * The overlay is `bg-scrim`, which is a per-theme role. A hardcoded black
+ * The overlay derives from `scrim` (via `.lo-dialog-scrim`), a per-theme role. A hardcoded black
  * alpha is the usual shortcut here and it is wrong in the six light themes,
  * where the scrim is a warm near-black at a lower alpha.
  *
  * The panel is `elevated` plus the one shadow in the system. A dialog is the
  * canonical case for that shadow: it has genuinely left the flow, so a
  * lightness step alone cannot say how far in front it is.
+ *
+ * THIS IS THE ONE DIALOG SURFACE. Every centred popup in the app renders through
+ * `DialogContent`, and it wears the shared raised treatment - a subtle gradient,
+ * a soft outline and top edge (`.lo-dialog-surface`) over a darker backdrop
+ * (`.lo-dialog-scrim`), both defined once in styles/index.css under "THE DIALOG
+ * SURFACE". Do not restyle a dialog's ground, edge or scrim at a call site and do
+ * not hand-roll a modal panel: a popup that should look like a dialog uses this
+ * primitive, so the look stays consistent and changes in one place.
  *
  * Entrance is a fade. No zoom and no slide — the transform budget in this
  * system is for things arriving from off-screen (see `Sheet`), and a dialog
@@ -43,7 +51,13 @@ export const DialogOverlay = forwardRef<
 		ref={ref}
 		className={cn(
 			// No entrance animation; see the note at the top of `tooltip.tsx`.
-			"fixed inset-0 z-50 bg-scrim",
+			// `lo-dialog-scrim` IS the backdrop colour: the palette's scrim a step
+			// toward black, for dialogs only (styles/index.css, "THE DIALOG
+			// SURFACE"). No `bg-*` utility may sit beside it: utilities outrank the
+			// `components` layer it lives in, so a `bg-scrim` here silently painted
+			// the plain scrim instead (review round 1, R2/D1/Q-2). A caller's own
+			// `bg-*` (the stage's `bg-transparent`) still wins, on purpose.
+			"lo-dialog-scrim fixed inset-0 z-50",
 			className,
 		)}
 		{...props}
@@ -89,6 +103,28 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	 * `z-50`. Only a surface that has already decided it owns the screen needs it.
 	 */
 	overlayClassName?: string;
+	/**
+	 * `stage`: the content IS the window (the first-run setup stage), not a panel
+	 * floating over it.
+	 *
+	 * WHY A VARIANT RATHER THAN CLASS OVERRIDES: a floating dialog carries
+	 * `data-lo-floating`, the marker that enrols it in the floating-surface rules
+	 * (no border, the one overlay shadow, the opaque `elevated` plate) and in
+	 * `scripts/floating-surface-no-border.test.mjs`. A full-window page is not a
+	 * floating surface, and a caller could not take the marker off through
+	 * `className`. The stage keeps everything else a dialog is for - the focus
+	 * trap, `aria-modal`, Escape and the title wiring - and the `no-drag`
+	 * subtraction, which a stage needs too: it covers the chrome strip, and only
+	 * the drag band it draws itself may move the window.
+	 */
+	variant?: "floating" | "stage";
+	/**
+	 * `raised` (default): the shared dialog surface - a subtle gradient, a soft
+	 * outline and top edge over `elevated` (styles/index.css, "THE DIALOG
+	 * SURFACE"). `plain`: none of it, for content that is not a panel at all
+	 * (the image lightbox, which is the picture on a transparent ground).
+	 */
+	surface?: "raised" | "plain";
 };
 
 export const DialogContent = forwardRef<
@@ -103,6 +139,8 @@ export const DialogContent = forwardRef<
 			closeDisabled = false,
 			closeLabel,
 			overlayClassName,
+			variant = "floating",
+			surface = "raised",
 			...props
 		},
 		ref,
@@ -137,11 +175,16 @@ export const DialogContent = forwardRef<
 					 * translucency buys nothing and costs legibility: this surface keeps the
 					 * opaque `elevated` role and its shadow.
 					 */
-					data-lo-floating=""
+					data-lo-floating={variant === "floating" ? "" : undefined}
 					className={cn(
-						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
-						"flex w-full max-w-lg flex-col gap-4",
-						"rounded-lg bg-elevated p-6 shadow-overlay",
+						variant === "stage"
+							? "fixed inset-0 z-50 flex flex-col"
+							: [
+									"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
+									"flex w-full max-w-lg flex-col gap-4",
+									"rounded-lg bg-elevated p-6 shadow-overlay",
+									surface === "raised" && "lo-dialog-surface",
+								],
 						// No entrance animation; see the note at the top of `tooltip.tsx`.
 						className,
 					)}

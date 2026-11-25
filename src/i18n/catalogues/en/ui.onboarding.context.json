@@ -1,14 +1,225 @@
 {
-	"ui.onboarding.connect.intro": {
-		"role": "Intro paragraph above the first-run provider list",
-		"tone": "Plain factual explanation with equal choice; no hype",
-		"length": "Three short sentences; wraps in the setup dialog",
-		"note": "Radient benefits are many models, dictation and public agent sharing via one browser sign-in. Existing Claude/ChatGPT subscriptions, API keys and local models are equally valid alternatives. Credit is CONDITIONAL on eligibility, email verification and a security check; no amount, no unconditional free offer. Keep product names unchanged."
+	"ui.onboarding.intro.skip_hint": {
+		"role": "Small hint at the bottom of the intro",
+		"tone": "Neutral instruction",
+		"note": "Any key, click or scroll skips the intro."
+	},
+	"ui.onboarding.intro.subtitle": {
+		"role": "Line under the welcome heading on the first-run intro: the product's tagline",
+		"tone": "Confident, energetic, plain",
+		"note": "Local Operator is a product name. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
+	},
+	"ui.onboarding.intro.title": {
+		"role": "Welcome heading on the first-run intro, shown large under the brand mark",
+		"tone": "Warm, confident, short",
+		"note": "Local Operator is the product name; keep it untranslated."
+	},
+	"ui.onboarding.meet.done": {
+		"role": "Sentence under 'Meet Aida' when she has already greeted the user",
+		"tone": "Warm, plain",
+		"note": "'She' is the assistant (Aida)."
+	},
+	"ui.onboarding.meet.owed": {
+		"role": "Sentence under 'Meet Aida' while her first greeting is still owed",
+		"tone": "Warm, plain",
+		"note": "'She' is the assistant (Aida). 'Chief of staff' is her role."
+	},
+	"ui.onboarding.modal.title.meet": {
+		"role": "Heading of the last setup step and the name of its progress segment",
+		"tone": "Warm",
+		"placeholders": {
+			"name": "The assistant's display name, usually Aida"
+		}
+	},
+	"ui.onboarding.modal.title.search": {
+		"role": "Heading of the web search setup step and its progress segment name",
+		"tone": "Neutral",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.search.block.radient": {
+		"role": "Footer note on the search step while the Radient option is chosen but not signed in; Finish is disabled until then",
+		"tone": "Plain instruction naming both ways out",
+		"note": "'Free' is the first option's own label (ui.onboarding.search.mode.free); use the same word. Radient stays untranslated."
 	},
 	"ui.onboarding.search.mode.free_detail": {
-		"role": "Explanation of the preselected Free web-search option in onboarding step 3",
+		"role": "Explanation of the preselected Free web-search option",
 		"tone": "Plain factual description",
-		"length": "Three short sentences",
-		"note": "Free search services are shared; no key needed; busy times can be slower. Deliberately names no vendors: this is about what the reader needs to do, not how the backend rotates services."
+		"length": "Three short fragments",
+		"note": "Free search services are shared; no key needed; busy times can be slower. Deliberately names no vendors."
+	},
+	"ui.onboarding.search.mode.not_needed": {
+		"role": "Muted detail replacing an option's description when Radient already provides search",
+		"tone": "Neutral",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.search.mode.radient": {
+		"role": "Title of the middle web-search option: the Radient account, which the user can sign in to or create",
+		"tone": "Neutral noun phrase; the button under it carries the verb",
+		"note": "First-run setup stage. Radient is a product name; keep it untranslated."
+	},
+	"ui.onboarding.search.mode.radient_action": {
+		"role": "Button in the middle web-search option that starts a Radient browser sign-in",
+		"tone": "Action",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.search.mode.radient_detail": {
+		"role": "Explanation under the middle web-search option",
+		"tone": "Plain benefit list; says the account can be created here",
+		"note": "Radient is a product name; keep it untranslated."
+	},
+	"ui.onboarding.search.mode.radient_done": {
+		"role": "Title of the middle option once Radient is connected",
+		"tone": "Confirming",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.search.mode.radient_done_detail": {
+		"role": "Detail under 'Radient search is on'",
+		"tone": "Confirming, plain",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.announce_connected": {
+		"role": "Screen-reader announcement when a sign-in completes",
+		"tone": "Brief status",
+		"placeholders": {
+			"brand": "Provider or plan name, e.g. ChatGPT"
+		}
+	},
+	"ui.onboarding.signin.chatgpt.action": {
+		"role": "Button that starts a browser sign-in with a ChatGPT subscription",
+		"tone": "Action",
+		"note": "A subscription log-in, not an API key."
+	},
+	"ui.onboarding.signin.claude.action": {
+		"role": "Button that starts a browser sign-in with a Claude subscription",
+		"tone": "Action",
+		"note": "A subscription log-in, not an API key."
+	},
+	"ui.onboarding.signin.connected": {
+		"role": "Trailing status on a connected account row",
+		"tone": "Terse status",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.divider": {
+		"role": "Label in the middle of a horizontal divider above the ChatGPT and Claude buttons",
+		"tone": "Short, lowercase in English",
+		"note": "These are subscription LOG-INS, not API keys. Never say 'API key' here."
+	},
+	"ui.onboarding.signin.error.detail": {
+		"role": "Detail under the server-unreachable message on the sign-in step",
+		"tone": "Reassuring, factual",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.error.retry": {
+		"role": "Button that retries reaching the local server",
+		"tone": "Action",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.error.title": {
+		"role": "Message when the app's local server cannot be reached on the sign-in step",
+		"tone": "Plain",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.more": {
+		"role": "Disclosure button that reveals API-key and local-model providers",
+		"tone": "Neutral",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.more_detail": {
+		"role": "Muted detail after 'Other ways to connect' on a disclosure button",
+		"tone": "Terse list",
+		"note": "Names what the disclosure holds."
+	},
+	"ui.onboarding.signin.radient.action": {
+		"role": "Primary button that starts a Radient browser sign-in",
+		"tone": "Action, inviting",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.action_add": {
+		"role": "Secondary button to add Radient after a subscription is connected",
+		"tone": "Action",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.benefit.fallbacks": {
+		"role": "Benefit list item in the Radient panel",
+		"tone": "Terse noun phrase",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.benefit.routing": {
+		"role": "Benefit list item in the Radient panel",
+		"tone": "Terse noun phrase",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.benefit.search": {
+		"role": "Benefit list item in the Radient panel",
+		"tone": "Terse noun phrase",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.benefit.skills": {
+		"role": "Benefit list item in the Radient panel",
+		"tone": "Terse noun phrase",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.credit": {
+		"role": "Small print in the Radient panel",
+		"tone": "Factual; conditional",
+		"note": "Credit is conditional on eligibility; never imply an unconditional free offer or name an amount."
+	},
+	"ui.onboarding.signin.radient.eyebrow": {
+		"role": "Small accent label above the Radient sign-in button",
+		"tone": "Terse",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.eyebrow_in_addition": {
+		"role": "Small label above the Radient panel once a ChatGPT or Claude plan is connected",
+		"tone": "Gentle recommendation",
+		"note": "Means: we recommend adding Radient as well as the subscription already connected."
+	},
+	"ui.onboarding.signin.radient.eyebrow_signed_in": {
+		"role": "Small label above the Radient panel once Radient is connected",
+		"tone": "Terse status",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
+	},
+	"ui.onboarding.signin.radient.nudge": {
+		"role": "One sentence inside the Radient panel when only subscriptions are connected; the benefit list is hidden then",
+		"tone": "Persuasive but plain; never blocking",
+		"placeholders": {
+			"brands": "Connected subscription names joined by the locale's list format, e.g. 'ChatGPT and Claude'"
+		},
+		"note": "Product names stay untranslated. No singular/plural 'plan': the sentence names the brands, not their plans."
+	},
+	"ui.onboarding.signin.subscriptions_note": {
+		"role": "Small note under the ChatGPT and Claude buttons",
+		"tone": "Reassuring, factual",
+		"note": "Plus, Pro, Max are plan names; keep them untranslated."
+	},
+	"ui.onboarding.signin.subtitle": {
+		"role": "Sentence under the sign-in heading before anything is connected: why Radient, and that subscriptions can join",
+		"tone": "Persuasive but plain",
+		"note": " Radient, ChatGPT and Claude are product names; keep them untranslated. 'Plan' means the user's paid subscription."
+	},
+	"ui.onboarding.signin.subtitle_connected": {
+		"role": "Sentence under the heading once a subscription (not Radient) is connected",
+		"tone": "Plain, confirming",
+		"note": "Repeats the connected state on purpose: the heading above it is now 'Your base of operations is ready'."
+	},
+	"ui.onboarding.signin.subtitle_radient_connected": {
+		"role": "Sentence under the heading once Radient is connected",
+		"tone": "Plain, confirming",
+		"note": " Radient, ChatGPT and Claude are product names; keep them untranslated. 'Plan' means the user's paid subscription. 'Powering' is figurative (Radient supplies the agents' models and tools), not electricity."
+	},
+	"ui.onboarding.signin.title": {
+		"role": "Heading of the first setup step before anything is connected",
+		"tone": "Inviting, energetic; an imperative",
+		"note": "Echoes the intro tagline's 'base of operations'; use the same word for it. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
+	},
+	"ui.onboarding.signin.title_connected": {
+		"role": "Heading of the first setup step once any account is connected",
+		"tone": "Confirming, warm",
+		"note": "Same 'base of operations' word as the step's first heading. 'Base of operations' is the user's headquarters / command centre for their agents, a figurative hub: never a military base or a database. Prefer the locale's natural 'operations centre' / 'hub' word."
+	},
+	"ui.onboarding.signin.waiting": {
+		"role": "Button label while a browser sign-in is waiting for the user",
+		"tone": "Status",
+		"note": "First-run setup stage. Radient, ChatGPT, Claude and Local Operator are product names; keep them untranslated."
 	}
 }

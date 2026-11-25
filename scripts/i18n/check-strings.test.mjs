@@ -703,7 +703,8 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
  * argument; parameterised messages bind the exact producer expressions;
  * the greeting branches bind to the `oweGreeting` conditional's two arms;
  * the acquisition call sits inside the element whose live `href` is
- * `credential.url`; the modal's titles flow through `stepTitles`; the plan's
+ * `credential.url`; the modal's track titles come from `trackTitle`'s switch
+ * (one arm per step; the stage refresh retired the `stepTitles` table); the plan's
  * block reasons sit in the `catalogueHasModels` / `catalogue.ready`
  * branches. Value pins and the live-render layer stay in
  * `scripts/onboarding-i18n-contract.test.mjs`.
@@ -713,11 +714,6 @@ const ONBOARDING_BASE = "src/renderer/src/features/onboarding/components/";
 
 /** key -> [committed English, wiring file] (the values serve the param split). */
 const BINDING = [
-	[
-		"ui.onboarding.connect.intro",
-		"Local Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.",
-		"steps/connect-provider-step.tsx",
-	],
 	[
 		"ui.onboarding.default_model.block.loading_models",
 		"Loading the model list…",
@@ -750,8 +746,8 @@ const BINDING = [
 	],
 	[
 		"ui.onboarding.default_model.intro",
-		"New chats use this model. Every agent can pick a different one later.",
-		"steps/default-model-step.tsx",
+		"New chats start with this model. Each agent can use a different one.",
+		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.default_model.loading",
@@ -783,27 +779,35 @@ const BINDING = [
 		"suggested for your account",
 		"steps/default-model-step.tsx",
 	],
-	["ui.onboarding.dialog.setup", "Setup", "onboarding-dialog.tsx"],
 	[
-		"ui.onboarding.extras.greeting_done",
-		"{name} is your chief of staff. Her conversation is where you pick up with her, and it is one keystroke away in the sidebar. You can also skip straight to a new chat.",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.skip_hint",
+		"Press any key to continue",
+		"onboarding-dialog.tsx",
 	],
 	[
-		"ui.onboarding.extras.greeting_owed",
-		"{name} is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.subtitle",
+		"Your base of operations for agents that get real work done.",
+		"onboarding-dialog.tsx",
 	],
 	[
-		"ui.onboarding.extras.next_meet",
-		"Next: meet {name}",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.title",
+		"Welcome to Local Operator",
+		"onboarding-dialog.tsx",
+	],
+	[
+		"ui.onboarding.meet.done",
+		"She's your chief of staff. Her conversation is one keystroke away in the sidebar.",
+		"steps/meet-aida-step.tsx",
+	],
+	[
+		"ui.onboarding.meet.owed",
+		"She's your chief of staff. She'll say hello, ask what to call you, and show you around.",
+		"steps/meet-aida-step.tsx",
 	],
 	["ui.onboarding.modal.action.back", "Back", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.continue", "Continue", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.finish", "Finish", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.meet", "Meet {name}", "onboarding-modal.tsx"],
-	["ui.onboarding.modal.action.skip", "Skip", "onboarding-modal.tsx"],
 	[
 		"ui.onboarding.modal.action.skip_for_now",
 		"Skip for now",
@@ -821,38 +825,36 @@ const BINDING = [
 	],
 	[
 		"ui.onboarding.modal.step_of",
-		"Step {current, number} of {total, number}",
+		"Step {current, number, ::group-off} of {total, number, ::group-off}",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.steps_total",
-		"{total, plural, one {# step} other {# steps}}",
+		"{total, plural, one {{total, number, ::group-off} step} other {{total, number, ::group-off} steps}}",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.title.connect_provider",
-		"Connect an AI account",
+		"Sign in to get started",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.title.default_model",
-		"Your default model",
-		"onboarding-modal.tsx",
-	],
-	[
-		"ui.onboarding.modal.title.extras",
-		"Web search (optional)",
-		"onboarding-modal.tsx",
-	],
-	[
-		"ui.onboarding.modal.title.extras_with_name",
-		"Web search, then meet {name}",
+		"Pick your default model",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.title.fallback",
 		"First-time setup",
 		"onboarding-modal.tsx",
+	],
+	["ui.onboarding.modal.title.meet", "Meet {name}", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.title.meet", "Meet {name}", "steps/meet-aida-step.tsx"],
+	["ui.onboarding.modal.title.search", "Web search", "onboarding-modal.tsx"],
+	[
+		"ui.onboarding.search.block.radient",
+		"Finish signing in to Radient, or choose Free.",
+		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.each_key_saved",
@@ -861,28 +863,58 @@ const BINDING = [
 	],
 	[
 		"ui.onboarding.search.intro",
-		"Agents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.",
-		"steps/search-api-step.tsx",
+		"Agents look things up while they work, like today's prices or this week's news.",
+		"onboarding-modal.tsx",
 	],
 	["ui.onboarding.search.mode.free", "Free", "steps/search-api-step.tsx"],
 	[
 		"ui.onboarding.search.mode.free_detail",
-		"Uses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.",
+		"Shared search services. No key needed. Can be slower at busy times.",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.keys",
-		"Add API keys",
+		"Add your own search API keys",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.keys_detail",
-		"Bring your own keys for the search providers you use.",
+		"SerpApi, Tavily, Brave and others.",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.label",
 		"Search setup",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.not_needed",
+		"Not needed with Radient",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient",
+		"Radient account",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_action",
+		"Sign in with Radient",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_detail",
+		"Sign in or create an account for higher-volume search, plus smart skill and tool picks, automatic model fallbacks and cost-aware routing.",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_done",
+		"Radient search is on",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_done_detail",
+		"No keys needed. Your agents now get the other Radient benefits too.",
 		"steps/search-api-step.tsx",
 	],
 	[
@@ -916,6 +948,132 @@ const BINDING = [
 		"Saving {name}",
 		"steps/search-api-step.tsx",
 	],
+	[
+		"ui.onboarding.signin.announce_connected",
+		"{brand} connected.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.chatgpt.action",
+		"Log in with ChatGPT",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.claude.action",
+		"Log in with Claude",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.connected",
+		"Connected",
+		"steps/connect-provider-step.tsx",
+	],
+	["ui.onboarding.signin.connected", "Connected", "steps/search-api-step.tsx"],
+	[
+		"ui.onboarding.signin.divider",
+		"or log in with your subscription",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.detail",
+		"Setup needs it to sign you in. It usually starts within a few seconds.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.retry",
+		"Retry",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.title",
+		"Couldn't reach Local Operator's server.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.more",
+		"Other ways to connect",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.more_detail",
+		"API keys, local models",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.action",
+		"Continue with Radient",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.action_add",
+		"Add Radient",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.credit",
+		"Eligible new accounts can claim free credit.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow",
+		"Recommended",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow_in_addition",
+		"Recommended in addition",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow_signed_in",
+		"Signed in",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.nudge",
+		"Keep using {brands}, and add Radient for higher-volume search, smart tool picks and automatic fallbacks.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.subscriptions_note",
+		"Uses your ChatGPT Plus or Pro, or Claude Pro or Max plan. No extra charge.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle",
+		"Radient powers your agents with smarter tools, search and model fallbacks. Bring your ChatGPT or Claude plan along too.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle_connected",
+		"You're connected. Add another account, or continue.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle_radient_connected",
+		"Radient is powering your agents. Bring your ChatGPT or Claude plan too, or continue.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.title",
+		"Build your base of agent operations",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.title_connected",
+		"Your base of operations is ready",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.waiting",
+		"Waiting for browser",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.waiting",
+		"Waiting for browser",
+		"steps/search-api-step.tsx",
+	],
 ];
 /**
  * key -> [[parameter name, exact producer expression source]] for the 12
@@ -926,20 +1084,26 @@ const BINDING = [
  */
 
 const PARAM_SITES = [
-	["ui.onboarding.modal.title.extras_with_name", [["name", "aidaName"]]],
-	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
+	[
+		"ui.onboarding.modal.title.meet",
+		[["name", "aidaName"]],
+		"onboarding-modal.tsx",
+	],
 	["ui.onboarding.modal.error.aida_open_failed", [["name", "aidaName"]]],
+	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
 	[
 		"ui.onboarding.modal.step_of",
 		[
 			["current", "activeIndex + 1"],
-			["total", "STEP_SEQUENCE.length"],
+			["total", "sequence.length"],
 		],
 	],
-	["ui.onboarding.modal.steps_total", [["total", "STEP_SEQUENCE.length"]]],
-	["ui.onboarding.extras.next_meet", [["name", "aidaName"]]],
-	["ui.onboarding.extras.greeting_owed", [["name", "aidaName"]]],
-	["ui.onboarding.extras.greeting_done", [["name", "aidaName"]]],
+	["ui.onboarding.modal.steps_total", [["total", "sequence.length"]]],
+	[
+		"ui.onboarding.signin.announce_connected",
+		[["brand", "accountNameOf(row)"]],
+	],
+	["ui.onboarding.signin.radient.nudge", [["brands", "listFormat(brands)"]]],
 	[
 		"ui.onboarding.default_model.connected_pick",
 		[["brand", "brandOf(choice.provider)"]],
@@ -957,16 +1121,28 @@ const PARAM_SITES = [
 			],
 		],
 	],
+	[
+		"ui.onboarding.modal.title.meet",
+		[["name", "name"]],
+		"steps/meet-aida-step.tsx",
+	],
 	["ui.onboarding.search.row.not_saved", [["message", "message"]]],
 	["ui.onboarding.search.row.saving", [["name", "credential.name"]]],
 	["ui.onboarding.search.row.get_your", [["name", "credential.name"]]],
 ];
 
-/** The three titles that flow through the modal's `stepTitles` table. */
-const TABLE_KEYS = [
+/**
+ * The track titles `trackTitle` returns, one per step plus the fallback. They are
+ * live literal `t()` calls now (the stage refresh replaced the `stepTitles` table
+ * with a switch, so a parameterised Meet title could be one of its arms), so they
+ * sit in BINDING like any other key; this list pins that they stay in the switch.
+ */
+const TITLE_KEYS = [
 	"ui.onboarding.modal.title.connect_provider",
 	"ui.onboarding.modal.title.default_model",
-	"ui.onboarding.modal.title.extras",
+	"ui.onboarding.modal.title.fallback",
+	"ui.onboarding.modal.title.meet",
+	"ui.onboarding.modal.title.search",
 ];
 
 const PLAN_KEYS = {
@@ -1014,8 +1190,7 @@ test("every key is the literal argument of a real t() call (comments cannot sati
 		assert.ok(sf, `${file}: not parsed by the snapshot`);
 		const live = new Set(btCalls(sf).map(({ key }) => key));
 		const expected = BINDING.filter(
-			([key, , f]) =>
-				f === file && !(key in PLAN_KEYS) && !TABLE_KEYS.includes(key),
+			([key, , f]) => f === file && !(key in PLAN_KEYS),
 		).map(([key]) => key);
 		assert.deepEqual(
 			[...live].sort(),
@@ -1028,11 +1203,15 @@ test("every key is the literal argument of a real t() call (comments cannot sati
 test("plain messages take no second argument; parameterised messages bind exact producers", () => {
 	const byFile = new Map();
 	for (const [key, expected, file] of BINDING) {
-		if (key in PLAN_KEYS || TABLE_KEYS.includes(key)) continue;
+		if (key in PLAN_KEYS) continue;
 		if (!byFile.has(file)) byFile.set(file, bsfOf(file));
 		const call = btCalls(byFile.get(file)).find((c) => c.key === key);
 		assert.ok(call, `${key}: no live t() call`);
-		const params = PARAM_SITES.find(([k]) => k === key);
+		// A key with two call sites names its file (Meet's title: the track's
+		// `aidaName`, the step copy's own `name` parameter).
+		const params = PARAM_SITES.find(
+			([k, , f]) => k === key && (f === undefined || f === file),
+		);
 		if (!params) {
 			assert.equal(
 				call.call.arguments.length,
@@ -1071,33 +1250,22 @@ test("plain messages take no second argument; parameterised messages bind exact 
 	}
 });
 
-test("the modal's titles flow through the stepTitles table and the plan's blocks through its branches", () => {
-	// stepTitles: the table's values ARE the three committed keys.
+test("the modal's titles flow through trackTitle's switch and the plan's blocks through its branches", () => {
+	// trackTitle: each arm returns one literal title; the set IS the committed keys.
 	const modal = bsfOf("onboarding-modal.tsx");
-	let table = null;
+	let switchFn = null;
 	bwalk(modal, (node) => {
 		if (
-			node.kind === SyntaxKind.VariableDeclaration &&
-			node.name?.text === "stepTitles"
-		) {
-			let init = node.initializer;
-			for (
-				let i = 0;
-				i < 3 &&
-				init &&
-				init.kind !== SyntaxKind.ObjectLiteralExpression &&
-				init.expression;
-				i += 1
-			)
-				init = init.expression;
-			table = init;
-		}
+			node.kind === SyntaxKind.FunctionDeclaration &&
+			node.name?.text === "trackTitle"
+		)
+			switchFn = node;
 	});
-	assert.ok(table, "the stepTitles table is gone");
+	assert.ok(switchFn, "trackTitle is gone");
 	assert.deepEqual(
-		table.properties.map((p) => p.initializer?.text).sort(),
-		TABLE_KEYS.slice().sort(),
-		"the stepTitles table no longer carries the committed keys",
+		[...new Set(btCalls(switchFn).map(({ key }) => key))].sort(),
+		TITLE_KEYS.slice().sort(),
+		"trackTitle no longer returns the committed titles",
 	);
 	assert.ok(
 		btCalls(modal).length >= 10,
@@ -1108,15 +1276,14 @@ test("the modal's titles flow through the stepTitles table and the plan's blocks
 		if (
 			node.kind === SyntaxKind.CallExpression &&
 			node.expression?.kind === SyntaxKind.Identifier &&
-			node.expression.text === "t" &&
-			node.arguments?.[0]?.kind !== SyntaxKind.StringLiteral &&
-			slug(bslice(modal, node.arguments?.[0] ?? node)) === "stepTitles[step]"
+			node.expression.text === "trackTitle" &&
+			slug(bslice(modal, node)) === "trackTitle(step,aidaName)"
 		)
 			consumes = true;
 	});
 	assert.ok(
 		consumes,
-		"the modal stopped rendering titles through t(stepTitles[step])",
+		"the modal stopped titling the track through trackTitle(step, aidaName)",
 	);
 
 	// The plan: constant initialisers + branch-scoped consumption.
@@ -1195,22 +1362,19 @@ test("the modal's titles flow through the stepTitles table and the plan's blocks
 	);
 	assert.ok(loadingInBranch, "LOADING_MODELS_KEY left the not-ready branch");
 
-	// The greeting branches: owed in the conditional's true arm, done in false.
-	const extras = bsfOf("steps/extras-step.tsx");
+	// The greeting branches: owed in the conditional's true arm, done in false
+	// (the Meet step's copy; the retired extras step carried them before).
+	const meet = bsfOf("steps/meet-aida-step.tsx");
 	let owedTrue = false;
 	let doneFalse = false;
-	bwalk(extras, (node) => {
+	bwalk(meet, (node) => {
 		if (
 			node.kind === SyntaxKind.ConditionalExpression &&
 			node.condition?.kind === SyntaxKind.Identifier &&
 			node.condition.text === "oweGreeting"
 		) {
-			owedTrue = tCallsIn(node.whenTrue).includes(
-				"ui.onboarding.extras.greeting_owed",
-			);
-			doneFalse = tCallsIn(node.whenFalse).includes(
-				"ui.onboarding.extras.greeting_done",
-			);
+			owedTrue = tCallsIn(node.whenTrue).includes("ui.onboarding.meet.owed");
+			doneFalse = tCallsIn(node.whenFalse).includes("ui.onboarding.meet.done");
 		}
 	});
 	assert.ok(owedTrue, "the owed greeting left the oweGreeting true arm");

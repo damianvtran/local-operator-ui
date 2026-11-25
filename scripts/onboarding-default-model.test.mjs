@@ -281,19 +281,31 @@ test("nothing connected yet writes nothing", () => {
 	assert.equal(plan.block, null, "and nothing to block on: step 1 owns this");
 });
 
-test("a block belongs to step 2 alone", () => {
+test("a block belongs to the steps that can raise one", () => {
 	/*
-	 * The footer's rule is step-specific, because step 3 has its own Skip and step 1
-	 * its own gate; a block leaking across steps would strand a user on a step that
-	 * has nothing to do with it.
+	 * The footer's rule is step-specific: sign-in has its own gate and Meet has
+	 * nothing to wait for, so a block leaking onto them would strand a user on a
+	 * step that has nothing to do with it. The search step blocks too, while its
+	 * Radient option is chosen but not signed in (UX round 1, U2). Named steps
+	 * only: `OnboardingStep.EXTRAS` no longer exists (code review round 1, R6).
 	 */
-	const elsewhere = onboardingFooter(
-		OnboardingStep.EXTRAS,
-		"Pick a model to continue.",
+	for (const step of [OnboardingStep.CONNECT_PROVIDER, OnboardingStep.MEET]) {
+		assert.ok(step, "a real step");
+		const elsewhere = onboardingFooter(
+			step,
+			"Pick a model to continue.",
+			false,
+		);
+		assert.equal(elsewhere.blocked, false, step);
+		assert.equal(elsewhere.primaryDisabled, false, step);
+	}
+	const search = onboardingFooter(
+		OnboardingStep.SEARCH,
+		"Finish signing in to Radient, or choose Free.",
 		false,
 	);
-	assert.equal(elsewhere.blocked, false);
-	assert.equal(elsewhere.primaryDisabled, false);
+	assert.equal(search.blocked, true);
+	assert.equal(search.primaryDisabled, true);
 });
 
 test("the onboarding catalogue carries the committed block sentences", () => {

@@ -4516,3 +4516,68 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 .sidebar-section-stack > :not(:last-child) {
 	margin-block-end: calc(var(--spacing) * 4);
 }
+
+/*
+ * THE DIALOG SURFACE - the one surface every centred popup dialog wears.
+ *
+ * Applied by `DialogContent` (shared/components/ui/dialog.tsx) and nowhere else:
+ * a popup that wants this look renders through the shared Dialog rather than
+ * copying these rules. The first-run stage's glass panel is where the treatment
+ * came from (operator, 2026-11-24: "the subtle gradient and soft outline, darker
+ * backdrop ... it looks much nicer"), adapted to an OPAQUE floating panel:
+ *
+ *   - A subtle vertical gradient over the `elevated` ground: a faint sheen at
+ *     the top in dark palettes, a faint settling tint toward `sunken` at the
+ *     bottom in light ones (white over a near-white plate would show nothing).
+ *     Both stay within a few percent of `elevated`, so every ink keeps its
+ *     floor against the plate (`scripts/dialog-surface.test.mjs` measures the
+ *     worst stop across the shipped palettes).
+ *   - A soft outline and a top specular edge, drawn as INSET shadows through
+ *     Tailwind's own `--tw-inset-*` slots. That composes with `shadow-overlay`
+ *     instead of replacing it (O-7's "one shadow" still holds: the contact layer
+ *     and ambient are untouched), and it declares no `border`, so the floating-
+ *     surface rules (O-1..O-4) are unchanged. The outline is deliberately an
+ *     ink at single-digit alpha: this is the soft edge the operator asked for,
+ *     not the lighter-than-surface stroke the floating-surface rules removed
+ *     from menus, and it stays OFF every other floating surface (popovers,
+ *     menus, sheets, toasts).
+ *   - Forced colours drops the sheen; the existing `[data-lo-floating]`
+ *     forced-colours edge is the boundary there.
+ *
+ * `.lo-dialog-scrim` is the darker backdrop for the same dialogs only: the
+ * palette's `scrim` composited a step further toward black, so the dialog reads
+ * as the one thing in focus. Sheets keep the plain `bg-scrim`.
+ */
+/* In `components`, so a caller's utility (an overlay's `bg-transparent`, a
+   panel's own ground) still wins over the default, as it did before. */
+@layer components {
+	.lo-dialog-surface {
+		background-image: linear-gradient(
+			to bottom,
+			light-dark(transparent, color-mix(in oklab, white 4%, transparent)),
+			transparent 7rem,
+			transparent 60%,
+			light-dark(
+				color-mix(in oklab, var(--lo-sunken) 35%, transparent),
+				transparent
+			)
+		);
+		--tw-inset-shadow: inset 0 1px 0
+			light-dark(
+				color-mix(in oklab, white 70%, transparent),
+				color-mix(in oklab, white 7%, transparent)
+			);
+		--tw-inset-ring-shadow: inset 0 0 0 1px
+			color-mix(in oklab, var(--lo-ink) 7%, transparent);
+	}
+
+	.lo-dialog-scrim {
+		background-color: color-mix(in srgb, var(--lo-scrim), black 30%);
+	}
+}
+
+@media (forced-colors: active) {
+	.lo-dialog-surface {
+		background-image: none;
+	}
+}

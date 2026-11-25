@@ -281,6 +281,22 @@ type ProviderGridProps = {
 	featuredOnly?: boolean;
 	/** Open the "More providers" disclosure on this group, e.g. `local`. */
 	focusGroup?: ProviderGroup | null;
+	/**
+	 * The first-run stage's shape (with `featuredOnly`): ONLY the rest of the
+	 * registry - the search field, the grouped rows and any connected row among
+	 * them - with no suggested block, no Connected block for the excluded rows and
+	 * no disclosure of its own. The stage draws Radient, ChatGPT and Claude as its
+	 * own buttons and wraps this in its "Other ways to connect" disclosure, so the
+	 * grid must neither repeat those rows nor nest a second "More providers"
+	 * fold inside the first.
+	 */
+	restOnly?: boolean;
+	/**
+	 * The provider ids the caller renders itself (with `restOnly`). They replace
+	 * `FEATURED_PROVIDER_IDS` as the set the rest excludes, so Google - featured
+	 * on the old dialog - lands in its API-key group here.
+	 */
+	exclude?: readonly string[];
 	/** Called from a success state's action ("Continue" / "Done"). */
 	onDone?: () => void;
 	/** Opens the model picker from a receipt's "Change". */
@@ -293,6 +309,8 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	context = "settings",
 	featuredOnly = false,
 	focusGroup = null,
+	restOnly = false,
+	exclude,
 	onDone,
 	onChangeModel,
 }) => {
@@ -1074,7 +1092,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				matched.has(provider.id),
 		);
 		const featuredIds: Set<string> = new Set(
-			FEATURED_PROVIDER_IDS.filter((id) =>
+			(exclude ?? FEATURED_PROVIDER_IDS).filter((id) =>
 				rows.some((provider) => provider.id === id),
 			),
 		);
@@ -1135,6 +1153,35 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						: MATCHES_CONNECTED_ABOVE_SENTENCE
 					: null
 			: null;
+		if (restOnly) {
+			/*
+			 * The excluded rows are the caller's to draw, connected or not; the
+			 * connected rows that remain (an xAI key, a local default) are shown here,
+			 * above the field, because this disclosure is where the user added them.
+			 */
+			const restConnected = connected.filter((row) => !featuredIds.has(row.id));
+			return (
+				<div
+					ref={gridRef}
+					tabIndex={-1}
+					className="flex flex-col gap-4 outline-none!"
+					data-provider-grid=""
+				>
+					{restConnected.length > 0 ? (
+						<RowList label={t("ui.providers.provider_grid.connected")}>
+							{restConnected.map(connectedRow)}
+						</RowList>
+					) : null}
+					{searchField}
+					{blocksFor(
+						rest,
+						// The excluded rows are drawn above this disclosure, so a query that
+						// matches only them has matched nothing HERE.
+						searching && restCount === 0 ? NO_MATCH_SENTENCE : null,
+					)}
+				</div>
+			);
+		}
 		return (
 			<div
 				ref={gridRef}

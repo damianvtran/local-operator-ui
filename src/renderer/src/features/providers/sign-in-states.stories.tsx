@@ -1300,7 +1300,7 @@ const OnboardingAt = ({ step }: { step: OnboardingStep }) => {
 		state.resetOnboarding();
 		state.setCurrentStep(step);
 	}, [step]);
-	return <OnboardingModal open={true} />;
+	return <OnboardingModal open={true} introMode="skip" />;
 };
 
 /** Step 1 of 3 on a first run: featured rows, no Continue, "Skip for now". */
@@ -1423,12 +1423,12 @@ export const OnboardingStep2NoCatalogue: Story = {
 	),
 };
 
-/** Step 3 of 3: name and web search, both optional. */
+/** Step 3: web search - Free, Radient, or your own keys. */
 export const OnboardingStep3: Story = {
 	render: () => (
 		<Bridge options={OPTS_ONE_CONNECTED}>
 			<div className="h-screen bg-canvas">
-				<OnboardingAt step={OnboardingStep.EXTRAS} />
+				<OnboardingAt step={OnboardingStep.SEARCH} />
 			</div>
 		</Bridge>
 	),
@@ -1484,7 +1484,7 @@ const OnboardingSearchKeys = () => {
 	}, []);
 	return (
 		<div className="h-screen bg-canvas">
-			<OnboardingAt step={OnboardingStep.EXTRAS} />
+			<OnboardingAt step={OnboardingStep.SEARCH} />
 		</div>
 	);
 };

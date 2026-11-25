@@ -1,21 +1,26 @@
 /**
  * Onboarding Modal Component
  *
- * Main container for the first-time setup experience.
- * Manages the flow between different onboarding steps.
+ * The first-run setup experience: a full-window stage (`OnboardingStage`) that
+ * opens on the brand mark and helix, hands the helix up into the sign-in step,
+ * and walks the steps `onboardingSequence` derives - sign in, default model,
+ * web search (only without Radient) and Meet Aida (only when she is available).
  *
- * Provider connection is one registry-backed grid up front rather than the old
- * Radient-vs-bring-your-own gate: Radient is one card among the registry rows,
- * and a stored Radient credential in the backend AuthStore is what counts as
- * connected — not a renderer-held OAuth session.
+ * Provider connection is registry-backed: a stored credential in the backend
+ * AuthStore is what counts as connected - not a renderer-held OAuth session.
  *
  * SETUP ENDS IN A CONVERSATION WITH AIDA (first-run onboarding, U1/A2). The
  * operator's rule: after setup the user lands INSIDE her conversation and SHE
  * speaks first. The last step's primary button is "Meet <her name>", and its
  * press is the attended request (`greet`) that ensures her session and arms her
  * hidden greeting - the only place the desktop asks for it, so a background
- * launch never does. Every other way out (Skip, Escape, the close button, a
- * backend without her) lands in the chat as before.
+ * launch never does. Every other way out (Skip, Escape, a backend without her)
+ * lands in the chat as before.
+ *
+ * DROP-OFF IS MEASURED (stage refresh): every step reports
+ * `onboarding_step_viewed` when it becomes the visible one and
+ * `onboarding_step_completed` when the user leaves it forward
+ * (`onboarding-analytics.ts`).
  */
 
 import {
@@ -25,6 +30,7 @@ import {
 } from "@features/aida/aida-control";
 import { useAidaControl, useAidaTarget } from "@features/aida/use-aida-target";
 import { openConversation } from "@features/chat/open-conversation";
+import { RECOMMENDED_PROVIDER_ID } from "@features/providers/provider-catalog";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -32,7 +38,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
-import { type MessageKey, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -43,96 +49,76 @@ import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { OnboardingDialog } from "./onboarding-dialog";
-import type { OnboardingPanelWidth } from "./onboarding-dialog";
+import {
+	type SearchChoice,
+	trackOnboardingStepCompleted,
+	trackOnboardingStepViewed,
+} from "./onboarding-analytics";
+import { OnboardingStage } from "./onboarding-dialog";
 import { onboardingFooter } from "./onboarding-footer";
-import { ConnectProviderStep } from "./steps/connect-provider-step";
+import { type IntroMode, useStageIntro } from "./onboarding-intro";
+import {
+	decideIncludeSearch,
+	fallbackStep,
+	onboardingSequence,
+	radientConnected,
+} from "./onboarding-sequence";
+import {
+	ConnectProviderStep,
+	connectedSubscriptionBrands,
+	stageConnected,
+} from "./steps/connect-provider-step";
 import { DefaultModelStep } from "./steps/default-model-step";
-import { ExtrasStep } from "./steps/extras-step";
-
-/*
- * One title per step, each naming the single thing that step is for. These
- * double as the accessible names of the progress segments, so they have to
- * survive being read on their own, out of order.
- */
-const stepTitles = {
-	/*
-	 * "AI account", not "model provider" (first-run onboarding, D11/U7): the
-	 * heading the TUI's setup splash and `/login` picker share, in the words a
-	 * first-time user already has.
-	 */
-	[OnboardingStep.CONNECT_PROVIDER]:
-		"ui.onboarding.modal.title.connect_provider",
-	[OnboardingStep.DEFAULT_MODEL]: "ui.onboarding.modal.title.default_model",
-	[OnboardingStep.EXTRAS]: "ui.onboarding.modal.title.extras",
-} as const satisfies Record<OnboardingStep, MessageKey>;
+import { meetAidaCopy } from "./steps/meet-aida-step";
+import { SearchApiStep } from "./steps/search-api-step";
 
 /**
- * The title a step is read under, which for the LAST step is what the step ends
- * in rather than what it contains (design round 1, D4).
- *
- * "Web search (optional)" named the body while the primary action had become
- * `Meet <name>`, so the one screen that ends setup was titled after its smallest
- * part. With her available the title names her; without her the step really does
- * end in web search, so the shipped title stands.
- *
- * A function rather than a second table: `stepTitles` is also the accessible
- * name of each progress segment, and two spellings of one title is how the track
- * and the panel end up disagreeing about what step 3 is.
+ * The name each step is read under on the progress track (its segments' accessible
+ * names and tooltips). One table, so the track and the stage cannot disagree
+ * about what a step is called.
  */
-function stepTitle(step: OnboardingStep, aidaName: string | null): string {
-	if (step === OnboardingStep.EXTRAS && aidaName)
-		return t("ui.onboarding.modal.title.extras_with_name", { name: aidaName });
-	return t(stepTitles[step]);
+function trackTitle(step: OnboardingStep, aidaName: string): string {
+	switch (step) {
+		case OnboardingStep.CONNECT_PROVIDER:
+			return t("ui.onboarding.modal.title.connect_provider");
+		case OnboardingStep.DEFAULT_MODEL:
+			return t("ui.onboarding.modal.title.default_model");
+		case OnboardingStep.SEARCH:
+			return t("ui.onboarding.modal.title.search");
+		case OnboardingStep.MEET:
+			return t("ui.onboarding.modal.title.meet", { name: aidaName });
+		default:
+			return t("ui.onboarding.modal.title.fallback");
+	}
 }
 
 /**
- * The numbered sequence, in order (design audit section 5). Three steps: the
- * model access the app cannot work without, the model it bought, and the
- * extras that are genuinely optional. "Create your first agent" and the
- * congratulations screen are gone -- the first failed on a clean install
- * (UX U11) and the second is folded into Finish, which lands in the chat.
+ * Which provider a completed sign-in step reports: Radient when it is connected
+ * (the recommendation is the fact worth counting), otherwise the first connected
+ * cloud row. Ids only - never a label or anything typed.
  */
-const STEP_SEQUENCE: OnboardingStep[] = [
-	OnboardingStep.CONNECT_PROVIDER,
-	OnboardingStep.DEFAULT_MODEL,
-	OnboardingStep.EXTRAS,
-];
+function connectedProviderId(
+	providers: readonly { id: string; local?: boolean }[],
+	isConnected: (id: string) => boolean,
+): string | null {
+	if (isConnected(RECOMMENDED_PROVIDER_ID)) return RECOMMENDED_PROVIDER_ID;
+	return providers.find((row) => isConnected(row.id))?.id ?? null;
+}
 
-/**
- * The panel measure each step is laid out at -- EMPTY, because every step takes
- * the same one.
- *
- * It used to map step 1 to a wider `grid` measure, and the dialog narrowed from
- * about 960px to 560px when Continue was pressed: the title, the step indicator
- * and the close button all jumped inward mid-flow (design round 1 D6). One
- * measure for the flow is the fix, and an empty map is how that is stated rather
- * than left to each call site to remember.
- *
- * EXPORTED because it is a rule CI has to be able to check:
- * `scripts/provider-grid-pin.test.mjs` asserts it is empty and that the single
- * measure is clamped, so a step added later cannot quietly widen the dialog.
- */
-export const STEP_PANEL_WIDTH: Partial<
-	Record<OnboardingStep, OnboardingPanelWidth>
-> = {};
-
-/**
- * Props for the OnboardingModal component
- */
 type OnboardingModalProps = {
-	/**
-	 * Whether the modal is open
-	 */
+	/** Whether setup is showing. */
 	open: boolean;
+	/**
+	 * The intro's behaviour; `auto` in the product. Stories pass `hold` (the intro's
+	 * final frame) or `skip` (straight to a step) so a capture is deterministic.
+	 */
+	introMode?: IntroMode;
 };
 
-/**
- * Onboarding Modal Component
- *
- * Manages the first-time setup experience with multiple steps
- */
-export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
+export const OnboardingModal: FC<OnboardingModalProps> = ({
+	open,
+	introMode = "auto",
+}) => {
 	// Step children subscribe independently; they cannot refresh their parent's
 	// retained title/progress elements, including while a step is unmounted.
 	const locale = useI18nLocale();
@@ -146,7 +132,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * connected let a user finish setup into a chat that could not run).
 	 */
 	const providers = useDesktopProviders(open);
-	const connected = hasConnectedProvider(providers.data ?? []);
+	const census = providers.data ?? [];
+	const connected = hasConnectedProvider(census);
+	const radientOn = radientConnected(census);
 	/*
 	 * Whether setup can end in her conversation: the capability gate the rail's
 	 * row uses (`features.aida`, fail-closed - the UI must not call her route on
@@ -166,24 +154,48 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const aidaName = aida.data?.name?.trim() || "Aida";
 	/*
-	 * Whether step 3 may promise that she speaks first. Read from the same status
-	 * document as the name, off the ledger's state word; a backend that predates
-	 * the field returns `owed`'s behaviour rather than silence (`aidaOwesGreeting`).
+	 * Whether the Meet step may promise that she speaks first. Read from the same
+	 * status document as the name, off the ledger's state word; a backend that
+	 * predates the field returns `owed`'s behaviour rather than silence.
 	 */
 	const aidaOwesHello = aidaOwesGreeting(aida.data);
 	const aidaControl = useAidaControl();
+
 	/*
-	 * One resolved title table for the panel and the track, so the two cannot
-	 * spell step 3 differently (see `stepTitle`). Memoized because the track maps
-	 * over it on every render.
+	 * THE SEARCH LATCH (`decideIncludeSearch` in `onboarding-sequence.ts`).
+	 * Decided once the census first answers - never at mount, which happens at
+	 * app start before any census exists (review round 1, R4) - then live on the
+	 * first two steps, where Radient connecting legitimately removes the step,
+	 * and held from the moment they leave the model step, so a Radient sign-in
+	 * completed ON the search step never pulls it out from under them. Undecided
+	 * reads as "include" until the census answers.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations resolved by stepTitle.
-	const resolvedTitles = useMemo(() => {
-		const name = aidaAvailable ? aidaName : null;
-		return Object.fromEntries(
-			STEP_SEQUENCE.map((step) => [step, stepTitle(step, name)]),
-		) as Record<OnboardingStep, string>;
-	}, [aidaAvailable, aidaName, locale]);
+	const [searchLatch, setSearchLatch] = useState<boolean | null>(null);
+	const censusLoaded = providers.isFetched;
+	useEffect(() => {
+		setSearchLatch((previous) =>
+			decideIncludeSearch(previous, {
+				step: currentStep,
+				radientOn,
+				censusLoaded,
+			}),
+		);
+	}, [currentStep, radientOn, censusLoaded]);
+	const includeSearch = searchLatch ?? true;
+
+	const sequence = useMemo(
+		() => onboardingSequence({ includeSearch, aidaAvailable }),
+		[includeSearch, aidaAvailable],
+	);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translations resolved by trackTitle.
+	const resolvedTitles = useMemo(
+		() =>
+			Object.fromEntries(
+				sequence.map((step) => [step, trackTitle(step, aidaName)]),
+			) as Record<OnboardingStep, string>,
+		[sequence, aidaName, locale],
+	);
 	const [meeting, setMeeting] = useState(false);
 	/** Step 2 registers the write a PROPOSED default needs on Continue. */
 	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
@@ -210,18 +222,26 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		},
 		[],
 	);
+	/** The search step's current answer, reported when it is completed. */
+	const searchChoice = useRef<SearchChoice>("free");
+	const onSearchChoice = useCallback((choice: SearchChoice) => {
+		searchChoice.current = choice;
+	}, []);
 
 	/*
-	 * A persisted mid-flow step from before this flow existed (the six-step
-	 * flow, or the old Radient-gated one) must not strand the modal on an
-	 * unknown step: any value outside the current sequence falls back to the
-	 * first step.
+	 * A persisted step outside the live sequence - from an older flow, or a
+	 * migrated `extras` whose search step Radient has since removed - moves to its
+	 * successor (`fallbackStep`). WAITS for the facts the sequence is made of: a
+	 * persisted Meet step must not be thrown back to sign-in in the instant
+	 * before her status document answers.
 	 */
+	const sequenceSettled =
+		!capabilities.isLoading && !(aidaCapable && aida.isLoading);
 	useEffect(() => {
-		if (!STEP_SEQUENCE.includes(currentStep)) {
-			setCurrentStep(OnboardingStep.CONNECT_PROVIDER);
-		}
-	}, [currentStep, setCurrentStep]);
+		if (!sequenceSettled) return;
+		const next = fallbackStep(currentStep, sequence);
+		if (next !== currentStep) setCurrentStep(next);
+	}, [currentStep, sequence, sequenceSettled, setCurrentStep]);
 
 	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
 		new Set<OnboardingStep>(),
@@ -235,14 +255,51 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		});
 	}, [currentStep]);
 
-	const dialogTitle =
-		resolvedTitles[currentStep] ?? t("ui.onboarding.modal.title.fallback");
+	/*
+	 * THE INTRO plays only when setup opens on its first step: a user resuming on
+	 * step 3 is not welcomed into a sign-in they already did.
+	 */
+	const { phase, skipped } = useStageIntro(
+		open,
+		currentStep === OnboardingStep.CONNECT_PROVIDER,
+		introMode,
+	);
+
+	/*
+	 * `viewed` once per step the user actually SEES: not while the intro still
+	 * hides the steps, and not twice for one visit.
+	 */
+	const lastViewed = useRef<OnboardingStep | null>(null);
+	useEffect(() => {
+		if (!open || phase === "intro" || !sequence.includes(currentStep)) return;
+		if (lastViewed.current === currentStep) return;
+		lastViewed.current = currentStep;
+		trackOnboardingStepViewed(currentStep);
+	}, [open, phase, currentStep, sequence]);
+
+	/*
+	 * Focus follows the step: the heading takes it after the hand-off and on
+	 * every step change, so a screen reader announces where the user is and Tab
+	 * starts from the top of the step. The body re-enters only on a CHANGE after
+	 * the hand-off, never when the hand-off itself settles.
+	 */
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	const [animateStep, setAnimateStep] = useState(false);
+	const shownStep = useRef(currentStep);
+	useEffect(() => {
+		if (phase !== "steps") return;
+		if (shownStep.current !== currentStep) {
+			shownStep.current = currentStep;
+			setAnimateStep(true);
+		}
+		headingRef.current?.focus({ preventScroll: true });
+	}, [phase, currentStep]);
 
 	/**
 	 * Leave setup and land in the chat. Used by Finish, by "Skip for now" and
-	 * by Escape / the close button: all three end setup, and the empty chat's
-	 * connect card is what a user who skipped sees next (design section 6), so
-	 * skipping is never a trap (UX U9).
+	 * by Escape: all of them end setup, and the empty chat's connect card is
+	 * what a user who skipped sees next (design section 6), so skipping is never
+	 * a trap (UX U9).
 	 */
 	const finish = useCallback(() => {
 		completeModalOnboarding();
@@ -300,8 +357,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 	}, [aidaControl, aidaName, completeModalOnboarding, navigate]);
 
+	const isConnected = useCallback(
+		(id: string) => stageConnected(census.find((row) => row.id === id)),
+		[census],
+	);
+
 	const handleNext = useCallback(async () => {
-		const index = STEP_SEQUENCE.indexOf(currentStep);
+		const index = sequence.indexOf(currentStep);
 		if (
 			currentStep === OnboardingStep.DEFAULT_MODEL &&
 			beforeContinue.current
@@ -316,26 +378,77 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			}
 			setContinuing(false);
 		}
-		if (index >= 0 && index < STEP_SEQUENCE.length - 1) {
-			setCurrentStep(STEP_SEQUENCE[index + 1]);
+		trackOnboardingStepCompleted(
+			currentStep,
+			currentStep === OnboardingStep.CONNECT_PROVIDER
+				? connectedProviderId(census, isConnected)
+				: currentStep === OnboardingStep.SEARCH
+					? searchChoice.current
+					: null,
+		);
+		/*
+		 * Leaving the model step is the moment the search latch closes (spec § 1).
+		 * The sequence is recomputed HERE rather than read from state, because the
+		 * state update would land a render after the step we are choosing.
+		 */
+		let walk = sequence;
+		if (currentStep === OnboardingStep.DEFAULT_MODEL) {
+			const latched = !radientOn;
+			setSearchLatch(latched);
+			walk = onboardingSequence({ includeSearch: latched, aidaAvailable });
+		}
+		const at = walk.indexOf(currentStep);
+		if (index >= 0 && at >= 0 && at < walk.length - 1) {
+			setCurrentStep(walk[at + 1]);
 		} else if (aidaAvailable) {
 			await meetAida();
 		} else {
 			finish();
 		}
-	}, [currentStep, setCurrentStep, finish, aidaAvailable, meetAida]);
+	}, [
+		currentStep,
+		sequence,
+		census,
+		isConnected,
+		radientOn,
+		setCurrentStep,
+		finish,
+		aidaAvailable,
+		meetAida,
+	]);
 
 	const handleBack = useCallback(() => {
-		const index = STEP_SEQUENCE.indexOf(currentStep);
-		if (index > 0) setCurrentStep(STEP_SEQUENCE[index - 1]);
-	}, [currentStep, setCurrentStep]);
+		const index = sequence.indexOf(currentStep);
+		if (index > 0) setCurrentStep(sequence[index - 1]);
+	}, [currentStep, sequence, setCurrentStep]);
 
-	const stepContent = useMemo(() => {
+	const listFormat = useCallback(
+		(items: string[]) => {
+			try {
+				return new Intl.ListFormat(locale, {
+					type: "conjunction",
+				}).format(items);
+			} catch {
+				return items.join(", ");
+			}
+		},
+		[locale],
+	);
+
+	const radientRow =
+		census.find((row) => row.id === RECOMMENDED_PROVIDER_ID) ?? null;
+
+	const stepContent = (() => {
 		switch (currentStep) {
 			case OnboardingStep.CONNECT_PROVIDER:
 				return (
 					<ConnectProviderStep
-						onContinue={() => setCurrentStep(OnboardingStep.DEFAULT_MODEL)}
+						providers={providers.data}
+						isLoading={providers.isLoading}
+						isError={providers.isError}
+						onRetry={() => void providers.refetch()}
+						onContinue={() => void handleNext()}
+						listFormat={listFormat}
 					/>
 				);
 			case OnboardingStep.DEFAULT_MODEL:
@@ -345,187 +458,208 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						onBlockReason={registerStepBlock}
 					/>
 				);
-			case OnboardingStep.EXTRAS:
+			case OnboardingStep.SEARCH:
 				return (
-					<ExtrasStep
-						aidaName={aidaAvailable ? aidaName : null}
-						oweGreeting={aidaOwesHello}
+					<SearchApiStep
+						showCredentialDescription={false}
+						radient={radientRow}
+						radientConnected={radientOn}
+						onChoiceChange={onSearchChoice}
+						onBlockReason={registerStepBlock}
 					/>
 				);
 			default:
 				return null;
 		}
-	}, [
-		currentStep,
-		setCurrentStep,
-		registerBeforeContinue,
-		registerStepBlock,
-		aidaAvailable,
-		aidaName,
-		aidaOwesHello,
-	]);
-
-	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;
-	const isLast = currentStep === OnboardingStep.EXTRAS;
+	})();
 
 	/*
-	 * Footer per step (design section 5):
-	 * - step 1: ghost "Skip for now" on the left until something is connected,
-	 *   then primary "Continue" on the right -- never an enabled Next over
-	 *   nothing;
-	 * - step 2: Back, then primary "Continue";
-	 * - step 3: Back, then ghost "Skip" and primary "Finish" - or, when she is
-	 *   available, ghost "Skip to chat" and primary "Meet <name>" (first-run
-	 *   onboarding, U1/D12). The ghost names where it goes because "Skip" beside
-	 *   "Meet Aida" reads as skipping her, which it is, and the reader should
-	 *   know that before pressing it.
+	 * The stage's header per step. Sign-in changes with what is connected (spec
+	 * § 5.1): "Build your base of agent operations" until something is, then
+	 * "Your base of operations is ready" with a sentence that says what else is worth adding.
+	 */
+	const brands = connectedSubscriptionBrands(census);
+	const header = (() => {
+		switch (currentStep) {
+			case OnboardingStep.CONNECT_PROVIDER:
+				if (radientOn)
+					return {
+						title: t("ui.onboarding.signin.title_connected"),
+						subtitle: t("ui.onboarding.signin.subtitle_radient_connected"),
+					};
+				if (connected || brands.length > 0)
+					return {
+						title: t("ui.onboarding.signin.title_connected"),
+						subtitle: t("ui.onboarding.signin.subtitle_connected"),
+					};
+				return {
+					title: t("ui.onboarding.signin.title"),
+					subtitle: t("ui.onboarding.signin.subtitle"),
+				};
+			case OnboardingStep.DEFAULT_MODEL:
+				return {
+					title: t("ui.onboarding.modal.title.default_model"),
+					subtitle: t("ui.onboarding.default_model.intro"),
+				};
+			case OnboardingStep.SEARCH:
+				return {
+					title: t("ui.onboarding.modal.title.search"),
+					subtitle: t("ui.onboarding.search.intro"),
+				};
+			case OnboardingStep.MEET:
+				return meetAidaCopy(aidaName, aidaOwesHello);
+			default:
+				return { title: t("ui.onboarding.modal.title.fallback"), subtitle: "" };
+		}
+	})();
+
+	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;
+	const isLast = sequence.indexOf(currentStep) === sequence.length - 1;
+	const isMeet = currentStep === OnboardingStep.MEET;
+
+	/*
+	 * Footer per step (spec § 2.1):
+	 * - step 1: ghost "Skip for now" on the left; primary "Continue" on the right
+	 *   once something is connected -- never an enabled Next over nothing;
+	 * - later steps: ghost "Back" (the bordered secondary Back read as one more
+	 *   card), then the primary;
+	 * - the last step: ghost "Skip to chat" (or "Skip" without her) beside the
+	 *   primary "Meet <name>" (or "Finish"). The ghost names where it goes
+	 *   because "Skip" beside "Meet Aida" reads as skipping her, which it is.
 	 */
 	const footer = onboardingFooter(currentStep, stepBlock, continuing);
-	const dialogActions = (
-		<div className="flex w-full flex-col gap-2">
-			{footer.reason ? (
-				<p className="text-ink-dim text-meta">{footer.reason}</p>
+	/*
+	 * "Skip for now" only while nothing is connected (design D5, UX U5): once a
+	 * provider is, it sat beside Continue meaning "finish and skip the model
+	 * step", and the footer had two answers to one question.
+	 */
+	const footerStart = isFirst ? (
+		connected ? null : (
+			<Button variant="ghost" size="lg" onClick={finish}>
+				{t("ui.onboarding.modal.action.skip_for_now")}
+			</Button>
+		)
+	) : (
+		<Button variant="ghost" size="lg" onClick={handleBack}>
+			{t("ui.onboarding.modal.action.back")}
+		</Button>
+	);
+	const footerEnd = (
+		<>
+			{/* The ghost exists only beside "Meet <name>", where it means
+			    something else; beside Finish it called the same `finish()` and
+			    made the user choose between two identical buttons (UX U5). */}
+			{isLast && !isFirst && aidaAvailable ? (
+				<Button variant="ghost" size="lg" onClick={finish} disabled={meeting}>
+					{t("ui.onboarding.modal.action.skip_to_chat")}
+				</Button>
 			) : null}
-			<div className="flex w-full items-center justify-between gap-3">
-				<div>
-					{isFirst ? (
-						<Button variant="ghost" size="lg" onClick={finish}>
-							{t("ui.onboarding.modal.action.skip_for_now")}
-						</Button>
-					) : (
-						<Button variant="secondary" size="lg" onClick={handleBack}>
-							{t("ui.onboarding.modal.action.back")}
-						</Button>
-					)}
-				</div>
-				{/* `flex-wrap` (design round 1, D9): French is the first locale to expose
-				    that this three-button group had no way to break, and "Passer à la
-				    conversation" is 81px wider than "Skip to chat". Unreachable at the
-				    product's 800px minimum window; it matters only if the dialog ever
-				    hosts narrower, and costs nothing at any width where it fits. */}
-				<div className="flex flex-wrap items-center justify-end gap-3">
-					{isLast ? (
-						<Button
-							variant="ghost"
-							size="lg"
-							onClick={finish}
-							disabled={meeting}
-						>
-							{aidaAvailable
-								? t("ui.onboarding.modal.action.skip_to_chat")
-								: t("ui.onboarding.modal.action.skip")}
-						</Button>
-					) : null}
-					{!isFirst || connected ? (
-						<Button
-							variant="primary"
-							size="lg"
-							onClick={() => void handleNext()}
-							disabled={footer.primaryDisabled}
-						>
-							{isLast
-								? aidaAvailable
-									? t("ui.onboarding.modal.action.meet", { name: aidaName })
-									: t("ui.onboarding.modal.action.finish")
-								: t("ui.onboarding.modal.action.continue")}
-						</Button>
-					) : null}
-				</div>
-			</div>
-		</div>
+			{!isFirst || connected ? (
+				<Button
+					variant="primary"
+					size="lg"
+					onClick={() => void handleNext()}
+					disabled={footer.primaryDisabled}
+				>
+					{isLast
+						? aidaAvailable
+							? t("ui.onboarding.modal.action.meet", { name: aidaName })
+							: t("ui.onboarding.modal.action.finish")
+						: t("ui.onboarding.modal.action.continue")}
+				</Button>
+			) : null}
+		</>
 	);
 
 	/*
-	 * Progress, as a count and a track. Segments stay individually clickable
-	 * back to visited steps. `rounded-xs` on a 4px bar rather than a pill:
-	 * `rounded-full` is reserved, and `progress.tsx` already sets the
-	 * precedent for a bar this size.
+	 * Progress as a track. Segments stay individually clickable back to visited
+	 * steps; "Step N of M" is the list's accessible label rather than visible
+	 * text - the track says it, and the stage has enough words already.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translated progress text independently of the active step.
-	const finalStepIndicatorsProp = useMemo(() => {
-		if (!currentStep) {
-			return null;
-		}
-
-		const activeIndex = STEP_SEQUENCE.indexOf(currentStep);
-
-		return (
-			<div className="flex shrink-0 items-center gap-3">
-				<span className="whitespace-nowrap text-ink-dim text-meta">
-					{activeIndex >= 0
-						? t("ui.onboarding.modal.step_of", {
-								current: activeIndex + 1,
-								total: STEP_SEQUENCE.length,
-							})
-						: t("ui.onboarding.modal.steps_total", {
-								total: STEP_SEQUENCE.length,
-							})}
-				</span>
-				{/* `list`, not a bare row of buttons: it has a length, and a screen
-				    reader saying "6 items" is the same fact the count above shows. */}
-				<ol className="flex items-center gap-1">
-					{STEP_SEQUENCE.map((step, index) => {
-						const isActive = currentStep === step;
-						const isVisited = visitedSteps.has(step);
-						const canNavigate = isVisited && !isActive;
-
-						// Filled up to and including the current step, so the track
-						// reads as distance covered rather than as lit dots.
-						const isCovered = index <= activeIndex;
-
-						return (
-							<li key={step} className="flex">
-								<Tooltip content={resolvedTitles[step]}>
-									{/*
-									 * A real button, so the track is tabbable and each step's
-									 * name is announced. `aria-disabled` rather than
-									 * `disabled`: a disabled button swallows pointer events,
-									 * and the tooltip is the only place the name is written.
-									 */}
-									<button
-										type="button"
-										aria-label={resolvedTitles[step]}
-										aria-current={isActive ? "step" : undefined}
-										aria-disabled={!canNavigate}
-										onClick={() => {
-											if (canNavigate) {
-												setCurrentStep(step);
-											}
-										}}
-										/* The bar is 4px; the button around it is 16px, so the
-										   thing you can hit and the thing you can see are not
-										   the same size. */
-										className="flex h-4 w-4 items-center"
-									>
-										<span
-											className={cn(
-												"h-1 w-full rounded-xs transition-colors duration-base ease-out-quart",
-												/* `control`, not `hairline`: hairline is a line
-												   weight and a 4px bar filled with it vanishes
-												   against `elevated`. */
-												isCovered ? "bg-accent" : "bg-control",
-											)}
-										/>
-									</button>
-								</Tooltip>
-							</li>
-						);
-					})}
-				</ol>
-			</div>
-		);
-	}, [currentStep, visitedSteps, setCurrentStep, resolvedTitles, locale]);
+	const activeIndex = sequence.indexOf(currentStep);
+	const stepIndicators = (
+		<div className="flex items-center">
+			<span className="sr-only" id="onboarding-step-of">
+				{activeIndex >= 0
+					? t("ui.onboarding.modal.step_of", {
+							current: activeIndex + 1,
+							total: sequence.length,
+						})
+					: t("ui.onboarding.modal.steps_total", { total: sequence.length })}
+			</span>
+			{/* `list`, not a bare row of buttons: it has a length, and a screen
+			    reader saying "4 items" is the same fact the count states. */}
+			<ol
+				className="flex items-center gap-1"
+				aria-labelledby="onboarding-step-of"
+			>
+				{sequence.map((step, index) => {
+					const isActive = currentStep === step;
+					const canNavigate = visitedSteps.has(step) && !isActive;
+					// Filled up to and including the current step: distance covered.
+					const isCovered = index <= activeIndex;
+					return (
+						<li key={step} className="flex">
+							<Tooltip content={resolvedTitles[step]}>
+								{/*
+								 * A real button, so the track is tabbable and each step's
+								 * name is announced. `aria-disabled` rather than `disabled`:
+								 * a disabled button swallows pointer events, and the tooltip
+								 * is the only place the name is written.
+								 */}
+								<button
+									type="button"
+									aria-label={resolvedTitles[step]}
+									aria-current={isActive ? "step" : undefined}
+									aria-disabled={!canNavigate}
+									onClick={() => {
+										if (canNavigate) setCurrentStep(step);
+									}}
+									/* A 24px hit box around a 2px bar. */
+									className="flex h-6 w-6 items-center"
+								>
+									<span
+										className={cn(
+											"h-0.5 w-full rounded-[2px] transition-colors duration-base ease-out-quart",
+											/*
+											 * Upcoming segments use `bg-control` (`border-control`), the role
+											 * made for non-text UI boundaries: >= 3.13:1 on
+											 * canvas in every shipped palette (min rosePineDawn;
+											 * 4.15 localOperatorDark). `hairline` measured
+											 * 1.44:1 and the track read as one dash, not
+											 * "1 of 3" (design round 1, D4).
+											 */
+											isCovered ? "bg-accent" : "bg-control",
+										)}
+									/>
+								</button>
+							</Tooltip>
+						</li>
+					);
+				})}
+			</ol>
+		</div>
+	);
 
 	return (
-		<OnboardingDialog
+		<OnboardingStage
 			open={open}
+			phase={phase}
+			skipped={skipped}
+			bookend={isMeet}
+			title={header.title}
+			subtitle={header.subtitle}
+			titleSize={isMeet ? "display" : "title"}
+			headingRef={headingRef}
+			stepKey={currentStep}
+			animateStep={animateStep}
+			stepIndicators={stepIndicators}
+			footerStart={footerStart}
+			footerEnd={footerEnd}
+			footerNote={footer.reason}
 			onDismiss={finish}
-			title={dialogTitle}
-			stepIndicators={finalStepIndicatorsProp}
-			actions={dialogActions}
-			width={STEP_PANEL_WIDTH[currentStep] ?? "single"}
 		>
 			{stepContent}
-		</OnboardingDialog>
+		</OnboardingStage>
 	);
 };

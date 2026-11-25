@@ -1,0 +1,347 @@
+/*
+ * THE FIRST-RUN STAGE (onboarding refresh, 2026-11).
+ *
+ * Setup used to be a 640px settings dialog over a black scrim, every option the
+ * same bordered card, and the progress dashes the only accent on screen: the
+ * operator read it as flat, dense and unclear about which choice to make. The
+ * stage takes the whole window, opens on the brand mark and the new-chat helix,
+ * and carries that helix up into sign-in.
+ *
+ * Everything here is SCOPED to `[data-lo-onboarding-stage]`. The gradient fill,
+ * the bloom and the 44px button are a documented first-run exception
+ * (docs/branding.md § 5, "First-run stage"), not precedent for the app.
+ *
+ * Layers, back to front (design spec § 3): canvas ground, vignette, paper pool,
+ * a faint violet light at the helix crossing, the live helix, then content. The
+ * pool and light are centred on `--horizon-y`, which moves WITH the helix during
+ * the hand-off so the light follows it up instead of jumping.
+ *
+ * MOTION RULE: no element carries its START state in a base style. Every
+ * entrance is a keyframe with `both` fill, so under reduced motion (where the
+ * stage skips the intro and every animation is `none`) each element renders its
+ * end state with nothing to rescue (design kit's one-frame rule).
+ */
+
+@property --horizon-y {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 128px;
+}
+
+[data-lo-onboarding-stage] {
+	/* Resting top of the 40px horizon slot: drag band + a viewport-relative gap. */
+	--stage-rest-top: calc(32px + clamp(16px, 8vh, 72px));
+	--horizon-y: calc(var(--stage-rest-top) + 20px);
+	/* The intro puts the mark's centre at 42% of the window height. */
+	--stage-intro-y: 42vh;
+	--stage-handoff: 700ms;
+	--stage-ease: var(--ease-out-expo);
+	position: fixed;
+	inset: 0;
+	isolation: isolate;
+	overflow: hidden;
+	/* Opaque even with Window glass on: there is no app behind setup yet. */
+	background-color: var(--lo-canvas);
+	transition: --horizon-y var(--stage-handoff) var(--stage-ease);
+}
+
+[data-lo-onboarding-stage][data-phase="intro"] {
+	--horizon-y: var(--stage-intro-y);
+}
+
+/* Skipping compresses the hand-off to one short beat (design § 4.2, Skip). */
+[data-lo-onboarding-stage][data-skipped] {
+	--stage-handoff: 240ms;
+}
+
+.onboarding-stage__atmosphere {
+	--vig: light-dark(
+		var(--lo-sunken),
+		color-mix(in oklab, var(--lo-sunken) 70%, black)
+	);
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	/* L3 light: the helix grains' own violet, barely there. */
+	background-image: radial-gradient(
+			ellipse 34% 22% at 50% var(--horizon-y),
+			light-dark(
+				color-mix(in oklab, var(--lo-accent-alt) 5%, transparent),
+				color-mix(in oklab, var(--lo-accent-alt) 7%, transparent)
+			),
+			transparent
+		),
+		/* L2 paper pool: new-chat-horizon.css's paper, re-centred on the helix. */
+		radial-gradient(
+			ellipse 55% 42% at 50% var(--horizon-y),
+			light-dark(
+				color-mix(in oklab, var(--lo-sunken) 35%, transparent),
+				color-mix(in oklab, var(--lo-sunken) 80%, transparent)
+			),
+			transparent
+		), /* L1 vignette: the edges recede so the centre reads as lit. */
+		radial-gradient(
+			ellipse 120% 95% at 50% 40%,
+			transparent 55%,
+			color-mix(in oklab, var(--vig) 55%, transparent) 100%
+		);
+}
+
+/* ------------------------------------------------------------ the horizon */
+
+.onboarding-stage__horizon {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-start: var(--stage-rest-top);
+	block-size: 40px;
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
+	/* FLIP: layout never moves, only a transform does - so the helix controller's
+	   ResizeObserver never fires mid-flight (design spec § 8, flag 1). */
+	transition: translate var(--stage-handoff) var(--stage-ease), scale
+		var(--stage-handoff) var(--stage-ease);
+}
+
+.onboarding-stage__horizon .new-chat-horizon {
+	block-size: 40px;
+}
+
+[data-lo-onboarding-stage][data-phase="intro"] .onboarding-stage__horizon,
+[data-lo-onboarding-stage][data-bookend] .onboarding-stage__horizon {
+	scale: 1.2; /* 48px mark at 40px layout */
+}
+
+[data-lo-onboarding-stage][data-phase="intro"] .onboarding-stage__horizon {
+	translate: 0 calc(var(--stage-intro-y) - var(--stage-rest-top) - 20px);
+}
+
+[data-lo-onboarding-stage] .new-chat-horizon__scene {
+	transition: opacity var(--stage-handoff) var(--ease-out-quart);
+}
+
+[data-lo-onboarding-stage][data-phase="intro"] .new-chat-horizon__scene {
+	animation: onboarding-fade 700ms var(--ease-out-quart) both;
+}
+
+[data-lo-onboarding-stage][data-phase="intro"] .new-chat-horizon__mark {
+	animation: onboarding-fade 480ms var(--ease-out-quart) 120ms both;
+}
+
+/* -------------------------------------------------------------- the intro */
+
+.onboarding-stage__intro {
+	position: absolute;
+	inset-inline: 0;
+	/* Under the 48px mark (24px half-height) plus a 40px gap. */
+	inset-block-start: calc(var(--stage-intro-y) + 24px + 40px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding-inline: 32px;
+	text-align: center;
+	transition: opacity 240ms var(--ease-in-out);
+}
+
+[data-lo-onboarding-stage]:not([data-phase="intro"]) .onboarding-stage__intro {
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 240ms var(--ease-in-out), visibility 0s linear 240ms;
+}
+
+.onboarding-stage__intro-title {
+	animation: onboarding-enter 320ms var(--ease-out-quart) 600ms both;
+}
+
+.onboarding-stage__intro-sub {
+	animation: onboarding-enter 320ms var(--ease-out-quart) 760ms both;
+}
+
+.onboarding-stage__intro-hint {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-end: 28px;
+	text-align: center;
+	animation: onboarding-fade 240ms var(--ease-out-quart) 1200ms both;
+}
+
+[data-lo-onboarding-stage]:not([data-phase="intro"])
+	.onboarding-stage__intro-hint {
+	visibility: hidden;
+}
+
+/* ---------------------------------------------------- the steps' chrome */
+
+/* Present in the DOM through the intro (so nothing remounts at the hand-off),
+   but neither visible nor focusable nor clickable until it is its turn. */
+[data-lo-onboarding-stage][data-phase="intro"] .onboarding-stage__steps {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+[data-lo-onboarding-stage][data-phase="handoff"] .onboarding-stage__steps {
+	pointer-events: none;
+}
+
+/* The hand-off's staggered entrances, each with its own delay (design § 4.2). */
+[data-lo-onboarding-stage][data-phase="handoff"] [data-stage-enter] {
+	animation: onboarding-enter 320ms var(--ease-out-quart) both;
+}
+[data-lo-onboarding-stage][data-phase="handoff"] [data-stage-enter="header"] {
+	animation-delay: 360ms;
+}
+[data-lo-onboarding-stage][data-phase="handoff"] [data-stage-enter="body"] {
+	animation-delay: 440ms;
+}
+[data-lo-onboarding-stage][data-phase="handoff"] [data-stage-enter="footer"] {
+	animation-name: onboarding-fade;
+	animation-duration: 240ms;
+	animation-delay: 600ms;
+}
+[data-lo-onboarding-stage][data-skipped][data-phase="handoff"]
+	[data-stage-enter] {
+	animation-duration: 240ms;
+	animation-delay: 0ms;
+}
+
+/* Step to step after sign-in: the horizon stays, the column re-enters. */
+[data-lo-onboarding-stage][data-phase="steps"] [data-stage-step-enter] {
+	animation: onboarding-enter 320ms var(--ease-out-quart) both;
+}
+
+/* ------------------------------------------------------------ surfaces */
+
+/* The inset surface (#2043) with real elevation: a lightness step over the
+   canvas plus the composer's top specular edge. No border, no drop shadow:
+   it sits in the flow and does not float. 72% surface is the floor that keeps
+   text contrast over any helix grain blurred behind it (spec § 3.1). */
+[data-lo-onboarding-stage] .onboarding-glass {
+	background: color-mix(in oklab, var(--lo-surface) 72%, transparent);
+	backdrop-filter: blur(20px) saturate(1.15);
+	border-radius: 14px;
+	box-shadow: inset 0 1px 0 color-mix(in oklab, var(--lo-ink) 7%, transparent);
+}
+
+/* The page's one decision: a luminous primary. Hover and press are colour and
+   opacity steps only - nothing lifts or scales (branding § 5). The bloom is
+   painted light, never a focus stand-in; focus is the system outline. */
+[data-lo-onboarding-stage] .onboarding-luminous {
+	block-size: 44px;
+	position: relative;
+	isolation: isolate;
+	background-image: linear-gradient(
+		to bottom,
+		var(--lo-accent-hover),
+		var(--lo-accent)
+	);
+	box-shadow: inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+}
+[data-lo-onboarding-stage] .onboarding-luminous::before {
+	content: "";
+	position: absolute;
+	inset: -18px -24px;
+	z-index: -1;
+	border-radius: 50%;
+	pointer-events: none;
+	background: radial-gradient(
+		closest-side,
+		light-dark(
+			color-mix(in oklab, var(--lo-accent) 12%, transparent),
+			color-mix(in oklab, var(--lo-accent) 22%, transparent)
+		),
+		transparent
+	);
+	transition: opacity 120ms var(--ease-out-quart);
+}
+[data-lo-onboarding-stage] .onboarding-luminous:hover:not(:disabled) {
+	background-image: linear-gradient(
+		to bottom,
+		var(--lo-accent-hover),
+		var(--lo-accent-hover)
+	);
+}
+[data-lo-onboarding-stage] .onboarding-luminous:active:not(:disabled) {
+	background-image: none;
+	background-color: var(--lo-accent-active);
+}
+[data-lo-onboarding-stage] .onboarding-luminous:active::before {
+	opacity: 0.5;
+}
+
+/* Secondary buttons over the atmosphere: a translucent surface step so the
+   pool shows through, keeping the structural `border-control` stroke. */
+[data-lo-onboarding-stage] .onboarding-secondary {
+	background-color: color-mix(in oklab, var(--lo-surface) 64%, transparent);
+	backdrop-filter: blur(12px);
+}
+
+/* A provider connected: the check draws once and the row's wash fades back to
+   rest over one beat. Not a loop. */
+[data-lo-onboarding-stage] .onboarding-connected {
+	animation: onboarding-wash 700ms var(--ease-out-quart) both;
+}
+[data-lo-onboarding-stage] .onboarding-connected .onboarding-check path,
+[data-lo-onboarding-stage] .onboarding-connected .onboarding-check circle {
+	stroke-dasharray: 64;
+	animation: onboarding-draw 480ms var(--ease-out-quart) both;
+}
+
+/* -------------------------------------------------------------- keyframes */
+
+@keyframes onboarding-fade {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes onboarding-enter {
+	from {
+		opacity: 0;
+		translate: 0 12px;
+	}
+}
+
+@keyframes onboarding-draw {
+	from {
+		stroke-dashoffset: 64;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes onboarding-wash {
+	from {
+		background-color: var(--lo-accent-wash);
+	}
+}
+
+/* --------------------------------------------------- reduced motion, forced */
+
+@media (prefers-reduced-motion: reduce) {
+	[data-lo-onboarding-stage],
+	[data-lo-onboarding-stage] *,
+	[data-lo-onboarding-stage] *::before {
+		animation: none !important;
+		transition: none !important;
+	}
+}
+
+@media (forced-colors: active) {
+	.onboarding-stage__atmosphere {
+		background-image: none;
+	}
+	[data-lo-onboarding-stage] .onboarding-glass {
+		backdrop-filter: none;
+		background: Canvas;
+		outline: 1px solid CanvasText;
+	}
+	[data-lo-onboarding-stage] .onboarding-luminous {
+		background-image: none;
+	}
+	[data-lo-onboarding-stage] .onboarding-luminous::before {
+		display: none;
+	}
+}

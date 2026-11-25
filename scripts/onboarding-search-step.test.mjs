@@ -322,7 +322,14 @@ test("the step opens on Free, and its copy describes the free option without nam
 			0,
 			"the free branch must not ask for a key",
 		);
-		const text = document.body.textContent;
+		/*
+		 * Scoped to the FREE row: the keys row now names the first three key
+		 * providers on purpose (stage refresh, spec § 6: "SerpApi, Tavily, Brave
+		 * and others"), because there the vendors ARE the choice.
+		 */
+		const text =
+			document.querySelector('[data-search-mode="onboarding-search-mode-free"]')
+				?.textContent ?? "";
 		/*
 		 * The free option says what it costs the reader (nothing, no key, slower
 		 * when busy) and names NO search vendor (onboarding audit U9): four
@@ -332,7 +339,7 @@ test("the step opens on Free, and its copy describes the free option without nam
 		 * key rows of the other branch.
 		 */
 		assert.ok(
-			text.includes("Uses free search services shared with other users."),
+			text.includes("Shared search services."),
 			"the free option must say it is free and shared",
 		);
 		assert.ok(

@@ -101,11 +101,21 @@ test("header reserves command cells while only summary text yields", () => {
 
 test("onboarding footer actions can wrap instead of escaping their lane", () => {
 	const source = readFileSync(
-		"src/renderer/src/features/onboarding/components/onboarding-modal.tsx",
+		"src/renderer/src/features/onboarding/components/onboarding-dialog.tsx",
 		"utf8",
 	);
-	assert.match(
-		source,
-		/className="flex flex-wrap items-center justify-end gap-3"/,
+	// The footer's end slot is the action row (it renders `{footerEnd}`); the
+	// match is anchored to that element so a `flex-wrap` elsewhere cannot pass.
+	const actionRow = source.match(/<div className="([^"]*)">\s*\{footerEnd\}/);
+	assert.ok(actionRow, "the footer action row renders {footerEnd}");
+	const classes = actionRow[1].split(/\s+/);
+	for (const required of ["flex", "flex-wrap", "justify-end"])
+		assert.ok(
+			classes.includes(required),
+			`footer action row lacks ${required}: ${actionRow[1]}`,
+		);
+	assert.ok(
+		!classes.includes("flex-nowrap"),
+		`footer action row must not forbid wrapping: ${actionRow[1]}`,
 	);
 });
