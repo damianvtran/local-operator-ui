@@ -1,0 +1,29 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "bb87b7e4c3a2-windowglass-zh-cn",
+	"date": "2026-11-23",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor, round 1 (lopdev task session bb87b7e4c3a2, team role \"task\" briefed as translation auditor); not the translator (lopdev task jobs ef9a1c5bceef/5bb6e1a4b764 briefed as i18n-translator, session dd914f0c3dff, anthropic/claude-opus-5-5 per its notes translator-zh-CN.md and translator-zh-CN-addendum.md in 8e3f5025b34a scratchpad n4). Same model family as the translator: disclosed. Read only worktree bytes (uncommitted) on c78604c41b29; edited no repo file.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/zh-CN.md",
+		"shipped_terms": "src/i18n/catalogues/zh-CN/*.json in worktree: 窗口 (ui.shell.menubar.window and this file's material_description), 菜单, 标签页 (89 occurrences) vs 选项卡 (1, ui.providers.bedrock.no_plain_profiles_body), 弹出窗口 (2, ui.browser.extensions details_no_options/details_no_ui — browser-extension popup, a different concept)",
+		"translator_notes": "8e3f5025b34a scratchpad n4/translator-zh-CN.md + translator-zh-CN-addendum.md"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": null,
+	"head": "c78604c41b29+worktree",
+	"round": 1,
+	"scope": "Whole ui.settings.appearance.window_glass zh-CN file (28 keys) read against en + en .context.json, glossary and style guide; diff vs c78604c41b29 limited to the four material_* lines (window 窗口, menu 菜单, popover 弹出框, tabbed 标签页), all other bytes unchanged. material_mica \"Mica\" / material_acrylic \"Acrylic\" kept English as manager-named exceptions (en context: Microsoft product names, keep as is) — consistent with this file's own unsupported_windows_unverified (\"Mica和Acrylic\"). Judgement: 窗口/菜单 are the settled macOS zh-Hans and shipped terms; 弹出框 is the short idiomatic zh-CN UI term for popover, distinct from the sibling 窗口 segment and from shipped 弹出窗口 (extension popup); 标签页 follows shipped 标签页 over 选项卡 (Microsoft zh-CN docs lean 选项卡式 for the Tabbed backdrop, but locale consistency governs and the noun parallels the sibling noun segments). Renderer (window-glass-setting.tsx materialLabel) uses each key only as a segment label. Mechanical: key set = en (28/28), no placeholders in en or zh-CN, NFC True, no Cc (beyond tab/newline) or Cf/bidi controls, six material labels pairwise distinct, no trailing 。.",
+	"namespace": "ui.settings.appearance.window_glass",
+	"status": "passed",
+	"head_verdict": "clean",
+	"sha256": {
+		"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+		"zh-CN": "744247269862b635db7d06d9588c50bb895063db2427786bbb30c221361991ce"
+	},
+	"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+	"findings": [],
+	"resolved": []
+}

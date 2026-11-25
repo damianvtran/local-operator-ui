@@ -1,6 +1,7 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { PdfViewerStatus } from "../main/pdf-viewer-status";
+import type { TelemetryConsentState } from "../main/telemetry-consent";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
@@ -81,6 +82,23 @@ declare global {
 			 * that is not an app window (see `src/main/telemetry-launch.ts`).
 			 */
 			telemetryEnabled: boolean;
+			/**
+			 * The user's telemetry opt-in, owned by main
+			 * (`src/main/telemetry-consent.ts`). Default off: no record is "not
+			 * opted in". `effective` = launch allows AND opted in.
+			 */
+			telemetryConsent: {
+				get(): Promise<TelemetryConsentState>;
+				set(optedIn: boolean): Promise<TelemetryConsentState>;
+				onChange(listener: (state: TelemetryConsentState) => void): () => void;
+			};
+			/**
+			 * The installed app's version (`app.getVersion()`), from the window's
+			 * `additionalArguments` via the preload, so it is readable synchronously
+			 * before PostHog's first event. `null` outside an app window or when main
+			 * had no version-shaped value to send.
+			 */
+			appVersion: string | null;
 			/**
 			 * The window's claim about which conversations hold an open queued ask, and
 			 * main's request to send it again (`shared/app-attention-queued-asks.ts`).

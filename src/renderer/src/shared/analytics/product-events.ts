@@ -1,3 +1,15 @@
+import type {
+	BackendStartupCategory,
+	BackendStartupPhase,
+} from "../../../../shared/backend-startup";
+import type {
+	LocalModelCheckReason,
+	LocalModelCheckResult,
+	ProviderSetupFailureReason,
+	ProviderSetupMethod,
+	SendFailureDiagnosis,
+	TourStepOutcome,
+} from "./first-run-reasons";
 /**
  * Named product events for the first-run funnel, through the ONE consent gate.
  *
@@ -9,14 +21,16 @@
  * the tour - so the funnel is a query rather than a replay hunt.
  * `docs/analytics-events.md` is the catalogue a reader of the data should use.
  *
- * THE GATE. `telemetryEnabled` (`../config/telemetry.ts`) is the renderer's one
- * answer to "may this launch report": the launch's switch plus a build key,
- * fail-closed. When it is false the PostHog provider never mounts, nothing is
- * initialised, and `track` here returns without touching `posthog-js`. When it
- * is true the provider has initialised the default instance; an event fired
- * before that lands is dropped rather than queued, because a pre-init capture
- * on an uninitialised client is exactly the "client constructed when off" leak
- * the gate exists to prevent.
+ * THE GATE. Telemetry is default-off and opt-in, switchable live. The
+ * telemetry controller (`./telemetry-controller.ts`) owns the client: it
+ * `init`s posthog-js only once the launch allows it AND the user opted in, and
+ * publishes that live state through `./telemetry-state.ts`. `track` here reads
+ * `isTelemetryActive()` at capture time and also requires an initialised client
+ * (`__loaded`), so while the user is opted out, or before the controller has
+ * started the client, an event is dropped rather than queued: a capture on an
+ * uninitialised client is exactly the "client constructed when off" leak the
+ * gate exists to prevent. An opt-out stops events immediately, and whatever
+ * does pass is still reduced by the controller's `before_send` allow-list.
  *
  * NO PII, NO CONTENT. Properties are typed per event and every string property
  * is one of the closed vocabularies in `./first-run-reasons.ts`, a provider id
@@ -35,18 +49,7 @@
  * gated `PostHogProvider`, hands the client in through
  * `registerProductEventClient`; until it does, the default sink drops.
  */
-import type {
-	BackendStartupCategory,
-	BackendStartupPhase,
-} from "../../../../shared/backend-startup";
-import type {
-	LocalModelCheckReason,
-	LocalModelCheckResult,
-	ProviderSetupFailureReason,
-	ProviderSetupMethod,
-	SendFailureDiagnosis,
-	TourStepOutcome,
-} from "./first-run-reasons";
+import { isTelemetryActive } from "./telemetry-state";
 
 /** Every event and the exact properties it may carry. */
 export interface ProductEvents {
@@ -92,6 +95,28 @@ export interface ProductEvents {
 
 export type ProductEventName = keyof ProductEvents;
 
+/**
+ * Each product event's own property names, as runtime data: the telemetry
+ * controller's `before_send` allow-list (`telemetry-controller.ts`) keeps these
+ * and drops everything else. Typed so a name listed here that `ProductEvents`
+ * does not declare fails typecheck (nothing can be allowed by typo). The
+ * reverse is NOT a type error: a property added to `ProductEvents` but not
+ * listed here is silently stripped by `before_send`, which fails safe (the
+ * data is missing from PostHog, never leaked). List it here to send it.
+ */
+export const PRODUCT_EVENT_PROPERTIES: {
+	readonly [N in ProductEventName]: readonly (keyof ProductEvents[N])[];
+} = {
+	provider_setup_started: ["provider", "method"],
+	provider_connected: ["provider", "method"],
+	provider_setup_failed: ["provider", "method", "reason"],
+	local_model_check: ["provider", "result", "reason"],
+	first_message_sent: [],
+	message_send_failed: ["reason_category", "http_status", "error_code"],
+	backend_status: ["state", "reason", "after_ready", "elapsed_s"],
+	onboarding_tour_step: ["step", "outcome"],
+};
+
 /** The capture function, swappable so a test can observe without a client. */
 type Sink = (name: string, properties: Record<string, unknown>) => void;
 
@@ -125,14 +150,12 @@ const defaultSink: Sink = (name, properties) => {
 /*
  * WHY NOT `telemetryEnabled` DIRECTLY: that module reads the build config at
  * import, and this one is imported by the onboarding tour, which tests bundle
- * without a config. The gate is the same fact read at capture time: the bridge's
- * explicit `true` (the half `telemetry.ts` reads from the launch) AND an
- * initialised client - which only the gated `PostHogProvider` ever creates.
+ * without a config. The gate is read at capture time from `telemetry-state.ts`:
+ * the LIVE opt-in state the telemetry controller publishes (falling back to the
+ * bridge's explicit `true` before it has), AND an initialised client. An
+ * opt-out therefore stops product events immediately, not at the next launch.
  */
-const launchMayReport = (): boolean =>
-	typeof window !== "undefined" &&
-	(window as { api?: { telemetryEnabled?: boolean } }).api?.telemetryEnabled ===
-		true;
+const launchMayReport = (): boolean => isTelemetryActive();
 
 let sink: Sink | null = defaultSink;
 

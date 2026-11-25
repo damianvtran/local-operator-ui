@@ -21,7 +21,12 @@ import { createRoot } from "react-dom/client";
  */
 const inputs = {
 	"@shared/i18n/use-locale": "export const useI18nLocale = () => 'en';",
-	"@shared/i18n": `export const currentLocale = () => "en"; export { t } from ${JSON.stringify(`${process.cwd()}/src/i18n/messages.ts`)};`,
+	/* `chat-session-subagents` (on this graph through `chat-list-sections`)
+	   joins its "1 subagent, 1 job" summary with the locale-aware `formatList`,
+	   so the stub re-exports the REAL formatter rather than a hand-rolled join:
+	   the fixture replaces only the barrel's renderer-side edges, never i18n
+	   behaviour the palette row would actually paint. */
+	"@shared/i18n": `export const currentLocale = () => "en"; export { t } from ${JSON.stringify(`${process.cwd()}/src/i18n/messages.ts`)}; export { formatList } from ${JSON.stringify(`${process.cwd()}/src/i18n/format.ts`)};`,
 	"@shared/hooks/use-agents": `
 const data = { total: 2, agents: [
  { id: "tb-helper", name: "tb-helper", tags: [] },

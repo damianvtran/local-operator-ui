@@ -6,21 +6,28 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
-import { scrubCaptureResult } from "@shared/analytics/autocapture-privacy";
+import {
+	bridgeAppVersion,
+	registerAppVersion,
+} from "@shared/analytics/app-version";
 import { registerProductEventClient } from "@shared/analytics/product-events";
-import { config, telemetryEnabled } from "@shared/config";
+import {
+	type TelemetryClient,
+	bootTelemetry,
+	buildPosthogOptions,
+	createTelemetryController,
+} from "@shared/analytics/telemetry-controller";
+import { config } from "@shared/config";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installNotificationSoundPlayer } from "@shared/lib/notification-sound-player";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
-import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
 import { RegistrationToasts } from "./mini-view/registration-toasts";
@@ -37,26 +44,18 @@ import { appearanceOf, applyAppearance } from "./shared/themes/appearance";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
-const posthogOptions: Partial<PostHogConfig> = {
-	api_host: config.VITE_PUBLIC_POSTHOG_HOST,
-	capture_exceptions: true,
-	/*
-	 * NO USER CONTENT IN AUTOCAPTURE OR EXCEPTIONS (2026-11-21). Every event
-	 * passes through this before it is queued: clicked-element text and
-	 * attributes (`$el_text`, `$elements_chain`, `$elements`, external URLs) keep
-	 * short control labels and lose paths, file names, emails, URLs and long
-	 * text; `$exception` messages and frames lose the same inline. The rule, its
-	 * measurement and how to extend it live in `autocapture-privacy.ts`; the
-	 * other half is `USER_CONTENT_CLASS` on user-content regions.
-	 */
-	before_send: scrubCaptureResult,
-	/*
-	 * Replay already masks every input by default; restated so a posthog-js
-	 * default change cannot unmask the composer. Text in user-content regions is
-	 * masked through their `ph-mask` class (posthog's default `maskTextClass`).
-	 */
-	session_recording: { maskAllInputs: true },
-};
+/*
+ * THE ANALYTICS CLIENT IS OPT-IN AND LIVE (2026-11-24). Nothing is sent unless
+ * the user opted in (Settings → Privacy) AND the launch allows it; the options
+ * are the minimum needed to count active users — no session replay, no
+ * autocapture, no exception capture, no page titles or in-app routes
+ * (`buildPosthogOptions` in `telemetry-controller.ts` says why each is off).
+ * `loaded` still stamps `app_version` on every event, before the first one.
+ */
+const posthogOptions = buildPosthogOptions({
+	apiHost: config.VITE_PUBLIC_POSTHOG_HOST,
+	loaded: (client) => registerAppVersion(client, bridgeAppVersion()),
+});
 
 /*
  * Register the dev driver's verbs, if this launch armed it.
@@ -207,33 +206,18 @@ document.addEventListener("DOMContentLoaded", () => {
 		document.getElementById("app") as HTMLElement,
 	);
 	/*
-	 * `PostHogProvider` MOUNTS ONLY WHEN THIS LAUNCH MAY REPORT.
+	 * THE ANALYTICS CLIENT IS DRIVEN BY THE TELEMETRY CONTROLLER, not by a mount
+	 * (2026-11-24). Importing `posthog-js` constructs a client but sends nothing;
+	 * only `init` does, and `init` runs solely from the controller's `start()`,
+	 * i.e. after main reports the user opted in AND the launch allows it (see
+	 * `bootTelemetry` below). The feature-flag provider and the product-event
+	 * sink both read the controller's live state (`telemetry-state.ts`), so
+	 * nothing here can initialise a client on its own.
 	 *
-	 * Mounting it is what calls `posthog.init` in the renderer, and initialization
-	 * is what brings the whole client with it: pageviews, autocapture, exception
-	 * capture (`capture_exceptions` above) and session replay, which is what made
-	 * a test run show up in the PostHog project as a user AND as a replay to watch.
-	 * The decision is the launch's, read from the preload bridge by
-	 * `shared/config/telemetry.ts`, because the renderer's own `VITE_*` values are
-	 * inlined at build time and so cannot express a runtime switch at all — the
-	 * reason a build that merely omitted the key still reported. That module also
-	 * holds the renderer's half of the blank-key rule (`apiKey` below is the
-	 * BUILD's key, while main decides from the launch's), so a build with no key
-	 * resolves to off here exactly as it constructs no client in main.
-	 *
-	 * With telemetry off, the provider is not rendered and NOTHING is initialized:
-	 * `posthog-js` is still imported (the same import the feature-flag provider
-	 * needs), and the measurement is that importing it constructs a client but
-	 * sends nothing — no request is made until `init`, so an off launch makes no
-	 * PostHog connection at all. The one other place in the renderer that reaches
-	 * for `posthog` is the feature-flag provider, and it is gated on the same
-	 * decision, so nothing here can re-enable what this skips.
-	 */
-	/*
 	 * The product-event sink gets its client from here rather than importing
 	 * `posthog-js` itself (see `product-events.ts`). Registering it is inert:
-	 * the sink still checks the launch's switch and `__loaded` per capture, and
-	 * `__loaded` turns true only once the gated provider below has run `init`.
+	 * the sink checks the live state and `__loaded` per capture, and `__loaded`
+	 * turns true only once the controller has run `init`.
 	 */
 	registerProductEventClient(posthog);
 	const appTree = (
@@ -289,18 +273,18 @@ document.addEventListener("DOMContentLoaded", () => {
 		</QueryClientProvider>
 	);
 
-	root.render(
-		<React.StrictMode>
-			{telemetryEnabled ? (
-				<PostHogProvider
-					apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
-					options={posthogOptions}
-				>
-					{appTree}
-				</PostHogProvider>
-			) : (
-				appTree
-			)}
-		</React.StrictMode>,
-	);
+	root.render(<React.StrictMode>{appTree}</React.StrictMode>);
+	/*
+	 * Boot from main's LIVE consent (`telemetryConsent.get()`), off until it
+	 * answers, then follow main's broadcasts — so opting in or out in Settings,
+	 * in this window or another, starts or stops sending immediately, and a
+	 * reload keeps the current choice instead of the window-creation argv
+	 * (review round 1, R1; `bootTelemetry` says why).
+	 */
+	const telemetry = createTelemetryController({
+		client: posthog as unknown as TelemetryClient,
+		projectKey: config.VITE_PUBLIC_POSTHOG_KEY,
+		options: posthogOptions as unknown as Record<string, unknown>,
+	});
+	bootTelemetry(telemetry, window.api?.telemetryConsent);
 });

@@ -1,0 +1,25 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "7f5f04345cc5-privacy-es",
+	"date": "2026-11-24",
+	"locale": "es",
+	"independence": "Independent i18n auditor (lopdev reviewer session 7f5f04345cc5); not the translator (lopdev coder, anthropic/claude-opus-5-5, remediation job d7b6aa25f597). Same model family as the translator: disclosed. Read only committed bytes at 713adafbb3c, never the coder's scratch; no replacements authored.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/es.md",
+		"shipped_terms": "src/i18n/catalogues/es/*.json at 713adafbb3c"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2094,
+	"head": "713adafbb3c",
+	"scope": "All 6 keys of ui.settings.privacy read in full against the en value and en .context.json (round-2 copy: full privacy stays on; no conversations, prompts, files or session details ever collected, stored or used; turn off at any time; no added IP/personal-data claims), glossary and locale style guide; mechanically checked key parity with en, no ICU placeholders, NFC, no Cc/Cf characters, no ASCII '...'. 'La privacidad total sigue activada' = full privacy stays on; 'nunca se recopilan, guardan ni usan' keeps all three verbs; prompts per glossary; 'detalles de sesiones' (session → sesión); 'Puedes desactivarlo cuando quieras' = turn off any time; tú register.",
+	"namespace": "ui.settings.privacy",
+	"status": "passed",
+	"sha256": {
+		"es": "ec60ec4d005ba69bf89382735c40dd6b9598a76564fc7c9fd19fc008c87354ef",
+		"en": "9f04ad8e7d32f0f4a99c5f2f0d67a76cf339b1841c81bd923a621cc778c88cca"
+	},
+	"context_sha256": "1599bdf3bd09d9d96fdcfd849e559d09ebd01c2af78b884f406a8c15c96daf98",
+	"findings": []
+}

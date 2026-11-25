@@ -1,0 +1,38 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "04e304d1c2d8-windowglass-hi",
+	"date": "2026-11-23",
+	"locale": "hi",
+	"independence": "Independent i18n auditor, round 1 (lopdev task session 04e304d1c2d8, team role \"task\" briefed as i18n auditor); not the translator (lopdev task jobs 248fdc8e5e6e/677b456535ed briefed as i18n-translator, anthropic/claude-opus-5-5, notes in session 8e3f5025b34a scratchpad n4/translator-hi.md and translator-hi-followon.md). Same model family as the translator: disclosed. Read the uncommitted worktree bytes on fix/i18n-census-bidi-separators over c78604c41b29; edited no repo file.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/hi.md",
+		"shipped_terms": "src/i18n/catalogues/{en,hi}/*.json in worktree (counts across shipped hi values: विंडो 79 / खिड़की 0; मेन्यू 12 / मेनू 0; टैब 93 / टैब्ड 0; पॉपओवर 1 (this key only) / पॉपअप 2; ui.shell.menubar.window = विंडो); sibling locales' material_* values compared"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": null,
+	"head": "c78604c41b29+worktree",
+	"round": 1,
+	"scope": "Whole hi file of ui.settings.appearance.window_glass (28 keys) read against en + en .context.json, glossary and style guide; git diff confirms only material_window, material_menu, material_popover, material_tabbed changed (4/4 lines). Named exceptions material_mica \"Mica\" and material_acrylic \"Acrylic\" stay Latin (en context: Microsoft product names, keep as is; hi.md product-name policy: never transliterate product names). Mechanical: key set = en, no placeholders in the changed keys and placeholders byte-identical file-wide, file NFC, no Cc/Cf controls, changed values all Devanagari, the four segment labels distinct from each other and from Mica/Acrylic.",
+	"namespace": "ui.settings.appearance.window_glass",
+	"status": "passed",
+	"head_verdict": "clean-with-findings",
+	"sha256": {
+		"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+		"hi": "aa3c7579148fdf31fbb73be7c609e82f738be7565cfeff82349ab38d3579677d"
+	},
+	"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+	"findings": [
+		{
+			"id": "T1",
+			"severity": "NIT",
+			"key": "ui.settings.appearance.window_glass.material_tabbed",
+			"note": "en is the adjective \"Tabbed\" (Microsoft's Tabbed Mica material); bare \"टैब\" reads as the noun \"Tab\" and, sitting next to the Latin \"Mica\" segment, loses the 'tabbed' sense. The ur sibling uses the adjectival \"ٹیب دار\" and vi \"Dạng tab\". Optional: \"टैब वाला\" (adjectival, still short). The noun rendering matches fr \"Onglets\"/ru \"Вкладки\", is the shipped term (टैब ×93), is unambiguous among the six segments and fits a one-word segment, so it is acceptable as is.",
+			"current": "टैब",
+			"suggested": "टैब वाला",
+			"disposition": "deferred — optional; HEAD bytes are the audited bytes"
+		}
+	],
+	"resolved": []
+}

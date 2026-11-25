@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -22,7 +22,6 @@ import {
 	utilityProcess,
 	webContents,
 } from "electron";
-import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import { t } from "../i18n/index";
 import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
@@ -215,6 +214,18 @@ import { TeamBridgeNotificationImages } from "./team-bridge-notification-images"
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
+	TELEMETRY_CONSENT_CHANGED_CHANNEL,
+	TELEMETRY_CONSENT_FILE,
+	TELEMETRY_CONSENT_GET_CHANNEL,
+	TELEMETRY_CONSENT_SET_CHANNEL,
+	type TelemetryConsentRecord,
+	type TelemetryConsentState,
+	readTelemetryConsent,
+	resolveEffectiveTelemetry,
+	writeTelemetryConsent,
+} from "./telemetry-consent";
+import {
+	appVersionArguments,
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -574,24 +585,26 @@ function reassertDockParticipation(): void {
 }
 
 /*
- * PostHog, or nothing at all.
+ * Whether this LAUNCH allows telemetry at all — half of the decision.
  *
  * WHY THIS IS A DECISION RATHER THAN A CONSTRUCTOR CALL. A test, harness, QA or
- * CI run boots this real app, and until this switch existed every one of them
- * registered as a user and as a session replay in the "Local Operator Usage"
- * project: the shipped build carries the live project key by default, so a run
- * that simply omitted the variable still had one, and an explicitly empty one
- * threw in the constructor at module load (before `app.whenReady()`, surfacing
- * as an error dialog). `resolveTelemetryLaunch` owns the two ways this becomes
- * "off" — the launch's switch, and a build with no key — and reads the switch
- * from `launchEnv`, the environment this process was LAUNCHED with, so a `.env`
- * in the checkout can neither silence a real user nor speak for a rig.
+ * CI run boots this real app, and the shipped build carries the live project key
+ * by default. `resolveTelemetryLaunch` owns the two ways the launch says "no" —
+ * the `LOCAL_OPERATOR_UI_TELEMETRY` switch, and a build with no key — and reads
+ * the switch from `launchEnv`, so a `.env` in the checkout can neither silence a
+ * real user nor speak for a rig.
  *
- * `null` rather than a client with a no-op configuration, because the point is
- * that nothing is constructed: no client, no queue, no flush, and nothing to
- * shut down (see the `process.on("exit")` handler below, which is the other half
- * of this decision). An ordinary launch is unaffected: no switch, a key, and
- * `posthogClient` is the same client it was.
+ * THE OTHER HALF IS THE USER'S CONSENT (2026-11-24, `./telemetry-consent`).
+ * Telemetry is default-OFF and opt-in: even a launch that allows it sends
+ * nothing until the user opts in from Settings → Privacy. See
+ * `telemetryConsentState()` below.
+ *
+ * MAIN CONSTRUCTS NO POSTHOG CLIENT (2026-11-24). It used to build a
+ * `posthog-node` client whose only job was exception autocapture — stack
+ * traces, which can carry paths and message text. Opted-in telemetry is scoped
+ * to counting active users, so that client is gone rather than gated: the
+ * renderer's `posthog-js` is the app's only analytics client, and there is no
+ * queue to flush at exit.
  */
 const telemetryLaunch = resolveTelemetryLaunch({
 	env: launchEnv,
@@ -599,12 +612,73 @@ const telemetryLaunch = resolveTelemetryLaunch({
 });
 const telemetryLine = describeTelemetryLaunch(telemetryLaunch);
 if (telemetryLine) console.log(telemetryLine);
-const posthogClient = telemetryLaunch.enabled
-	? new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
-			host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
-			enableExceptionAutocapture: true,
-		})
-	: null;
+
+/*
+ * THE USER'S TELEMETRY CHOICE, held here once read so every window is composed
+ * from the same answer. `undefined` = not read yet: the file is read lazily,
+ * on first need, because `userData` honours `--user-data-dir` and callers only
+ * need it once windows exist. A failed write leaves this untouched, so the
+ * in-memory answer never claims a choice the disk does not hold.
+ */
+let telemetryConsentRecord: TelemetryConsentRecord | null | undefined;
+
+function telemetryConsentPath(): string {
+	return join(app.getPath("userData"), TELEMETRY_CONSENT_FILE);
+}
+
+const telemetryConsentFs = {
+	readFile: (path: string): string | null =>
+		existsSync(path) ? readFileSync(path, "utf8") : null,
+	writeFile: (path: string, contents: string): void => {
+		writeFileSync(path, contents, { encoding: "utf8", mode: 0o600 });
+		// `mode` applies only when the file is created; a leftover temp from a
+		// crashed write keeps its old mode, so restate it before the rename.
+		chmodSync(path, 0o600);
+	},
+	rename: (from: string, to: string): void => renameSync(from, to),
+};
+
+/** Launch verdict AND the user's consent; no record is OFF. */
+function telemetryConsentState(): TelemetryConsentState {
+	if (telemetryConsentRecord === undefined) {
+		telemetryConsentRecord = readTelemetryConsent(
+			telemetryConsentFs,
+			telemetryConsentPath(),
+		);
+		// Said once, like the launch's own off line: a run that sent nothing
+		// because nobody opted in must be distinguishable from outside the app.
+		if (telemetryLaunch.enabled && telemetryConsentRecord?.optedIn !== true) {
+			console.log(
+				"[telemetry] off: the user has not opted in (Settings → Privacy)",
+			);
+		}
+	}
+	return resolveEffectiveTelemetry({
+		launchAllows: telemetryLaunch.enabled,
+		record: telemetryConsentRecord,
+	});
+}
+
+/**
+ * Persist a choice and tell every window, so an open Settings page, the
+ * analytics client and the feature-flag provider in each window switch at once
+ * without a restart. Throws when the file cannot be written.
+ */
+function setTelemetryConsent(optedIn: boolean): TelemetryConsentState {
+	telemetryConsentRecord = writeTelemetryConsent(
+		telemetryConsentFs,
+		telemetryConsentPath(),
+		optedIn,
+	);
+	const state = telemetryConsentState();
+	console.log(
+		`[telemetry] user ${optedIn ? "opted in" : "opted out"}; effective=${state.effective ? "on" : "off"}`,
+	);
+	for (const window of BrowserWindow.getAllWindows())
+		if (!window.isDestroyed())
+			window.webContents.send(TELEMETRY_CONSENT_CHANGED_CHANNEL, state);
+	return state;
+}
 
 // Create application menu without developer tools in production
 /**
@@ -1936,20 +2010,37 @@ const devDriverWebPreferences =
 /*
  * The renderer's half of the telemetry decision, ALWAYS written.
  *
- * WHY THIS ONE IS NOT CONDITIONAL, when the dev driver's entry above is. The dev
- * driver is an opt-in, so its absence can safely mean "off"; telemetry's default
- * is ON, so if silence also meant "on" then any window created by a path that
- * forgot to compose this entry would ship the events this switch exists to stop —
- * and the preload could not tell that case apart from a host that is not an app
- * window at all. Spelling the decision out on every window makes the renderer's
+ * WHY THIS ONE IS NOT CONDITIONAL, when the dev driver's entry above is. Even
+ * though telemetry is now default-off (opt-in consent), the renderer's rule is
+ * that silence is never read as "on", and an explicit entry on every window
+ * keeps a future window path that forgot it from being indistinguishable from a
+ * host that is not an app window at all. A function rather than a constant:
+ * the answer is launch AND the user's current consent, which can change while
+ * the app runs. Spelling the decision out on every window makes the renderer's
  * fail-closed default (`resolveTelemetryEnabled`: an explicit `true` from the
  * bridge AND a non-blank key in the build it made) safe to hold. The two words
  * are the whole vocabulary, and they live in `./telemetry-launch`, which the
  * preload reads back out of its own argv.
+ *
+ * The app's version rides beside it (`appVersionArguments`), for the renderer
+ * to register as PostHog's `app_version` super property before its first
+ * event: `app.getVersion()` is the same value the About panel and the updater
+ * report, and argv is the only channel that reaches the renderer synchronously
+ * — see `APP_VERSION_ARG` for why the async `get-app-version` IPC cannot. A
+ * version without a version's shape is simply not written; the renderer then
+ * registers nothing rather than a bogus value.
  */
-const telemetryWebPreferences = {
-	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
-};
+function telemetryWebPreferences(): { additionalArguments: string[] } {
+	return {
+		additionalArguments: [
+			// The EFFECTIVE answer at the moment the window is created (launch AND
+			// consent); later changes reach the window over
+			// `TELEMETRY_CONSENT_CHANGED_CHANNEL`.
+			telemetryArgument(telemetryConsentState().effective),
+			...appVersionArguments(app.getVersion()),
+		],
+	};
+}
 
 // Radient tokens and OAuth state used to live in an electron-store session
 // file here. The backend AuthStore owns provider credentials now and the
@@ -2392,7 +2483,7 @@ function rendererArgumentFlags(
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
 		...ownerAuditStartupArguments(),
-		...(telemetryWebPreferences.additionalArguments ?? []),
+		...telemetryWebPreferences().additionalArguments,
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
 }
@@ -4552,6 +4643,26 @@ app
 				return attestAskAnswer(askRequest, host);
 			},
 		);
+		/*
+		 * THE USER'S TELEMETRY CONSENT (Settings → Privacy). Only the main window's
+		 * trusted main frame may read or change it — the mini-view and every other
+		 * document is refused, like the other desktop controls. `set` persists to
+		 * `userData` and broadcasts to every window so the renderer's analytics
+		 * client starts or stops immediately.
+		 */
+		const authorizeTelemetryConsent = (event: Electron.IpcMainInvokeEvent) => {
+			if (!isAdmittedSender(event, [{ window: mainWindow, url: rendererUrl }]))
+				throw new Error("This window cannot change telemetry consent.");
+		};
+		ipcMain.handle(TELEMETRY_CONSENT_GET_CHANNEL, (event) => {
+			authorizeTelemetryConsent(event);
+			return telemetryConsentState();
+		});
+		ipcMain.handle(TELEMETRY_CONSENT_SET_CHANNEL, (event, optedIn: unknown) => {
+			authorizeTelemetryConsent(event);
+			// Only a literal `true` is consent; anything else is an opt-out.
+			return setTelemetryConsent(optedIn === true);
+		});
 		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
 			getEnabled: () => qwenVoice.isEnabled(),
 			setEnabled: async (on) => {
@@ -6819,10 +6930,6 @@ process.on("exit", () => {
 			error,
 		);
 	}
-	// Nothing was constructed when telemetry is off, so there is nothing to
-	// flush or close — and a bare `posthogClient.shutdown()` here would be a
-	// TypeError on the exit path of every rig-shaped run.
-	posthogClient?.shutdown();
 });
 
 process.on("uncaughtException", (error) => {

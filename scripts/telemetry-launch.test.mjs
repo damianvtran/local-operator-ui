@@ -47,9 +47,13 @@ async function bundleDataUrl(entry, env = {}) {
 }
 
 const {
+	APP_VERSION_ARG,
 	TELEMETRY_ARG,
 	TELEMETRY_ENV,
+	appVersionArguments,
 	describeTelemetryLaunch,
+	normalizeAppVersion,
+	readAppVersionArgument,
 	readTelemetryArgument,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -79,12 +83,14 @@ const keylessRenderer = await import(
 /** The launch a person makes: nothing in the environment about telemetry. */
 const normalLaunch = { env: {}, projectKey: KEY };
 
-test("a launch that says nothing keeps its telemetry, and says nothing about it", () => {
+test("a launch that says nothing ALLOWS telemetry and defers to the user's consent", () => {
 	const decision = resolveTelemetryLaunch(normalLaunch);
+	// `enabled` here is the LAUNCH's half only (2026-11-24): telemetry is opt-in,
+	// and `resolveEffectiveTelemetry` (scripts/telemetry-consent.test.mjs) ANDs
+	// this with the user's consent, so an unset switch with no consent record is
+	// still OFF. This half stays "allows" so a user who opts in is not refused.
 	assert.equal(decision.enabled, true);
-	// No problems and no line, because nothing was set: a normal launch must not
-	// explain a feature its user did not invoke, and the evidence for "a real
-	// user still reports" is that this decision is byte-for-byte what it was.
+	// No problems and no line from the launch itself: nothing was set.
 	assert.deepEqual(decision.problems, []);
 	assert.equal(decision.offReason, null);
 	assert.equal(describeTelemetryLaunch(decision), null);
@@ -257,14 +263,20 @@ test("a build with no key mounts no client in the renderer either", () => {
 		true,
 	);
 	/*
-	 * The two call sites read THAT export rather than working the key out again:
-	 * the provider mounts on `telemetryEnabled`, and the apiKey it hands over is
-	 * the same build key this rule just checked. A mount that reached for the key
-	 * directly would re-open exactly the divergence this closes.
+	 * The renderer hands the controller the BUILD's key, and
+	 * `createTelemetryController` refuses a blank key itself, so the key rule
+	 * above is the one the live client obeys.
 	 */
 	const mainSource = readFileSync("src/renderer/src/main.tsx", "utf8");
-	assert.match(mainSource, /\{telemetryEnabled \? \(/);
-	assert.match(mainSource, /apiKey=\{config\.VITE_PUBLIC_POSTHOG_KEY\}/);
+	// Booted from main's LIVE consent, never the window-creation argv (R1).
+	assert.match(
+		mainSource,
+		/bootTelemetry\(telemetry, window\.api\?\.telemetryConsent\);/,
+	);
+	assert.doesNotMatch(mainSource, /telemetry\.apply\(telemetryEnabled\)/);
+	assert.match(mainSource, /projectKey: config\.VITE_PUBLIC_POSTHOG_KEY,/);
+	// And no `PostHogProvider` mount is left to initialise a client on its own.
+	assert.doesNotMatch(mainSource, /<PostHogProvider/);
 });
 
 test("the app's name for the switch and the tooling's are the same string", () => {
@@ -272,5 +284,89 @@ test("the app's name for the switch and the tooling's are the same string", () =
 		SCRIPT_TELEMETRY_ENV,
 		TELEMETRY_ENV,
 		"scripts/telemetry-off.mjs and src/main/telemetry-launch.ts must agree: the name IS the contract, and nothing else would notice them drifting",
+	);
+});
+
+/*
+ * THE APP VERSION'S ROUTE TO THE RENDERER (2026-11-24). Every renderer event is
+ * meant to carry `app_version` because `$lib_version` is posthog-js's version and
+ * says nothing about which release sent the event. The value travels main →
+ * `additionalArguments` → preload argv → `window.api.appVersion`, beside the
+ * telemetry decision, because only argv is readable before posthog-js's first
+ * event; these pin each hop.
+ */
+test("the app version round-trips through a renderer's argv", () => {
+	for (const version of ["0.62.1", "1.0.0-beta.3", "0.63.0+build.7"]) {
+		const argv = [
+			"/Applications/Local Operator.app/Contents/MacOS/Local Operator Helper (Renderer)",
+			"--type=renderer",
+			telemetryArgument(true),
+			...appVersionArguments(version),
+		];
+		assert.deepEqual(appVersionArguments(version), [
+			`${APP_VERSION_ARG}=${version}`,
+		]);
+		assert.equal(readAppVersionArgument(argv), version);
+	}
+	// Whitespace around a real version is the version, not a refusal.
+	assert.equal(normalizeAppVersion(" 0.62.1\n"), "0.62.1");
+});
+
+test("no usable version means no entry at all, never a placeholder", () => {
+	// A bogus `app_version` would become its own row in every breakdown, naming no
+	// release; absence is how "unknown" is spelled.
+	for (const version of [
+		"",
+		"   ",
+		null,
+		undefined,
+		"0.62.1 extra",
+		"-rf",
+		"../0.62.1",
+		"0.62.1;rm",
+		"9".repeat(65),
+	]) {
+		assert.deepEqual(appVersionArguments(version), [], String(version));
+		assert.equal(normalizeAppVersion(version), null, String(version));
+	}
+	// The renderer side: an absent or malformed entry reads as null.
+	assert.equal(readAppVersionArgument(["--type=renderer"]), null);
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}=`]), null);
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}=a b`]), null);
+	// A prefix of the flag's name is not the flag.
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}x=0.62.1`]), null);
+});
+
+test("main writes app.getVersion() on the always-written renderer entry, and the preload exposes it", () => {
+	/*
+	 * Source-level, like the provider-mount check above: the value must be the
+	 * real Electron version (not a build-inlined package.json), it must ride on
+	 * `telemetryWebPreferences` (which `rendererArgumentFlags` composes for every
+	 * app window), and the preload must read it from its own argv rather than
+	 * through the async IPC that resolves after the first pageview.
+	 */
+	const mainIndex = readFileSync("src/main/index.ts", "utf8");
+	// The entry is the EFFECTIVE decision (launch AND consent) at window creation.
+	assert.match(
+		mainIndex,
+		/function telemetryWebPreferences\(\)[^\n]*\{\s*return \{\s*additionalArguments: \[[\s\S]*?telemetryArgument\(telemetryConsentState\(\)\.effective\),\s*\.\.\.appVersionArguments\(app\.getVersion\(\)\),\s*\],/,
+	);
+	assert.match(
+		mainIndex,
+		/\.\.\.telemetryWebPreferences\(\)\.additionalArguments,/,
+	);
+	// Main constructs no analytics client of its own any more.
+	assert.doesNotMatch(
+		mainIndex,
+		/from "posthog-node"|new PostHog\(|posthogClient/,
+	);
+	const preload = readFileSync("src/preload/index.ts", "utf8");
+	assert.match(preload, /appVersion: readAppVersionArgument\(process\.argv\),/);
+	// And the renderer registers it from that bridge inside posthog-js's
+	// `loaded`, which runs before the initial pageview is scheduled.
+	const rendererMain = readFileSync("src/renderer/src/main.tsx", "utf8");
+	assert.match(
+		rendererMain,
+		/loaded: \(client\) => registerAppVersion\(client, bridgeAppVersion\(\)\),/,
 	);
 });

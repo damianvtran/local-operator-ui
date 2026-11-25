@@ -203,11 +203,11 @@ test("the sidebar draws the reserved cell, the split lines, and no separate sect
 	);
 	assert.match(
 		SIDEBAR,
-		/\{remote && <span className="sr-only">, \{remoteHost\}<\/span>\}/,
+		/\{remote && \(\s*<span className="sr-only">\s*\{listSeparator\(\)\}\s*\{remoteHost\}\s*<\/span>/,
 	);
 	assert.match(
 		SIDEBAR,
-		/\{remoteUnreachable && \(\s*<span className="sr-only">, \{remoteUnreachable\}<\/span>/,
+		/\{remoteUnreachable && \(\s*<span className="sr-only">\s*\{listSeparator\(\)\}\s*\{remoteUnreachable\}\s*<\/span>/,
 		"the accessible name joins the same split fragment",
 	);
 });
