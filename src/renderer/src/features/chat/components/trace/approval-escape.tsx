@@ -93,7 +93,7 @@ import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 import {
 	invalidateApprovalMode,
 	useApprovalMode,
-} from "../../session-status/approval-mode-chip";
+} from "../../session-status/approval-mode";
 
 /** Which gate the press loosens: the live one, or the saved default. */
 /**
@@ -103,8 +103,15 @@ import {
  * card offers "Always ask", which sends `approvals ask` through the same owner
  * route. `ask` is the runtime's canonical token (`serving.py:_approvals_slash`
  * accepts `ask`/`on`/`prompt`; `desktop_catalogues.py` lists `auto`/`ask`).
+ *
+ * `all-ask` is the all-sessions arm's mirror, added for the composer's approvals
+ * picker (operator request 2026-11-25: "set for this session, all sessions"):
+ * a picker that can make Auto the default but not Ask would be the same
+ * one-way door the card's "Always ask" exists to close. It follows the `all`
+ * arm exactly - default first, then this conversation - with the same partial
+ * state when only the first half lands. The card itself never sends it.
  */
-export type ApprovalEscapeTarget = "session" | "all" | "ask";
+export type ApprovalEscapeTarget = "session" | "all" | "ask" | "all-ask";
 
 /**
  * The effective approval modes the policy line can name. `""` is the core's
@@ -281,21 +288,22 @@ export async function runApprovalEscape(
 			? { kind: "saved" }
 			: { kind: "unchanged", detail: live.detail };
 	}
+	const mode = target === "all-ask" ? "ask" : "auto";
 	try {
-		const saved = await ports.editDefault("auto");
+		const saved = await ports.editDefault(mode);
 		/*
 		 * NEVER CLAIM A SAVE THE BACKEND DID NOT REPORT. The route resolves with
-		 * the stored row; a value other than `auto` is the fact that this press
-		 * did not take, and painting it as saved would be the one lie this
-		 * component exists to avoid.
+		 * the stored row; a value other than the one asked for is the fact that
+		 * this press did not take, and painting it as saved would be the one lie
+		 * this component exists to avoid.
 		 */
-		if (saved.value !== "auto") {
+		if (saved.value !== mode) {
 			return { kind: "unchanged", detail: String(saved.value) };
 		}
 	} catch (error) {
 		return { kind: "unchanged", detail: errorText(error) };
 	}
-	const live = await setLiveGate(ports, "auto");
+	const live = await setLiveGate(ports, mode);
 	return live.ok
 		? { kind: "saved" }
 		: { kind: "default-only", detail: live.detail };

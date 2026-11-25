@@ -106,7 +106,7 @@ import {
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
 import type { SessionAskFrame } from "@features/chat/session-asks";
-import { ApprovalModeChip } from "@features/chat/session-status/approval-mode-chip";
+import { ApprovalModePicker } from "@features/chat/session-status/approval-mode";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
@@ -10059,13 +10059,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 										costChannels={sessionStatus.costChannels}
 									/>
-									{/*
-									 * The approval mode, beside the readings and only for a live
-									 * session: a draft has no runtime gate to report or switch.
-									 */}
-									{slashSessionId && !sessionStatus.draft ? (
-										<ApprovalModeChip sessionId={slashSessionId} />
-									) : null}
 								</ErrorBoundary>
 							)}
 						</div>
@@ -10790,6 +10783,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									className="composer-dock-pickers"
 									ref={setComposerPickerHost}
 								/>
+								{/*
+								 * THE APPROVALS PICKER, right of the model and effort selectors and
+								 * in their style (operator request 2026-11-25). A SIBLING after the
+								 * portal host rather than a portal into it: the host's children are
+								 * appended in mount order, so a late-mounting effort reading would
+								 * land after this one and swap the visual and Tab order. Mounted
+								 * where the model/effort readings are (a pane that supplies
+								 * `sessionStatus`) and only for a live session - a draft has no
+								 * runtime gate to report or set - but NOT gated on the status
+								 * snapshot having arrived: a session whose readings are still
+								 * pending can have its mode set (see `approval-mode.tsx`).
+								 */}
+								{slashSessionId && sessionStatus && !sessionStatus.draft ? (
+									<ErrorBoundary fallback={null}>
+										<ApprovalModePicker sessionId={slashSessionId} />
+									</ErrorBoundary>
+								) : null}
 								<div
 									data-lo-composer-controls={true}
 									onFocus={() => {

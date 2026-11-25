@@ -146,7 +146,7 @@ import {
 } from "../draft-selection";
 // Cycle-safe: the chip imports `useEntities` from here, and both sides only
 // call the other at run time, never at module evaluation.
-import { invalidateApprovalMode } from "../session-status/approval-mode-chip";
+import { invalidateApprovalMode } from "../session-status/approval-mode";
 import {
 	bandReadings,
 	effortChosenRung,
