@@ -78,6 +78,8 @@ export type TeamBridgeOrganization = {
 	name: string;
 	role: string;
 	unread: number;
+	/** Cold-open hint only: unknown is not evidence that other orgs are ineligible. */
+	openingEligible?: boolean;
 	/**
 	 * A pending invitation to this private org rather than a membership (D22).
 	 * No client read supplies one yet - the invitation surface ships with the
@@ -974,6 +976,7 @@ export function organizationOptions(
 		tenant_name: string;
 		role: string;
 		status: "active" | "pending" | "disabled";
+		plan?: { status: string };
 	}>,
 	unreadOrganizations: ReadonlyArray<{
 		tenant_id: string;
@@ -982,6 +985,7 @@ export function organizationOptions(
 	hubTenants?: ReadonlyArray<{
 		tenant_id: string;
 		tenant_name?: string;
+		eligible?: boolean;
 	}> | null,
 ): TeamBridgeOrganization[] {
 	const counts = new Map(
@@ -991,12 +995,24 @@ export function organizationOptions(
 		(membership) => membership.status === "active",
 	);
 	if (!hubTenants) {
-		return active.map((membership) => ({
-			tenantId: asTeamBridgeTenantId(membership.tenant_id),
-			name: membership.tenant_name,
-			role: membership.role,
-			unread: counts.get(membership.tenant_id) ?? 0,
-		}));
+		return active.map((membership) => {
+			// Legacy status has no tenant list. Only recognized plan statuses
+			// say whether another active membership could be a Team org.
+			const plan = membership.plan?.status;
+			const openingEligible =
+				plan === "active" || plan === "past_due"
+					? true
+					: plan === "none" || plan === "canceled"
+						? false
+						: undefined;
+			return {
+				tenantId: asTeamBridgeTenantId(membership.tenant_id),
+				name: membership.tenant_name,
+				role: membership.role,
+				unread: counts.get(membership.tenant_id) ?? 0,
+				...(openingEligible === undefined ? {} : { openingEligible }),
+			};
+		});
 	}
 	const byTenant = new Map(
 		active.map((membership) => [membership.tenant_id, membership]),
@@ -1017,6 +1033,11 @@ export function organizationOptions(
 				tenant.tenant_id,
 			role: membership?.role ?? "",
 			unread: counts.get(tenant.tenant_id) ?? 0,
+			// The hub owns both the tenant set and eligibility when it sends its
+			// list. Memberships may label rows, not promote or add a target.
+			...(typeof tenant.eligible === "boolean"
+				? { openingEligible: tenant.eligible }
+				: {}),
 		});
 	}
 	return organizations;

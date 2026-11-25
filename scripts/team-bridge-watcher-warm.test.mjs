@@ -114,6 +114,12 @@ function scenario(fixture, rows = ROWS) {
 }
 
 function remember(view) {
+	// Both fixture orgs are eligible. Model a prior switcher choice so these
+	// cases test the remembered target within the chosen rail, not the All default.
+	localStorage.setItem(
+		"lo.teamBridge.scope.v1",
+		JSON.stringify({ acct_a: "org_shared" }),
+	);
 	localStorage.setItem(
 		"lo.teamBridge.view.v1",
 		JSON.stringify({

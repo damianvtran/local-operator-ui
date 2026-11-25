@@ -407,24 +407,27 @@ test("a reader scrolled up returns to the same message; at the bottom returns to
 	}
 });
 
+const switcher = (app) =>
+	app.host.querySelector('button[aria-label^="Organization:"]');
+
+async function chooseOrganization(app, label) {
+	await click(switcher(app), "switcher");
+	await click(
+		[...app.host.querySelectorAll('[role="menuitem"]')].find((item) =>
+			item.textContent.trim().startsWith(label),
+		),
+		`menu ${label}`,
+	);
+}
+
 test("each organization, and All organizations, remembers its own conversation", async () => {
 	/* No `?tenant=`: that parameter pins the scope by contract (a deep link
 	   outranks everything), and the real sidebar opens the bare route. Two
 	   organizations and nothing stored open in the union. */
 	const app = await open({ path: "/team-bridge" });
 	try {
-		const switcher = () =>
-			app.host.querySelector('button[aria-label^="Organization:"]');
-		const choose = async (label) => {
-			await click(switcher(), "switcher");
-			await click(
-				[...app.host.querySelectorAll('[role="menuitem"]')].find((item) =>
-					item.textContent.trim().startsWith(label),
-				),
-				`menu ${label}`,
-			);
-		};
-		assert.equal(switcher().textContent.trim(), "All organizations");
+		const choose = (label) => chooseOrganization(app, label);
+		assert.equal(switcher(app).textContent.trim(), "All organizations");
 		await choose("Shared");
 		await until(() => selected(app) === "gen_org_shared", "shared: default");
 		await pick(app, "launch_shared");
@@ -435,7 +438,7 @@ test("each organization, and All organizations, remembers its own conversation",
 		await until(() => selected(app) === "launch_other", "other: ops");
 		await choose("All organizations");
 		await until(
-			() => switcher().textContent.trim() === "All organizations",
+			() => switcher(app).textContent.trim() === "All organizations",
 			"union shown",
 		);
 		await until(
@@ -454,7 +457,7 @@ test("each organization, and All organizations, remembers its own conversation",
 		// Leaving in the union returns to the union and its own conversation.
 		await roundTrip(app);
 		await until(() => selected(app) === "grp_shared", "union after return");
-		assert.equal(switcher().textContent.trim(), "All organizations");
+		assert.equal(switcher(app).textContent.trim(), "All organizations");
 	} finally {
 		await app.close();
 	}
@@ -579,9 +582,12 @@ test("a person link (the command palette's door) selects that person's row, over
 	}
 });
 
-test("the selection and organization persist across an app restart", async () => {
-	let app = await open();
+test("the selection in an explicitly chosen organization persists across an app restart", async () => {
+	let app = await open({ path: "/team-bridge" });
 	try {
+		// A deep link only chooses the current session's rail. Use the actual
+		// switcher to persist a choice when both orgs are eligible.
+		await chooseOrganization(app, "Shared");
 		await until(
 			() => app.host.querySelector('[data-team-bridge-person="acct_peer_0"]'),
 			"person row listed",
@@ -595,6 +601,10 @@ test("the selection and organization persist across an app restart", async () =>
 		app = await restart(app);
 		await until(() => selected(app) !== null, "restarted page landed");
 		assert.equal(selected(app), before, "same conversation after restart");
+		assert.equal(
+			switcher(app).getAttribute("aria-label"),
+			"Organization: Shared",
+		);
 		assert.ok(
 			!selections(app, 0).includes("gen_org_shared"),
 			"no #general frame on the restarted open",

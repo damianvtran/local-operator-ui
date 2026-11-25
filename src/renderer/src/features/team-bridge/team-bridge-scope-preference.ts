@@ -24,7 +24,7 @@ import {
  * WHAT IS STORED: one JSON object per origin, `{ "<accountId>": "<tenantId>" |
  * "all" }`. Scope is per ACCOUNT because membership sets differ per account -
  * an entry read for somebody else's account would name a tenant this reader
- * cannot act in. Nothing is erased on sign-out: a stale entry is inert (rule 4
+ * cannot act in. Nothing is erased on sign-out: a stale entry is inert (rule 3
  * of `resolveOpeningScope` only honours a stored org that is still a
  * membership), and the next switcher pick overwrites it.
  *
@@ -190,16 +190,13 @@ export type TeamBridgeSelection =
  *    interim scope (`openingDefaultHeld`, `shouldRecordSessionScope`) - so
  *    ranking it here differs from ranking the default first ONLY when the
  *    reader moved, which is exactly the case that sentence protects.
- * 3. **The default private org** - the Radient account's home tenant
- *    (`MembershipSummary.is_home`; Minerva for its owner), honoured only when it
- *    is one of the reader's Team Bridge organizations: a plan-less personal home
- *    tenant is not a row, and must not hide the rules below.
+ * 3. **The durable last-used private scope** when still valid. A restart is
+ *    not a reset: a community from an earlier run cannot return through here.
  * 4. **Exactly one private org** - that org (the shipped rule).
- * 5. **The durable last-used private scope** (`readScopePreference` / view
- *    memory) when still valid - the pre-Amendment behaviour, kept for accounts
- *    whose home tenant is not a Team org. Private only by type: a community
- *    from an earlier run can never come back through here.
- * 6. **Several private orgs** - "All organizations" (private orgs only).
+ * 5. **A uniquely eligible Team org**, only when all other orgs are known not
+ *    to be eligible. Neither the account's home flag nor paid seats say where
+ *    the reader works.
+ * 6. **Several private orgs without a clear default** - "All organizations".
  * 7. **No private org and no invitation** - the first joined community. This
  *    is the ONLY way a community is a launch default.
  *
@@ -209,14 +206,11 @@ export type TeamBridgeSelection =
 export function resolveDefaultSelection({
 	organizations,
 	communities = [],
-	defaultTenantId,
 	session,
 	stored,
 }: {
 	organizations: readonly TeamBridgeOrganization[];
 	communities?: readonly TeamBridgeCommunity[];
-	/** The account's Radient home tenant id, when the memberships read has one. */
-	defaultTenantId?: string | null;
 	session?: TeamBridgeSelection;
 	stored?: TeamBridgeScope;
 }): TeamBridgeSelection | null {
@@ -237,14 +231,18 @@ export function resolveDefaultSelection({
 		)
 	)
 		return session;
-	if (defaultTenantId && isOrganization(defaultTenantId))
-		return { kind: "private", scope: asTeamBridgeTenantId(defaultTenantId) };
-	if (organizations.length === 1)
-		return { kind: "private", scope: organizations[0].tenantId };
 	if (stored !== undefined && validPrivate(stored))
 		return { kind: "private", scope: stored };
-	if (organizations.length > 1)
+	if (organizations.length === 1)
+		return { kind: "private", scope: organizations[0].tenantId };
+	if (organizations.length > 1) {
+		const possible = organizations.filter(
+			(org) => org.openingEligible !== false,
+		);
+		if (possible.length === 1 && possible[0].openingEligible === true)
+			return { kind: "private", scope: possible[0].tenantId };
 		return { kind: "private", scope: TEAM_BRIDGE_ALL_SCOPE };
+	}
 	if (communities.length > 0)
 		return { kind: "community", communityId: communities[0].communityId };
 	return null;
@@ -293,17 +291,9 @@ export function snapshotForScope(
  *    `openingDefaultHeld`): `current` stands and the caller treats the scope as
  *    undecided, so nothing is read, painted or recorded for an interim answer.
  * 4. **Amendment A's opening rule** (`resolveDefaultSelection`): a pending
- *    private invitation, then this app session's scope, then the default
- *    private org, then exactly one org, then the durable last-used scope (still
- *    a membership, or `"all"` with several), then the union. Before Amendment A
- *    the durable value outranked everything but a single org, which reopened a
- *    restarted app wherever it was last left; the operator's rule now puts the
- *    default private org first on every launch. Never "the first
- *    organization" when several: the union is the neutral landing.
- *
- * This page cannot render a community yet (the community client has not
- * landed), so communities are not passed here and a community answer cannot
- * occur; `resolveDefaultSelection` carries that rule for the client that will.
+ *    private invitation, this app session's scope, the durable last-used scope,
+ *    then the single organization or a clear Team default. Otherwise the union
+ *    is neutral; never pick the first organization just because it sorts there.
  *
  * With no organizations known yet (memberships still in flight) the shipped
  * snapshot rule stands: `preferredScope` may adopt the one organization the
@@ -315,7 +305,6 @@ export function resolveOpeningScope({
 	organizations,
 	stored,
 	session,
-	defaultTenantId,
 	requestedTenant,
 	chosen,
 	current,
@@ -326,8 +315,6 @@ export function resolveOpeningScope({
 	stored?: TeamBridgeScope;
 	/** This app session's scope (`readSessionScope`). */
 	session?: TeamBridgeScope;
-	/** The Radient home tenant id (`MembershipSummary.is_home`). */
-	defaultTenantId?: string | null;
 	/** The `?tenant=` parameter, already validated by the caller's router. */
 	requestedTenant?: string | null;
 	chosen: boolean;
@@ -341,7 +328,6 @@ export function resolveOpeningScope({
 	if (defaultPending) return current;
 	const selection = resolveDefaultSelection({
 		organizations,
-		defaultTenantId,
 		session:
 			session === undefined ? undefined : { kind: "private", scope: session },
 		stored,
@@ -379,14 +365,10 @@ export function openingOrganizationCount(
 /**
  * WAIT FOR THE DEFAULT ORG BEFORE DECIDING (review round 1, M1 and m2).
  *
- * The default private org comes only from `GET /v1/me/memberships` (`is_home`),
- * but the hub tenant list in the status payload names the organizations a
- * round trip earlier. Deciding then answered with the durable pick or the
- * union, read that list, recorded it as this session's scope, and jumped to
- * the default org when memberships landed - every restart of a multi-org
- * account painted yesterday's pick first, and a failed or abandoned memberships
- * read left the interim scope in `sessionStorage`, which outranks the default
- * for the rest of the app session.
+ * The hub's status list can decide eligibility directly. A legacy backend
+ * omits that list, in which case the memberships read decides the available
+ * organizations and their plan hints. Don't paint or record the multi-org seed
+ * before those inputs settle; it could be a different scope than the answer.
  *
  * So, while memberships are unsettled (loading, or not yet enabled because
  * the status gate is still open) and the account has more than one private

@@ -2,7 +2,7 @@
  * FIRST OPEN READS THE LANDING CONVERSATION ALONGSIDE THE LIST
  * (bridge-instant-load; operator: "The whole thing should load in under 300ms").
  *
- *     node --test scripts/team-bridge-first-open.test.mjs
+ *     node scripts/run-desktop-tests.mjs scripts/team-bridge-first-open.test.mjs
  *
  * THE MEASURED FAILURE. The instant-load bench (ui#1889, QA r4) opened Team
  * Bridge cold in 331.6 ms against the 300 ms bar: the timeline's history read
@@ -37,6 +37,9 @@
  *    flight does not hold it (ui#1895 Q3; a guard, passes before this change).
  * 10. A 429 on the parallel read holds the next open's parallel read
  *    (ui#1895 R2). Last in the file: the hold lives on the shared client.
+ *
+ * Opening-scope guard (ui#2113): two eligible orgs and no switcher choice
+ * open All. Passive Shared history cannot start a read for that rail.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -97,14 +100,23 @@ function scenario(fixture, rows = ROWS) {
 	fixture.listGate = deferred();
 }
 
-/* The record a build with this change writes when the reader leaves #launch. */
-function remember(view) {
+/* Leaving #launch records a view, but does not imply a switcher choice. */
+function rememberView(view) {
 	localStorage.setItem(
 		"lo.teamBridge.view.v1",
 		JSON.stringify({
 			acct_a: { scope: "org_shared", scopes: { org_shared: view } },
 		}),
 	);
+}
+function rememberChosenShared(view) {
+	// Both fixture orgs are eligible. These cases exercise the remembered
+	// target in Shared, so persist the same choice the switcher would leave.
+	localStorage.setItem(
+		"lo.teamBridge.scope.v1",
+		JSON.stringify({ acct_a: "org_shared" }),
+	);
+	rememberView(view);
 }
 const LAUNCH = {
 	target: { type: "conversation", id: "launch_shared" },
@@ -144,7 +156,7 @@ test("a remembered conversation reads its history while the list is still loadin
 		waitReady: false,
 		seed: ({ fixture }) => {
 			scenario(fixture);
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 		},
 	});
 	try {
@@ -176,6 +188,41 @@ test("a remembered conversation reads its history while the list is still loadin
 	}
 });
 
+test("two eligible organizations without a choice open All and do not prefetch a passive Shared view", async () => {
+	const app = await mount({
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			rememberView(LAUNCH);
+		},
+	});
+	try {
+		await untilListHeld(app);
+		assert.deepEqual(
+			listReads(app).map((call) => call.scope),
+			["account"],
+			"only the All organizations list is requested",
+		);
+		assert.equal(
+			historyReads(app, "launch_shared").length,
+			0,
+			"the passive Shared view does not start a history request for All",
+		);
+		await act(async () => app.fixture.listGate.resolve());
+		await until(
+			() =>
+				app.frames.some(
+					(frame) => frame.scopeTitle === "Organization: All organizations",
+				),
+			"the All organizations rail renders",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
 test("a remembered conversation already in cache is not read again", async () => {
 	const app = await mount({
 		lifecycle: [],
@@ -183,7 +230,7 @@ test("a remembered conversation already in cache is not read again", async () =>
 		waitReady: false,
 		seed: ({ client, fixture }) => {
 			scenario(fixture);
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 			client.setQueryData(
 				ui.teamBridgeKeys.messages("launch_shared", "org_shared", "acct_a"),
 				{
@@ -216,7 +263,7 @@ test("a remembered conversation the list no longer holds is never shown, and a r
 			// read is refused with the hub's typed 403.
 			scenario(fixture, [ROWS[0]]);
 			fixture.notAMember.add("launch_shared");
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 		},
 	});
 	try {
@@ -267,7 +314,7 @@ test("an account switch while the parallel read is in flight discards it", async
 		seed: ({ fixture }) => {
 			scenario(fixture);
 			fixture.historyGate = history;
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 		},
 	});
 	try {
@@ -339,7 +386,7 @@ test("nothing cached and nothing remembered: no history read before the list ans
 		seed: ({ fixture }) => {
 			scenario(fixture);
 			// A record from a build that did not store the tenant: no parallel read.
-			remember({ target: { type: "conversation", id: "launch_shared" } });
+			rememberView({ target: { type: "conversation", id: "launch_shared" } });
 		},
 	});
 	try {
@@ -407,7 +454,7 @@ test("A→B→A: the return reads the landing conversation at once, not on a dis
 		seed: ({ fixture }) => {
 			scenario(fixture);
 			fixture.historyGate = history;
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 		},
 	});
 	try {
@@ -452,7 +499,7 @@ test("guard: a cached status answer starts the list while its refetch is still i
 		statusGate,
 		seed: ({ client, fixture }) => {
 			scenario(fixture);
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 			// What the shell's notification watcher (useTeamBridgeNotifications)
 			// leaves under the same `statusFor` key, older than its 60 s staleTime.
 			client.setQueryData(
@@ -526,7 +573,7 @@ test("a 429 on the parallel read holds the next open's parallel read", async () 
 		seed: ({ fixture }) => {
 			scenario(fixture);
 			fixture.rateLimited.add("launch_shared");
-			remember(LAUNCH);
+			rememberChosenShared(LAUNCH);
 		},
 	});
 	try {
