@@ -692,6 +692,45 @@ export async function managedSelectionReady(
  * belong to a preparation anything is still running. */
 const PREPARATION_LOCK_MS = 120_000;
 
+/** The utility the preparation lock is taken with. macOS-only, and named here so
+ * the refusal below can say which file is missing. */
+const PREPARATION_LOCK_TOOL = "/usr/bin/shlock";
+
+/** The error codes a failed SPAWN carries, as opposed to a lost race: `execFile`
+ * cannot find the file, or the host refused to run it. */
+function isSpawnFailure(error: unknown): boolean {
+	const code = (error as { code?: unknown } | null)?.code;
+	return code === "ENOENT" || code === "EACCES" || code === "EPERM";
+}
+
+/**
+ * Turn a lock tool that cannot even START into a refusal, never contention.
+ *
+ * WHY: `locked`'s retry loop exists for ONE condition - another preparation
+ * holds the lock, which `shlock` reports by running and exiting non-zero. A tool
+ * that fails TO SPAWN fails identically on every attempt, so the loop spent the
+ * whole `PREPARATION_LOCK_MS` (two minutes) retrying a permanent fault and then
+ * reported "blocked by an existing lock record", naming a record that never
+ * existed. The two are distinguishable: a spawn failure carries a `code` of
+ * `ENOENT`/`EACCES`/`EPERM`, while a lost race carries the tool's own exit code.
+ *
+ * Measured on ubuntu-latest, which has no `/usr/bin/shlock` AND where the desktop
+ * suite fakes `darwin` to drive this path: "a rejected macOS headless preparation
+ * reaches the app failure terminal" waited its full 8 s bound (8008 ms on
+ * ubuntu-latest) for a terminal the preparation had not reached, because the
+ * first-run attempt was parked in that loop; reproducing the same stall here
+ * took 9178 ms. A real macOS host acquires the lock in milliseconds.
+ *
+ * Exported so the classification is exercisable on a host that HAS the tool - the
+ * same reason `runtimeManifest`/`inspectManagedSelection` are exported.
+ */
+export function refuseUnavailableLockTool(error: unknown): void {
+	if (!isSpawnFailure(error)) return;
+	throw new Error(
+		`Managed Python preparation needs ${PREPARATION_LOCK_TOOL}, which this host cannot run.`,
+	);
+}
+
 /**
  * Reclaim what a previous preparation left behind, inside this root and bounded.
  *
@@ -880,12 +919,15 @@ async function locked<T>(
 				throw new Error("Unrecognized preparation lock was preserved");
 			try {
 				await execute(
-					"/usr/bin/shlock",
+					PREPARATION_LOCK_TOOL,
 					["-p", String(process.pid), "-f", path],
 					{ timeout: 5_000 },
 				);
 				acquired = true;
-			} catch {
+			} catch (error) {
+				// A tool that cannot start is a permanent fault on this host; retrying it
+				// only spends the deadline before naming a lock record that is not there.
+				refuseUnavailableLockTool(error);
 				if (Date.now() >= deadline)
 					throw new Error(
 						"Backend preparation is blocked by an existing lock record. Wait and retry.",
