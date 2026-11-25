@@ -601,11 +601,13 @@ const IDENTICAL_OK = new Map([
 	 * wire.login.bedrock in all seven locales. A locale-scoped row would leave
 	 * the other six free to ship an untranslated badge, which is the stub this
 	 * guard exists to catch; the brand claim is the same in every locale.
+	 *
+	 * `ui.providers.bedrock.kind_login` is deliberately NOT listed any more: PR
+	 * #2095 translated it in all seven locales (only the brand "AWS" stays), so
+	 * its "kept verbatim" reason became false. Leaving the row would let the
+	 * badge silently revert to "AWS login" with this guard still green; a guard
+	 * that cannot fail is not a guard.
 	 */
-	[
-		"ui.providers.bedrock.kind_login",
-		"AWS brand label, not UI copy: the kind badge names AWS's own sign-in method ('AWS login'), which the key's context sidecar requires untranslated in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
-	],
 	[
 		"ui.providers.bedrock.kind_sso",
 		"AWS acronym, not UI copy: the kind badge names the profile type by AWS's own initialism ('SSO'), which the key's context sidecar requires kept as the acronym in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
@@ -966,14 +968,12 @@ const IDENTICAL_OK = new Map([
 		"ui.agents.settings.chat.seed",
 		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `seed` verbatim.",
 	],
-	[
-		"ui.agents.settings.chat.frequency_penalty",
-		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `frequency_penalty` verbatim.",
-	],
-	[
-		"ui.agents.settings.chat.presence_penalty",
-		"Model sampling parameter name kept English by the vi style guide: it names the API parameter `presence_penalty` verbatim.",
-	],
+	/*
+	 * No rows for `ui.agents.settings.chat.frequency_penalty` /
+	 * `presence_penalty`: PR #2095 translated the vi labels (every other locale
+	 * already had), so the "kept English" exemption was stale and would have
+	 * hidden a revert to English.
+	 */
 	[
 		"ui.settings.account.radient_account_section.email",
 		"Vietnamese uses the standard loanword «Email» for the address field; every diacritic alternative is unidiomatic.",
@@ -1449,10 +1449,6 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.chat.pickers.session_report_model.conversation",
 		"French cognate: « conversation » has the same spelling",
-	],
-	[
-		"ui.chat.pickers.session_report_model.images_est",
-		"French cognate: « Images » and the « est. » abbreviation are unchanged",
 	],
 	[
 		"ui.chat.pickers.session_report_model.tokens",
