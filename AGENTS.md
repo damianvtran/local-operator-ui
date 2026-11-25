@@ -48,22 +48,10 @@ got wrong:
 - **`hairline` vs `border-control`.** Decorative rules vs the sole boundary of
   a control. The second has a 3:1 floor; conflating them is how the app once
   shipped inputs bounded at 1.25:1.
-- **Elevation is a lightness step, not a shadow.** One shadow exists, only for
-  things that leave the flow (menu, dialog, drawer, popover, tooltip, select).
-- **A floating surface never carries a border.** (Operator report, 2026-11-06.)
-  It separates by its ground plus the one shadow, whose contact layer darkens the
-  panel's own edge; a hairline on a leave-flow panel is a regression by
-  construction, and so is a bordered control nested inside one — the panel's
-  action is the `tonal` Button variant (not `primary` by default), quieter ones
-  are `ghost`; chips and badges inside keep their own treatment. Elevation must
-  survive focus (no box-shadow reset may reach `[data-lo-floating]`), and no call
-  site passes another `shadow-*` (tailwind-merge drops `shadow-overlay`). On dark
-  palettes the ground step separates and the shadow supports. On window glass,
-  menus/popovers/tooltips stay translucent behind a blur (#1706) and the contact
-  is darkened, never ink-mixed. Dividers are inset `divider-inset`. The only
-  stroke is `@media (forced-colors: active)`'s 1px `CanvasText`. Primitives wear
-  `data-lo-floating`; `scripts/floating-surface-no-border.test.mjs` enforces it.
-  Full rule: `docs/branding.md` § 2.
+- **Follow the [Floating panels](docs/branding.md#floating-panels) contract**
+  for pickers, dialogs and other floating cards: use the shared, borderless
+  treatment with a subtle palette-driven gradient and one `shadow-overlay`.
+  Preserve Window glass and focus; in-flow cards do not get the shadow.
 - **Disabled changes colour, never opacity. Focus is `outline`, never
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.
