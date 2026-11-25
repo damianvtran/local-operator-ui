@@ -75,11 +75,8 @@ const SELECTOR_PAREN_WHITESPACE = /\( +| +\)/g;
 const SIDEBAR_MARKERS =
 	/\[data-(?:sidebar-band|entity|workspace-launcher|session-row|workspace-current|temporary-row)\]/;
 
-/*
- * Top-level (unlayered) rules only: a rule inside `@layer` loses to nothing the
- * row wears that matters here, and nested blocks are skipped by tracking depth.
- */
-function unlayeredRules(stylesheet) {
+/* Read one block level at a time so an at-rule's conditions stay attached. */
+function topLevelBlocks(stylesheet) {
 	const code = stylesheet.replace(/\/\*[\s\S]*?\*\//g, "");
 	const rules = [];
 	let depth = 0;
@@ -94,8 +91,7 @@ function unlayeredRules(stylesheet) {
 		} else if (ch === "}") {
 			depth--;
 			if (depth === 0) {
-				if (!prelude.startsWith("@"))
-					rules.push({ prelude, body: code.slice(start, i) });
+				rules.push({ prelude, body: code.slice(start, i) });
 				start = i + 1;
 			}
 		} else if (ch === ";" && depth === 0) {
@@ -103,6 +99,12 @@ function unlayeredRules(stylesheet) {
 		}
 	}
 	return rules;
+}
+
+function unlayeredRules(stylesheet) {
+	return topLevelBlocks(stylesheet).filter(
+		({ prelude }) => !prelude.startsWith("@"),
+	);
 }
 
 /* Split a selector list on top-level commas only (`:is(a, b)` stays whole). */
@@ -326,8 +328,8 @@ test("negative control: a reset that frees only the chat row (a27135e) is caught
 	assert.equal(hoverKillingResets(chatRowOnly).length, 2);
 });
 
-function selectorsPainting(ground) {
-	return unlayeredRules(css)
+function selectorsPainting(ground, stylesheet = css) {
+	return unlayeredRules(stylesheet)
 		.filter(({ body }) => ground.test(body))
 		.flatMap(({ prelude }) => splitSelectors(prelude).flatMap(expandIs))
 		.map((selector) =>
@@ -355,7 +357,7 @@ test("current conversations keep one selected ground before and during hover", (
 	}
 });
 
-test("only non-current conversation hover and menu-held grounds brighten in dark mode", () => {
+test("conversation grounds use the sidebar's opaque and glass roles", () => {
 	const shell = "[data-workspace-shell]";
 	const sidebar = '[data-chat-region="sidebar"]';
 	const rules = unlayeredRules(css);
@@ -369,12 +371,27 @@ test("only non-current conversation hover and menu-held grounds brighten in dark
 	assert.match(opaque?.body ?? "", OPAQUE_SELECTED_GROUND);
 	assert.match(glass?.body ?? "", GLASS_DARK_HOVER);
 	assert.match(glass?.body ?? "", GLASS_SELECTED_GROUND);
+});
+
+test("only pointer paints require hover capability; a menu holds its ground on touch", () => {
+	const shell = "[data-workspace-shell]";
 	const sessionBox = `${shell} [data-session-row]:not([data-workspace-current]):not([data-dragging])`;
-	assert.deepEqual(selectorsPainting(HOVER_GROUND), [
+	assert.deepEqual(
+		selectorsPainting(HOVER_GROUND),
+		[`${sessionBox}[class~="bg-row-hover"]`],
+		"only the menu-held fill can paint unconditionally",
+	);
+	// A tap can leave :hover latched even when the primary pointer cannot hover.
+	// Check the actual rule bodies inside the same capability query Tailwind uses.
+	const hoverMedia = topLevelBlocks(css)
+		.filter(({ prelude }) => prelude === "@media (hover: hover)")
+		.map(({ body }) => body)
+		.join("\n");
+	assert.deepEqual(selectorsPainting(HOVER_GROUND, hoverMedia), [
 		`${sessionBox}[class~="hover:bg-row-hover"]:hover`,
-		`${sessionBox}[class~="bg-row-hover"]`,
 		`${shell} [data-session-row-button]:not([aria-current="page"]):not([data-session-row][class~="hover:bg-row-hover"] > *, [data-session-row][class~="bg-row-hover"] > *, [data-session-row][data-dragging] > *):hover`,
 		`${shell} [data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover`,
 	]);
+	assert.deepEqual(selectorsPainting(SELECTED_GROUND, hoverMedia), []);
 	assert.match(sidebarSource, CONVERSATION_BUTTON_SEED);
 });

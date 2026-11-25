@@ -4594,25 +4594,31 @@ html[data-glass~="sidebar"]
 	) {
 	background-color: var(--sidebar-conversation-current);
 }
-/* Follow the existing paint owner: when a box handles hover/menu hold it also
- * covers the action hit areas; when it has no fill, its button does the work.
- * Full-width non-conversation buttons and staged launchers keep their roles. */
+/* The menu holds its box fill for touch and keyboard input too. */
 [data-workspace-shell]
-	:is(
-		[data-session-row]:not([data-workspace-current]):not(
-				[data-dragging]
-			)[class~="hover:bg-row-hover"]:hover,
-		[data-session-row]:not([data-workspace-current]):not(
-				[data-dragging]
-			)[class~="bg-row-hover"],
-		[data-session-row-button]:not([aria-current="page"]):not(
-				[data-session-row][class~="hover:bg-row-hover"] > *,
-				[data-session-row][class~="bg-row-hover"] > *,
-				[data-session-row][data-dragging] > *
-			):hover,
-		[data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover
-	) {
+	[data-session-row]:not([data-workspace-current]):not(
+		[data-dragging]
+	)[class~="bg-row-hover"] {
 	background-color: var(--sidebar-conversation-hover);
+}
+/* Match Tailwind's hover capability gate: a tap can leave :hover latched on
+ * a touch-first device. Keep a single paint owner: the box covers the action
+ * hit areas when it owns the fill; otherwise the button paints. */
+@media (hover: hover) {
+	[data-workspace-shell]
+		:is(
+			[data-session-row]:not([data-workspace-current]):not(
+					[data-dragging]
+				)[class~="hover:bg-row-hover"]:hover,
+			[data-session-row-button]:not([aria-current="page"]):not(
+					[data-session-row][class~="hover:bg-row-hover"] > *,
+					[data-session-row][class~="bg-row-hover"] > *,
+					[data-session-row][data-dragging] > *
+				):hover,
+			[data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover
+		) {
+		background-color: var(--sidebar-conversation-hover);
+	}
 }
 [data-workspace-shell]
 	[data-workspace-launcher]
