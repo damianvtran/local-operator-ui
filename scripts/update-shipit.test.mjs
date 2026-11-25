@@ -1701,6 +1701,8 @@ function writeBundleFixture(
 		// broken, are the cases Squirrel's own path cannot do better on.
 		bundleId = FIXTURE_BUNDLE_ID,
 		tamper = false,
+		designated,
+		signingIdentifier,
 	},
 ) {
 	const contents = join(appPath, "Contents");
@@ -1756,9 +1758,9 @@ function writeBundleFixture(
 		"Versions/Current/Resources",
 		join(framework, "Resources"),
 	]);
-	// Ad-hoc, because a test has no Developer ID: the seal is real, the identity
-	// is not, and nothing here cares which - every path under test reads the
-	// verdict of `codesign --verify`, which an ad-hoc signature satisfies.
+	// Ad-hoc: the seals and requirement checks are real, but no test needs a
+	// Developer ID. The combined fixture can vary the signing identity without
+	// changing the bundle ID that the staged plist pre-flight already verifies.
 	execFileSync("/usr/bin/codesign", [
 		"--force",
 		"--deep",
@@ -1766,6 +1768,18 @@ function writeBundleFixture(
 		"-",
 		appPath,
 	]);
+	if (designated || signingIdentifier) {
+		// --deep signing would stamp the top-level requirement onto the nested
+		// framework too. Change only the outer signature in these controls.
+		execFileSync("/usr/bin/codesign", [
+			"--force",
+			"--sign",
+			"-",
+			...(designated ? ["-r", `=designated => ${designated}`] : []),
+			...(signingIdentifier ? ["--identifier", signingIdentifier] : []),
+			appPath,
+		]);
+	}
 	if (tamper) {
 		/*
 		 * A file added to a SEALED bundle: `codesign --verify` reports it as a sealed
@@ -1793,16 +1807,11 @@ function writeBundleFixture(
 }
 
 /** The update artifact: the same app at `version`, zipped the way Squirrel zips. */
-function writeUpdateZip(dir, { version, shipItLog, bundleId, tamper = false }) {
+function writeUpdateZip(dir, options) {
 	const staged = join(dir, "update-tree");
 	mkdirSync(staged, { recursive: true });
-	writeBundleFixture(join(staged, `${FIXTURE_APP_NAME}.app`), {
-		version,
-		shipItLog,
-		bundleId,
-		tamper,
-	});
-	const zipPath = join(dir, `local-operator-ui-${version}-arm64.zip`);
+	writeBundleFixture(join(staged, `${FIXTURE_APP_NAME}.app`), options);
+	const zipPath = join(dir, `local-operator-ui-${options.version}-arm64.zip`);
 	execFileSync("/usr/bin/ditto", [
 		"-c",
 		"-k",
@@ -2038,16 +2047,48 @@ test(
 );
 
 test(
-	"the combined IPC refuses an unavailable staged seal, and never falls back to a deferred native install",
+	"the combined IPC requires a staged seal and the incumbent designated requirement before moving the server",
 	{ skip: process.platform !== "darwin" },
-	async () => {
+	async (t) => {
 		const dir = scratchDir("combined-strict");
 		const shipItLog = join(dir, "shipit-argv.log");
+		const designated = `identifier "${FIXTURE_BUNDLE_ID}"`;
 		const runningBundle = writeBundleFixture(
 			join(dir, "tree", `${FIXTURE_APP_NAME}.app`),
-			{ version: "0.0.1", shipItLog },
+			{ version: "0.0.1", shipItLog, designated },
 		);
 		const zipPath = writeUpdateZip(dir, { version: "0.0.2", shipItLog });
+		const other = join(dir, "other");
+		const mismatchZip = writeUpdateZip(other, {
+			version: "0.0.2",
+			shipItLog,
+			signingIdentifier: `${FIXTURE_BUNDLE_ID}.other`,
+		});
+		const mismatched = join(other, "update-tree", `${FIXTURE_APP_NAME}.app`);
+		const verify = (path, requirement) =>
+			spawnSync("/usr/bin/codesign", [
+				"--verify",
+				"--deep",
+				"--verbose=2",
+				...(requirement ? [`-R=${requirement}`] : []),
+				path,
+			]);
+		const controls = {
+			candidateOwnSeal: verify(mismatched).status,
+			incumbentRequirementOnIncumbent: verify(runningBundle, designated).status,
+			incumbentRequirementOnCandidate: verify(mismatched, designated).status,
+			incumbentRequirementOnMatchingCandidate: verify(
+				join(dir, "update-tree", `${FIXTURE_APP_NAME}.app`),
+				designated,
+			).status,
+		};
+		assert.deepEqual(controls, {
+			candidateOwnSeal: 0,
+			incumbentRequirementOnIncumbent: 0,
+			incumbentRequirementOnCandidate: 3,
+			incumbentRequirementOnMatchingCandidate: 0,
+		});
+		t.diagnostic(JSON.stringify({ codesign: controls }));
 		await withUpdateService(async ({ updateService, userData }) => {
 			const serverActions = [];
 			let held = false;
@@ -2073,7 +2114,9 @@ test(
 			updateService.runningBundleProbe = () => runningBundle;
 			updateService.downloadedArtifactPath = zipPath;
 			updateService.lastUpdateInfo = releaseMetadata(zipPath, targets.app);
-			updateService.downloadAppUpdate = async () => [zipPath];
+			updateService.downloadAppUpdate = async () => [
+				updateService.downloadedArtifactPath,
+			];
 			updateService.combinedAppOfferVersion = targets.app;
 			updateService.combinedServerOfferVersion = targets.server;
 			updateService.runBackendUpdate = async (target) => {
@@ -2084,7 +2127,7 @@ test(
 			const readSeal = updateService.readBundleSeal.bind(updateService);
 			let stagedProbeUnavailable = true;
 			let stagedSealProbes = 0;
-			updateService.readBundleSeal = async (path) => {
+			updateService.readBundleSeal = async (path, requirement) => {
 				if (path.startsWith(updateStagingRoot(userData))) {
 					stagedSealProbes += 1;
 					if (stagedProbeUnavailable)
@@ -2095,7 +2138,7 @@ test(
 							},
 						};
 				}
-				return readSeal(path);
+				return readSeal(path, requirement);
 			};
 			const handler = globalThis.__loIpcHandlers["install-combined-update"];
 			assert.deepEqual(await handler(owner, targets), {
@@ -2112,10 +2155,65 @@ test(
 
 			stagedProbeUnavailable = false;
 			updateService.startInstaller = () => null;
-			assert.deepEqual(await handler(owner, targets), {
-				status: "app_install_failed",
-			});
-			assert.equal(stagedSealProbes, 2);
+			updateService.downloadedArtifactPath = mismatchZip;
+			updateService.lastUpdateInfo = releaseMetadata(mismatchZip, targets.app);
+			const refused = await handler(owner, targets);
+			const installBlocks = () =>
+				globalThis.__loSent.filter(
+					({ channel }) => channel === "update-install-blocked",
+				);
+			t.diagnostic(
+				JSON.stringify({
+					mismatch: refused,
+					serverActions,
+					standaloneBlocks: installBlocks().length,
+				}),
+			);
+			assert.deepEqual(refused, { status: "app_preparation_failed" });
+			assert.deepEqual(serverActions, []);
+			assert.deepEqual(installBlocks(), []);
+			assert.equal(held, false);
+			assert.deepEqual(readdirSync(updateStagingRoot(userData)), []);
+			assert.equal(install.readPendingInstallMarker(userData), null);
+
+			updateService.downloadedArtifactPath = zipPath;
+			updateService.lastUpdateInfo = releaseMetadata(zipPath, targets.app);
+			const readRequirement =
+				updateService.readInstalledDesignatedRequirement.bind(updateService);
+			let requirementUnreadable = true;
+			let requirementReads = 0;
+			updateService.readInstalledDesignatedRequirement = async (path) => {
+				assert.equal(path, runningBundle);
+				requirementReads += 1;
+				// Model an unreadable requirement independently of the installed-bundle
+				// preflight; the actual bounded codesign display still supplies the error.
+				return readRequirement(
+					requirementUnreadable ? join(dir, "not-found.app") : path,
+				);
+			};
+			const unknown = await handler(owner, targets);
+			t.diagnostic(
+				JSON.stringify({ unknownRequirement: unknown, serverActions }),
+			);
+			assert.deepEqual(unknown, { status: "app_preparation_failed" });
+			assert.deepEqual(serverActions, []);
+			assert.equal(requirementReads, 1);
+			assert.deepEqual(installBlocks(), []);
+			assert.equal(held, false);
+			assert.deepEqual(readdirSync(updateStagingRoot(userData)), []);
+			assert.equal(install.readPendingInstallMarker(userData), null);
+
+			requirementUnreadable = false;
+			const matched = await handler(owner, targets);
+			t.diagnostic(
+				JSON.stringify({
+					matchWithDeliberateSpawnRefusal: matched,
+					serverActions,
+				}),
+			);
+			assert.deepEqual(matched, { status: "app_install_failed" });
+			assert.equal(requirementReads, 2);
+			assert.equal(stagedSealProbes, 3);
 			assert.deepEqual(serverActions, [
 				["update", targets.server],
 				["stop", true],
@@ -2130,12 +2228,18 @@ test(
 			assert.equal(install.readPendingInstallMarker(userData), null);
 			assert.equal(held, false);
 
-			// Standalone, with the same unspawnable installer, can still use the native
-			// fallback. This is a distinct operation on the same registered handlers.
-			assert.equal(
-				await globalThis.__loIpcHandlers["quit-and-install"](),
-				true,
+			// Standalone, with the same unspawnable installer, can still use the
+			// native fallback without the combined-only requirement probe.
+			requirementUnreadable = true;
+			const standalone = await globalThis.__loIpcHandlers["quit-and-install"]();
+			t.diagnostic(
+				JSON.stringify({
+					standalone,
+					nativeCalls: globalThis.__loQuitAndInstall,
+				}),
 			);
+			assert.equal(standalone, true);
+			assert.equal(requirementReads, 2);
 			assert.deepEqual(globalThis.__loQuitAndInstall, [[false, true]]);
 			assert.equal(
 				install.readPendingInstallMarker(userData)?.installerPid,

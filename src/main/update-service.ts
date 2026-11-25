@@ -353,6 +353,7 @@ const APP_OWNED_PUBLISH_HEADROOM_BYTES = 450 * 1024 * 1024;
  * out there used to refuse the install for good (review R5).
  */
 const SEAL_PROBE_TIMEOUT_MS = 45_000;
+const DESIGNATED_REQUIREMENT_LINE = /^(?:# )?designated => (.+)$/gm;
 
 /**
  * How long one step of the staged-artifact signature probe may take.
@@ -3138,15 +3139,14 @@ export class UpdateService {
 	 * The service's name for `runningBundleIdentifier`, which the launch hold needs
 	 * before a service exists; the rule itself lives there.
 	 */
-	private bundleIdentifier(): string | null {
-		// The seam first, and sited here as well as in `runningBundlePath` because
-		// this method has always answered for an UNPACKAGED run too (the dev
-		// Electron is a bundle): a harness that substitutes one has to get both, or
-		// the staging step would take its bundle id from the Electron it is running
-		// under rather than from the bundle it was pointed at.
-		const bundlePath = this.runningBundleProbe
+	private bundleIdentifier(
+		// The default also answers for an UNPACKAGED run (dev Electron is a
+		// bundle). Staging passes its selected target so the ID check and the
+		// signature requirement refer to exactly the same incumbent.
+		bundlePath = this.runningBundleProbe
 			? this.runningBundleProbe()
-			: appBundleFromExecutable(process.execPath);
+			: appBundleFromExecutable(process.execPath),
+	): string | null {
 		if (!bundlePath) return null;
 		const value = readCommandOutput("/usr/bin/defaults", [
 			"read",
@@ -3737,11 +3737,20 @@ export class UpdateService {
 	 */
 	private async readBundleSeal(
 		bundlePath: string,
+		designatedRequirement?: string,
 	): Promise<{ seal: SealVerdict; probe: SealProbe }> {
 		const probeBundle = () =>
 			runCommand(
 				"/usr/bin/codesign",
-				["--verify", "--deep", "--verbose=2", bundlePath],
+				[
+					"--verify",
+					"--deep",
+					"--verbose=2",
+					// `=` forces requirement source, not a filename. runCommand uses
+					// execFile, so this is one argument, never shell syntax.
+					...(designatedRequirement ? [`-R=${designatedRequirement}`] : []),
+					bundlePath,
+				],
 				{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
 			);
 
@@ -3756,6 +3765,31 @@ export class UpdateService {
 			seal = evaluateBundleSeal(probe);
 		}
 		return { seal, probe };
+	}
+
+	/** Read ShipIt's trust requirement from the exact bundle being replaced. */
+	private async readInstalledDesignatedRequirement(
+		bundlePath: string,
+	): Promise<string | null> {
+		const display = await runCommand(
+			"/usr/bin/codesign",
+			["--display", "-r-", bundlePath],
+			{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
+		);
+		if (!display.ran || display.exitCode !== 0) return null;
+		// codesign prints a synthesized (implicit) designated requirement as a
+		// comment. That is still the requirement Security.framework returns to
+		// ShipIt. Do not substitute the candidate's requirement or a bundle ID.
+		const designated = [
+			...display.stdout.matchAll(DESIGNATED_REQUIREMENT_LINE),
+		];
+		const requirement = designated.length === 1 ? designated[0][1].trim() : "";
+		if (!requirement) return null;
+		// Display alone doesn't validate the signer or even prove a good seal.
+		// The shared pre-flight may proceed without a verdict for standalone;
+		// strict staging requires this incumbent itself to pass the parsed rule.
+		const { seal } = await this.readBundleSeal(bundlePath, requirement);
+		return seal.kind === "sealed" ? requirement : null;
 	}
 
 	/**
@@ -4407,7 +4441,7 @@ export class UpdateService {
 				`${shipItPath ?? "no Squirrel.framework installer"} is not an executable inside the running bundle`,
 			);
 		}
-		const bundleId = this.bundleIdentifier();
+		const bundleId = this.bundleIdentifier(bundlePath);
 		if (!bundleId) {
 			return refuse("the running bundle has no readable CFBundleIdentifier");
 		}
@@ -4489,11 +4523,33 @@ export class UpdateService {
 		 */
 		let stagedSeal: SealVerdict;
 		try {
-			// `readBundleSeal` is the shipped probe (with its one retry) and it
-			// already reads its own output through `evaluateBundleSeal`, so this is
-			// the installed-bundle check applied to the staged tree rather than a
-			// second implementation of either half.
-			({ seal: stagedSeal } = await this.readBundleSeal(stagedAppPath));
+			// A candidate's own seal answers whether its bytes are intact, not
+			// whether ShipIt trusts it as a replacement. Combined must know both
+			// before changing the backend; standalone keeps its native policy.
+			let requirement: string | undefined;
+			if (!allowNativeFallback) {
+				const incumbent =
+					await this.readInstalledDesignatedRequirement(bundlePath);
+				if (!incumbent) {
+					return refuse(
+						"the running bundle has no verifiable designated requirement",
+					);
+				}
+				requirement = incumbent;
+			}
+			const { seal, probe } = await this.readBundleSeal(
+				stagedAppPath,
+				requirement,
+			);
+			// codesign(1) reserves 3 for valid code that fails the supplied rule.
+			// This is not a damaged download: let the combined IPC return its
+			// preparation refusal without also emitting a standalone install block.
+			if (requirement && seal.kind === "unsealed" && probe.exitCode === 3) {
+				return refuse(
+					`the staged bundle did not satisfy the running bundle's designated requirement (${seal.detail})`,
+				);
+			}
+			stagedSeal = seal;
 		} catch (error) {
 			return refuse(
 				`the staged bundle's seal could not be probed: ${String(error)}`,
@@ -5573,11 +5629,8 @@ export class UpdateService {
 				this.combinedAppOfferVersion !== appTarget
 			)
 				return { status: failure };
-			prepared = await this.prepareAppInstall(info, false);
-			// Native fallback cannot prove its deferred quit/install request was
-			// accepted. A staged handoff also proves the exact bundle and its seal;
-			// do not move the server without both. Standalone can still try native.
-			if (!prepared?.handoff) return { status: failure };
+			prepared = await this.prepareStrictAppInstall(info);
+			if (!prepared) return { status: failure };
 			if (
 				!this.isUpdateOwner(event) ||
 				this.lastUpdateInfo?.version !== appTarget ||
@@ -5714,6 +5767,17 @@ export class UpdateService {
 			this.clearDownloadStallWatchdog();
 			this.updateStage = "idle";
 		}
+	}
+
+	// A caller that will move the backend needs a verified direct handoff, not
+	// Squirrel's deferred fallback, before performing any version-changing work.
+	private async prepareStrictAppInstall(
+		info: UpdateInfo,
+	): Promise<(PreparedAppInstall & { handoff: InstallerHandoff }) | null> {
+		const prepared = await this.prepareAppInstall(info, false);
+		return prepared?.handoff
+			? { targetVersion: prepared.targetVersion, handoff: prepared.handoff }
+			: null;
 	}
 
 	// Prepare while the app and backend are still serving. This does not stop
