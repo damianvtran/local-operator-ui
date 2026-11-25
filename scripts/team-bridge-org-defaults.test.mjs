@@ -12,11 +12,8 @@ import { build } from "esbuild";
  * - "All organizations" merges private orgs only: a community never lands in
  *   the Organizations group or its unread total, even when an untyped boundary
  *   casts one into the organization array.
- * - The opening rule's precedence (session scope, pending private invitation,
- *   default private org, one org, durable last-used, union, community-only).
- *   The failures that matter are precedence ones - a community or yesterday's
- *   pick outranking the default org after a restart - so every permutation the
- *   amendment names has a case.
+ * - Invitation, session and valid durable picks precede the cold default.
+ *   Only a clearly eligible Team org wins a cold multi-org open.
  * - The session store: `sessionStorage`-shaped, per account, separate key from
  *   the durable preference, so a restart (an empty session store) reapplies the
  *   rule.
@@ -25,7 +22,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			`export * from "./src/renderer/src/features/team-bridge/team-bridge-scope-preference";`,
-			`export { teamBridgeSwitcherGroups, TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD } from "./src/renderer/src/features/team-bridge/team-bridge-model";`,
+			`export { organizationOptions, teamBridgeSwitcherGroups, TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD } from "./src/renderer/src/features/team-bridge/team-bridge-model";`,
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -165,13 +162,11 @@ test("more than six joined communities brings search; the query filters by name"
 
 const resolve = (input) => m.resolveDefaultSelection(input);
 
+const knownTeam = { ...minerva, openingEligible: true };
+const knownHome = { ...acme, openingEligible: false };
+
 test("no organizations and no communities: nothing to decide yet", () => {
 	assert.equal(resolve({ organizations: [] }), null);
-	assert.equal(
-		resolve({ organizations: [], defaultTenantId: "tnt_minerva" }),
-		null,
-		"a home tenant that is not a Team org is not a scope",
-	);
 });
 
 test("one private org opens on it, with or without a community joined", () => {
@@ -182,52 +177,99 @@ test("one private org opens on it, with or without a community joined", () => {
 	);
 });
 
-test("the default private org wins over the union, a stored pick and a community", () => {
+test("cold start prefers the eligible team over the account home", () => {
 	assert.deepEqual(
-		resolve({
-			organizations: [acme, minerva],
-			communities: [loc],
-			defaultTenantId: "tnt_minerva",
-			stored: "tnt_acme",
-		}),
-		priv("tnt_minerva"),
-	);
-	assert.deepEqual(
-		resolve({
-			organizations: [acme, minerva],
-			defaultTenantId: "tnt_minerva",
-			stored: ALL,
-		}),
+		resolve({ organizations: [knownHome, knownTeam], stored: "tnt_gone" }),
 		priv("tnt_minerva"),
 	);
 });
 
-test("a default org that is not one of the Team orgs is ignored", () => {
+test("cold start uses All when Team eligibility is tied, incomplete or absent", () => {
+	for (const other of [acme, { ...acme, openingEligible: true }]) {
+		assert.deepEqual(resolve({ organizations: [other, knownTeam] }), priv(ALL));
+	}
+	assert.deepEqual(resolve({ organizations: [knownHome, acme] }), priv(ALL));
+});
+
+test("status owns cold-open hints and cannot gain targets from memberships", () => {
+	const membership = (tenant_id, status, planStatus) => ({
+		tenant_id,
+		tenant_name: tenant_id,
+		role: "member",
+		status,
+		plan: { status: planStatus },
+	});
+	const memberships = [
+		membership("tnt_acme", "active", "active"),
+		membership("tnt_minerva", "active", "past_due"),
+		membership("tnt_missing", "active", "active"),
+		membership("tnt_disabled", "disabled", "active"),
+	];
+	const status = [
+		{ tenant_id: "tnt_acme", eligible: false },
+		{ tenant_id: "tnt_disabled", eligible: false },
+		{ tenant_id: "tnt_minerva", eligible: true },
+	];
+	const orgs = m.organizationOptions(memberships, [], status);
+	assert.deepEqual(
+		orgs.map((row) => row.tenantId),
+		["tnt_acme", "tnt_disabled", "tnt_minerva"],
+	);
+	assert.deepEqual(resolve({ organizations: orgs }), priv("tnt_minerva"));
+	assert.deepEqual(
+		resolve({ organizations: m.organizationOptions(memberships, [], []) }),
+		null,
+		"an empty authoritative list is not permission to fall back",
+	);
 	assert.deepEqual(
 		resolve({
-			organizations: [acme, minerva],
-			defaultTenantId: "tnt_personal",
+			organizations: m.organizationOptions(
+				memberships,
+				[],
+				[status[0], status[1]],
+			),
 		}),
 		priv(ALL),
+		"no absent membership can become the preferred Team org",
 	);
-	assert.deepEqual(
-		resolve({
-			organizations: [acme, minerva],
-			defaultTenantId: "tnt_personal",
-			stored: "tnt_acme",
-		}),
-		priv("tnt_acme"),
-		"without a usable default the durable last-used pick still applies",
-	);
+});
+
+test("legacy status uses known plans from active memberships only", () => {
+	const membership = (tenant_id, status, plan) => ({
+		tenant_id,
+		tenant_name: tenant_id,
+		role: "member",
+		status,
+		plan,
+	});
+	const team = membership("tnt_minerva", "active", { status: "past_due" });
+	const home = membership("tnt_acme", "active", { status: "none" });
+	const disabled = membership("tnt_disabled", "disabled", { status: "active" });
+	for (const plan of ["past_due", "active"]) {
+		const orgs = m.organizationOptions([
+			home,
+			{ ...team, plan: { status: plan } },
+			disabled,
+		]);
+		assert.deepEqual(
+			orgs.map((row) => row.tenantId),
+			["tnt_acme", "tnt_minerva"],
+		);
+		assert.deepEqual(resolve({ organizations: orgs }), priv("tnt_minerva"));
+	}
+	for (const plan of [undefined, { status: "unknown" }]) {
+		const orgs = m.organizationOptions([{ ...home, plan }, team, disabled]);
+		assert.deepEqual(resolve({ organizations: orgs }), priv(ALL));
+	}
 });
 
 test("a pending private invitation outranks the default org and a joined community", () => {
 	const invited = { ...acme, invited: true };
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, invited],
+			organizations: [knownTeam, invited],
 			communities: [loc],
-			defaultTenantId: "tnt_minerva",
+			stored: "tnt_minerva",
 		}),
 		priv("tnt_acme"),
 	);
@@ -244,9 +286,9 @@ test("a community is the default only with no private org and no invitation", ()
 		cmty("cmty_local_operator"),
 	);
 	assert.deepEqual(
-		resolve({ organizations: [minerva, acme], communities: [loc] }),
-		priv(ALL),
-		"several private orgs land on the union, never the community",
+		resolve({ organizations: [knownTeam, knownHome], communities: [loc] }),
+		priv("tnt_minerva"),
+		"a clear Team org still precedes a community",
 	);
 });
 
@@ -254,8 +296,7 @@ test("a pending invitation outranks this app session's scope (RFC §3 order; rev
 	const invited = { ...acme, invited: true };
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, invited],
-			defaultTenantId: "tnt_minerva",
+			organizations: [knownTeam, invited],
 			session: priv(ALL),
 		}),
 		priv("tnt_acme"),
@@ -263,9 +304,8 @@ test("a pending invitation outranks this app session's scope (RFC §3 order; rev
 	);
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, invited],
+			organizations: [knownTeam, invited],
 			communities: [loc],
-			defaultTenantId: "tnt_minerva",
 			session: cmty("cmty_local_operator"),
 		}),
 		priv("tnt_acme"),
@@ -276,8 +316,7 @@ test("a pending invitation outranks this app session's scope (RFC §3 order; rev
 test("this app session's scope outranks the default org while still valid", () => {
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, acme],
-			defaultTenantId: "tnt_minerva",
+			organizations: [knownTeam, knownHome],
 			session: priv(ALL),
 		}),
 		priv(ALL),
@@ -285,9 +324,8 @@ test("this app session's scope outranks the default org while still valid", () =
 	);
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, acme],
+			organizations: [knownTeam, knownHome],
 			communities: [loc],
-			defaultTenantId: "tnt_minerva",
 			session: cmty("cmty_local_operator"),
 		}),
 		cmty("cmty_local_operator"),
@@ -298,16 +336,14 @@ test("this app session's scope outranks the default org while still valid", () =
 test("a session scope that is no longer valid falls through to the launch rule", () => {
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, acme],
-			defaultTenantId: "tnt_minerva",
+			organizations: [knownTeam, knownHome],
 			session: priv("tnt_gone"),
 		}),
 		priv("tnt_minerva"),
 	);
 	assert.deepEqual(
 		resolve({
-			organizations: [minerva, acme],
-			defaultTenantId: "tnt_minerva",
+			organizations: [knownTeam, knownHome],
 			session: cmty("cmty_left"),
 		}),
 		priv("tnt_minerva"),
@@ -319,21 +355,20 @@ test("a session scope that is no longer valid falls through to the launch rule",
 	);
 });
 
-test("a restart (empty session store) reapplies the rule over yesterday's pick", () => {
+test("a restart with an empty session store honors the valid durable pick", () => {
 	const session = fakeStorage();
-	const durable = { "acct-1": "tnt_acme" };
-	assert.equal(m.readSessionScope(session, "acct-1"), undefined);
-	assert.equal(
-		m.resolveOpeningScope({
-			organizations: [minerva, acme],
-			stored: durable["acct-1"],
-			session: m.readSessionScope(session, "acct-1"),
-			defaultTenantId: "tnt_minerva",
-			chosen: false,
-			current: "tnt_acme",
-		}),
-		"tnt_minerva",
-	);
+	for (const stored of ["tnt_acme", ALL]) {
+		assert.equal(
+			m.resolveOpeningScope({
+				organizations: [knownTeam, knownHome],
+				stored,
+				session: m.readSessionScope(session, "acct-1"),
+				chosen: false,
+				current: stored,
+			}),
+			stored,
+		);
+	}
 });
 
 /* ------------------------------------------------------ opening scope page */
@@ -341,7 +376,6 @@ test("a restart (empty session store) reapplies the rule over yesterday's pick",
 test("resolveOpeningScope: deep link and an on-page pick still outrank everything", () => {
 	const base = {
 		organizations: [minerva, acme],
-		defaultTenantId: "tnt_minerva",
 		session: ALL,
 		current: "tnt_acme",
 	};
@@ -421,7 +455,6 @@ test("resolveOpeningScope: a held opening keeps the seed and decides nothing", (
 		m.resolveOpeningScope({
 			organizations: [minerva, acme],
 			stored: "tnt_acme",
-			defaultTenantId: null,
 			chosen: false,
 			current: "tnt_acme",
 			defaultPending: true,
@@ -431,7 +464,6 @@ test("resolveOpeningScope: a held opening keeps the seed and decides nothing", (
 	assert.equal(
 		m.resolveOpeningScope({
 			organizations: [minerva, acme],
-			defaultTenantId: null,
 			requestedTenant: "tnt_x",
 			chosen: false,
 			current: "tnt_acme",
@@ -473,8 +505,6 @@ function coldLaunch({ stored, phases }) {
 			organizations: phase.organizations,
 			stored,
 			session: sessionScope,
-			defaultTenantId:
-				phase.memberships === "ok" ? phase.defaultTenantId : null,
 			chosen: false,
 			current: scope,
 			snapshotRows: phase.snapshotRows,
@@ -498,7 +528,7 @@ test("cold launch, hub tenants before memberships: never paints or records yeste
 		{ tenant_id: "tnt_acme" },
 	];
 	const run = coldLaunch({
-		stored: "tnt_acme",
+		stored: "tnt_gone",
 		phases: [
 			// before the status gate: only the watcher's two-tenant snapshot
 			{ organizations: [], snapshotRows, memberships: "loading" },
@@ -506,10 +536,9 @@ test("cold launch, hub tenants before memberships: never paints or records yeste
 			{ organizations: [minerva, acme], snapshotRows, memberships: "loading" },
 			// memberships answered: Minerva is home
 			{
-				organizations: [minerva, acme],
+				organizations: [knownTeam, knownHome],
 				snapshotRows,
 				memberships: "ok",
-				defaultTenantId: "tnt_minerva",
 			},
 		],
 	});
@@ -539,25 +568,20 @@ test("memberships fail: fall back now, record nothing, and let the default win l
 		true,
 	);
 	const run = coldLaunch({
-		stored: "tnt_acme",
+		stored: "tnt_gone",
 		phases: [
 			{ organizations: [minerva, acme], memberships: "loading" },
 			{ organizations: [minerva, acme], memberships: "failed" },
 		],
 	});
-	assert.deepEqual(
-		run.painted,
-		["held", "tnt_acme"],
-		"the fallback still opens",
-	);
+	assert.deepEqual(run.painted, ["held", ALL], "the fallback still opens");
 	assert.equal(run.session, undefined, "and is not this session's scope");
 	// A later visit (or a retry that answers) in the same app session.
 	assert.equal(
 		m.resolveOpeningScope({
-			organizations: [minerva, acme],
-			stored: "tnt_acme",
+			organizations: [knownTeam, knownHome],
+			stored: "tnt_gone",
 			session: m.readSessionScope(session, "acct-1"),
-			defaultTenantId: "tnt_minerva",
 			chosen: false,
 			current: "tnt_acme",
 		}),
@@ -616,7 +640,7 @@ test("the session scope is per account, on its own key, and tolerant of junk", (
 // The held page paints its gate state, never the seed (review M1, QA Q1).
 const HELD_GATE =
 	/gatePending=\{\s*\(gatePending && !cachedPaint\) \|\|\s*openingHeld \|\|/;
-test("the page feeds the session scope and default org to both opening reads", async () => {
+test("the page feeds the session scope and authoritative organizations to both opening reads", async () => {
 	const page = await readFile(
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		"utf8",
@@ -626,11 +650,9 @@ test("the page feeds the session scope and default org to both opening reads", a
 	for (const call of calls) {
 		const args = call.slice(0, call.indexOf("})"));
 		assert.ok(args.includes("session: sessionScope"));
-		assert.ok(args.includes("defaultTenantId"));
+		assert.ok(args.includes("organizations,"));
 	}
-	assert.ok(
-		page.includes('membership.is_home && membership.status === "active"'),
-	);
+	assert.ok(!page.includes("membership.is_home"));
 	assert.ok(page.includes("writeSessionScope(storage, accountId, scope)"));
 	// Review M1/m2: both opening reads are held together, the held page paints
 	// its gate loading state (never the seed), and the write waits on both
