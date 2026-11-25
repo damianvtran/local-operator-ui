@@ -10,7 +10,9 @@ import {
 	makeWorkspaceTab,
 	moveWorkspaceTab,
 	sameWorkspaceTarget,
-	saveWorkspaceTabs,
+	saveWorkspaceTabsWithTitles,
+	savedWorkspaceTabsDiffer,
+	savedWorkspaceTitle,
 	syncWorkspaceTabs,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
@@ -141,20 +143,45 @@ export function useWorkspaceTabs(
 		};
 	}, [settleClose]);
 
+	/*
+	 * EVERY REAL NAME A TAB HAS SHOWN THIS RUN, keyed by tab key. The strip
+	 * records the open conversation's real header title and each catalogue row
+	 * it saw here (`rememberTitle`), so a tab whose row later falls off the head
+	 * page - activity reordering, the operator's mid-session "New chat" husks -
+	 * keeps the name it showed. It lives in the hook rather than the page so a
+	 * newly seen header title also re-saves (`seenRevision`): a conversation
+	 * below page one has no catalogue row, and the header is its only name
+	 * (QA #2099 Q1C-F1).
+	 */
+	const titles = useRef<Record<string, string>>({});
+	const [seenRevision, setSeenRevision] = useState(0);
+	const rememberTitle = useCallback((key: string, text: string | null) => {
+		const title = savedWorkspaceTitle(text);
+		if (!title || titles.current[key] === title) return;
+		titles.current[key] = title;
+		setSeenRevision((revision) => revision + 1);
+	}, []);
+
+	/*
+	 * Re-save when the catalogue or a seen title changes too, not only the
+	 * strip: that is how a tab's remembered title follows a rename or the first
+	 * answer, so the NEXT launch draws real names before any page lands. A tab
+	 * whose row is absent from the current page never has its saved title
+	 * overwritten with nothing (`saveWorkspaceTabsWithTitles` states the order).
+	 */
+	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	useLayoutEffect(() => {
+		void seenRevision;
 		const store = useUiPreferencesStore.getState();
-		const saved = saveWorkspaceTabs(tabs);
-		if (
-			saved.length !== store.workspaceTabs.length ||
-			saved.some(
-				({ id, pinned }, i) =>
-					id !== store.workspaceTabs[i].id ||
-					pinned !== store.workspaceTabs[i].pinned,
-			)
-		) {
+		const saved = saveWorkspaceTabsWithTitles(tabs, {
+			rows: new Map(sessions.map((row) => [row.session_id, row.title])),
+			seen: titles.current,
+			prior: store.workspaceTabs,
+		});
+		if (savedWorkspaceTabsDiffer(saved, store.workspaceTabs)) {
 			store.setWorkspaceTabs(saved);
 		}
-	}, [tabs]);
+	}, [tabs, sessions, seenRevision]);
 
 	const open = ({ target }: WorkspaceTab, ticket?: object) => {
 		if (target.kind === "draft") {
@@ -234,6 +261,8 @@ export function useWorkspaceTabs(
 		autoClose,
 		setAutoClose,
 		tabs,
+		titles: titles.current,
+		rememberTitle,
 		focusRequested,
 		focusHandled,
 		select,

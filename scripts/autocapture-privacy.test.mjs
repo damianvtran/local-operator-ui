@@ -455,7 +455,13 @@ async function loadWorkspaceTabs(require) {
 					);
 					b.onLoad({ filter: /.*/, namespace: "ports" }, ({ path }) => ({
 						contents: path.endsWith("canonical-sessions-store")
-							? "export const useCanonicalSessionsStore = (select) => select({sessions: []});"
+							? // Mirrors the real store's shape for every field WorkspaceTabs
+								// selects: `head` is always present there (initial state
+								// carries `at: 0`, every write spreads `...state.head`).
+								// `at: 1` is a SETTLED catalogue with no rows, so an
+								// unnamed tab falls back to "New chat" as the click
+								// assertions below expect, not the loading label.
+								"export const useCanonicalSessionsStore = (select) => select({sessions: [], head: {at: 1}, error: null});"
 							: "export const useMeasuredBrowserViewPanel = () => () => {};",
 					}));
 				},
@@ -741,6 +747,9 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			onAutoCloseChange() {},
 			focusRequested: false,
 			onFocusHandled() {},
+			// Required by WorkspaceTabs: it reports each title it sees so the
+			// saved strip can remember names across a relaunch.
+			onTitleSeen() {},
 			onOpen() {},
 			onClose() {},
 			onCloseMany() {},
