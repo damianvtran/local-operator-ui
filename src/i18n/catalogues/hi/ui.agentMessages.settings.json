@@ -88,7 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "व्यक्ति चुनें",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "{owner} द्वारा चलाया जाता है",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "किसी अन्य प्रविष्टि जैसा नाम",
-	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "अनुमति दी गई — ब्लॉक करना इस पर लागू होगा",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "अनुमति दी गई — ब्लॉक करने को प्राथमिकता मिलेगी",
 	"ui.agentMessages.settings.allowlist.directory_loading": "लोग और एजेंट लोड हो रहे हैं…",
 	"ui.agentMessages.settings.allowlist.directory_error": "लोग और एजेंट लोड नहीं हो सके। आप अब भी ID दर्ज कर सकते हैं।",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "चुनने के लिए कोई एजेंट नहीं है। आप अब भी एजेंट ID दर्ज कर सकते हैं।",
