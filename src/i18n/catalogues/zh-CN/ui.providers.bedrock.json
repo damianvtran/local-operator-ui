@@ -23,7 +23,7 @@
 	"ui.providers.bedrock.error_region_invalid": "Amazon Bedrock在该区域不可用",
 	"ui.providers.bedrock.how_to_connect": "如何连接Amazon Bedrock",
 	"ui.providers.bedrock.kind_assume_role": "代入角色",
-	"ui.providers.bedrock.kind_login": "AWS login",
+	"ui.providers.bedrock.kind_login": "AWS登录",
 	"ui.providers.bedrock.kind_other": "其他",
 	"ui.providers.bedrock.kind_process": "凭据进程",
 	"ui.providers.bedrock.kind_sso": "SSO",

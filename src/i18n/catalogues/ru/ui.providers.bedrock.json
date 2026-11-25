@@ -23,7 +23,7 @@
 	"ui.providers.bedrock.error_region_invalid": "Amazon Bedrock недоступен в этом регионе",
 	"ui.providers.bedrock.how_to_connect": "Как подключиться к Amazon Bedrock",
 	"ui.providers.bedrock.kind_assume_role": "Принятая роль",
-	"ui.providers.bedrock.kind_login": "AWS login",
+	"ui.providers.bedrock.kind_login": "Вход в AWS",
 	"ui.providers.bedrock.kind_other": "Другое",
 	"ui.providers.bedrock.kind_process": "Процесс учётных данных",
 	"ui.providers.bedrock.kind_sso": "SSO",

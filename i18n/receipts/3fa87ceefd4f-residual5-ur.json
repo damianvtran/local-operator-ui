@@ -1,0 +1,63 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "ur",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"session": "3fa87ceefd4f",
+	"instance": "3fa87ceefd4f-residual5-ur",
+	"model": "anthropic/claude-opus-5-5",
+	"model_fallback": "Assigned openai/gpt-6.2-sol; it hit a quota failure at the start of the run and the harness served anthropic/claude-opus-5-5, which made every judgement. Same model as the translator: independence is by agent and session only, not by model.",
+	"independence": "Local Operator i18n-auditor task subagent, session 3fa87ceefd4f, separate from the translator (Local Operator task subagent, session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback). Read origin/main 6323d5f7d505 blobs; edited no repo file.",
+	"date": "2026-11-24",
+	"repo": "damianvtran/local-operator-ui",
+	"base": "6323d5f7d505",
+	"translator": {
+		"agent": "task",
+		"model": "anthropic/claude-opus-5-5",
+		"instance": "ded402fb7c9b"
+	},
+	"provenance": {
+		"audit_json_sha256": "372659fac9dbc60da39f8df85636df159edc32d91355744a97a9227a94219186",
+		"translations_json_sha256": "719f5016ee7a4b0c2488704cf2adc6be8be191250fc8ac0e35b710dcce7f9fed",
+		"assembled_by": "The implementing coder transcribed the auditor's audit.json verdicts verbatim into this per-locale receipt and bound the sha256 values to the catalogue bytes produced by applying exactly the auditor-accepted values (correction where REVISE) to base 6323d5f7d505; git diff shows one changed line per audited key and nothing else. The auditor did not hash these files itself."
+	},
+	"scope": "Residual values byte-identical to English on 6323d5f7d505 (catalogue-parity measurement 2026-11-24). Only the keys listed per namespace were audited; other values are unchanged from base and carried from prior receipts. Excluded: ui.settings.appearance.editor.role.accentAlt (fr) — auditor established 'Second accent' is already correct French (siblings accentAltWash 'Teinte du second accent', theme_second_accent 'Second accent {theme}'); untouched.",
+	"limitations": [
+		"No rendered fit or Urdu shaping proof; linguistic delta audit only."
+	],
+	"status": "passed",
+	"namespaces": {
+		"ui.providers.bedrock": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.providers.bedrock.kind_login"
+			],
+			"verdicts": [
+				{
+					"key": "ui.providers.bedrock.kind_login",
+					"verdict": "ACCEPT",
+					"translation": "AWS سائن اِن",
+					"correction": null,
+					"evidence": "Matches ur sso_failed 'AWS سائن اِن مکمل نہیں ہوا۔' and sso_waiting 'AWS سائن اِن مکمل ہونے کا انتظار ہے…' (zer form, bedrock-wide). Bidi: logical order Latin-first in an RTL paragraph displays AWS at the right edge, read first — same pattern already shipping in sso_failed. Catalogue-wide the zer form is the minority (24 values vs 219 'سائن ان'), see cross-locale note."
+				}
+			],
+			"sha256": {
+				"en": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+				"ur": "efe79ae014733312e3bc26fbdb868dce22247349128d5fd072c1fcb78ba2d358"
+			},
+			"context_sha256": "d743aa952059f9372998145d5dfaa93667340753c2201eb36529d04a78ec3ceb",
+			"findings": [],
+			"resolved": []
+		}
+	},
+	"result": "clean",
+	"findings_count": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	}
+}

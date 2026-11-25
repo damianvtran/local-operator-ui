@@ -1,0 +1,95 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"locale": "vi",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"session": "3fa87ceefd4f",
+	"instance": "3fa87ceefd4f-residual5-vi",
+	"model": "anthropic/claude-opus-5-5",
+	"model_fallback": "Assigned openai/gpt-6.2-sol; it hit a quota failure at the start of the run and the harness served anthropic/claude-opus-5-5, which made every judgement. Same model as the translator: independence is by agent and session only, not by model.",
+	"independence": "Local Operator i18n-auditor task subagent, session 3fa87ceefd4f, separate from the translator (Local Operator task subagent, session ded402fb7c9b, anthropic/claude-opus-5-5, no fallback). Read origin/main 6323d5f7d505 blobs; edited no repo file.",
+	"date": "2026-11-24",
+	"repo": "damianvtran/local-operator-ui",
+	"base": "6323d5f7d505",
+	"translator": {
+		"agent": "task",
+		"model": "anthropic/claude-opus-5-5",
+		"instance": "ded402fb7c9b"
+	},
+	"provenance": {
+		"audit_json_sha256": "372659fac9dbc60da39f8df85636df159edc32d91355744a97a9227a94219186",
+		"translations_json_sha256": "719f5016ee7a4b0c2488704cf2adc6be8be191250fc8ac0e35b710dcce7f9fed",
+		"assembled_by": "The implementing coder transcribed the auditor's audit.json verdicts verbatim into this per-locale receipt and bound the sha256 values to the catalogue bytes produced by applying exactly the auditor-accepted values (correction where REVISE) to base 6323d5f7d505; git diff shows one changed line per audited key and nothing else. The auditor did not hash these files itself."
+	},
+	"scope": "Residual values byte-identical to English on 6323d5f7d505 (catalogue-parity measurement 2026-11-24). Only the keys listed per namespace were audited; other values are unchanged from base and carried from prior receipts. Excluded: ui.settings.appearance.editor.role.accentAlt (fr) — auditor established 'Second accent' is already correct French (siblings accentAltWash 'Teinte du second accent', theme_second_accent 'Second accent {theme}'); untouched.",
+	"limitations": [
+		"No rendered fit or Urdu shaping proof; linguistic delta audit only."
+	],
+	"status": "passed",
+	"namespaces": {
+		"ui.providers.bedrock": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.providers.bedrock.kind_login"
+			],
+			"verdicts": [
+				{
+					"key": "ui.providers.bedrock.kind_login",
+					"verdict": "ACCEPT",
+					"translation": "Đăng nhập AWS",
+					"correction": null,
+					"evidence": "Matches vi sso_failed 'Đăng nhập AWS chưa hoàn tất.' and sso_waiting 'Đang chờ đăng nhập AWS hoàn tất…'."
+				}
+			],
+			"sha256": {
+				"en": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+				"vi": "b4c584909c3ed9c9ec4d19ae213d8b600b314a2a4695a6c4ef0741c0d82f537a"
+			},
+			"context_sha256": "d743aa952059f9372998145d5dfaa93667340753c2201eb36529d04a78ec3ceb",
+			"findings": [],
+			"resolved": []
+		},
+		"ui.agents.settings": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"keys": [
+				"ui.agents.settings.chat.frequency_penalty",
+				"ui.agents.settings.chat.presence_penalty"
+			],
+			"verdicts": [
+				{
+					"key": "ui.agents.settings.chat.frequency_penalty",
+					"verdict": "ACCEPT",
+					"translation": "Hình phạt tần suất",
+					"correction": null,
+					"evidence": "See vi adjudication. 'tần suất' correct (occurrence frequency), not 'tần số'. Term attested in Vietnamese LLM material (mygpt.vn 'Thiết lập LLM': 'Hình phạt tần suất càng cao…'). Other locales localise: zh-CN '频率惩罚', ru 'Штраф за частоту', fr 'Pénalité de fréquence'. 18 chars vs ~17."
+				},
+				{
+					"key": "ui.agents.settings.chat.presence_penalty",
+					"verdict": "ACCEPT",
+					"translation": "Hình phạt hiện diện",
+					"correction": null,
+					"evidence": "Parallel to frequency_penalty, distinct concept as sidecar requires; 'hiện diện' preferred over 'có mặt' (more formal/technical, matches zh-CN '存在惩罚', ru 'Штраф за присутствие'). 19 chars, short label."
+				}
+			],
+			"sha256": {
+				"en": "f4986042519a58d3e8574412360c58e16c3503878f90a1c4ef5907346f424c35",
+				"vi": "d60dd6b97f723480d8da53019357ba4e647f9cab3f97f0da66b4c319dfd6a522"
+			},
+			"context_sha256": "418c0c1560eb8a42a880607d713bc3d521fe413d64313f40b5364d15c1b016e6",
+			"findings": [],
+			"resolved": []
+		}
+	},
+	"result": "clean",
+	"findings_count": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	}
+}
