@@ -639,7 +639,9 @@ export class BackendInstaller {
 					 * difference and exits on its own; this is the same fact reaching the
 					 * catch that used to ignore it.
 					 */
-					if (this.attemptCancelled) return false;
+					// A hidden run has no operator to answer either failure surface.
+					// Let the caller own the failure exit, even if no window was created.
+					if (this.attemptCancelled || show === "never") return false;
 					if (!this.failureOnScreen) {
 						/*
 						 * ONE SURFACE PER FAILURE. The window owns a failure whenever it is up - the
@@ -672,7 +674,9 @@ export class BackendInstaller {
 						this.reportInstallFailure(error);
 					}
 				}
-				if (!this.failureOnScreen) return false;
+				// A nonzero script exit can report a failure without throwing. Do
+				// not wait for Retry/Quit from the hidden renderer in that case either.
+				if (show === "never" || !this.failureOnScreen) return false;
 				/*
 				 * The window has the failure and the user has the choice, so startup waits
 				 * here rather than resolving false - which `index.ts` reads as "cancelled or
@@ -840,7 +844,11 @@ export class BackendInstaller {
 			 * after a successful macOS setup, because the window closing and the app
 			 * starting is the acknowledgement - see the note on the completion path.
 			 */
-			if (process.platform !== "darwin" && !this.hasLivePreparationWindow()) {
+			if (
+				show !== "never" &&
+				process.platform !== "darwin" &&
+				!this.hasLivePreparationWindow()
+			) {
 				const { response } = await electronDialog.showMessageBox({
 					type: "info",
 					title: "First-Time Setup Required",
@@ -962,9 +970,9 @@ export class BackendInstaller {
 				 * deliberately not shown any more. The setup window closing and the app
 				 * starting IS the acknowledgement there, and "Let's Go!" gated the
 				 * window behind a click that said nothing the state did not already say
-				 * (review R9). The platforms that still show it keep their flow.
+				 * (review R9). Only windowed launches on the other platforms still ask.
 				 */
-				if (process.platform !== "darwin") {
+				if (show !== "never" && process.platform !== "darwin") {
 					const { response: successResponse } =
 						await electronDialog.showMessageBox({
 							type: "info",
@@ -1103,7 +1111,7 @@ export class BackendInstaller {
 			 * prompt above returns before one exists.
 			 */
 			if (this.hasLivePreparationWindow()) this.reportInstallFailure(error);
-			else
+			else if (show !== "never")
 				electronDialog.showErrorBox(
 					"Installation Error",
 					`Error installing the Local Operator backend: ${error instanceof Error ? error.message : String(error)}`,
@@ -1250,6 +1258,7 @@ export class BackendInstaller {
 		};
 
 		const cancelHandler = () => {
+			if (show === "never") return;
 			logger.info(
 				"Installation cancelled by user from the setup window",
 				LogFileType.INSTALLER,
@@ -1273,6 +1282,8 @@ export class BackendInstaller {
 		 * closing.
 		 */
 		progressWindow.on("close", (event) => {
+			// A headless close isn't a request to ask someone for confirmation.
+			if (show === "never") return;
 			if (this.terminalHold) {
 				/*
 				 * Setup has FINISHED and the window is holding the completed state for its
