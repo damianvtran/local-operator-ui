@@ -1,0 +1,35 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2102 round 1 (Reach directory and held-message wording delta)",
+	"locale": "fr",
+	"namespace": "ui.teamBridge.holds",
+	"pr": 2102,
+	"date": "2026-11-25",
+	"head": "2c735f7dba5873a24da6c54852eb97d557660e71",
+	"instance": "pr2102-r1-fr-teambridge-holds-f72f19f7",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session bf8673555f96 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the delta keys were drafted by the coder (implementer) in 2c735f7dba5 per its commit message. Judged from English, the context sidecar and the namespace's shipped terms (allowed_heading, add_blocked, hide_local, deliver/discard); no MT used.",
+		"instance": "pr2102-r1-fr-teambridge-holds-f72f19f7"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.teamBridge.holds.details_unavailable_hide": "Ce message n’a pas pu être chargé ici ; il ne peut donc être ni transmis ni écarté. Vous pouvez le masquer sur cet appareil.",
+		"ui.teamBridge.holds.body_withheld": "Le texte du message n’est pas disponible ici, il ne peut donc pas être transmis. Vous pouvez toujours l’écarter."
+	},
+	"binding": "Verified by sha256 of the bytes committed with this receipt (on top of 2c735f7dba5): target src/i18n/catalogues/fr/ui.teamBridge.holds.json sha256 f72f19f7883ea8afb31ee030b3ef3f025f145120876583fa6e6df203d2c7dfed; English src/i18n/catalogues/en/ui.teamBridge.holds.json sha256 70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04; context sha256 22faab83b11367a6d65579ffe7ad1ac04236988fdfbe7ceaa60490cd1a9b9798. Key set equals English; the delta key carries no ICU placeholders, matching English. body_withheld: only its English context note changed; the existing value still fits the widened note (text unavailable here, deliver impossible, discard possible). Every other value is byte-identical to the previously audited row.",
+	"scope": "PR #2102 r1 delta: details_unavailable_hide (+ body_withheld context-note change, value unchanged); unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+	"context_sha256": "22faab83b11367a6d65579ffe7ad1ac04236988fdfbe7ceaa60490cd1a9b9798",
+	"target_sha256": "f72f19f7883ea8afb31ee030b3ef3f025f145120876583fa6e6df203d2c7dfed",
+	"sha256": {
+		"fr": "f72f19f7883ea8afb31ee030b3ef3f025f145120876583fa6e6df203d2c7dfed",
+		"en": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04"
+	}
+}

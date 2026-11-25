@@ -626,6 +626,13 @@
 		"placeholders": {},
 		"note": "Marks an option whose name repeats; the full ID beside it is what tells them apart."
 	},
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": {
+		"role": "directory option marker",
+		"tone": "sentence case, plain",
+		"length": "One short phrase.",
+		"placeholders": {},
+		"note": "Marks an option in the Block picker that is already in the Allowed list for the same direction. It can still be blocked; blocking wins over the allow. 'Allowed' matches the allowed_heading list title."
+	},
 	"ui.agentMessages.settings.allowlist.directory_loading": {
 		"role": "directory status line",
 		"tone": "sentence case, plain, second person",

@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "Vous avez choisi Écarter.",
 	"ui.teamBridge.holds.state.not_applied": "Votre décision n’a pas pu être appliquée.",
 	"ui.teamBridge.holds.details_unavailable": "Ce message n’a pas pu être chargé ici ; il ne peut donc pas encore être transmis ni écarté.",
+	"ui.teamBridge.holds.details_unavailable_hide": "Ce message n’a pas pu être chargé ici ; il ne peut donc être ni transmis ni écarté. Vous pouvez le masquer sur cet appareil.",
 	"ui.teamBridge.holds.deliver": "Transmettre",
 	"ui.teamBridge.holds.discard": "Écarter",
 	"ui.teamBridge.holds.deliver_label": "Transmettre ce message ({sender})",

@@ -3129,6 +3129,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": {
 		owner: string;
 	};
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": undefined;
 	"ui.agentMessages.settings.allowlist.directory_empty": undefined;
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": undefined;
 	"ui.agentMessages.settings.allowlist.directory_error": undefined;
@@ -14662,6 +14663,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.deliver_until": { time: string };
 	"ui.teamBridge.holds.delivering": undefined;
 	"ui.teamBridge.holds.details_unavailable": undefined;
+	"ui.teamBridge.holds.details_unavailable_hide": undefined;
 	"ui.teamBridge.holds.discard": undefined;
 	"ui.teamBridge.holds.discard_label": { sender: string };
 	"ui.teamBridge.holds.discard_unread_label": { reference: string };

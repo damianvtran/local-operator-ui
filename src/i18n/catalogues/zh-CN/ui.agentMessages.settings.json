@@ -88,6 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "选择人员",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "由 {owner} 运行",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "与其他条目同名",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "已允许，但屏蔽优先",
 	"ui.agentMessages.settings.allowlist.directory_loading": "正在加载人员和智能体…",
 	"ui.agentMessages.settings.allowlist.directory_error": "无法加载人员和智能体。你仍然可以输入ID。",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "没有可选择的智能体。你仍然可以输入智能体ID。",

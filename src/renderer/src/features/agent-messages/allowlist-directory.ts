@@ -114,8 +114,17 @@ export function allowlistEntryIdentity(kind: AllowlistEntryKind, id: string) {
 	return `${kind}\u0000${id}`;
 }
 
-/** What a listed entry shows when the directory on screen can name it. */
-export type AllowlistEntryName = { label: string; owner?: string };
+/**
+ * What a listed entry shows when the directory on screen can name it.
+ * `duplicateLabel` carries the picker's same-name mark onto the listed row so
+ * its Remove control can add the id: two agents called "Helper" run by the
+ * same person would otherwise get identical accessible names (#2014 M1).
+ */
+export type AllowlistEntryName = {
+	label: string;
+	owner?: string;
+	duplicateLabel?: true;
+};
 
 /**
  * Names for the entries a list holds, read from the directory ALREADY loaded
@@ -131,12 +140,14 @@ export function allowlistEntryNames(
 	const names = new Map<string, AllowlistEntryName>();
 	for (const kind of ["endpoint", "account"] as const) {
 		for (const choice of allowlistDirectoryChoices(directory, kind)) {
-			names.set(
-				allowlistEntryIdentity(kind, choice.id),
-				choice.owner
-					? { label: choice.label, owner: choice.owner }
-					: { label: choice.label },
-			);
+			// A choice with no name of its own is labelled by its id. That id is
+			// not a name: the row would show it twice (title and mono line), so
+			// such an entry keeps the bare-id row instead (#2014 N1).
+			if (choice.label === choice.id) continue;
+			const name: AllowlistEntryName = { label: choice.label };
+			if (choice.owner) name.owner = choice.owner;
+			if (choice.duplicateLabel) name.duplicateLabel = true;
+			names.set(allowlistEntryIdentity(kind, choice.id), name);
 		}
 	}
 	return names;

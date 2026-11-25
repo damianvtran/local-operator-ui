@@ -88,6 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "شخص منتخب کریں",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "چلانے والا: {owner}",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "کسی اور اندراج جیسا نام",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "اجازت یافتہ — مسدود کرنا اس پر غالب رہتا ہے",
 	"ui.agentMessages.settings.allowlist.directory_loading": "لوگ اور ایجنٹ لوڈ ہو رہے ہیں…",
 	"ui.agentMessages.settings.allowlist.directory_error": "لوگ اور ایجنٹ لوڈ نہیں ہو سکے۔ آپ اب بھی ID درج کر سکتے ہیں۔",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "منتخب کرنے کے لیے کوئی ایجنٹ نہیں۔ آپ اب بھی ایجنٹ ID درج کر سکتے ہیں۔",

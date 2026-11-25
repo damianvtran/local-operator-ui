@@ -1763,6 +1763,8 @@ const RE_RECEIPT_ONLY = /couldn’t be loaded\. It can no longer be delivered/;
 const RE_UNREAD_BUTTON = /without reading it"/;
 const RE_DELIVER_BUTTON = />Deliver</;
 const RE_NOT_YET = /can’t be delivered or discarded yet/;
+const RE_HIDE_BUTTON = />Hide on this device</;
+const RE_HIDE_POINTER = /You can hide it on this device\./;
 const RE_NOT_HERE = /text isn’t available here, so it can’t be delivered/;
 const RE_OVERCLAIM = /applied|yet|sender|notif|told|will/i;
 
@@ -1798,6 +1800,33 @@ test("Try again stays on every row whose details failed to load, beside its Disc
 	assert.doesNotMatch(expired.html, RE_DELIVER_BUTTON);
 	// Rendering is not deciding: nothing is sent without a press.
 	assert.equal(fresh.calls.length + expired.calls.length, 0);
+});
+
+test("an unloadable row that offers Hide points to it instead of saying 'yet' (#2087 U1)", () => {
+	const item = {
+		...fresh700({ message_id: "bcmsg_u1", discard_receipt: null }),
+		localHideRevision: "b".repeat(64),
+	};
+	const view = (localHide) =>
+		renderToStaticMarkup(
+			createElement(HeldMessagesView, {
+				listState: "ready",
+				items: [item],
+				detail: () => ({ state: "unavailable" }),
+				onDecide: () => {},
+				onRetryDetails: () => {},
+				now: NOW,
+				localHide,
+			}),
+		);
+	const offered = view({ hiddenItems: [], onChange: () => true });
+	assert.match(offered, RE_HIDE_BUTTON);
+	assert.doesNotMatch(offered, RE_NOT_YET);
+	assert.match(offered, RE_HIDE_POINTER);
+	// Without Hide on offer, waiting or Try again is still the way forward.
+	const plain = view(undefined);
+	assert.doesNotMatch(plain, RE_HIDE_BUTTON);
+	assert.match(plain, RE_NOT_YET);
 });
 
 test("the pending Discard line states only what is known, in every locale (C2)", () => {

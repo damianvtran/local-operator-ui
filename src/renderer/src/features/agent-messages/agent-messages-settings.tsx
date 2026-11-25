@@ -1789,6 +1789,10 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 					label={t("ui.agentMessages.settings.allowlist.add_blocked")}
 					directory={directory}
 					listed={blockedIds}
+					// Only a listed-only direction keeps its allow rows (class
+					// default drops them on Save), so only there can a block
+					// override one (#2014 U11).
+					allowed={mode === "listed_only" ? allowedIds : undefined}
 					disabled={disabled}
 					onAdd={(entry) => onAdd({ ...entry, effect: "deny" })}
 				/>
@@ -1872,7 +1876,13 @@ const EntryRow: FC<{
 		: null;
 	// Remove is named by what the row SHOWS, so a screen-reader user hears
 	// "Remove Helper, Run by Ada Park", not an opaque id.
-	const target = name ? (owner ? `${name.label}, ${owner}` : name.label) : null;
+	// A repeated name also says its id, so two same-name, same-owner agents do
+	// not leave two identical "Remove …" controls (#2014 M1).
+	const target = name
+		? [name.label, owner, name.duplicateLabel && entry.id]
+				.filter(Boolean)
+				.join(", ")
+		: null;
 	return (
 		<div
 			className="flex items-center justify-between gap-3 rounded border border-hairline px-2 py-1"
@@ -1949,10 +1959,42 @@ const DirectoryNote: FC<{
 					: counts && counts.agents === 0
 						? t("ui.agentMessages.settings.allowlist.directory_empty_agent")
 						: null;
+	// #2014 UX U10: Try again only renders on error, so a retry used to unmount
+	// the focused button during Loading and drop focus to <body>. A pressed
+	// retry keeps the button mounted (aria-disabled, so it stays focusable)
+	// until the read settles: a second failure leaves focus where it was, and
+	// a success moves it to this container, the nearest stable element.
+	const [retrying, setRetrying] = useState(false);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const retryRef = useRef<HTMLButtonElement>(null);
+	// Recorded at the press: by the time a success settles, the button has
+	// already unmounted and focus is on <body>, so it cannot be read then.
+	const retryHadFocus = useRef(false);
+	const settled = directory.state !== "loading";
+	useEffect(() => {
+		if (!retrying || !settled) return;
+		const lost =
+			document.activeElement === null ||
+			document.activeElement === document.body;
+		if (directory.state !== "error" && retryHadFocus.current && lost) {
+			containerRef.current?.focus();
+		}
+		retryHadFocus.current = false;
+		setRetrying(false);
+	}, [retrying, settled, directory.state]);
+	const showRetry =
+		directory.state === "error" || (retrying && directory.state === "loading");
 	return (
 		// No margin while silent, so a ready roster leaves no gap; the region
 		// itself stays mounted (not display:none) so its next text is announced.
-		<div className={cn("flex flex-wrap items-center gap-2", note && "mt-2")}>
+		<div
+			ref={containerRef}
+			tabIndex={-1}
+			className={cn(
+				"flex flex-wrap items-center gap-2 outline-none",
+				note && "mt-2",
+			)}
+		>
 			{/* <output> carries the implicit polite `status` role. */}
 			<output
 				className="block text-meta text-ink-dim"
@@ -1960,12 +2002,19 @@ const DirectoryNote: FC<{
 			>
 				{note}
 			</output>
-			{directory.state === "error" && (
+			{showRetry && (
 				<Button
+					ref={retryRef}
 					variant="secondary"
 					size="sm"
 					data-agent-messages-directory-retry=""
-					onClick={onRetry}
+					aria-disabled={directory.state === "loading" ? true : undefined}
+					onClick={() => {
+						if (directory.state === "loading") return;
+						retryHadFocus.current = document.activeElement === retryRef.current;
+						setRetrying(true);
+						onRetry();
+					}}
 				>
 					{t("ui.common.actions.retry_again")}
 				</Button>
@@ -1992,9 +2041,16 @@ const AddEntryForm: FC<{
 	directory: AllowlistDirectoryView | null;
 	/** `allowlistEntryIdentity`s already in THIS list: not offered, not re-added. */
 	listed: ReadonlySet<string>;
+	/**
+	 * Block form only: identities ALLOWED in this direction. They stay
+	 * offered — blocking an allowed entry is legitimate, and core resolves the
+	 * pair as `allowed - denied` — but are marked, so the operator knows the
+	 * block wins rather than finding out after Save (#2014 U11).
+	 */
+	allowed?: ReadonlySet<string>;
 	disabled: boolean;
 	onAdd: (entry: { kind: AllowlistEntryKind; id: string }) => void;
-}> = ({ label, directory, listed, disabled, onAdd }) => {
+}> = ({ label, directory, listed, allowed, disabled, onAdd }) => {
 	const [kind, setKind] = useState<AllowlistEntryKind>("endpoint");
 	const [value, setValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -2118,7 +2174,10 @@ const AddEntryForm: FC<{
 					</SelectContent>
 				</Select>
 				{directory?.state === "ready" && choices.length > 0 && (
-					<div className="flex flex-col gap-1">
+					// w-64 = the trigger's width: the organization label wraps
+					// inside the column instead of widening it and pushing the
+					// ID field away (#2014 design D4).
+					<div className="flex w-64 flex-col gap-1">
 						<span
 							id={pickerLabelId}
 							className="text-meta text-ink-dim"
@@ -2157,57 +2216,82 @@ const AddEntryForm: FC<{
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
-								{choices.map((choice) => (
-									<SelectItem
-										key={choice.id}
-										value={choice.id}
-										data-agent-messages-directory-choice={choice.id}
-										// The visual gaps are CSS margins, which leave no
-										// space in the computed name ("HelperRun by …"), so
-										// the option is named with explicit separators (U5).
-										aria-label={[
-											choice.label,
-											choice.owner &&
-												t(
-													"ui.agentMessages.settings.allowlist.directory_agent_owner",
-													{ owner: choice.owner },
-												),
-											choice.id,
-											choice.duplicateLabel &&
-												t(
-													"ui.agentMessages.settings.allowlist.directory_same_name",
-												),
-										]
-											.filter(Boolean)
-											.join(", ")}
-									>
-										<span className="flex min-w-0 flex-col">
-											<span className="text-ink">
-												{choice.label}
-												{choice.owner && (
-													<span className="ms-2 text-ink-dim">
-														{t(
-															"ui.agentMessages.settings.allowlist.directory_agent_owner",
-															{ owner: choice.owner },
-														)}
-													</span>
-												)}
-											</span>
-											{/* The id is the identity (names repeat), so every
+								{choices.map((choice) => {
+									const overrides =
+										allowed?.has(allowlistEntryIdentity(kind, choice.id)) ??
+										false;
+									return (
+										<SelectItem
+											key={choice.id}
+											value={choice.id}
+											data-agent-messages-directory-choice={choice.id}
+											// Radix names an option by aria-labelledby={ItemText},
+											// which outranks aria-label in the accessible-name
+											// algorithm and reads "HelperRun by …" run together
+											// (#2014 U9). Item props spread after Radix's, so this
+											// drops it and the label below is what is announced.
+											aria-labelledby={undefined}
+											// The visual gaps are CSS margins, which leave no
+											// space in the computed name ("HelperRun by …"), so
+											// the option is named with explicit separators (U5).
+											aria-label={[
+												choice.label,
+												choice.owner &&
+													t(
+														"ui.agentMessages.settings.allowlist.directory_agent_owner",
+														{ owner: choice.owner },
+													),
+												choice.id,
+												choice.duplicateLabel &&
+													t(
+														"ui.agentMessages.settings.allowlist.directory_same_name",
+													),
+												overrides &&
+													t(
+														"ui.agentMessages.settings.allowlist.directory_allowed_overridden",
+													),
+											]
+												.filter(Boolean)
+												.join(", ")}
+										>
+											<span className="flex min-w-0 flex-col">
+												<span className="text-ink">
+													{choice.label}
+													{choice.owner && (
+														<span className="ms-2 text-ink-dim">
+															{t(
+																"ui.agentMessages.settings.allowlist.directory_agent_owner",
+																{ owner: choice.owner },
+															)}
+														</span>
+													)}
+												</span>
+												{/* The id is the identity (names repeat), so every
 										    option shows it in full, in machine voice. */}
-											<span className="break-all font-mono text-meta text-ink-dim">
-												{choice.id}
-												{choice.duplicateLabel && (
-													<span className="ms-2 font-sans">
-														{t(
-															"ui.agentMessages.settings.allowlist.directory_same_name",
-														)}
-													</span>
-												)}
+												<span className="break-all font-mono text-meta text-ink-dim">
+													{choice.id}
+													{choice.duplicateLabel && (
+														<span className="ms-2 font-sans">
+															{t(
+																"ui.agentMessages.settings.allowlist.directory_same_name",
+															)}
+														</span>
+													)}
+													{overrides && (
+														<span
+															className="ms-2 font-sans"
+															data-agent-messages-directory-overrides=""
+														>
+															{t(
+																"ui.agentMessages.settings.allowlist.directory_allowed_overridden",
+															)}
+														</span>
+													)}
+												</span>
 											</span>
-										</span>
-									</SelectItem>
-								))}
+										</SelectItem>
+									);
+								})}
 							</SelectContent>
 						</Select>
 					</div>

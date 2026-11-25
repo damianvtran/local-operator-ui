@@ -88,6 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Choisir une personne",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "Géré par {owner}",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "Même nom qu’une autre entrée",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "Autorisé — le blocage l’emporte",
 	"ui.agentMessages.settings.allowlist.directory_loading": "Chargement des personnes et des agents…",
 	"ui.agentMessages.settings.allowlist.directory_error": "Impossible de charger les personnes et les agents. Vous pouvez toujours saisir un ID.",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "Aucun agent à choisir. Vous pouvez toujours saisir un ID d’agent.",

@@ -1,0 +1,44 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2102 round 1 (Reach directory and held-message wording delta)",
+	"locale": "zh-CN",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2102,
+	"date": "2026-11-25",
+	"head": "2c735f7dba5873a24da6c54852eb97d557660e71",
+	"instance": "pr2102-r1-zh-cn-agentmessages-settings-e20bbf5a",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session bf8673555f96 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the delta keys were drafted by the coder (implementer) in 2c735f7dba5 per its commit message. Judged from English, the context sidecar and the namespace's shipped terms (allowed_heading, add_blocked, hide_local, deliver/discard); no MT used.",
+		"instance": "pr2102-r1-zh-cn-agentmessages-settings-e20bbf5a"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"id": "C1",
+			"severity": "MINOR",
+			"key": "ui.agentMessages.settings.allowlist.directory_allowed_overridden",
+			"current": "已允许 — 屏蔽优先",
+			"replacement": "已允许，但屏蔽优先",
+			"why": "A spaced Latin em dash is not Chinese punctuation; a full-width comma plus 但 states the contrast (allowed, but blocking wins) naturally.",
+			"disposition": "fixed in this audit's fix(i18n) commit; the hashed bytes carry the replacement"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "已允许，但屏蔽优先"
+	},
+	"binding": "Verified by sha256 of the bytes committed with this receipt (on top of 2c735f7dba5): target src/i18n/catalogues/zh-CN/ui.agentMessages.settings.json sha256 e20bbf5a122baad4431f8b43edda07bceeb44cdca3db392176c40897eb8652b8; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 573301a071a9a043eded4d3a8ed3a4602924ee38431b7934a9a263ddff026e26; context sha256 f5534b49afe7052e390e8b6c49185a8ad4f6734044fd25e2d9b572ca1722b17e. Key set equals English; the delta key carries no ICU placeholders, matching English. Every other value is byte-identical to the previously audited row.",
+	"scope": "PR #2102 r1 delta: allowlist.directory_allowed_overridden; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "573301a071a9a043eded4d3a8ed3a4602924ee38431b7934a9a263ddff026e26",
+	"context_sha256": "f5534b49afe7052e390e8b6c49185a8ad4f6734044fd25e2d9b572ca1722b17e",
+	"target_sha256": "e20bbf5a122baad4431f8b43edda07bceeb44cdca3db392176c40897eb8652b8",
+	"sha256": {
+		"zh-CN": "e20bbf5a122baad4431f8b43edda07bceeb44cdca3db392176c40897eb8652b8",
+		"en": "573301a071a9a043eded4d3a8ed3a4602924ee38431b7934a9a263ddff026e26"
+	}
+}

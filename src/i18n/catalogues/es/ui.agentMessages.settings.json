@@ -88,6 +88,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Elige una persona",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "Gestionado por {owner}",
 	"ui.agentMessages.settings.allowlist.directory_same_name": "Mismo nombre que otra entrada",
+	"ui.agentMessages.settings.allowlist.directory_allowed_overridden": "Permitido: bloquearlo tiene prioridad",
 	"ui.agentMessages.settings.allowlist.directory_loading": "Cargando personas y agentes…",
 	"ui.agentMessages.settings.allowlist.directory_error": "No se pudieron cargar las personas y los agentes. Aún puedes escribir un ID.",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "No hay agentes para elegir. Aún puedes escribir un ID de agente.",

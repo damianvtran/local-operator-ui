@@ -32,6 +32,7 @@
 	"ui.teamBridge.holds.state.chose_discard": "Вы выбрали «Отклонить».",
 	"ui.teamBridge.holds.state.not_applied": "Не удалось применить ваше решение.",
 	"ui.teamBridge.holds.details_unavailable": "Не удалось загрузить это сообщение здесь, поэтому его пока нельзя доставить или отклонить.",
+	"ui.teamBridge.holds.details_unavailable_hide": "Не удалось загрузить это сообщение здесь, поэтому его нельзя доставить или отклонить. Его можно скрыть на этом устройстве.",
 	"ui.teamBridge.holds.deliver": "Доставить",
 	"ui.teamBridge.holds.discard": "Отклонить",
 	"ui.teamBridge.holds.deliver_label": "Доставить это сообщение ({sender})",
