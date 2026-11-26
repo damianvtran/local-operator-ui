@@ -183,10 +183,11 @@ export function WorkspaceTabs({
 		const controller = createWorkspaceTabReveal(strip.current);
 		reveal.current = controller;
 		return () => {
-			// Sample live offsets while lanes are still connected, not a delayed
-			// scroll event or an animation's destination.
-			viewport.pinned = pinned?.scrollLeft ?? 0;
-			viewport.regular = regular?.scrollLeft ?? 0;
+			// Layout cleanup can still read the outgoing scrollports. Pinning can
+			// create or replace a lane without remounting the strip, so sample the
+			// current refs, not the setup-time nodes or an animation's destination.
+			viewport.pinned = pinnedLane.current?.scrollLeft ?? 0;
+			viewport.regular = regularLane.current?.scrollLeft ?? 0;
 			controller.dispose();
 			reveal.current = undefined;
 		};

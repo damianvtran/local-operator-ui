@@ -358,6 +358,66 @@ test("keyed conversation and draft switches keep both lane offsets before reveal
 	assert.deepEqual(nextPinned.moves, []);
 });
 
+for (const scenario of ["inserted after mount", "removed and recreated"]) {
+	test(`keyed switch preserves a pinned lane ${scenario} without a reveal`, (t) => {
+		const regularTabs = [tab("first"), tab("second"), tab("last")];
+		const pins = [tab("pin-a", true), tab("pin-b", true), tab("pin-c", true)];
+		const withPins = [...regularTabs, ...pins];
+		const withoutPins = [...regularTabs, ...pins.map(({ key }) => tab(key))];
+		const { host, render } = fixture(t, withoutPins);
+		const regularBounds = [
+			[0, 60],
+			[64, 122],
+			[126, 200],
+		];
+		const pinnedBounds = [
+			[0, 76],
+			[90, 145],
+			[149, 218],
+		];
+		const outgoing = "session:first";
+		let removedLane;
+		if (scenario === "removed and recreated") {
+			render("first", { mountKey: outgoing, tabs: withPins });
+			removedLane = laneLayout(host, "pinned", pinnedBounds).lane;
+			removedLane.scrollLeft = 87;
+		}
+		render("first", { mountKey: outgoing, tabs: withoutPins });
+		assert.equal(host.querySelector("[data-workspace-pinned]"), null);
+		if (removedLane) assert.equal(removedLane.isConnected, false);
+		const oldRegular = host.querySelector("[data-workspace-regular]");
+
+		// Pinning is an in-place update, not a conversation switch. The lane
+		// that appears here owns the scroll offset carried by the next switch.
+		render("first", { mountKey: outgoing, tabs: withPins });
+		const prevPinned = laneLayout(host, "pinned", pinnedBounds);
+		const prevRegular = laneLayout(host, "regular", regularBounds);
+		assert.notEqual(prevPinned.lane, removedLane);
+		assert.equal(prevRegular.lane, oldRegular);
+		frame();
+		prevPinned.lane.scrollLeft = 54;
+		prevRegular.lane.scrollLeft = 32;
+		expectVisible(prevPinned.lane, prevPinned.rows[1]);
+
+		render("pin-b", { mountKey: "session:pin-b", tabs: withPins });
+		const pinned = laneLayout(host, "pinned", pinnedBounds);
+		const regular = laneLayout(host, "regular", regularBounds);
+		assert.notEqual(pinned.lane, prevPinned.lane);
+		assert.notEqual(regular.lane, prevRegular.lane);
+		const beforeFrame = [pinned.lane.scrollLeft, regular.lane.scrollLeft];
+		frame();
+		assert.deepEqual(
+			{
+				beforeFrame,
+				afterFrame: [pinned.lane.scrollLeft, regular.lane.scrollLeft],
+				moves: [pinned.moves, regular.moves],
+			},
+			{ beforeFrame: [54, 32], afterFrame: [54, 32], moves: [[], []] },
+		);
+		expectVisible(pinned.lane, pinned.rows[1]);
+	});
+}
+
 test("active title growth and preceding shifts coalesce without restarting native motion", async (t) => {
 	const { host, render } = fixture(t, [tab("previous"), tab("active")]);
 	const bounds = [
