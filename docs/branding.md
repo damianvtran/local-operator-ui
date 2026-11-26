@@ -866,6 +866,15 @@ route inventory and body boundary.
   to Team/Agent/Device selectors or icon buttons. These
   workspace chrome buttons rest transparent and borderless. Keep focus-visible
   outlines, a non-colour selected cue and the existing hit areas.
+- **Mark the selected tab by brightening alone.** Give it a ground of
+  `row-selected` with 4% `ink` mixed in, full `ink` and weight 500, and no
+  bottom rail, underline or accent indicator (operator, 2026-11-25: the rail
+  "looks super dated"). The ink mix keeps it distinct from a hovered
+  neighbour's `row-hover` now the rail is gone (about 1.17:1 dark, 1.13:1
+  light, against 1.04:1 for bare `row-selected`). Scope it to the tab rule; do
+  not change a theme token for it.
+  [`scripts/workspace-tabs.test.mjs`](../scripts/workspace-tabs.test.mjs) fails
+  if a rail returns or the ground reverts to bare `row-selected`.
 - **Use the actual OS titlebar band where integrated chrome is available.**
   Fit the tabs between the existing native exclusion zones and leave empty
   space draggable. Respect the physical caption controls in RTL. Use the shell's
