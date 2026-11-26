@@ -17,7 +17,11 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 const ROOT = process.cwd();
-const ON_COLLAPSE = /onCollapse: toggleSidebar/;
+const SHELL_TOGGLE =
+	/<DesktopNavigationControls\b[^>]*\btoggleSidebar=\{toggleSidebar\}/;
+const TITLEBAR_TOGGLE =
+	/data-desktop-sidebar-toggle=""(?:(?!<\/Button>)[\s\S])*?onClick=\{\(\) => \{\s*if \(!routeOwnsSidebar\) toggleSidebar\(\);\s*\}\}/;
+const SKIP_ROUTE_OWNED = /if \(routeOwnsSidebar\) return;/;
 const ON_TOGGLE = /const onToggle = useCallback\(([\s\S]*?)\n\t\);/;
 const TOGGLE_SIDEBAR = /toggleSidebar\(\);/;
 const VIEWPORT_WIDTH = /viewportWidth/;
@@ -197,10 +201,22 @@ test("both shell controls write the preference, with no narrow overlay branch", 
 	assert.ok(!shell.includes("SIDEBAR_DOCK_MIN_PX"));
 	assert.ok(!shell.includes("sheetRequested"));
 	assert.ok(!shell.includes("SheetContent"));
-	assert.match(shell, ON_COLLAPSE);
+	// The click moved to the titlebar; both inputs still share the store action
+	// and neither may change the preference behind a route-owned column.
+	assert.match(shell, SHELL_TOGGLE);
+	const controls = readFileSync(
+		"src/renderer/src/shared/components/navigation/desktop-navigation-controls.tsx",
+		"utf8",
+	);
+	assert.match(controls, TITLEBAR_TOGGLE);
 	const chord = ON_TOGGLE.exec(shell);
 	assert.ok(chord, "the sidebar keyboard handler is missing");
+	assert.match(chord[1], SKIP_ROUTE_OWNED);
 	assert.match(chord[1], TOGGLE_SIDEBAR);
+	assert.ok(
+		chord[1].search(SKIP_ROUTE_OWNED) < chord[1].search(TOGGLE_SIDEBAR),
+		"the route-owned guard must run before the preference write",
+	);
 	assert.doesNotMatch(chord[1], VIEWPORT_WIDTH);
 });
 

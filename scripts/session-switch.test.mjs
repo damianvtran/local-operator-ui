@@ -1088,19 +1088,26 @@ test("the loading indicator stays one small quiet mark", () => {
  * rule is called by both entrances in `chat-page.tsx` (the sidebar's row and the
  * `/chat` rebind) and by the palette's conversation rows.
  *
- * FIVE ROWS LEFT THIS TABLE WITH ISSUES #844/#849, which is the change being
- * recorded rather than a hole in the scan: `app.tsx`'s create-agent landing, the
+ * FIVE OLD WRITERS LEFT WITH ISSUES #844/#849: `app.tsx`'s create-agent landing, the
  * agent-hub download landing, the agents sidebar's "Chat with agent", the legacy
  * agents page's Chat button and the palette's agent row all used to write
  * `/chat/<agent id>` - a route whose only non-session fallback had no writer, so
  * every one of them landed on the legacy notice. They stage a draft now
  * (`stageDraft({ kind, name })` then `navigate("/chat")`), which builds no chat
  * URL: the same landing the sidebar's "New chat with <name>" rows have always
- * used. Removing a row here is the test working - the scan follows the code, and
- * an interpolated chat URL RETURNING to one of those files fails as an
- * appearance.
+ * used. The scan follows the code: reviving one of those writers fails as a
+ * new file or as an increase over the exact count (the latter for `app.tsx`,
+ * which now has distinct native-attention entrances).
  */
 const CHAT_URL_BUILDERS = {
+	"src/renderer/src/app.tsx": {
+		count: 3,
+		why: "native attention entrances: a notification click (including console and conversation banners), a guarded console reveal, and a browser consent banner click each select the destination and write its URL in the same handler",
+	},
+	"src/renderer/src/shared/browser-user-attention.ts": {
+		count: 1,
+		why: "the explicit browser attention row click selects and reveals the owning session's browser pane; a stale tab refuses before the switch, not after it",
+	},
 	"src/renderer/src/features/chat/components/chat-page.tsx": {
 		count: 1,
 		why: "the send path re-pointing the URL once a staged draft's session has materialised - guarded by `activeSessionId === id` in the same expression",
@@ -1139,6 +1146,11 @@ const CHAT_URL_BUILDERS = {
 
 /** The files that commit a switch, and why each is allowed to. */
 const OPEN_SESSION_CALLERS = {
+	"src/renderer/src/shared/components/navigation/desktop-navigation-router.tsx":
+		{
+			count: 1,
+			why: "Back/Forward restores an already-resolved bare Chat history entry's saved session into the store; the router has moved already, so the read never writes a URL",
+		},
 	"src/renderer/src/features/chat/components/chat-page.tsx": {
 		count: 1,
 		why: "the route-to-store effect's own call - unchained and deliberate, since it is what makes a deep link and Back work",

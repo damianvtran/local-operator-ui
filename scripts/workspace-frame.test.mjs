@@ -211,7 +211,11 @@ test("cold/disabled capability, aliases and unknown URLs all follow the Chat red
 
 test("App consumes the shell lane once and passes the matched route to the rail", () => {
 	assert.match(app, OUTLET_PLACEMENT);
-	assert.match(app, /insetRouteBody\s+showChatRail=\{placement === "chat"\}/);
+	assert.match(
+		app,
+		/<ChatLayout\s+sidebar=\{<SidebarNavigation \/>\}\s+insetRouteBody\s+showDesktopNavigation\s+showChatRail=\{placement === "chat"\}/,
+		"the workspace mounts titlebar navigation and only the chat route hosts the chat rail",
+	);
 	const shell = read("shared/components/common/chat-layout.tsx");
 	assert.match(shell, /showChatRail && railMounted \? PANEL_RAIL_WIDTH_PX : 0/);
 	assert.match(shell, /display: railWidth === 0 \? "none" : undefined/);
