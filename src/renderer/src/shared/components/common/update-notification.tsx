@@ -58,12 +58,24 @@ import {
  * the user dismissed for a fact that has not changed, while a NEW pair (a restart
  * that moved the daemon, a second install) still speaks.
  */
-const skewKey = (notice: {
-	installVersion: string | null;
-	runningVersion: string | null;
-}): string => `${notice.installVersion ?? "?"}|${notice.runningVersion ?? "?"}`;
+type BackendObservationSubject = {
+	installScope?: string;
+	observationId?: number;
+};
+
+const skewKey = (
+	notice: BackendObservationSubject & {
+		installVersion: string | null;
+		runningVersion: string | null;
+	},
+): string =>
+	JSON.stringify([
+		notice.installScope,
+		notice.installVersion,
+		notice.runningVersion,
+	]);
 /*
- * DELIBERATELY THE READING PAIR AND NOTHING ELSE, including whether the release was
+ * DELIBERATELY THE INSTALL AND READING PAIR, not whether the release was
  * read: the fact the reader dismisses is that THIS SERVER TRAILS THIS INSTALL, and a
  * later check that must not call the install current (QA round 3, Q3-1) states the
  * same fact about the same two readings. Keying on the phrasing instead would re-open
@@ -1420,13 +1432,18 @@ export const UpdateNotification = ({
 	// Background convergence is not an update press in flight. Only the quiet
 	// sidebar arc follows it; the reader can still check or use the app normally.
 	const [convergingBackend, setConvergingBackend] = useState(false);
-	const backendObservation = useRef<{
-		id: number;
-		version: string | null;
-		installScope?: string;
-		converging: boolean;
-		settled: boolean;
-	}>({ id: 0, version: null, converging: false, settled: false });
+	const backendObservation = useRef<
+		BackendObservationSubject & {
+			version: string | null;
+		}
+	>({ version: null });
+	const backendConvergence = useRef<
+		| (BackendObservationSubject & {
+				version: string | null;
+				pressed: boolean;
+		  })
+		| null
+	>(null);
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 	const [downloading, setDownloading] = useState(false);
@@ -1566,53 +1583,56 @@ export const UpdateNotification = ({
 	 * later check ever re-offers the update, so nothing else on any surface corrects
 	 * it (reviews R1-3, UX U1/U6, QA Q-1/Q-2).
 	 */
-	const [backendSkewNotice, setBackendSkewNotice] = useState<{
-		/** The install on disk, and the build the server is actually on. */
-		installVersion: string | null;
-		runningVersion: string | null;
-		/** The install moved but nothing restarted the daemon serving this app. */
-		notRestarted: boolean;
-		/** The attempt landed while no app was watching it (UX U6). */
-		unattended: boolean;
-		/**
-		 * Whether the check that raised this notice READ the published release.
-		 *
-		 * False is the offline path (QA round 3, Q3-1): the pair is measured locally, so
-		 * an offline machine can still be told its daemon is a build behind, but nothing
-		 * on that pass compared the install against a release - so the sentence may not
-		 * call the install current. Defaults to true: a producer that does not say read
-		 * it, which is every other arrival here.
-		 */
-		releaseRead: boolean;
-		/**
-		 * Whether the app may restart the daemon that is behind.
-		 *
-		 * It decides the "what to do" line, and the two cases are opposite: an owned
-		 * daemon is the app's to bounce (so the reader has an action), while an adopted
-		 * one is not (so the sentence is a fact about what to expect). Defaults to true
-		 * - a producer that does not say is the app's own daemon.
-		 */
-		restartable: boolean;
-		/**
-		 * Whether the environment this app's update path moves is its OWN managed one.
-		 *
-		 * The SECOND ownership reading, and it is not the same question as
-		 * `restartable`: that one asks who started the DAEMON (true on a global install
-		 * the app spawned a daemon from), while this one asks whose INSTALL the press
-		 * would move. The panel's control is a publish-and-restart that only the
-		 * app-owned arm performs, so the control takes both (design D5). Absent is NOT
-		 * a yes here, unlike `restartable`: an action needs a stated reason to exist.
-		 */
-		appOwnedEnvironment: boolean;
-		/**
-		 * Which fact the panel is stating, which decides its heading and its first
-		 * paragraph: a landed update onto a daemon that did not move (`landed`), an
-		 * install already current whose daemon trails it (`up-to-date`), or the app's
-		 * own restart that left the server with no reading at all (`restart-failed`,
-		 * UX U1).
-		 */
-		kind: "landed" | "up-to-date" | "restart-failed";
-	} | null>(null);
+	const [backendSkewNotice, setBackendSkewNotice] = useState<
+		| (BackendObservationSubject & {
+				/** The install on disk, and the build the server is actually on. */
+				installVersion: string | null;
+				runningVersion: string | null;
+				/** The install moved but nothing restarted the daemon serving this app. */
+				notRestarted: boolean;
+				/** The attempt landed while no app was watching it (UX U6). */
+				unattended: boolean;
+				/**
+				 * Whether the check that raised this notice READ the published release.
+				 *
+				 * False is the offline path (QA round 3, Q3-1): the pair is measured locally, so
+				 * an offline machine can still be told its daemon is a build behind, but nothing
+				 * on that pass compared the install against a release - so the sentence may not
+				 * call the install current. Defaults to true: a producer that does not say read
+				 * it, which is every other arrival here.
+				 */
+				releaseRead: boolean;
+				/**
+				 * Whether the app may restart the daemon that is behind.
+				 *
+				 * It decides the "what to do" line, and the two cases are opposite: an owned
+				 * daemon is the app's to bounce (so the reader has an action), while an adopted
+				 * one is not (so the sentence is a fact about what to expect). Defaults to true
+				 * - a producer that does not say is the app's own daemon.
+				 */
+				restartable: boolean;
+				/**
+				 * Whether the environment this app's update path moves is its OWN managed one.
+				 *
+				 * The SECOND ownership reading, and it is not the same question as
+				 * `restartable`: that one asks who started the DAEMON (true on a global install
+				 * the app spawned a daemon from), while this one asks whose INSTALL the press
+				 * would move. The panel's control is a publish-and-restart that only the
+				 * app-owned arm performs, so the control takes both (design D5). Absent is NOT
+				 * a yes here, unlike `restartable`: an action needs a stated reason to exist.
+				 */
+				appOwnedEnvironment: boolean;
+				/**
+				 * Which fact the panel is stating, which decides its heading and its first
+				 * paragraph: a landed update onto a daemon that did not move (`landed`), an
+				 * install already current whose daemon trails it (`up-to-date`), or the app's
+				 * own restart that left the server with no reading at all (`restart-failed`,
+				 * UX U1).
+				 */
+				kind: "landed" | "up-to-date" | "restart-failed";
+		  })
+		| null
+	>(null);
 	/**
 	 * The skew the user has already waved away, by reading.
 	 *
@@ -2241,23 +2261,40 @@ export const UpdateNotification = ({
 		(reported: string | null, id?: number, scope?: string) => {
 			const observed = backendObservation.current;
 			const version = readableVersion(reported);
-			if (id !== undefined && id <= observed.id) return false;
+			// Legacy events have no place in the ordered stream. Let them report
+			// measured skew, but never let them authorize settling a scoped notice.
+			if (id === undefined) return true;
+			if (observed.observationId !== undefined && id <= observed.observationId)
+				return false;
+			// Versions order readings of ONE install, not independent attachments.
 			if (
+				scope &&
+				scope === observed.installScope &&
 				version &&
 				observed.version &&
-				version !== observed.version &&
 				!atLeastVersion(version, observed.version)
 			)
 				return false;
-			if (version && version !== observed.version) {
-				observed.version = version;
-				observed.installScope = scope;
-				observed.converging = false;
-				observed.settled = false;
-				setConvergingBackend(false);
-			}
-			if (id !== undefined) observed.id = id;
+			backendObservation.current = {
+				observationId: id,
+				installScope: scope,
+				version,
+			};
 			return true;
+		},
+		[],
+	);
+
+	// Both completion paths use the same nonmodal, non-focus-taking affirmation.
+	const affirmBackendUpdate = useCallback(
+		(sessionsOnOldBuild: number | null) => {
+			setBackendUpdateSessionsOnOldBuild(sessionsOnOldBuild);
+			setBackendUpdateCompleted(true);
+			setSnackbarOpen(true);
+			setTimeout(
+				() => setBackendUpdateCompleted(false),
+				completionSessionsLine(sessionsOnOldBuild) === null ? 6000 : 8000,
+			);
 		},
 		[],
 	);
@@ -2282,16 +2319,18 @@ export const UpdateNotification = ({
 	 * offer's own defer rule exists to avoid, while a NEW reading still speaks.
 	 */
 	const announceBackendSkew = useCallback(
-		(notice: {
-			installVersion: string | null;
-			runningVersion: string | null;
-			notRestarted: boolean;
-			unattended: boolean;
-			restartable: boolean;
-			releaseRead: boolean;
-			appOwnedEnvironment: boolean;
-			kind: "landed" | "up-to-date" | "restart-failed";
-		}): boolean => {
+		(
+			notice: BackendObservationSubject & {
+				installVersion: string | null;
+				runningVersion: string | null;
+				notRestarted: boolean;
+				unattended: boolean;
+				restartable: boolean;
+				releaseRead: boolean;
+				appOwnedEnvironment: boolean;
+				kind: "landed" | "up-to-date" | "restart-failed";
+			},
+		): boolean => {
 			const install = readableVersion(notice.installVersion);
 			const running = readableVersion(notice.runningVersion);
 			/*
@@ -2357,17 +2396,14 @@ export const UpdateNotification = ({
 			}
 			if (running !== null && atLeastVersion(running, install)) return false;
 			const key = skewKey(notice);
-			if (dismissedSkewRef.current === key) return false;
-			setBackendSkewNotice(notice);
-			/*
-			 * WHETHER IT SPOKE, because one caller must not be left mute by a
-			 * decline (review R2-3). The completion path used to `return` past its
-			 * toast whenever this funnel was reached, so a successful install over an
-			 * adopted daemon whose `/health` read failed - declined here, correctly,
-			 * for want of a reading - ended with no toast, no notice and no error: the
-			 * panel simply went idle. Silence on success is the one outcome this panel
-			 * must not produce, so the caller asks.
-			 */
+			if (dismissedSkewRef.current !== key) {
+				// A fresh warning can follow a verified update on another install;
+				// don't let the earlier toast mask the newly measured problem.
+				setBackendUpdateCompleted(false);
+				setBackendSkewNotice(notice);
+			}
+			// Even when the user already acknowledged this reading, measured skew
+			// must never fall through to a success toast.
 			return true;
 		},
 		[],
@@ -2796,17 +2832,40 @@ export const UpdateNotification = ({
 		// Backend update not available
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
-				const observed = backendObservation.current;
+				const { installScope, observationId } = info;
 				const install = readableVersion(info.version);
 				const running = readableVersion(info.runningVersion);
-				const sameInstall =
-					!observed.installScope || info.installScope === observed.installScope;
+				const convergence = backendConvergence.current;
+				const follows = (subject: BackendObservationSubject) =>
+					!!installScope &&
+					installScope === subject.installScope &&
+					observationId !== undefined &&
+					subject.observationId !== undefined &&
+					observationId > subject.observationId;
+				const followsConvergence = !!convergence && follows(convergence);
 				const equal =
-					sameInstall &&
 					install !== null &&
 					running === install &&
 					info.bootVersionVerified === true;
-				if (!sameInstall && (info.observationOnly || observed.converging))
+				const converged =
+					followsConvergence && equal && install === convergence?.version;
+				const measuredSkew =
+					!!install && !!running && !atLeastVersion(running, install);
+				const newAttachSkew =
+					!!convergence &&
+					!!installScope &&
+					observationId !== undefined &&
+					installScope !== convergence.installScope &&
+					measuredSkew;
+				// A deadline belongs to its promotion, even if it arrives after the
+				// app has already seen a newer attachment to another install.
+				if (info.convergenceEnded && !followsConvergence) return;
+				if (
+					info.observationOnly &&
+					convergence &&
+					!followsConvergence &&
+					!newAttachSkew
+				)
 					return;
 				if (
 					!acceptBackendObservation(
@@ -2816,20 +2875,31 @@ export const UpdateNotification = ({
 					)
 				)
 					return;
-				if (equal || info.convergenceEnded) {
-					observed.converging = false;
+				if (converged || info.convergenceEnded || newAttachSkew) {
+					backendConvergence.current = null;
 					setConvergingBackend(false);
 				}
 				if (equal) {
-					observed.settled = true;
-					setBackendSkewNotice(null);
+					setBackendSkewNotice((notice) => {
+						const warnedVersion = readableVersion(notice?.installVersion);
+						return notice &&
+							follows(notice) &&
+							install &&
+							warnedVersion &&
+							atLeastVersion(install, warnedVersion)
+							? null
+							: notice;
+					});
+					if (converged && convergence?.pressed) affirmBackendUpdate(null);
 				}
 				if (info.observationOnly) {
 					// A local reconciliation must not close offers or answer a manual check.
-					if (info.convergenceEnded && running && !equal) {
+					if ((info.convergenceEnded || newAttachSkew) && measuredSkew) {
 						announceBackendSkew({
 							installVersion: install,
 							runningVersion: running,
+							installScope,
+							observationId,
 							notRestarted: true,
 							unattended: false,
 							restartable: false,
@@ -2902,16 +2972,12 @@ export const UpdateNotification = ({
 				 * later check able to re-offer, because the install itself is up to date.
 				 * The producer now sends the daemon's reading on this event too.
 				 */
-				if (
-					running &&
-					!observed.converging &&
-					!(observed.settled && info.observationId === undefined)
-				) {
-					if (install && !atLeastVersion(running, install))
-						observed.installScope = info.installScope;
+				if (measuredSkew && !backendConvergence.current) {
 					announceBackendSkew({
 						installVersion: info.version,
 						runningVersion: info.runningVersion ?? null,
+						installScope,
+						observationId,
 						notRestarted: true,
 						unattended: false,
 						restartable: info.restartable !== false,
@@ -2945,7 +3011,8 @@ export const UpdateNotification = ({
 					return;
 				// The attempt this answers is over, and `terminal` keeps the resolved
 				// `true`/`false` behind this event from reporting it a second time.
-				answerBackendUpdateAttempt();
+				const pressed =
+					answerBackendUpdateAttempt() && completion?.unattended !== true;
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
 				// The install landed, so there is no release waiting any more (issue #672).
@@ -2954,18 +3021,19 @@ export const UpdateNotification = ({
 				setUpdatingBackend(false);
 				setBackendUpdatePhase(null);
 
-				const observed = backendObservation.current;
 				if (completion?.converging === true) {
-					if (observed.settled && completion.observationId === undefined)
-						return;
-					observed.converging = true;
-					observed.installScope = completion.installScope;
+					backendConvergence.current = {
+						installScope: completion.installScope,
+						observationId: completion.observationId,
+						version: readableVersion(completion.installVersion),
+						pressed,
+					};
 					setBackendUpdateCompleted(false);
 					setBackendSkewNotice(null);
 					setConvergingBackend(true);
 					return;
 				}
-				observed.converging = false;
+				backendConvergence.current = null;
 				setConvergingBackend(false);
 
 				/*
@@ -3010,10 +3078,11 @@ export const UpdateNotification = ({
 					 * no field, and their funnel is exactly what it was.
 					 */
 					completion.moved !== true &&
-					!(observed.settled && completion.observationId === undefined) &&
 					announceBackendSkew({
 						installVersion: completion.installVersion,
 						runningVersion: completion.runningVersion,
+						installScope: completion.installScope,
+						observationId: completion.observationId,
 						notRestarted: !completion.restarted,
 						unattended: completion.unattended === true,
 						restartable: completion.restartable !== false,
@@ -3047,16 +3116,7 @@ export const UpdateNotification = ({
 					typeof completion?.sessionsOnOldBuild === "number"
 						? completion.sessionsOnOldBuild
 						: null;
-				setBackendUpdateSessionsOnOldBuild(sessionsOnOldBuild);
-				setBackendUpdateCompleted(true);
-				setSnackbarOpen(true);
-
-				setTimeout(
-					() => {
-						setBackendUpdateCompleted(false);
-					},
-					completionSessionsLine(sessionsOnOldBuild) === null ? 6000 : 8000,
-				);
+				affirmBackendUpdate(sessionsOnOldBuild);
 			});
 
 		/**
@@ -3183,6 +3243,7 @@ export const UpdateNotification = ({
 		};
 	}, [
 		acceptBackendObservation,
+		affirmBackendUpdate,
 		announceBackendSkew,
 		answerBackendUpdateAttempt,
 		autoCheck,

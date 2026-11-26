@@ -11081,6 +11081,7 @@ test("the offer carries the reading that decides the sentence it renders", async
 for (const scenario of [
 	"settled",
 	"equal check",
+	"superseded",
 	"sustained",
 	"unreadable",
 	"not queued",
@@ -11100,9 +11101,19 @@ for (const scenario of [
 		);
 		const promoted = join(root, "generations", "new");
 		const next = join(promoted, "tools", "local-operator");
+		const sibling = join(
+			root,
+			"generations",
+			"sibling",
+			"tools",
+			"local-operator",
+		);
+		const newer = join(root, "generations", "superseding");
 		for (const [prefix, version] of [
 			[previous, "0.113.8"],
 			[next, "0.113.9"],
+			[sibling, "0.113.9"],
+			[join(newer, "tools", "local-operator"), "0.113.10"],
 		]) {
 			makeInstall(prefix, version);
 			writeFileSync(
@@ -11191,6 +11202,7 @@ for (const scenario of [
 			const converges = [
 				"settled",
 				"equal check",
+				"superseded",
 				"sustained",
 				"unreadable",
 			].includes(scenario);
@@ -11211,32 +11223,51 @@ for (const scenario of [
 				"an ordinary old-record probe must not end convergence",
 			);
 			const equal = scenario === "settled" || scenario === "equal check";
-			if (equal) {
-				const old = run.backend.servingInstall();
+			const old = run.backend.servingInstall();
+			const attachEqualVersion = (prefix) => {
 				run.backend.servingInstall = () => ({
 					...old,
 					readings: {
 						...old.readings,
-						prefix: next,
+						prefix,
 						instanceId: "fixture-new",
 						bootVersion: "0.113.9",
 					},
 				});
-			} else if (scenario === "unreadable") {
-				run.backend.getStatusSnapshot = () => ({ state: "detached" });
-			}
-			if (scenario === "equal check") {
 				run.updateService.readRunningBackend = async () => ({
 					version: "0.113.9",
-					prefix: next,
+					prefix,
 					installKind: "uv-tool",
 				});
-				const plan = await run.updateService.resolveBackendUpdatePlan();
-				run.updateService.resolveBackendUpdatePlan = async () => ({
-					...plan,
-					installedInstallVersion: "0.113.9",
-				});
+			};
+			if (scenario === "settled") attachEqualVersion(next);
+			if (scenario === "unreadable") {
+				run.backend.getStatusSnapshot = () => ({ state: "detached" });
+			}
+			if (scenario === "superseded") {
+				symlinkSync(newer, join(root, "candidate"));
+				renameSync(join(root, "candidate"), join(root, "current"));
+			}
+			if (scenario === "equal check") {
 				run.updateService.networkIsReachable = () => false;
+				attachEqualVersion(sibling);
+				run.updateService.observeAttachedPromotion();
+				assert.equal(
+					status(),
+					undefined,
+					"observer rejects same-version sibling",
+				);
+				await run.updateService.checkForBackendUpdates(true);
+				assert.equal(
+					status(),
+					undefined,
+					"silent check rejects same-version sibling",
+				);
+				assert.ok(
+					run.updateService.attachedPromotion,
+					"the deadline stays armed",
+				);
+				attachEqualVersion(next);
 				await run.updateService.checkForBackendUpdates(true);
 				assert.ok(
 					status()?.observationOnly,
@@ -11255,11 +11286,17 @@ for (const scenario of [
 				`${scenario}: observation ${JSON.stringify({ ...status(), installScope: "<synthetic current>" })}`,
 			);
 			assert.equal(
+				status()?.version,
+				scenario === "superseded" ? "0.113.10" : "0.113.9",
+			);
+			assert.equal(
 				status()?.runningVersion,
-				equal ? "0.113.9" : scenario === "sustained" ? "0.113.8" : null,
+				equal ? "0.113.9" : scenario === "unreadable" ? null : "0.113.8",
 			);
 			assert.equal(status()?.bootVersionVerified, equal);
 			assert.ok(status()?.observationId > completion.observationId);
+			assert.equal(run.calls.restarts, 0);
+			assert.equal(run.calls.starts, 0);
 		} finally {
 			run?.dispose();
 			rmSync(root, { recursive: true, force: true });

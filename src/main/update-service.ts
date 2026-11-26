@@ -8541,39 +8541,50 @@ export class UpdateService {
 		this.attachedPromotion = null;
 	}
 
+	/** A stable install scope identifies the pointer, not which generation booted. */
+	private isAttachedPromotionSettled(
+		promotion: NonNullable<UpdateService["attachedPromotion"]>,
+		current: ReturnType<typeof readInstallIdentity>,
+		record: ReturnType<UpdateService["servingRecordReadings"]>,
+	): boolean {
+		return (
+			current.version === promotion.version &&
+			current.venvPrefix === promotion.promotedPrefix &&
+			this.backendService?.getStatusSnapshot().state === "attached" &&
+			record.installKind === "uv-tool" &&
+			record.prefix === promotion.promotedPrefix &&
+			record.bootVersion === promotion.version &&
+			!!record.instanceId &&
+			record.instanceId !== promotion.previousInstance
+		);
+	}
+
 	/** Observes the existing attachment probe; this never starts, restarts or probes a daemon. */
 	observeAttachedPromotion(expired = false): void {
 		const promotion = this.attachedPromotion;
 		if (!promotion) return;
 		const record = this.servingRecordReadings();
 		const current = readInstallIdentity(promotion.currentEntry);
-		const sameInstall =
-			current.version === promotion.version &&
-			current.venvPrefix === promotion.promotedPrefix;
-		const attached =
-			this.backendService?.getStatusSnapshot().state === "attached";
-		const settled =
-			sameInstall &&
-			attached &&
-			record.installKind === "uv-tool" &&
-			record.prefix === promotion.promotedPrefix &&
-			record.bootVersion === promotion.version &&
-			!!record.instanceId &&
-			record.instanceId !== promotion.previousInstance;
+		const settled = this.isAttachedPromotionSettled(promotion, current, record);
 		if (!settled && !expired) return;
-		// A timeout does not manufacture a skew from the last cached version. The
-		// old warning is actionable only when we can still identify that old daemon.
+		const currentVersion = current.version ?? null;
+		// Another promotion can move the same pointer before this deadline. Report
+		// the current comparison, but only for a boot we can place in this install.
 		const stillBehind =
-			sameInstall &&
-			attached &&
+			!!current.venvPrefix &&
+			installPointerPath(current.realPath ?? null) === promotion.currentEntry &&
+			this.backendService?.getStatusSnapshot().state === "attached" &&
 			record.installKind === "uv-tool" &&
-			record.prefix === promotion.previousPrefix &&
+			(record.prefix === promotion.previousPrefix ||
+				installPointerPath(join(record.prefix, "bin", "local-operator")) ===
+					promotion.currentEntry) &&
 			!!record.instanceId &&
 			record.bootVersion !== null &&
-			compareVersions(record.bootVersion, promotion.version) === -1;
+			currentVersion !== null &&
+			compareVersions(record.bootVersion, currentVersion) === -1;
 		this.clearAttachedPromotion();
 		const payload: BackendUpdateStatus = {
-			version: promotion.version,
+			version: currentVersion,
 			installScope: promotion.currentEntry,
 			runningVersion: settled || stillBehind ? record.bootVersion : null,
 			bootVersionVerified: settled,
@@ -8918,22 +8929,31 @@ export class UpdateService {
 	) {
 		const record = this.servingRecordReadings();
 		const samePrefix = !!running.prefix && record.prefix === running.prefix;
-		// A /health fallback can repeat the on-disk version of an old daemon.
-		// Retiring a warning requires the disk, boot record and attached endpoint
-		// to agree, on the same install the warning is about.
+		const installScope = samePrefix
+			? (installPointerPath(join(record.prefix, "bin", "local-operator")) ??
+				undefined)
+			: undefined;
+		const promotion = this.attachedPromotion;
+		// /health can echo the on-disk version of an old daemon. For the promoted
+		// install even boot-version equality is insufficient: a sibling generation
+		// can have the same version, so apply the attachment observer's exact proof.
 		return {
 			eventRunning: record.bootVersion ?? running.version,
-			installScope: samePrefix
-				? (installPointerPath(join(record.prefix, "bin", "local-operator")) ??
-					undefined)
-				: undefined,
+			installScope,
 			bootVersionVerified:
 				samePrefix &&
 				!!installed &&
 				isReadableVersion(installed) &&
 				record.bootVersion === installed &&
 				!!record.instanceId &&
-				running.version === installed,
+				running.version === installed &&
+				(!promotion ||
+					installScope !== promotion.currentEntry ||
+					this.isAttachedPromotionSettled(
+						promotion,
+						readInstallIdentity(promotion.currentEntry),
+						record,
+					)),
 		};
 	}
 

@@ -2752,6 +2752,159 @@ const CHECK_AFTER_PROMOTION = {
 	observationId: 3,
 	bootVersionVerified: true,
 };
+const BACKEND_SUCCESS = "Server update completed successfully";
+
+test("a newer warning and its equality belong to the same attached install", () => {
+	for (const source of [
+		"same-version completion",
+		"lower-version fresh check",
+		"lower while converging",
+	]) {
+		const handle = mountNotification();
+		const emit = (name, payload) => {
+			updater.emit(name, payload);
+			handle.render();
+		};
+		const warns = () => showsText(handle, EXTERNAL_SKEW_HEADING);
+		const installB = "/different/install/bin/local-operator";
+		const sameVersion = source === "same-version completion";
+		const versionB = sameVersion ? "0.113.9" : "0.113.8";
+		emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: !sameVersion,
+		});
+		if (source === "lower-version fresh check") {
+			emit("backend-update-not-available", {
+				...CHECK_AFTER_PROMOTION,
+				observationOnly: true,
+			});
+			assert.equal(warns(), false);
+		}
+		if (sameVersion) {
+			emit("backend-update-completed", {
+				...EXTERNAL_PROMOTION,
+				installScope: installB,
+				observationId: 4,
+			});
+		} else {
+			emit("backend-update-not-available", {
+				version: versionB,
+				runningVersion: "0.113.7",
+				installScope: installB,
+				observationId: 4,
+				restartable: false,
+				releaseRead: false,
+			});
+		}
+		assert.ok(warns(), source);
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationId: 5,
+			observationOnly: !sameVersion,
+		});
+		assert.ok(warns(), "A's equality may not retire B's warning");
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationId: 6,
+			runningVersion: "0.113.8",
+			bootVersionVerified: false,
+			observationOnly: true,
+			convergenceEnded: true,
+		});
+		assert.ok(
+			allCopy(handle)
+				.join(" ")
+				.includes(sameVersion ? "0.113.8" : "0.113.7"),
+			"A's deadline may not replace B",
+		);
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			version: versionB,
+			runningVersion: versionB,
+			installScope: installB,
+			observationId: 7,
+			observationOnly: true,
+		});
+		assert.equal(
+			warns(),
+			false,
+			"B's verified equality retires its own warning",
+		);
+	}
+});
+
+test("unscoped unattended measured skew still warns after scoped equality", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", EXTERNAL_PROMOTION);
+	handle.render();
+	updater.emit("backend-update-not-available", CHECK_AFTER_PROMOTION);
+	handle.render();
+	const unattended = {
+		installVersion: "0.113.9",
+		runningVersion: "0.113.8",
+		restarted: false,
+		restartable: false,
+		unattended: true,
+	};
+	updater.emit("backend-update-completed", unattended);
+	handle.render();
+	assert.ok(showsText(handle, EXTERNAL_SKEW_HEADING));
+	assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+	updater.emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		observationId: 4,
+	});
+	handle.render();
+	assert.ok(
+		showsText(handle, EXTERNAL_SKEW_HEADING),
+		"scoped equality cannot identify an unscoped warning",
+	);
+	control(handle, "Understood").props.onClick();
+	handle.render();
+	updater.emit("backend-update-completed", unattended);
+	handle.render();
+	assert.equal(
+		showsText(handle, EXTERNAL_SKEW_HEADING),
+		false,
+		"acknowledged reading stays dismissed",
+	);
+	assert.equal(
+		showsText(handle, BACKEND_SUCCESS),
+		false,
+		"a dismissed mismatch is still not success",
+	);
+});
+
+test("only pressed convergence with verified equality affirms success", async () => {
+	for (const [pressed, verified] of [
+		[true, true],
+		[false, true],
+		[true, false],
+	]) {
+		const handle = mountNotification();
+		if (pressed) startServerUpdate(handle);
+		updater.emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: true,
+		});
+		handle.render();
+		if (pressed) await settleServerUpdate(handle, true);
+		assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, true);
+		updater.emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationOnly: true,
+			runningVersion: verified ? CHECK_AFTER_PROMOTION.version : null,
+			bootVersionVerified: verified,
+			convergenceEnded: !verified,
+		});
+		handle.render();
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
+		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
+		assert.equal(showsText(handle, BACKEND_SUCCESS), pressed && verified);
+	}
+});
 
 test("a later equal server reading retires a stale external-install warning", () => {
 	const handle = mountNotification();
