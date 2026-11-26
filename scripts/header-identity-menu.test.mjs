@@ -616,6 +616,27 @@ test("the menu recomputes its bands when the locale changes (source pin, not a r
 	);
 });
 
+test("the roster and closed-seat explanation both take the shared floating finish", () => {
+	const source = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/features/chat/components/chat-header-identity-menu.tsx",
+		),
+		"utf8",
+	);
+	// Loading, empty and refusal render inside the roster shell; the closed-seat
+	// explanation has its own shell and must opt in rather than fall back to flat.
+	const panels = [
+		...source.matchAll(
+			/<PopoverContent\b[\s\S]*?data-header-identity-menu=\{kind\}/g,
+		),
+	];
+	assert.equal(panels.length, 2);
+	for (const [panel] of panels) {
+		assert.ok(panel.includes('data-lo-floating-finish=""'));
+	}
+});
+
 test("the bound is a ceiling the panel can only shrink to fit", () => {
 	// Both halves matter: an absolute ceiling (so the number does not mean
 	// different things in different windows) and the available height (so a panel
