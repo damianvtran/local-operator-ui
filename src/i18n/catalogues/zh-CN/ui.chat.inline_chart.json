@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "另有：",
+	"ui.chat.inline_chart.data_toggle": "图表数据",
+	"ui.chat.inline_chart.more": "另有 {count, number} 项",
+	"ui.chat.inline_chart.no_data": "无数据",
+	"ui.chat.inline_chart.other": "其他（{count, number}）",
+	"ui.chat.inline_chart.pair": "{label}：{value}",
+	"ui.chat.inline_chart.position": "第 {index, number} 项，共 {count, number} 项",
+	"ui.chat.inline_chart.right_axis": "{label} · 右轴",
+	"ui.chat.inline_chart.role": "图表",
+	"ui.chat.inline_chart.share_of_total": "占总数的 {share}",
+	"ui.chat.inline_chart.total": "总计"
+}
