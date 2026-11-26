@@ -3211,6 +3211,15 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	background-color: var(--picker-active);
 }
 
+/* Muted Model metadata clears the paper and hover floors, but can fall below
+ * 4.5:1 on the brighter active/pending fill at softer contrast presets. Lift
+ * just those enabled text roles; refusal copy and the Current check stay dim. */
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"]:is([aria-selected="true"], [data-picked="true"])
+	[class~="text-ink-muted"] {
+	color: var(--lo-ink);
+}
+
 [data-quick-picker="model"][data-picker-placement="anchored"] [data-lo-input] {
 	background-color: color-mix(
 		in srgb,

@@ -850,6 +850,8 @@ export const PickerRow: FC<PickerRowProps> = memo(
 						<span
 							className={cn(
 								"truncate text-body-sm",
+								// Mark Enter's target without colouring or styling the Current check.
+								anchored && isActive && "font-medium",
 								option.disabled ? "text-ink-disabled" : "text-ink",
 							)}
 						>

@@ -403,23 +403,37 @@ export const AnchoredEffort: Story = {
 		expect(
 			within(list).getByRole("option", { selected: true }),
 		).toHaveTextContent("Medium");
-		// The pointer and keyboard can mark adjacent rows at the same time.
-		// Read their actual boxes and fills, not just the state attributes.
+		const current = within(list).getByRole("option", {
+			name: "Medium Current",
+		});
+		const next = within(list).getByRole("option", { name: "xHigh" });
+		const restingHeight = box(next).height;
+		await userEvent.keyboard("{ArrowDown}");
+		// Current is the committed value. Enter's target must also read without
+		// colour, including when a third row has the pointer wash.
+		const active = within(list).getByRole("option", { selected: true });
+		expect(active).toBe(next);
+		const weight = (row: HTMLElement, label: string) =>
+			Number(getComputedStyle(within(row).getByText(label)).fontWeight);
+		expect(weight(active, "xHigh")).toBeGreaterThan(weight(current, "Medium"));
+		expect(box(active).height).toBeCloseTo(restingHeight, 1);
 		if (matchMedia("(hover: hover)").matches) {
-			const active = within(list).getByRole("option", { selected: true });
 			const neighbor = within(list).getByRole("option", { name: "Low" });
 			await userEvent.hover(neighbor);
 			expect(neighbor).toHaveAttribute("data-hovered", "true");
-			expect(getComputedStyle(neighbor).backgroundColor).not.toBe(
-				getComputedStyle(active).backgroundColor,
-			);
-			expect(getComputedStyle(neighbor).backgroundColor).not.toBe(
-				"rgba(0, 0, 0, 0)",
-			);
-			expect(box(active).top - box(neighbor).bottom).toBeCloseTo(2, 1);
+			expect(active).toHaveAttribute("aria-selected", "true");
+			expect(current).toHaveAttribute("data-current", "true");
+			expect(box(current).top - box(neighbor).bottom).toBeCloseTo(2, 1);
+			expect(weight(active, "xHigh")).toBeGreaterThan(weight(neighbor, "Low"));
+			const activeFill = getComputedStyle(active).backgroundColor;
+			const hoverFill = getComputedStyle(neighbor).backgroundColor;
+			expect(activeFill).not.toBe(hoverFill);
+			for (const fill of [activeFill, hoverFill]) {
+				expect(fill).not.toBe("rgba(0, 0, 0, 0)");
+			}
 			await userEvent.unhover(neighbor);
 		}
-		await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+		await userEvent.keyboard("{ArrowDown}");
 		expect(
 			within(list).getByRole("option", { selected: true }),
 		).toHaveTextContent(HIGH);
@@ -564,7 +578,10 @@ const defaultGeometry = async (accept: boolean, untick = false) => {
 		const saved = `Default for new sessions: ${LONG_LABEL}. Picks here update it too.`;
 		await waitFor(() => expect(check).toHaveAccessibleName(saved));
 		expect(check).toBeChecked();
-		expect(within(label).getByText(saved)).toHaveAttribute("title", saved);
+		// The hidden grid sizer repeats the receipt; only the painted copy has a title.
+		const receipt = within(label).getByTitle(saved);
+		expect(receipt).toHaveTextContent(saved);
+		expect(receipt).toBeVisible();
 	} else {
 		await within(dialog).findByText(DEFAULT_REFUSED);
 		expect(check).not.toBeChecked();

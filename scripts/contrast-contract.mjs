@@ -1319,6 +1319,57 @@ for (const entry of palettes) evaluatePalette(run, entry);
 	}
 }
 
+/* Read the anchored Model row's actual sRGB paint, not the generic floating
+ * panel pair. This runs for Standard and each composed preset. */
+{
+	const source = readFileSync(
+		join(ROOT, "src/renderer/src/styles/index.css"),
+		"utf8",
+	);
+	const scope = '[data-quick-picker][data-picker-placement="anchored"]';
+	const target =
+		'[role="option"]:is([aria-selected="true"], [data-picked="true"])';
+	const rules = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+	const metadata = rules.includes(
+		`${scope} ${target} [class~="text-ink-muted"] { color: var(--lo-ink); }`,
+	)
+		? "ink"
+		: "inkMuted";
+	const activeMix = rules.match(
+		/--picker-active: light-dark\( color-mix\(in srgb, var\(--picker-paper\), black (\d+)%\), color-mix\(in srgb, var\(--picker-paper\), white (\d+)%\) \);/,
+	);
+	if (
+		!activeMix ||
+		!rules.includes(`${scope} { --picker-paper: var(--lo-elevated);`) ||
+		!rules.includes(
+			`${scope} ${target} { background-color: var(--picker-active); }`,
+		)
+	) {
+		fail(
+			"anchored picker active/picked paint is unmeasured — read its actual ground and fill",
+		);
+	} else {
+		const [, lightMix, darkMix] = activeMix;
+		for (const { id, palette } of palettes) {
+			const light = glassSchemeOf(palette) === "light";
+			const fill = over(
+				light ? "#000000" : "#ffffff",
+				palette.elevated,
+				Number(light ? lightMix : darkMix) / 100,
+			);
+			for (const ink of new Set(["ink", metadata])) {
+				const contrast = ratio(palette[ink], fill);
+				run.assertions++;
+				if (contrast < 4.5) {
+					fail(
+						`${id}: anchored picker active/picked ${ink} on ${fill} is ${contrast.toFixed(2)}:1 (min 4.5:1)`,
+					);
+				}
+			}
+		}
+	}
+}
+
 /* ---- 5a. the Team Bridge arrival band ----------------------------------- */
 
 /*
