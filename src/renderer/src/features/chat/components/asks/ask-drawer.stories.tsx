@@ -54,6 +54,10 @@ import type {
 	PendingAsk,
 } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
+import {
+	DrawerAllConversations,
+	DrawerTabs,
+} from "../../../notifications/components/drawer-updates";
 import { AskDrawer } from "./ask-drawer";
 
 const TS = 1_760_000_000_000;
@@ -823,6 +827,33 @@ const LONG_TEXT_ASK: PendingAsk = ask({
 	],
 });
 
+/**
+ * THE SAME LONG QUESTION, ANSWERED AND DELIVERED (design review round 1, D3): the
+ * fixture the settled row's no-clamp decision needs, because a history row is the
+ * one place that question is drawn with no card around it to scroll.
+ */
+const LONG_SETTLED_ASK: PendingAsk = ask({
+	ask_id: "a-9c31",
+	status: "answered",
+	answered_at: TS + 4 * MINUTE,
+	delivered: true,
+	answers: { rollout: [LONG_LABEL_C] },
+	answered_by: { surface: "desktop" },
+	questions: [
+		{
+			id: "rollout",
+			question: LONG_QUESTION,
+			recommended: 0,
+			options: [
+				{ label: LONG_LABEL_A },
+				{ label: LONG_LABEL_B },
+				{ label: LONG_LABEL_C },
+			],
+			multi: false,
+		},
+	],
+});
+
 /** Full text at 560, a mid-band width the card must hold: nothing elides. */
 export const FullTextAtWidth: Story = {
 	args: {
@@ -1193,6 +1224,220 @@ export const CommandRunDialog: Story = {
 	play: async () => {
 		await userEvent.click(await screen.findByRole("button", { name: "Run…" }));
 		await screen.findByRole("dialog");
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CARD CLEANUP (design spec S1-S4; Ben, 2026-11-23)
+ * ---------------------------------------------------------------------------
+ *
+ * The frames below exist so a reviewer can render BEFORE and AFTER at the two
+ * widths the drawer's pane arithmetic actually draws: the 400px floor
+ * (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floored at `CANVAS_PANE_MIN_PX`) and the
+ * 640px opening width. Themes come from the preview's `theme` arg, so each story
+ * renders in light and dark without a second copy:
+ *
+ *   ?path=/story/chat-asks-queued-asks--cleanup-narrow&args=theme:localOperatorLight
+ *   ?path=/story/chat-asks-queued-asks--cleanup-narrow&args=theme:localOperatorDark
+ *
+ * What the frames are evidence for:
+ * - the question is the only `text-body` line, options are `text-body-sm` with a
+ *   2px start edge and a trailing Check when chosen (S1);
+ * - the status line is quiet, the message-since note sits under it, and the
+ *   pinned bar carries Send answer / Decline / Dismiss… plus the foot's progress
+ *   count and the id with its copy control (S2);
+ * - the scope line, the All-conversations link and the close button share one bar
+ *   row, and the tab and filter counts are plain numerals (S4);
+ * - settled rows carry their id at the row's end and the expanded frame carries
+ *   the copyable one (S3), in `SettledAtFloor`.
+ */
+
+/** Four questions, two answered: a real "2 of 4 answered" in the bar's foot. */
+const CLEANUP_ASK: PendingAsk = ask({
+	ask_id: "a-745e",
+	questions: [
+		{
+			id: "build",
+			question:
+				"Ask ids: build the recommendation on all four surfaces — a quiet id with copy at the foot of every ask card, and a-xxxx in chat becomes a chip showing open/answered/withdrawn that opens that ask?",
+			recommended: 0,
+			options: [
+				{
+					label: "Yes, build it",
+					description:
+						"About five small PRs: agent wording, desktop, app, relay, TUI.",
+				},
+				{
+					label: "Only the agent wording for now",
+					description:
+						"Cheapest: no UI change; agents name the ask in words beside its id.",
+				},
+				{ label: "Not yet", description: "Stays a prototype." },
+			],
+		},
+		{
+			id: "other-session",
+			question:
+				"When a chat mentions an ask id from a different session (ids repeat across sessions), what should the chip do?",
+			recommended: 0,
+			options: [
+				{
+					label: "Leave it plain text",
+					description: "Only ids from this session become chips.",
+				},
+				{
+					label: "Look it up; link if exactly one match",
+					description: "Shows the ask in its own session. More work.",
+				},
+			],
+		},
+		{
+			id: "trace",
+			question:
+				"A withdrawn ask leaves no trace in the chat. Add a quiet display-only line saying an ask was withdrawn?",
+			options: [{ label: "Yes, add the line" }, { label: "No" }],
+		},
+		{
+			id: "inbox",
+			question: "Fix the mobile inbox bug now, in its own lane?",
+			options: [
+				{ label: "Yes, fix now" },
+				{ label: "Fold it into the ask-id build" },
+			],
+		},
+	],
+});
+
+const CLEANUP_DRAFTS = {
+	"a-745e": {
+		build: ["Yes, build it"],
+		"other-session": ["Leave it plain text"],
+	},
+};
+
+/** The cleanup card at the 400px floor: rows wrap hardest, the foot is tightest. */
+export const CleanupNarrow: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([CLEANUP_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		/* The bar's third action: without this the frame cannot show the row's shape. */
+		onDismiss: noop,
+		drafts: CLEANUP_DRAFTS,
+	},
+};
+
+/** The same card at the 640px opening width: the bar's row should hold one line. */
+export const CleanupWide: Story = {
+	parameters: { drawerWidth: 640 },
+	args: CleanupNarrow.args,
+};
+
+/**
+ * THE SAME CARD WHERE MAIN OFFERS ITS CONFIRMATION SHEET: `More actions` gains
+ * `Confirm and send…` beside Decline and Dismiss…, and the line under the row says
+ * why it matters. Open the menu to see all three.
+ */
+export const CleanupConfirmOffered: Story = {
+	parameters: { drawerWidth: 400 },
+	args: { ...CleanupNarrow.args, onConfirm: noop },
+};
+
+/**
+ * THE SETTLED HALF AT THE FLOOR: each row shows its status chip, the full
+ * question (no clamp, per Ben's a-427e decision), the answer preview, and the ask
+ * id at the row's end. Open one to see the id move to the frame's foot with its
+ * copy control.
+ */
+export const SettledAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([
+			ONE,
+			timedOutAsk("a-1c09"),
+			answeredAsk(),
+			answeredLateAsk(),
+			declinedAsk(),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * URGENT, AT THE FLOOR: the status line grows the warning badge and the icon
+ * takes `text-warning`; the word carries the state so colour is never the only
+ * channel. Same card otherwise, so the pair reads as one state's difference.
+ */
+export const CleanupUrgent: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		...CleanupNarrow.args,
+		frontend: frontend([{ ...CLEANUP_ASK, urgent: true }]),
+	},
+};
+
+/**
+ * THE BAR WITH ITS THIRD CONTROL, AT THE FLOOR (design review round 1, D3).
+ *
+ * `DrawerAllConversations` is the quiet link into the fleet scope, and it is mounted
+ * only where a session drawer passes `tabs.action`. No story did, so the 40px bar
+ * carrying scope + link + close at 400 - the width where the three compete hardest,
+ * and where a long translation is likeliest to push one out - was never in a frame.
+ * The strip is drawn here too, because the link's whole reason for moving up is the
+ * row the strip no longer spends.
+ */
+export const BarAllConversationsAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([ONE, answeredAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		tabs: {
+			strip: (
+				<DrawerTabs
+					tab="asks"
+					onTab={noop}
+					asks={1}
+					unreadUpdates={0}
+					sessionless={false}
+				/>
+			),
+			body: null,
+			action: <DrawerAllConversations onSelect={noop} />,
+		},
+	},
+};
+
+/**
+ * A SETTLED ROW WITH A LONG QUESTION (design review round 1, D3).
+ *
+ * Every settled row a story rendered asked a one-line question, so the decision
+ * that rows show questions IN FULL - the answer line is the half that clamps
+ * (Ben, a-427e, 2026-11-23) - was never photographed on the fixture that tests it.
+ * This is `LONG_QUESTION` answered and delivered, closed: the row wraps to four or
+ * five lines and nothing elides.
+ */
+export const SettledRowFullTextAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([LONG_SETTLED_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
 	},
 };
 

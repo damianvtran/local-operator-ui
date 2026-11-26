@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "Aucune demande en attente. Toutes sont réglées — voir Réglées.",
 	"ui.chat.ask_panel.empty.none_settled": "Aucune demande n’est encore réglée. Toutes sont toujours en attente.",
 	"ui.chat.ask_panel.filter.all": "Toutes",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "En attente",
 	"ui.chat.ask_panel.filter.settled": "Réglées",
 	"ui.chat.ask_panel.landing.many": "{count, plural, one {# question expirée} many {# de questions expirées} other {# questions expirées}}",

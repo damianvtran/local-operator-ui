@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "کوئی سوال منتظر نہیں۔ سب طے ہو چکے ہیں — طے شدہ دیکھیں۔",
 	"ui.chat.ask_panel.empty.none_settled": "ابھی کوئی سوال طے نہیں ہوا۔ سب ابھی منتظر ہیں۔",
 	"ui.chat.ask_panel.filter.all": "سب",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "منتظر",
 	"ui.chat.ask_panel.filter.settled": "طے شدہ",
 	"ui.chat.ask_panel.landing.many": "{count, plural, one {# سوال کی مدت ختم ہو گئی} other {# سوالات کی مدت ختم ہو گئی}}",

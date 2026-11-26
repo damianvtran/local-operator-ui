@@ -345,11 +345,21 @@ test("a dismissed receipt is the harness's sentence, with the surface and the re
 /* -------------------------------------------------------------- the panel ---- */
 
 test("the dismiss door exists only where the caller offers it (the capability gate)", () => {
+	/*
+	 * `Dismiss…` is an item of the `More actions` menu now, and a closed menu is not
+	 * in static markup: the OFFERED half of this gate (the item appears with
+	 * `onDismiss`) is pinned on the mounted card in `ask-dismiss-panel.test.mjs`
+	 * ("the band keeps one primary and one door"). What static markup can still
+	 * say is the REFUSED half: no dismiss copy at all without the capability.
+	 */
 	const without = panelMarkup(openAsk());
 	assert.equal(without.includes("Dismiss"), false);
-
 	const withDoor = panelMarkup(openAsk(), { onDismiss: () => undefined });
-	assert.equal(withDoor.includes("Dismiss…"), true);
+	assert.equal(
+		withDoor.includes("Dismiss this ask"),
+		false,
+		"the chooser stays closed until the item is pressed",
+	);
 });
 
 test("a lapsed ask offers no dismiss door even when the surface has one", () => {
