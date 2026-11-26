@@ -85,6 +85,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	files = [],
 	fileCount = files.length,
 	readFile,
+	inlineReview = false,
 }: {
 	attachments: readonly T[];
 	count?: number;
@@ -99,6 +100,8 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	fileCount?: number;
 	/** The caller's byte authority for a file's Save; absent offers no Save. */
 	readFile?: (file: BridgeFileDescriptor) => Promise<Uint8Array>;
+	/** Approval must not count a cropped or hidden grid slot as reviewed. */
+	inlineReview?: boolean;
 }) {
 	useI18nLocale();
 	const fileGroup = (
@@ -134,7 +137,9 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	if (attachments.length === 0) chips.push({ attachment: null, index: 0 });
 	const density = compact ? "compact" : "regular";
 	const single = visuals.length === 1;
-	const visible = Math.min(visuals.length, ATTACHMENT_GRID_VISIBLE);
+	const visible = inlineReview
+		? visuals.length
+		: Math.min(visuals.length, ATTACHMENT_GRID_VISIBLE);
 	const overflow = visuals.length - visible;
 	const listLabel = t("ui.teamBridge.attachmentCard.list", {
 		count: attachments.length || count,
@@ -144,8 +149,15 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 		position: number,
 	) => {
 		const slot: BridgeImageSlot = {
-			box: single ? attachmentBox(attachment, true, compact) : null,
-			fit: single ? attachmentFit(attachment) : "cover",
+			box:
+				single || inlineReview
+					? attachmentBox(attachment, true, compact)
+					: null,
+			fit: inlineReview
+				? "contain"
+				: single
+					? attachmentFit(attachment)
+					: "cover",
 			overflow: position === visible - 1 ? overflow : 0,
 		};
 		const hidden = position >= visible;
@@ -158,7 +170,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 				data-bridge-attachment-card={preview ? "preview" : "unavailable"}
 				className={cn(
 					"group/slot relative min-w-0",
-					!single && !hidden && cellClass(position, visible),
+					!inlineReview && !single && !hidden && cellClass(position, visible),
 				)}
 			>
 				{preview && renderPreview ? (
@@ -184,9 +196,11 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 				style={{ maxWidth: ATTACHMENT_GROUP_MAX[density] }}
 				className={cn(
 					"mt-1 min-w-0",
-					single
-						? "flex"
-						: "grid w-full grid-cols-2 gap-1 overflow-hidden rounded-md",
+					inlineReview
+						? "flex flex-col gap-1"
+						: single
+							? "flex"
+							: "grid w-full grid-cols-2 gap-1 overflow-hidden rounded-md",
 				)}
 			>
 				{visuals.map(renderVisual)}

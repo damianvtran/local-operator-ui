@@ -26,19 +26,26 @@ import { useQueryClient } from "@tanstack/react-query";
 import { UserRound } from "lucide-react";
 import {
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
-import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
+import {
+	AuditAttachmentGroup,
+	type AuditReviewState,
+} from "./attachments/audit-attachment-group";
+import { auditAttachmentAction } from "./attachments/audit-attachment-scope";
 import type { DiscardBatchResult } from "./team-bridge-discard-batch";
 import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
 import {
 	heldHidePreference,
+	publishHoldInboxProjection,
 	useHeldHideRecoveryPending,
 	useHeldHideRevisions,
 } from "./team-bridge-held-hide-preference";
@@ -53,11 +60,11 @@ import {
 	holdAttachmentCounts,
 	holdDecideProof,
 	holdDecisionStatus,
+	holdInboxRevision,
 	holdReason,
 	holdReasonLabel,
 	holdReference,
 	holdRowProofs,
-	needsLiteralHoldBody,
 	projectHeldMessages,
 	sortHoldInbox,
 } from "./team-bridge-holds-model";
@@ -65,7 +72,10 @@ import {
 	type DiscardSnapshotEntry,
 	captureDiscardSnapshot,
 } from "./team-bridge-holds-model";
-import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import {
+	TeamBridgeMarkdown,
+	needsLiteralHoldBody,
+} from "./team-bridge-markdown";
 import { memberStoredName } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import { TeamBridgeAvatar } from "./team-bridge-profile-card";
@@ -136,6 +146,7 @@ export function HeldMessagesView({
 	onRetry,
 	onRetryDetails,
 	accountId = null,
+	authorityEpoch = 0,
 	hideWhenEmpty = false,
 	now,
 	tab = "waiting",
@@ -159,6 +170,7 @@ export function HeldMessagesView({
 	onRetryDetails?: () => void;
 	/** For the attachment group's owner-audit scope. */
 	accountId?: string | null;
+	authorityEpoch?: number;
 	/** Inside Approvals with no requests either: one empty state, not two (D1). */
 	hideWhenEmpty?: boolean;
 	/** Fixed clock for stories and frames. */
@@ -377,6 +389,8 @@ export function HeldMessagesView({
 									: undefined
 							}
 							accountId={accountId}
+							authorityEpoch={authorityEpoch}
+							historical={historical}
 							now={now}
 						/>
 					))}
@@ -431,28 +445,55 @@ function decisionCopy(decision: HoldDecisionView) {
 			: null;
 	const status = holdDecisionStatus(word, decision.outcome);
 	return {
+		status,
+		decidedAt: decision.decided_at,
 		label:
 			status === "not_applied"
 				? t("ui.teamBridge.holds.state.not_applied")
 				: status === "local"
 					? t("ui.teamBridge.holdsBatch.local_unconfirmed")
-					: status === "pending" && word === "discard"
-						? t("ui.teamBridge.holds.state.discard_recorded")
-						: word === "discard"
-							? t("ui.teamBridge.holds.state.chose_discard")
-							: t("ui.teamBridge.holds.state.chose_deliver"),
-		pendingDeliver: status === "pending" && word === "deliver",
+					: status === "applied"
+						? t(
+								word === "discard"
+									? "ui.teamBridge.holds.state.confirmed_discarded"
+									: "ui.teamBridge.holds.state.confirmed_delivered",
+							)
+						: t(
+								word === "discard"
+									? "ui.teamBridge.holds.state.chose_discard"
+									: "ui.teamBridge.holds.state.chose_deliver",
+							),
 	};
 }
 
 function DecisionLine({ copy }: { copy: ReturnType<typeof decisionCopy> }) {
+	const time = stamp(copy.decidedAt);
 	return (
-		<>
-			{copy.label}
-			{copy.pendingDeliver && (
-				<span className="ms-2">{t("ui.chat.ask_panel.filter.pending")}</span>
+		<span className="inline-flex flex-wrap items-baseline gap-2">
+			{copy.status === "pending" ? (
+				<>
+					<span>{copy.label}</span>
+					<Badge variant="neutral" className="max-w-full whitespace-normal">
+						{t("ui.teamBridge.holds.state.confirmation_pending")}
+					</Badge>
+				</>
+			) : (
+				<span
+					className={
+						copy.status === "applied"
+							? "font-medium text-ink"
+							: "font-medium text-warning"
+					}
+				>
+					{copy.label}
+				</span>
 			)}
-		</>
+			{time && (
+				<time className="text-ink-dim" dateTime={copy.decidedAt ?? undefined}>
+					{time}
+				</time>
+			)}
+		</span>
 	);
 }
 
@@ -517,6 +558,8 @@ function HeldRow({
 	onRetryDetails,
 	onHideLocal,
 	accountId,
+	authorityEpoch,
+	historical,
 	now,
 }: {
 	item: HoldItem;
@@ -527,15 +570,20 @@ function HeldRow({
 	onRetryDetails?: () => void;
 	onHideLocal?: () => void;
 	accountId: string | null;
+	authorityEpoch: number;
+	historical: boolean;
 	now?: number;
 }) {
 	const message = detail.state === "ready" ? detail.message : null;
 	const tenantId = detail.state === "ready" ? detail.tenantId : null;
-	const { affordance, binding, hidden, unread, armed, receipt } = holdRowProofs(
-		item,
-		detail,
-		now,
-	);
+	const {
+		affordance,
+		binding,
+		hidden,
+		unread,
+		armed: bodyArmed,
+		receipt,
+	} = holdRowProofs(item, detail, now);
 	const sender = heldSenderLine(message);
 	const storedName = message
 		? memberStoredName({
@@ -548,8 +596,7 @@ function HeldRow({
 	const name = isAgent ? sender : (storedName ?? sender);
 	const senderHasProfile =
 		message?.sender.kind === "human" || message?.sender.kind === "agent";
-	const rowTime =
-		item.decision?.decided_at ?? message?.created_at ?? item.held_at;
+	const rowTime = message?.created_at ?? item.held_at;
 	const timeLabel = stamp(rowTime);
 	const until = stamp(item.deliver_until);
 	const { images, files } = holdAttachmentCounts(message);
@@ -567,6 +614,53 @@ function HeldRow({
 					messageId: message.id,
 				}
 			: null;
+	const attachments = message?.attachments ?? [];
+	const canReviewImages =
+		Boolean(attachmentScope) &&
+		files === 0 &&
+		images === attachments.length &&
+		new Set(attachments.map(({ id }) => id)).size === images &&
+		attachments.every(
+			(attachment) => auditAttachmentAction(attachment) === "preview",
+		);
+	const reviewRevision = JSON.stringify([
+		accountId,
+		authorityEpoch,
+		tenantId,
+		holdInboxRevision(item),
+		message?.body_hash,
+		attachments,
+	]);
+	const [media, setMedia] = useState<{
+		revision: string;
+		states: Record<string, AuditReviewState>;
+	} | null>(null);
+	const registerReview = useCallback(
+		(id: string, state: AuditReviewState) => {
+			setMedia((old) => {
+				const states = old?.revision === reviewRevision ? old.states : {};
+				return states[id] === state
+					? old
+					: { revision: reviewRevision, states: { ...states, [id]: state } };
+			});
+		},
+		[reviewRevision],
+	);
+	const reviewed =
+		images + files === 0 ||
+		(canReviewImages &&
+			media?.revision === reviewRevision &&
+			attachments.every(({ id }) => media.states[id] === "ready"));
+	const mediaUnavailable =
+		!canReviewImages ||
+		(media?.revision === reviewRevision &&
+			Object.values(media.states).includes("unavailable"));
+	const armed = { ...bodyArmed, deliver: bodyArmed.deliver && reviewed };
+	const proofBody = onDecide && bodyArmed.deliver ? message?.body : null;
+	const literal = useMemo(
+		() => Boolean(proofBody && needsLiteralHoldBody(proofBody)),
+		[proofBody],
+	);
 	const decision = item.decision ? decisionCopy(item.decision) : null;
 	const press = (word: HoldWord) => {
 		// This handler, the rendered body, and the selected item come from the
@@ -623,7 +717,7 @@ function HeldRow({
 				{typeof message?.body === "string" && message.body.trim() !== "" && (
 					<div dir="auto" className="min-w-0">
 						<TeamBridgeMarkdown
-							showDestinations={armed.deliver}
+							showDestinations={Boolean(proofBody)}
 							className="team-bridge-message-body text-[14px]"
 						>
 							{message.body}
@@ -631,24 +725,28 @@ function HeldRow({
 						{/* Link targets, Markdown definitions and raw HTML can be
 						    absent from formatted prose. Keep the complete proof
 						    visible and inert before the Deliver control. */}
-						{onDecide &&
-							armed.deliver &&
-							needsLiteralHoldBody(message.body) && (
-								<div className="mt-2 border-s border-hairline ps-3">
-									<p className="text-meta text-ink-muted">
-										{t("ui.chat.canonical.raw_information")}
-									</p>
-									<pre className="whitespace-pre-wrap break-anywhere text-mono-sm text-ink-muted">
-										{message.body}
-									</pre>
-								</div>
-							)}
+						{literal && (
+							<div className="mt-2 border-s border-hairline ps-3">
+								<p className="text-meta text-ink-muted">
+									{t("ui.chat.canonical.raw_information")}
+								</p>
+								<pre className="whitespace-pre-wrap break-anywhere text-mono-sm text-ink-muted">
+									{message.body}
+								</pre>
+							</div>
+						)}
 					</div>
 				)}
 				{images + files > 0 && message && (
 					<AuditAttachmentGroup
+						key={reviewRevision}
 						scope={attachmentScope}
-						attachments={message.attachments ?? []}
+						attachments={attachments}
+						review={
+							onDecide && bodyArmed.deliver && canReviewImages
+								? { revision: reviewRevision, onState: registerReview }
+								: undefined
+						}
 						count={images}
 						files={(message.files ?? []).map(toBridgeFileDescriptor)}
 						fileCount={files}
@@ -656,18 +754,22 @@ function HeldRow({
 				)}
 				<div className="flex flex-col gap-1 text-meta text-ink-muted">
 					{decision ? (
-						<p>
-							<DecisionLine copy={decision} />
-						</p>
+						<DecisionLine copy={decision} />
 					) : (
-						!unread && <p>{holdReasonLabel(holdReason(item))}</p>
+						!historical && !unread && <p>{holdReasonLabel(holdReason(item))}</p>
+					)}
+					{onDecide && bodyArmed.deliver && !reviewed && mediaUnavailable && (
+						<p>{t("ui.teamBridge.attachmentCard.metadata_only")}</p>
 					)}
 					{onDecide && armed.deliver && until && (
 						<p>{t("ui.teamBridge.holds.deliver_until", { time: until })}</p>
 					)}
-					{affordance.state === "not_releasable" && !canHide && (
-						<p>{t("ui.teamBridge.holds.state.not_releasable")}</p>
-					)}
+					{!decision &&
+						(affordance.state === "not_releasable" ||
+							(historical &&
+								detail.state === "ready" &&
+								binding?.state !== "mismatch")) &&
+						!canHide && <p>{t("ui.teamBridge.holds.state.not_releasable")}</p>}
 					{onDecide &&
 						affordance.state === "deliver_expired" &&
 						!unread &&
@@ -839,8 +941,22 @@ export function TeamBridgeHeldMessages({
 	useLayoutEffect(() => {
 		// The original join sees every row, including hidden rows. Leave a row
 		// restored once a normal detail read actually shows content again.
-		if (recovered.length > 0 && isCurrentAccount())
-			heldHidePreference.revealRecovered(recovered);
+		if (!isCurrentAccount()) return;
+		if (recovered.length > 0) heldHidePreference.revealRecovered(recovered);
+		if (!accountId || !supported || !holds.data || holds.isError) return;
+		const historyIds = new Set(history.map((item) => item.message_id));
+		publishHoldInboxProjection(client, accountId, epoch, (before) => {
+			const excludes = new Set<string>();
+			for (const item of items) {
+				const revision = holdInboxRevision(item);
+				if (
+					historyIds.has(item.message_id) ||
+					(before.has(revision) && detail(item).state === "loading")
+				)
+					excludes.add(revision);
+			}
+			return excludes;
+		});
 	});
 	const listState: ListState = holds.isError
 		? "error"
@@ -849,7 +965,7 @@ export function TeamBridgeHeldMessages({
 			: "ready";
 	const view = (tab: HoldTab) => (
 		<HeldMessagesView
-			key={`${accountId ?? "signed-out"}:${tab}`}
+			key={`${accountId ?? "signed-out"}:${epoch}:${tab}`}
 			tab={tab}
 			listState={listState}
 			items={tab === "waiting" ? waiting : history}
@@ -883,6 +999,7 @@ export function TeamBridgeHeldMessages({
 			onRetry={() => void holds.refetch()}
 			onRetryDetails={() => void retryDetails()}
 			accountId={accountId ?? null}
+			authorityEpoch={epoch}
 			hideWhenEmpty={tab === "history" || hideWhenEmpty}
 		/>
 	);

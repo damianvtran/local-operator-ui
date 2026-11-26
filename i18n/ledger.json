@@ -129414,8 +129414,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "ea74c005d436bc6ecc4b4f3fb48e631a2d520ed060c473dab9578c41a7b9a1f1",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "9aa48aa5dec766eef22f2e3684ada0f9947a961c929cb7d4a8770e20f86967e9",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -129424,21 +129424,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-es-teambridge-holds-ea74c005",
+					"instance": "pr2123-copy-8a1957aceb93-es-9aa48aa5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-es-teambridge-holds-ea74c005.json",
-					"receipt_sha256": "c20aeee375c6702d05f0601d2f01766f25afcd10957627e8ebced3bbd5345959",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-es-9aa48aa5.json",
+					"receipt_sha256": "c42b49f2805dd8f69826cf4720b2d75283ecb56c37d13ac6013e97d49f484c9d",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -129538,14 +129538,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "ea74c005d436bc6ecc4b4f3fb48e631a2d520ed060c473dab9578c41a7b9a1f1",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-es-teambridge-holds-ea74c005",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-es-teambridge-holds-ea74c005.json",
+							"receipt_sha256": "c20aeee375c6702d05f0601d2f01766f25afcd10957627e8ebced3bbd5345959",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "f72f19f7883ea8afb31ee030b3ef3f025f145120876583fa6e6df203d2c7dfed",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "b62426352c3572095f928a668a9ed8917188b5fdfd0a801a5b530d22d791262c",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -129554,21 +129578,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-fr-teambridge-holds-f72f19f7",
+					"instance": "pr2123-copy-8a1957aceb93-fr-b6242635",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-fr-teambridge-holds-f72f19f7.json",
-					"receipt_sha256": "e45ab015c91b3c7b35628b4e88c3c3ef2b88fd364886583b0c22482217d0a033",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-fr-b6242635.json",
+					"receipt_sha256": "7c1415cb9563a5aa5c426c447fd92e3b687497181ce334ca856e21e3dcc39f1d",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -129668,14 +129692,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "f72f19f7883ea8afb31ee030b3ef3f025f145120876583fa6e6df203d2c7dfed",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-fr-teambridge-holds-f72f19f7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-fr-teambridge-holds-f72f19f7.json",
+							"receipt_sha256": "e45ab015c91b3c7b35628b4e88c3c3ef2b88fd364886583b0c22482217d0a033",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "1c32f20893e2c1a569f3b9aa7c02173b840528a522064f7baee8622e74b253ff",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "fe06a0b4ca1dc9818257e97cd39fab0d526cb78b24ccab4130ea06506b749413",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -129684,21 +129732,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-hi-teambridge-holds-1c32f208",
+					"instance": "pr2123-copy-8a1957aceb93-hi-fe06a0b4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-hi-teambridge-holds-1c32f208.json",
-					"receipt_sha256": "44ca78c38dbbdbb569a7162392b91efe41b927da9a0507c8420342317a0f0b8d",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-hi-fe06a0b4.json",
+					"receipt_sha256": "e23698580e20e6f81a672345fa9ceb88d58df7952d48f29bdbc3f6053fd5a159",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -129798,14 +129846,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "1c32f20893e2c1a569f3b9aa7c02173b840528a522064f7baee8622e74b253ff",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-hi-teambridge-holds-1c32f208",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-hi-teambridge-holds-1c32f208.json",
+							"receipt_sha256": "44ca78c38dbbdbb569a7162392b91efe41b927da9a0507c8420342317a0f0b8d",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "da280a2aadc0babd142050243867ea0151edf34467076a74436497cbe15556a1",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "2c61604bd9405d191afddb604c06e5d4f584058a1eab517b84f89c495a73ce91",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -129814,21 +129886,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-ru-teambridge-holds-da280a2a",
+					"instance": "pr2123-copy-8a1957aceb93-ru-2c61604b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-ru-teambridge-holds-da280a2a.json",
-					"receipt_sha256": "0cabb1e44b7caf88f0aa2cdf800ffb8f786c6270af00d85349e6475c0c927677",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-ru-2c61604b.json",
+					"receipt_sha256": "921593dd9d381e0dd52637dab71de3fa75f063035f7861435cc2ec29a92f0082",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -129928,14 +130000,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "da280a2aadc0babd142050243867ea0151edf34467076a74436497cbe15556a1",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-ru-teambridge-holds-da280a2a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-ru-teambridge-holds-da280a2a.json",
+							"receipt_sha256": "0cabb1e44b7caf88f0aa2cdf800ffb8f786c6270af00d85349e6475c0c927677",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "4c8d9346aff10805e331e2563caa8c2f800381a0e74e0e3aa67a21e313c09a3a",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "a4ff414e39aa8fbe1809f2ed8f5a22e167a4e979d2792308cc01ac287f0f9ae6",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -129944,21 +130040,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-ur-teambridge-holds-4c8d9346",
+					"instance": "pr2123-copy-8a1957aceb93-ur-a4ff414e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-ur-teambridge-holds-4c8d9346.json",
-					"receipt_sha256": "e84905e8b322407b00037a9f7be0bce1cb18a047c4fdbaf9b6b4ffb4fc7f2cbe",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-ur-a4ff414e.json",
+					"receipt_sha256": "e3ea659aade1bbb4252aba1173890b765b9e5f81308d04394d0cd1145e1742b6",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -130058,14 +130154,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "4c8d9346aff10805e331e2563caa8c2f800381a0e74e0e3aa67a21e313c09a3a",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-ur-teambridge-holds-4c8d9346",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-ur-teambridge-holds-4c8d9346.json",
+							"receipt_sha256": "e84905e8b322407b00037a9f7be0bce1cb18a047c4fdbaf9b6b4ffb4fc7f2cbe",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "19de0b1e55d59c92d14b2226b072d897d99390bb253fbb31ab32eeb75da49494",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "fe0870fa2f040382e890f9efda805696885b799dc63a499863a035eefcf17166",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -130074,21 +130194,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-vi-teambridge-holds-19de0b1e",
+					"instance": "pr2123-copy-8a1957aceb93-vi-fe0870fa",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-vi-teambridge-holds-19de0b1e.json",
-					"receipt_sha256": "1334d38702b4a51e9e1bc81c9b333715bbde51a79232f4533565d2719d9110cf",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-vi-fe0870fa.json",
+					"receipt_sha256": "5ff23a801220d5b7d0441f000a30d2ae76203a625dd503307cebde1833a80633",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -130188,14 +130308,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "19de0b1e55d59c92d14b2226b072d897d99390bb253fbb31ab32eeb75da49494",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-vi-teambridge-holds-19de0b1e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-vi-teambridge-holds-19de0b1e.json",
+							"receipt_sha256": "1334d38702b4a51e9e1bc81c9b333715bbde51a79232f4533565d2719d9110cf",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
-			"target_sha256": "cdadb58eaefc06a7104c94f42fd269dab132d0b7e82379e82fda5ce3b0f8d926",
+			"source_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+			"target_sha256": "819cb352bb44cd2ed417822b817a7d54718f8bf8ab6203669ea1a76867dd771d",
 			"translator": {
 				"agent": "coder-c63c590378ad",
 				"model": "openai/gpt-6.2-sol",
@@ -130204,21 +130348,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "designer",
+					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "pr2102-r1-zh-cn-teambridge-holds-cdadb58e",
+					"instance": "pr2123-copy-8a1957aceb93-zh-cn-819cb352",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2102-r1-zh-cn-teambridge-holds-cdadb58e.json",
-					"receipt_sha256": "b15fa3d340b9ff850bfba13518379f9f0395a2faee624a034f09c9b5124a949b",
-					"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
-					"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
+					"receipt": "i18n/receipts/pr2123-copy-8a1957aceb93-zh-cn-819cb352.json",
+					"receipt_sha256": "ae0a08453e02760c71f2068b8688ade02bbd8864202012ba6828a123464edefd",
+					"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+					"note": "PR #2123 round 1 remediation: status delta drafted by coder 05cf68cce306, openai/gpt-6.2-sol; independent designer audit session 8a1957aceb93. Earlier keys retain source provenance."
 				}
 			],
 			"status": "audited",
@@ -130315,6 +130459,30 @@
 							"receipt_sha256": "9962dddcd14d53eeb66f7dde001c4dd461b17d1bbfa7e99e2c77186f89694d73",
 							"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
 							"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70c20318cbe049dd0b393e71a78eec85b68028c4fd2d1180f7e60d4f82c7cf04",
+					"target_sha256": "cdadb58eaefc06a7104c94f42fd269dab132d0b7e82379e82fda5ce3b0f8d926",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-25",
+							"result": "clean",
+							"instance": "pr2102-r1-zh-cn-teambridge-holds-cdadb58e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2102-r1-zh-cn-teambridge-holds-cdadb58e.json",
+							"receipt_sha256": "b15fa3d340b9ff850bfba13518379f9f0395a2faee624a034f09c9b5124a949b",
+							"scope": "PR #2102 r1 delta (directory_allowed_overridden / details_unavailable_hide); unchanged messages retain prior provenance",
+							"note": "PR #2102 r1: delta keys drafted by coder (implementer) in 2c735f7dba5; independent audit copy-reviewer session bf8673555f96"
 						}
 					],
 					"status": "audited"

@@ -54,8 +54,8 @@ export type HoldItem = {
 	unscreened?: boolean;
 	/**
 	 * local-operator #4358: core's own "the person owes this an answer". When
-	 * present it is the ONLY input to the badge and the nav count (see
-	 * `isActionableHold`); absent means an older core.
+	 * present it bounds the badge and nav count; a settled inbox may exclude
+	 * an unusable proof for the same revision. Absent means an older core.
 	 */
 	actionable?: boolean;
 	/**
@@ -403,7 +403,10 @@ type HoldContent = {
 /** A count-only audit receipt is still shown by the attachment disclosure. */
 export function holdAttachmentCounts(message: HoldContent | null) {
 	return {
-		images: message?.attachments?.length || message?.attachment_count || 0,
+		images: Math.max(
+			message?.attachments?.length ?? 0,
+			message?.attachment_count ?? 0,
+		),
 		files: Math.max(message?.files?.length ?? 0, message?.file_count ?? 0),
 	};
 }
@@ -531,7 +534,26 @@ export async function addLocalHoldRevisions(
 	return { ...page, items };
 }
 
-/** Same projection for the queue and both badges. A different receipt never matches. */
+// In-memory eligibility only. Include old-core audit coordinates and the exact
+// receipt so an exclusion cannot obscure a replaced hold on a later list poll.
+export function holdInboxRevision(item: HoldItem): string {
+	return JSON.stringify([
+		item.message_id,
+		item.conversation_id,
+		item.seq,
+		item.thread_root_id ?? null,
+		item.held_at,
+		item.kind,
+		item.hold_code,
+		item.discard_receipt ?? null,
+		item.releasable,
+		item.can_deliver,
+		item.can_discard,
+		item.deliver_until,
+	]);
+}
+
+/** Same local-hide projection for the queue and both badges. */
 export function isHoldHiddenLocally(
 	item: HoldItem,
 	revisions: ReadonlySet<string>,
@@ -849,19 +871,6 @@ export function receiptDiscardArmed(
  * receipt when `receiptDiscardArmed`. Pure so the "Deliver never carries a
  * receipt" rule is tested from the shipped source.
  */
-/** Only the simple inline links/images whose full URL the proof renderer
- * prints can skip the literal fallback. Titles, references, escaped/nested
- * links, GFM tasks, HTML and entity decoding could otherwise conceal source.
- */
-const SIMPLE_PROOF_LINK =
-	/\[[^\[\]\r\n<>\\&]+\]\((?:https?:\/\/|mailto:)(?:[\w.~:/?#@!$+,;=-]|%[0-9a-fA-F]{2})+\)/g;
-// A fenced code info string can have arbitrary metadata the fence won't show.
-const ELIDING_MARKDOWN = /[\[<&]|(?:`{3,}|~{3,})[\t ]*[^\s`~]/;
-
-export function needsLiteralHoldBody(body: string): boolean {
-	return ELIDING_MARKDOWN.test(body.replace(SIMPLE_PROOF_LINK, ""));
-}
-
 /** Body/receipt/allowed-action checks shared by the inbox and the actual click. */
 export function holdRowProofs(
 	item: HoldItem,

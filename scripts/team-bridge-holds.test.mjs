@@ -1251,11 +1251,12 @@ const viewBundle = await build({
 		contents: `
 			export { HeldMessagesView, TeamBridgeHeldMessages } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";
 			export { TeamBridgeRequestsView } from "./src/renderer/src/features/team-bridge/team-bridge-approvals";
+			export { needsLiteralHoldBody } from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
 			export { useHeldMessages } from "./src/renderer/src/features/team-bridge/use-team-bridge-holds";
 			export { createHeldHidePreference, visibleHeldCount, useVisibleHeldCount, HELD_HIDE_STORAGE_KEY } from "./src/renderer/src/features/team-bridge/team-bridge-held-hide-preference";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { holdsKey, holdDetailKey } from "./src/renderer/src/features/team-bridge/team-bridge-holds-keys";
-			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { observedRadientAuthority, radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 		`,
 		resolveDir: process.cwd(),
@@ -1276,6 +1277,7 @@ const viewBundle = await build({
 await writeFile(viewOut, viewBundle.outputFiles[0].text);
 after(() => unlink(viewOut));
 const {
+	needsLiteralHoldBody,
 	HeldMessagesView,
 	TeamBridgeRequestsView,
 	createHeldHidePreference,
@@ -1391,7 +1393,10 @@ test("blocked persistence never claims a hide or restore succeeded", async () =>
 	assert.equal(blockedRestore.snapshot().has(revision), false);
 });
 
-async function withMountedHeldQueue({ audit = false, onDecide }, run) {
+async function withMountedHeldQueue(
+	{ audit = false, onDecide, onReadAttachment },
+	run,
+) {
 	const { JSDOM } = await import("jsdom");
 	const { createRoot } = await import("react-dom/client");
 	const { act } = await import("react");
@@ -1420,6 +1425,13 @@ async function withMountedHeldQueue({ audit = false, onDecide }, run) {
 	let page = hidePage([fixture]);
 	dom.window.api = {
 		desktop: {
+			media: async (request) => {
+				calls.push(request);
+				assert.equal(request.op, "team_bridge.owner_audit.attachment");
+				assert.equal(request.expectedAccountId, "account-a");
+				assert.ok(onReadAttachment, "synthetic media fixture required");
+				return onReadAttachment(request);
+			},
 			request: async (request) => {
 				calls.push(request);
 				if (request.op === "team_bridge.directory") {
@@ -1429,8 +1441,16 @@ async function withMountedHeldQueue({ audit = false, onDecide }, run) {
 						body: { result: { tenant_id: "tenant-a", members: [] } },
 					};
 				}
+				if (request.expected_account_id === "account-b") {
+					assert.equal(request.op, "team_bridge.holds.list");
+					return { status: 200, body: { result: hidePage([]) } };
+				}
 				assert.equal(request.expected_account_id, "account-a");
-				if (request.op === "team_bridge.holds.deliver" && onDecide)
+				if (
+					onDecide &&
+					(request.op === "team_bridge.holds.deliver" ||
+						request.op === "team_bridge.holds.discard")
+				)
 					return onDecide(request);
 				if (audit && request.op === "team_bridge.owner_audit.messages") {
 					assert.equal(request.tenant_id, "tenant-a");
@@ -1582,12 +1602,28 @@ async function withMountedHeldQueue({ audit = false, onDecide }, run) {
 			refreshDetails: () =>
 				act(() =>
 					client.invalidateQueries({
-						queryKey: ui.holdDetailKey("account-a", expiredForLocalHide, [
-							"tenant-a",
-						]),
+						queryKey: ui.holdDetailKey("account-a", fixture, ["tenant-a"]),
 						exact: true,
 					}),
 				),
+			switchAccount: async () => {
+				const before = ui.observedRadientAuthority(client);
+				await act(() => {
+					client.setQueryData(ui.teamBridgeKeys.statusFor("account-b"), {
+						account_id: "account-b",
+						state: "ready",
+						local: { enabled: true },
+						status: { tenants: [] },
+					});
+					client.setQueryData(ui.radientUserKeys.user(), {
+						account: { id: "account-b" },
+					});
+				});
+				assert.deepEqual(ui.observedRadientAuthority(client), {
+					...before,
+					accountId: "account-b",
+				});
+			},
 			refreshList: () =>
 				act(() =>
 					client.invalidateQueries({
@@ -1605,7 +1641,9 @@ async function withMountedHeldQueue({ audit = false, onDecide }, run) {
 		const allowed = ["team_bridge.holds.list"];
 		if (audit)
 			allowed.push("team_bridge.owner_audit.messages", "team_bridge.directory");
-		if (onDecide) allowed.push("team_bridge.holds.deliver");
+		if (onDecide)
+			allowed.push("team_bridge.holds.deliver", "team_bridge.holds.discard");
+		if (onReadAttachment) allowed.push("team_bridge.owner_audit.attachment");
 		for (const { op } of calls)
 			assert.ok(allowed.includes(op), `synthetic route only: ${op}`);
 	} finally {
@@ -1622,20 +1660,328 @@ async function withMountedHeldQueue({ audit = false, onDecide }, run) {
 test("only Markdown that preserves its semantic text skips the inert literal review", () => {
 	for (const body of [
 		"# Hello **world**",
+		"1. One\n2. Two",
 		"[Label](https://example.invalid/plan%20today)",
 		"![Image](https://example.invalid/x)",
 	])
-		assert.equal(m.needsLiteralHoldBody(body), false, body);
+		assert.equal(needsLiteralHoldBody(body), false, body);
 	for (const body of [
 		"[Label](https://example.invalid/%unsafe)",
 		'[Label](https://example.invalid/plan "not painted title")',
 		"[Label][ref]\n\n[ref]: javascript:ignored",
 		"- [x] task",
 		"hello&#x202e;",
+		"| Status |\n| --- |\n| Read this | SYNTHETIC TABLE TAIL |",
+		"Footnote[^id]\n\n[^id]: Definition",
+		"1. One\n99. Ninety-nine",
+		"[Label](https://example.invalid/[]|^`{})",
 		"<!-- not painted HTML -->",
 		"> ```txt hidden metadata\n> example\n> ```",
 	])
-		assert.equal(m.needsLiteralHoldBody(body), true, body);
+		assert.equal(needsLiteralHoldBody(body), true, body);
+});
+
+const approvalProofFixture = (overrides = {}) =>
+	hold({ actionable: true, discard_receipt: "1".repeat(64), ...overrides });
+const bodySha = (body) => createHash("sha256").update(body).digest("hex");
+const deliverButton = (host) =>
+	host.querySelector('[data-tab="waiting"] button[aria-label^="Deliver this"]');
+const discardButton = (host) =>
+	host.querySelector('[data-tab="waiting"] button[aria-label^="Discard this"]');
+const receiptFor = (item) => ({
+	status: 200,
+	body: {
+		result: {
+			message_id: item.message_id,
+			state: "released",
+			outcome: "pending",
+			decided_at: "2026-11-25T13:00:00Z",
+		},
+	},
+});
+
+test("mounted approval shows complete GFM source before one Deliver", () =>
+	withMountedHeldQueue(
+		{
+			audit: true,
+			onDecide: (request) => {
+				assert.equal(request.body_sha256, bodySha(lossyTable));
+				return receiptFor(approvalProofFixture());
+			},
+		},
+		async ({ act, calls, host, mount, setFixture, setAuditContent, until }) => {
+			setFixture(approvalProofFixture());
+			setAuditContent({ body: lossyTable, body_hash: bodySha(lossyTable) });
+			await mount("lossy-table");
+			await until(() => deliverButton(host), "table Deliver");
+			assert.ok(host.querySelector("table"), "formatted Markdown retained");
+			assert.ok(host.textContent.includes("SYNTHETIC TABLE TAIL"));
+			await act(() => deliverButton(host).click());
+			assert.equal(
+				calls.filter(({ op }) => op === "team_bridge.holds.deliver").length,
+				1,
+			);
+		},
+	));
+
+const lossyTable = "| Status |\n| --- |\n| Read this | SYNTHETIC TABLE TAIL |";
+
+test("mounted actionable metadata cannot keep a badge for a settled mismatched proof", () =>
+	withMountedHeldQueue(
+		{ audit: true },
+		async ({
+			badge,
+			calls,
+			host,
+			mount,
+			refreshList,
+			setFixture,
+			setAuditContent,
+			until,
+		}) => {
+			setFixture(approvalProofFixture());
+			setAuditContent({
+				body: "not the screened body",
+				body_hash: bodySha("screened"),
+			});
+			await mount("mismatch-badge");
+			await until(
+				() => host.querySelector('[data-tab="history"] [data-hold-id]'),
+				"mismatch in History",
+			);
+			assert.equal(badge(), "0");
+			assert.ok(!deliverButton(host));
+			assert.ok(!discardButton(host));
+			const previousReads = calls.filter(
+				({ op }) => op === "team_bridge.owner_audit.messages",
+			).length;
+			setFixture(approvalProofFixture({ discard_receipt: "2".repeat(64) }));
+			setAuditContent({
+				body: "replacement proof",
+				body_hash: bodySha("replacement proof"),
+			});
+			await refreshList();
+			await until(
+				() => badge() === "1" && deliverButton(host),
+				"new revision is independently eligible",
+			);
+			assert.equal(
+				calls.filter(({ op }) => op === "team_bridge.owner_audit.messages")
+					.length,
+				previousReads + 1,
+			);
+
+			assert.ok(
+				!calls.some(
+					({ op }) =>
+						op === "team_bridge.holds.deliver" ||
+						op === "team_bridge.holds.discard",
+				),
+			);
+		},
+	));
+
+test("mounted late A receipt never enters B History after a same-epoch account switch", () => {
+	const item = approvalProofFixture();
+	const deferred = Promise.withResolvers();
+	return withMountedHeldQueue(
+		{ audit: true, onDecide: () => deferred.promise },
+		async ({
+			act,
+			calls,
+			host,
+			mount,
+			setFixture,
+			setAuditContent,
+			switchAccount,
+			until,
+		}) => {
+			setFixture(item);
+			setAuditContent({
+				body: "account A only",
+				body_hash: bodySha("account A only"),
+			});
+			await mount("same-epoch-switch");
+			await until(() => deliverButton(host), "A Deliver");
+			await act(() => deliverButton(host).click());
+			await switchAccount();
+			await until(
+				() =>
+					calls.some(
+						(r) =>
+							r.expected_account_id === "account-b" &&
+							r.op === "team_bridge.holds.list",
+					),
+				"B list read",
+			);
+			await act(() => deferred.resolve(receiptFor(item)));
+			assert.ok(
+				!host.querySelector('[data-tab="history"] [data-hold-id]'),
+				"other-account History remains empty",
+			);
+			assert.deepEqual(
+				calls
+					.filter(({ op }) => op === "team_bridge.holds.deliver")
+					.map((r) => r.expected_account_id),
+				["account-a"],
+			);
+		},
+	);
+});
+
+test("a mounted Discard batch does not continue or publish after a same-epoch switch", () => {
+	const first = approvalProofFixture({ message_id: "a_first" });
+	const second = approvalProofFixture({ message_id: "a_second" });
+	const deferred = Promise.withResolvers();
+	return withMountedHeldQueue(
+		{ onDecide: () => deferred.promise },
+		async ({ act, calls, host, mount, setPage, switchAccount, until }) => {
+			setPage(hidePage([first, second]));
+			await mount("same-epoch-batch");
+			const byCopy = (label) =>
+				[...host.querySelectorAll("button")].find(
+					(node) => node.textContent === label,
+				);
+			await until(
+				() => byCopy("Dismiss all…") && !byCopy("Dismiss all…").disabled,
+				"A batch candidates",
+			);
+			await act(() => byCopy("Dismiss all…").click());
+			await act(() => byCopy("Dismiss listed messages (2)").click());
+			await until(
+				() => calls.some(({ op }) => op === "team_bridge.holds.discard"),
+				"first A Discard",
+			);
+			const [posted] = calls.filter(
+				({ op }) => op === "team_bridge.holds.discard",
+			);
+			await switchAccount();
+			await until(
+				() =>
+					calls.some(
+						(r) =>
+							r.expected_account_id === "account-b" &&
+							r.op === "team_bridge.holds.list",
+					),
+				"batch switched to B",
+			);
+			const answer = receiptFor({ message_id: posted.message_id });
+			answer.body.result.state = "discarded";
+			await act(() => deferred.resolve(answer));
+			assert.ok(
+				!host.querySelector('[data-tab="history"] [data-hold-id]'),
+				"other-account History remains empty",
+			);
+			assert.deepEqual(
+				calls.filter(({ op }) => op === "team_bridge.holds.discard"),
+				[posted],
+			);
+			assert.equal(posted.expected_account_id, "account-a");
+		},
+	);
+});
+
+const boundImage = {
+	id: "syn-image",
+	state: "bound",
+	mime: "image/png",
+	width: 1,
+	height: 1,
+};
+const pngBytes = Uint8Array.from(
+	Buffer.from(
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8DwHwAFBQIApFGfwQAAAABJRU5ErkJggg==",
+		"base64",
+	),
+);
+const mediaBytes = {
+	kind: "bytes",
+	status: 200,
+	mimeType: "image/png",
+	data: pngBytes,
+};
+
+test("mounted approval requires image display, keeps Discard, and revokes on media replacement or failure", () => {
+	const attachment = Promise.withResolvers();
+	const replacement = Promise.withResolvers();
+	let mediaRequests = 0;
+	const message = (descriptor, count = 1) => ({
+		body: "with image",
+		body_hash: bodySha("with image"),
+		attachment_count: count,
+		attachments: descriptor ? [descriptor] : [],
+	});
+	return withMountedHeldQueue(
+		{
+			audit: true,
+			onReadAttachment: (request) => {
+				assert.equal(request.attachmentId, boundImage.id);
+				assert.equal(request.messageId, "bcmsg_1");
+				return ++mediaRequests === 1 ? attachment.promise : replacement.promise;
+			},
+		},
+		async ({
+			act,
+			calls,
+			dom,
+			host,
+			mount,
+			setFixture,
+			setAuditContent,
+			refreshDetails,
+			refreshList,
+			switchAccount,
+			until,
+		}) => {
+			setFixture(approvalProofFixture());
+			setAuditContent(message(boundImage));
+			await mount("image-unreadable");
+			const reads = () =>
+				calls.filter(({ op }) => op === "team_bridge.owner_audit.attachment")
+					.length;
+			const image = () => host.querySelector('[data-tab="waiting"] img');
+			await until(() => reads() === 1, "pending media read");
+			assert.ok(!image());
+			assert.ok(discardButton(host));
+			assert.ok(!deliverButton(host));
+			await act(() => attachment.resolve(mediaBytes));
+			await until(image, "image element awaiting decode");
+			assert.ok(!deliverButton(host), "a blob URL is not image readiness");
+			// jsdom has no image decoder. This is the DOM load boundary exercised
+			// with a real decoded browser PNG separately, not synthetic pixel proof.
+			await act(() => {
+				Object.defineProperty(image(), "naturalWidth", { value: 1 });
+				image().dispatchEvent(new dom.window.Event("load"));
+			});
+			assert.ok(deliverButton(host));
+			setAuditContent(message(null));
+			await refreshDetails();
+			await until(() => image() === null, "opaque count-only receipt");
+			assert.ok(!deliverButton(host));
+			assert.ok(discardButton(host));
+			setFixture(
+				approvalProofFixture({
+					discard_receipt: "2".repeat(64),
+				}),
+			);
+			setAuditContent(message({ ...boundImage, sha256: "3".repeat(64) }));
+			await refreshList();
+			await until(() => reads() === 2, "new media revision requested");
+			assert.ok(!deliverButton(host));
+			await act(() => replacement.resolve(mediaBytes));
+			await until(image, "replacement image DOM");
+			await act(() => image().dispatchEvent(new dom.window.Event("error")));
+			assert.ok(!deliverButton(host));
+			assert.ok(!image());
+			assert.ok(discardButton(host));
+			assert.ok(host.textContent.includes("Attachment unavailable"));
+			await switchAccount();
+			await until(
+				() => !host.querySelector('[data-hold-id="bcmsg_1"]'),
+				"account B cannot see A media",
+			);
+		},
+	);
 });
 
 test("one click binds the visibly complete body; settled archive survives a renderer restart", async () => {
@@ -1727,7 +2073,7 @@ test("one click binds the visibly complete body; settled archive survives a rend
 				control.click();
 			});
 			await until(
-				() => history().textContent.includes("Pending"),
+				() => history().textContent.includes("Awaiting confirmation"),
 				"POST receipt in History",
 			);
 			assert.equal(deliver(), null);
@@ -1745,6 +2091,26 @@ test("one click binds the visibly complete body; settled archive survives a rend
 					decided_at: decidedAt,
 				},
 			};
+			setPage({
+				...hidePage([]),
+				history: [
+					{
+						...archived,
+						decision: { ...archived.decision, outcome: "admitted" },
+					},
+				],
+			});
+			await refreshList();
+			await until(
+				() => history().textContent.includes("Delivered"),
+				"pending receipt replaced by confirmed Deliver",
+			);
+			assert.ok(!history().textContent.includes("Awaiting confirmation"));
+			assert.equal(
+				history().querySelectorAll('[data-hold-id="bcmsg_fixture_deliver"]')
+					.length,
+				1,
+			);
 			setPage({ ...hidePage([]), history: [archived] });
 			await refreshList();
 			await until(

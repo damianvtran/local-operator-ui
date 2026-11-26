@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, useLayoutEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { TeamBridgeRequestsView } from "./team-bridge-approvals";
+import { SHOT_WIDE_B64 } from "./team-bridge-attachments.fixtures";
 import { HeldMessagesView } from "./team-bridge-held-messages";
 import {
 	type BodyBinding,
@@ -248,7 +249,7 @@ function InboxFixture() {
 		item.message_id === "bcmsg_long"
 			? {
 					state: "ready",
-					message: { ...messages.bcmsg_long, body: full, file_count: 1 },
+					message: { ...messages.bcmsg_long, body: full },
 					tenantId: "tnt_story",
 					binding: { state: "shown", hash: SHA },
 				}
@@ -323,6 +324,172 @@ export const ApprovalInboxNarrow: Story = {
 			<InboxFixture />
 		</div>
 	),
+};
+
+const outcomeFixtures = (
+	[
+		["deliver", "admitted"],
+		["discard", "rejected"],
+		["discard", "pending"],
+		["discard", "discarded_local_unconfirmed"],
+		["deliver", "refused"],
+	] as const
+).map(([word, outcome]) =>
+	hold(`fixture_${outcome}`, {
+		decision: {
+			word,
+			outcome,
+			decided_at: "2026-11-18T13:00:00Z",
+			key_id: null,
+		},
+	}),
+);
+
+export const DecisionOutcomes: Story = {
+	render: () => (
+		<div className="w-[320px] max-w-full">
+			<HeldMessagesView
+				tab="history"
+				listState="ready"
+				items={outcomeFixtures}
+				detail={(item) => ({
+					state: "ready",
+					tenantId: "fixture-tenant",
+					binding: { state: "shown", hash: SHA },
+					message: audit(
+						item.message_id,
+						"Maya Chen",
+						"Can you review the release notes?",
+					),
+				})}
+				onDecide={() => {}}
+			/>
+		</div>
+	),
+};
+
+export const CompleteMarkdownSource: Story = {
+	args: {
+		items: [extra[0]],
+		detail: (item) => ({
+			state: "ready",
+			tenantId: "fixture-tenant",
+			binding: { state: "shown", hash: SHA },
+			message: audit(
+				item.message_id,
+				"Maya Chen",
+				"| Status |\n| --- |\n| Read this | SYNTHETIC TABLE TAIL |",
+			),
+		}),
+	},
+};
+
+const mediaFixture = {
+	id: "fixture-image",
+	mime: "image/png",
+	width: 192,
+	height: 108,
+	size: 0,
+	sha256: SHA,
+	state: "bound",
+};
+
+function ApprovalMediaFixture({ fail }: { fail: boolean }) {
+	const [installed, setInstalled] = useState(false);
+	const settle = useRef<(() => void) | null>(null);
+	const item = extra[0];
+	useLayoutEffect(() => {
+		const prior = window.api;
+		window.api = {
+			...prior,
+			desktop: {
+				...prior?.desktop,
+				request: async (request) =>
+					request.op === "team_bridge.directory"
+						? {
+								status: 200,
+								body: { result: { tenant_id: "fixture-tenant", members: [] } },
+							}
+						: { status: 403, body: { detail: "Synthetic route refused" } },
+				media: async (request) => {
+					if (
+						request.op !== "team_bridge.owner_audit.attachment" ||
+						request.mode === "file" ||
+						request.expectedAccountId !== "fixture-owner" ||
+						request.tenantId !== "fixture-tenant" ||
+						request.conversationId !== item.conversation_id ||
+						request.messageId !== item.message_id ||
+						request.attachmentId !== mediaFixture.id
+					)
+						return {
+							status: 403,
+							kind: "error",
+							detail: "Synthetic scope refused",
+						};
+					await new Promise<void>((resolve) => {
+						settle.current = resolve;
+					});
+					return fail
+						? {
+								status: 403,
+								kind: "error",
+								detail: "Synthetic image unavailable",
+							}
+						: {
+								status: 200,
+								kind: "bytes",
+								mimeType: "image/png",
+								data: Uint8Array.from(atob(SHOT_WIDE_B64), (c) =>
+									c.charCodeAt(0),
+								),
+							};
+				},
+			},
+		} as typeof window.api;
+		setInstalled(true);
+		return () => {
+			settle.current?.();
+			window.api = prior;
+		};
+	}, [fail, item]);
+	return (
+		<>
+			{/* Fixture control, outside the approval UI: advance its synthetic media relay. */}
+			<button type="button" onClick={() => settle.current?.()}>
+				Settle synthetic image
+			</button>
+			{installed && (
+				<HeldMessagesView
+					listState="ready"
+					items={[item]}
+					accountId="fixture-owner"
+					now={NOW}
+					detail={() => ({
+						state: "ready",
+						tenantId: "fixture-tenant",
+						binding: { state: "shown", hash: SHA },
+						message: {
+							...audit(
+								item.message_id,
+								"Maya Chen",
+								"Review this synthetic image.",
+							),
+							attachment_count: 1,
+							attachments: [mediaFixture],
+						},
+					})}
+					onDecide={() => {}}
+				/>
+			)}
+		</>
+	);
+}
+
+export const ApprovalMedia: Story = {
+	render: () => <ApprovalMediaFixture fail={false} />,
+};
+export const ApprovalMediaUnavailable: Story = {
+	render: () => <ApprovalMediaFixture fail />,
 };
 
 export const Unscreened: Story = {

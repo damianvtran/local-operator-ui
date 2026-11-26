@@ -512,5 +512,26 @@
 		"length": "two short sentences",
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: the choice is saved on this device and no confirmation has come back from the server. State only those two facts. Do not say it was or was not applied, do not promise it will happen later, and do not say the sender was told."
+	},
+	"ui.teamBridge.holds.state.confirmed_delivered": {
+		"role": "decision status label in Team Bridge Approvals",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "The server confirmed that the held Team Bridge message was delivered to the recipient’s agent. Status, not the Deliver command."
+	},
+	"ui.teamBridge.holds.state.confirmed_discarded": {
+		"role": "decision status label in Team Bridge Approvals",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "The server confirmed that the held Team Bridge message was discarded. Status, not the Discard command. Do not claim a sender notification."
+	},
+	"ui.teamBridge.holds.state.confirmation_pending": {
+		"role": "decision status label in Team Bridge Approvals",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "A signed decision to deliver or discard is recorded. Its application is still pending server confirmation, not refused or finalized as local-only."
 	}
 }

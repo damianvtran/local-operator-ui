@@ -29,6 +29,7 @@ export const holdDetailKey = (
 		message_id: string;
 		seq: number | null;
 		thread_root_id?: string | null;
+		discard_receipt?: string | null;
 	},
 	tenantIds: readonly string[],
 ) =>
@@ -42,6 +43,9 @@ export const holdDetailKey = (
 		// the timeline miss cached under the same key.
 		item.thread_root_id ?? null,
 		tenantIds.join(","),
+		// A replacement hold with the same message coordinates needs its own
+		// settled audit proof; never borrow the previous revision's read.
+		item.discard_receipt ?? null,
 	] as const;
 
 /** The local hash of one held message's shown body. */

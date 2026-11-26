@@ -1,0 +1,75 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent working-tree translation delta audit, PR #2123 (not a numbered design round)",
+	"locale": "hi",
+	"namespace": "ui.teamBridge.holds",
+	"pr": 2123,
+	"date": "2026-11-25",
+	"reviewed_base_head": "b9288e8c8c9bc116d03cc25a76e692ba169f272c",
+	"instance": "pr2123-copy-8a1957aceb93-hi-fe06a0b4",
+	"auditor": {
+		"agent": "designer",
+		"session": "8a1957aceb93",
+		"model": "openai/gpt-6.2-sol",
+		"role": "designer (lopdev), independent translation auditor",
+		"independence": "Distinct designer session 8a1957aceb93 and coder translator session 05cf68cce306; did not author any translation. Same served model, separate agents/sessions. No MT.",
+		"instance": "pr2123-copy-8a1957aceb93-hi-fe06a0b4"
+	},
+	"translator": {
+		"agent": "coder-05cf68cce306",
+		"role": "coder",
+		"session": "05cf68cce306",
+		"model": "openai/gpt-6.2-sol",
+		"provenance": "Actual translator identity and served model named by the delegator; no MT per brief."
+	},
+	"model": "openai/gpt-6.2-sol",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.teamBridge.holds.state.confirmed_delivered": "पहुँचा दिया गया",
+		"ui.teamBridge.holds.state.confirmed_discarded": "खारिज किया गया",
+		"ui.teamBridge.holds.state.confirmation_pending": "पुष्टि बाकी है"
+	},
+	"binding": "English, target and context refer to exact reviewed working-tree file bytes; reviewed_base_head is not a claim that copy was committed or pushed. Only carry this receipt if all three hashes match the final tree.",
+	"scope": "Three new status labels only; retain prior provenance for unchanged keys.",
+	"en_sha256": "f81697d1d2cfa0ad2089c15fef3650f9a30a8e90527e4a7d46dd496646017fe2",
+	"context_sha256": "18ec44fc45d485dd7e7c58dcf6d02a17b12a122cb6239139e010220554de961f",
+	"target_sha256": "fe06a0b4ca1dc9818257e97cd39fab0d526cb78b24ccab4130ea06506b749413",
+	"source_path": "src/i18n/catalogues/en/ui.teamBridge.holds.json",
+	"target_path": "src/i18n/catalogues/hi/ui.teamBridge.holds.json",
+	"context_path": "src/i18n/catalogues/en/ui.teamBridge.holds.context.json",
+	"core_reference": {
+		"revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+		"glossary": {
+			"path": "i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"linguistic_verdict": "Everyday Hindi result phrases aligned with पहुँचाएँ / खारिज करें; पुष्टि बाकी है says confirmation remains outstanding without suggesting the user must act. No notification promise.",
+	"evidence": {
+		"scope": "Static linguistic and mechanical audit. Round 1 English before/History/narrow frames are layout references, not new-status rendered, pseudo-locale, or RTL fit proof. No fit sign-off on unpushed labels.",
+		"reference_panel": {
+			"story": "team-bridge-held-messages--approval-inbox-narrow",
+			"width_px": 360,
+			"row_px": 320,
+			"body_meta_px": 272,
+			"status_font_px": 12,
+			"background": "Round 1 browser style measurement: div.flex.flex-col.gap-1.text-meta.text-ink-muted, not final label geometry."
+		},
+		"reference_history_frame": {
+			"path": "d-history-after-deliver.png",
+			"sha256": "1e0631391235c49e10617b80b03026b756cacaefbdf764da930e6755abb530fc"
+		},
+		"checks": [
+			"Each locale matches the English key set; the three IDs are the only semantic namespace additions, and all prior values are unchanged. Existing context unchanged; exactly three context notes, all with zero placeholders.",
+			"Intl ICU parser yields exactly one literal token per audited value (no parameters, tags, plural/select arms, or escaping transformations); no Unicode Bidi_Control or format characters in audited values.",
+			"UI/core manifest byte-identical; source en and all seven supported targets included."
+		]
+	}
+}

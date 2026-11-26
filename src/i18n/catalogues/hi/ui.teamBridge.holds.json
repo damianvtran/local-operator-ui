@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "संदर्भ {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "सिर्फ़ यह संदेश ({reference}) बिना पढ़े खारिज करें? यह आपके एजेंट तक नहीं पहुँचेगा। खारिज करना इस डिवाइस पर दर्ज होता है और इसे वापस नहीं लिया जा सकता।",
 	"ui.teamBridge.holds.discard_unread_label": "संदेश {reference} बिना पढ़े खारिज करें",
-	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है। सर्वर से कोई पुष्टि नहीं मिली है।"
+	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है। सर्वर से कोई पुष्टि नहीं मिली है।",
+	"ui.teamBridge.holds.state.confirmed_delivered": "पहुँचा दिया गया",
+	"ui.teamBridge.holds.state.confirmed_discarded": "खारिज किया गया",
+	"ui.teamBridge.holds.state.confirmation_pending": "पुष्टि बाकी है"
 }

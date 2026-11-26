@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "Référence {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Écarter uniquement ce message ({reference}) sans le lire ? Il n’atteindra pas votre agent. Ce choix est enregistré sur cet appareil et est irréversible.",
 	"ui.teamBridge.holds.discard_unread_label": "Écarter le message {reference} sans le lire",
-	"ui.teamBridge.holds.state.discard_recorded": "Votre choix Écarter est enregistré sur cet appareil. Aucune confirmation du serveur n’a été reçue."
+	"ui.teamBridge.holds.state.discard_recorded": "Votre choix Écarter est enregistré sur cet appareil. Aucune confirmation du serveur n’a été reçue.",
+	"ui.teamBridge.holds.state.confirmed_delivered": "Transmis",
+	"ui.teamBridge.holds.state.confirmed_discarded": "Écarté",
+	"ui.teamBridge.holds.state.confirmation_pending": "En attente de confirmation"
 }
