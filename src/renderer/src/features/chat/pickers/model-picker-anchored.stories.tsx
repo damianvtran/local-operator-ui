@@ -315,6 +315,36 @@ const openFromChip = async (kind: QuickStoryKind) => {
 	return { chip, dialog, input };
 };
 const box = (node: Element) => node.getBoundingClientRect();
+
+function expectComposerPickerPaint(dialog: HTMLElement, list: HTMLElement) {
+	const rows = within(list).getAllByRole("option");
+	const adjacent = rows.slice(1).flatMap((row, index) => {
+		const previous = rows[index];
+		return previous.parentElement === row.parentElement
+			? [box(row).top - box(previous).bottom]
+			: [];
+	});
+	expect(adjacent.length).toBeGreaterThan(0);
+	for (const gap of adjacent) expect(gap).toBeCloseTo(2, 1);
+	const active = within(list).getByRole("option", { selected: true });
+	expect(getComputedStyle(active, "::before").content).toBe("none");
+	const current = list.querySelector('[data-current="true"]');
+	expect(current).not.toBeNull();
+	expect(current?.querySelector("svg[aria-label]")).not.toBeNull();
+
+	// Normalize the authored role through the browser, not a hex or a palette
+	// name: this assertion must hold on whichever theme the gallery is using.
+	const swatch = document.createElement("span");
+	swatch.style.backgroundColor = "var(--lo-elevated)";
+	dialog.append(swatch);
+	try {
+		expect(getComputedStyle(dialog).backgroundColor).toBe(
+			getComputedStyle(swatch).backgroundColor,
+		);
+	} finally {
+		swatch.remove();
+	}
+}
 const anchorGap = (chip: Element, dialog: Element) =>
 	box(chip).top - box(dialog).bottom;
 const assertWrites = async (
@@ -339,6 +369,17 @@ export const AnchoredModel: Story = {
 		const list = await within(dialog).findByRole("listbox");
 		expect(dialog).toHaveAttribute("data-picker-placement", "anchored");
 		expect(anchorGap(chip, dialog)).toBeCloseTo(6, 0);
+		expectComposerPickerPaint(dialog, list);
+		const checks = within(dialog).getAllByRole<HTMLButtonElement>("checkbox");
+		const [persist, showAll] = checks.map((check) => check.labels?.[0]);
+		expect(persist).toBeDefined();
+		expect(showAll).toBeDefined();
+		if (persist && showAll) {
+			expect(box(persist).height).toBeGreaterThanOrEqual(24);
+			expect(box(showAll).height).toBeGreaterThanOrEqual(24);
+			expect(box(showAll).left).toBeCloseTo(box(persist).left, 1);
+			expect(box(showAll).top - box(persist).bottom).toBeCloseTo(2, 1);
+		}
 		const resting = [box(input).top, box(list).top];
 		for (const next of ["g", "p", "t", "-", "6", "-luna"]) {
 			await userEvent.keyboard(next);
@@ -358,9 +399,26 @@ export const AnchoredEffort: Story = {
 	play: async () => {
 		const { chip, dialog, input: list } = await openFromChip("effort");
 		expect(within(dialog).queryByRole("combobox")).toBeNull();
+		expectComposerPickerPaint(dialog, list);
 		expect(
 			within(list).getByRole("option", { selected: true }),
 		).toHaveTextContent("Medium");
+		// The pointer and keyboard can mark adjacent rows at the same time.
+		// Read their actual boxes and fills, not just the state attributes.
+		if (matchMedia("(hover: hover)").matches) {
+			const active = within(list).getByRole("option", { selected: true });
+			const neighbor = within(list).getByRole("option", { name: "Low" });
+			await userEvent.hover(neighbor);
+			expect(neighbor).toHaveAttribute("data-hovered", "true");
+			expect(getComputedStyle(neighbor).backgroundColor).not.toBe(
+				getComputedStyle(active).backgroundColor,
+			);
+			expect(getComputedStyle(neighbor).backgroundColor).not.toBe(
+				"rgba(0, 0, 0, 0)",
+			);
+			expect(box(active).top - box(neighbor).bottom).toBeCloseTo(2, 1);
+			await userEvent.unhover(neighbor);
+		}
 		await userEvent.keyboard("{ArrowDown}{ArrowDown}");
 		expect(
 			within(list).getByRole("option", { selected: true }),
@@ -486,7 +544,8 @@ const defaultGeometry = async (accept: boolean, untick = false) => {
 		compactCheckboxes();
 	};
 	expect(check).not.toBeChecked();
-	await userEvent.click(check);
+	// The adjacent label is part of the effective hit target at this density.
+	await userEvent.click(label);
 	const release = await waitFor(() => {
 		const button = document.querySelector<HTMLButtonElement>(
 			"[data-release-default-write]:enabled",

@@ -97,7 +97,7 @@ test("the unmutated tree passes the gate this file mutates", () => {
 	assert.match(out, /Contrast contract holds: \d+ assertions across 59 themes/);
 });
 
-test("picker hover keeps the neutral anchored treatment separate from dialog and fallback rows", () => {
+test("picker hover keeps the anchored palette treatment separate from dialog and fallback rows", () => {
 	const css = "src/renderer/src/styles/index.css";
 	const host = "src/renderer/src/features/chat/pickers/picker-host.tsx";
 	// Change the shipped selectors/classes in the passing copy, not the pins.

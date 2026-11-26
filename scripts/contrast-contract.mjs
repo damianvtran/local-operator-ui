@@ -585,7 +585,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "non-anchored picker option row pointer tint",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: '!anchored &&\n\t\t\t\t\t\tisHovered &&\n\t\t\t\t\t\t!isActive &&\n\t\t\t\t\t\t!option.disabled &&\n\t\t\t\t\t\t"bg-accent-wash"',
-		why: "dialog and fallback rows keep their accent wash for settable pointer targets, distinct from keyboard selection; anchored Model/Effort instead paint their own neutral pointer tone",
+		why: "dialog and fallback rows keep their accent wash for settable pointer targets, distinct from keyboard selection; anchored Model/Effort instead tint their own palette-derived paper",
 	},
 	{
 		what: "anchored picker option row pointer scope",
@@ -606,11 +606,11 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "anchored picker option row pointer tone",
 		file: "src/renderer/src/styles/index.css",
-		/* A shipped recipe pin, not a new palette floor: the pointer tone comes
-		 * from neutral paper, not an accent role in the flat-hex palette loop. */
+		/* Pin the shipped recipe: the pointer step uses the palette ground, not
+		 * a separate accent role that may be indistinguishable from the paper. */
 		must: `--picker-pointer: light-dark(
 		color-mix(in srgb, var(--picker-paper), black 10%),
-		color-mix(in srgb, var(--picker-paper), white 9%)
+		color-mix(in srgb, var(--picker-paper), white 7%)
 	);`,
 		why: "anchored hover steps darker on light paper and brighter on dark paper, without needing accent tint or a perimeter",
 	},

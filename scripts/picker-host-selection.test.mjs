@@ -727,6 +727,7 @@ test("only an anchored quick picker uses solid paper and local row tones", () =>
 			assert.ok(toolbar().classList.contains("divider-inset"));
 			assert.ok(selected().classList.contains("bg-sunken"));
 			assert.ok(selected().classList.contains("outline-control"));
+			assert.ok(!selected().parentElement.classList.contains("space-y-0.5"));
 
 			const anchor = document.createElement("button");
 			// jsdom has no layout. Supply the visible chip rect that the host
@@ -737,11 +738,15 @@ test("only an anchored quick picker uses solid paper and local row tones", () =>
 
 			assert.equal(panel().dataset.pickerPlacement, "anchored");
 			assert.ok(panel().hasAttribute("data-lo-floating"));
+			assert.ok(panel().hasAttribute("data-lo-floating-finish"));
 			assert.ok(!panel().hasAttribute("data-glass-overlay"));
 			assert.ok(panel().classList.contains("shadow-overlay"));
 			assert.ok(!toolbar().classList.contains("divider-inset"));
 			assert.ok(!selected().classList.contains("bg-sunken"));
 			assert.ok(!selected().classList.contains("outline-control"));
+			// Spacing belongs inside a group: headings and the scrollport don't
+			// need a trailing spacer, and the fallback keeps its own rhythm.
+			assert.ok(selected().parentElement.classList.contains("space-y-0.5"));
 		} finally {
 			view.unmount();
 		}

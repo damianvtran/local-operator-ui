@@ -716,9 +716,9 @@ export function pickerPrimaryLabel(state: {
  *
  * WHY TWO STATES, AND WHY THE DIALOG HAS ITS OWN GROUNDS.
  *
- * Anchored rows use tones on the composer's neutral paper. Their leading mark
- * identifies Enter's target without boxing it in; the check still identifies
- * the current value. Dialog rows keep the palette roles described below.
+ * Anchored rows use two steps from the composer's palette-driven paper. The
+ * stronger fill identifies Enter's target without a leading mark; the check
+ * still identifies the current value. Dialog rows keep the roles below.
  *
  * `isActive` is the keyboard's selection — what Enter picks. It takes `bg-
  * sunken`, because that is the only ground role that steps perceptibly away
@@ -1598,8 +1598,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 				collisionPadding: 8,
 				"aria-labelledby": titleId,
 				"aria-describedby": descriptionId,
-				// The composer choices use solid paper, like the typing surface. Keep
-				// the glass marker on every other consumer of the shared popover.
+				// Use the same palette finish as @ and /, but keep these choices on
+				// solid paper. Other consumers still get the shared popover's glass.
+				"data-lo-floating-finish": "",
 				"data-glass-overlay": undefined,
 				className: cn(
 					compactFrame,
@@ -1864,7 +1865,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 								)}
 							>
 								{grouped.map(([group, rows]) => (
-									<div key={group || "ungrouped"}>
+									<div
+										key={group || "ungrouped"}
+										className={isQuick && anchor ? "space-y-0.5" : undefined}
+									>
 										{group && (
 											<p className="px-2 pt-2 pb-1 text-ink-dim text-meta">
 												{group}
@@ -2192,7 +2196,7 @@ export const PickerCheck: FC<{
 }) => {
 	const id = useId();
 	return (
-		<div className="flex items-start gap-2">
+		<div data-picker-check="" className="flex items-start gap-2">
 			<Checkbox
 				className="mt-0.5"
 				id={id}

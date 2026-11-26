@@ -416,10 +416,10 @@ bare.) The rule that follows, and it applies to every leave-flow surface:
   run's evidence.
 - **Give floating panels a quiet, palette-driven finish.** Use a low-contrast
   tone-on-tone gradient on the panel ground. Where the material calls for an
-  opaque neutral ground, take its lightness from `elevated`: the [anchored Model
-  and Effort pickers](https://github.com/damianvtran/local-operator-ui/pull/2112)
-  are the solid-paper reference. They borrow the finish from the
-  [Nested dock](#composer-the-nested-dock) without copying its in-flow treatment.
+  opaque ground, use `elevated`: the anchored Model and Effort pickers are
+  the solid-paper reference. They keep the palette's hue and share the
+  short finish of the composer's @ and / panels, without copying the
+  [Nested dock](#composer-the-nested-dock)'s in-flow treatment.
   An optional shallow top gleam fades out before the corners and never traces
   the perimeter. Use the shared primitives, palette roles
   and semantic state treatments, not per-panel hex values or bespoke shadows.

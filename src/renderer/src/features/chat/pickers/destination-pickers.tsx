@@ -518,6 +518,7 @@ const ReservedLabelText: FC<{
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
+			data-picker-label-lines={capLines}
 			className={cn(
 				"grid",
 				capLines === 2 && "min-h-[2lh]",
@@ -535,6 +536,17 @@ const ReservedLabelText: FC<{
 			>
 				{text}
 			</span>
+			{capLines && (
+				// Reserve the lines the named receipt needs at the actual width,
+				// without leaving a blank line when all the wordings already fit.
+				<span
+					aria-hidden="true"
+					data-picker-label-reserve=""
+					className="invisible col-start-1 row-start-1 hidden"
+				>
+					{wordings[2]}
+				</span>
+			)}
 		</span>
 	);
 };
@@ -2303,7 +2315,10 @@ export const ModelPicker: FC<PickerContext> = ({
 				 */
 				<div className="grid gap-1">
 					{(!draft || scopeControl) && (
-						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1">
+						<div
+							data-model-picker-checks=""
+							className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1"
+						>
 							{!draft && (
 								<div className="min-w-0 grow basis-48 [&_label]:min-w-0 [&_label]:flex-1">
 									{/* The control, not the saved model's name, sets the width.
