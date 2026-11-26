@@ -21,6 +21,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
@@ -178,6 +179,7 @@ export function assertModelTraffic(
 	readTemplates = [],
 	feedOpens = [],
 	proof = {},
+	observePresence = null,
 ) {
 	const base = `/v1/desktop/sessions/${sessionId}`;
 	const reads = new Set([
@@ -336,11 +338,13 @@ export function assertModelTraffic(
 				witness,
 				"presence lacks earlier live owned app-feed open witness",
 			);
-			assert.equal(
-				request.response_status,
-				200,
-				"presence lease was not accepted",
-			);
+			observePresence?.(request, witness);
+			if (!observePresence || request.response_status !== undefined)
+				assert.equal(
+					request.response_status,
+					200,
+					"presence lease was not accepted",
+				);
 			continue;
 		}
 		if (
@@ -497,6 +501,130 @@ export function assertModelTraffic(
 	}
 }
 
+async function assertSavedModelTraffic(
+	backend,
+	saveBarrierOrder,
+	until,
+	stamp,
+) {
+	const seen = new Map();
+	let judgment;
+	try {
+		for (;;) {
+			const remaining = until - Date.now();
+			assert(
+				remaining > 0,
+				"presence lease was not accepted before save deadline",
+			);
+			const traffic = await backend.state(remaining);
+			const app = traffic.attempts.filter((a) => !a.observer);
+			const pickerOpens = app.filter(
+				(a) =>
+					a.path === `/v1/desktop/sessions/${backend.sessionId}/commands` &&
+					a.body?.args === "",
+			).length;
+			const modelB = app.filter(
+				(r) =>
+					r.method === "POST" &&
+					r.path.endsWith("/commands") &&
+					r.body?.args === "test/mock-model-b",
+			).length;
+			const patches = app.filter((r) => r.method === "PATCH");
+			judgment = {
+				saveBarrierOrder,
+				evidenceOrder: traffic.evidence_order,
+				appAttempts: app.length,
+				pickerOpens,
+				modelB,
+				patches: patches.map(({ path }) =>
+					path === "/v1/settings/hosting" || path === "/v1/settings/model_name"
+						? path
+						: "other",
+				),
+				awaited: [...seen.values()]
+					.filter((p) => p.status === undefined)
+					.map((p) => p.identity),
+				presence: app
+					.filter((a) => a.path === "/v1/desktop/presence")
+					.map((a) => ({
+						index: a.index,
+						order: a.order,
+						status: Number.isInteger(a.response_status)
+							? a.response_status
+							: a.response_status === undefined
+								? "pending"
+								: "invalid",
+					})),
+				witnesses: [],
+			};
+			const observed = new Set();
+			// Core publishes the attempt before http.response.start. Only that absent
+			// status may settle; re-check every row and count in each fresh snapshot.
+			assertModelTraffic(
+				traffic.attempts,
+				backend.sessionId,
+				backend.readTemplates,
+				traffic.feed_opens,
+				{
+					...backend.policyScope,
+					listWitnesses: traffic.list_witnesses,
+					saveBarrierOrder,
+				},
+				(request, witness) => {
+					const { index, order, body, response_status: status } = request;
+					const { request_index: feedIndex, open_order: feedOpenOrder } =
+						witness;
+					const identity = { index, order, feedIndex, feedOpenOrder };
+					judgment.witnesses.push({
+						...identity,
+						feedCloseOrder: witness.close_order,
+					});
+					assert(
+						Number.isInteger(index) && !observed.has(index),
+						"invalid or duplicate presence index",
+					);
+					observed.add(index);
+					const prior = seen.get(index);
+					assert(
+						!prior ||
+							(isDeepStrictEqual(prior.identity, identity) &&
+								isDeepStrictEqual(prior.body, body)),
+						`presence ${index} changed request or feed witness`,
+					);
+					assert(
+						prior?.status !== 200 || status === 200,
+						`presence ${index} lost accepted status`,
+					);
+					seen.set(index, { identity, body, status });
+				},
+			);
+			for (const index of seen.keys())
+				assert(
+					observed.has(index),
+					`presence ${index} disappeared from traffic`,
+				);
+			assert.equal(
+				pickerOpens,
+				1,
+				"exactly one native model picker open required",
+			);
+			assert.equal(modelB, 1, "model B intent automatically replayed");
+			assert.deepEqual(
+				patches.map((r) => r.path),
+				["/v1/settings/hosting", "/v1/settings/model_name"],
+			);
+			const left = until - Date.now();
+			assert(left > 0, "presence lease was not accepted before save deadline");
+			if ([...seen.values()].every((p) => p.status === 200)) return;
+			await delay(Math.min(100, left));
+		}
+	} finally {
+		// measurements.json is saved synchronously by stamp, before teardown can
+		// complete an in-flight response and obscure the verdict's actual evidence.
+		if (judgment) stamp("post-frame:explicit-save-traffic-judgment", judgment);
+	}
+}
+
 /** The real backend's Python boundary: never inherit an ambient installed-app
  * bytecode prefix. PYTHONPATH is reintroduced ONLY for this run's owned guard.
  * Exported so the hostile-prefix control executes this exact builder, not a copy.
@@ -620,13 +748,13 @@ export async function startModelBackend({ output }) {
 	const closed = new Promise((done) =>
 		child.once("exit", (code, signal) => done({ code, signal })),
 	);
-	const control = (op, fields = {}) =>
+	const control = (op, fields = {}, timeout = 10_000) =>
 		new Promise((resolveAnswer, reject) => {
 			const id = ++counter;
 			const timer = setTimeout(() => {
 				pending.delete(id);
 				reject(Error(`core control ${op} timed out`));
-			}, 10_000);
+			}, timeout);
 			pending.set(id, {
 				resolve: (x) => {
 					clearTimeout(timer);
@@ -849,7 +977,7 @@ export async function startModelBackend({ output }) {
 		}
 		throw error;
 	}
-	const state = () => control("state");
+	const state = (timeout) => control("state", {}, timeout);
 	const waitCapture = async (predicate, barrier = { sessionId }) => {
 		const end = Date.now() + 20_000;
 		for (;;) {
@@ -1437,43 +1565,7 @@ export const modelUncertaintyCase = {
 			assert(Date.now() < until, "actual default YAML did not settle to B");
 			await delay(100);
 		}
-		const traffic = await backend.state();
-		assertModelTraffic(
-			traffic.attempts,
-			backend.sessionId,
-			backend.readTemplates,
-			traffic.feed_opens,
-			{
-				...backend.policyScope,
-				listWitnesses: traffic.list_witnesses,
-				saveBarrierOrder,
-			},
-		);
-		assert.equal(
-			traffic.attempts.filter(
-				(a) =>
-					!a.observer &&
-					a.path === `/v1/desktop/sessions/${backend.sessionId}/commands` &&
-					a.body?.args === "",
-			).length,
-			1,
-			"exactly one native model picker open required",
-		);
-		const modelB = traffic.attempts.filter(
-			(r) =>
-				!r.observer &&
-				r.method === "POST" &&
-				r.path.endsWith("/commands") &&
-				r.body?.args === "test/mock-model-b",
-		);
-		assert.equal(modelB.length, 1, "model B intent automatically replayed");
-		const patches = traffic.attempts.filter(
-			(r) => !r.observer && r.method === "PATCH",
-		);
-		assert.deepEqual(
-			patches.map((r) => r.path),
-			["/v1/settings/hosting", "/v1/settings/model_name"],
-		);
+		await assertSavedModelTraffic(backend, saveBarrierOrder, until, stamp);
 		assert.equal(
 			(await trace()).receipts.filter((r) => r.carrier === "default-save")
 				.length,
