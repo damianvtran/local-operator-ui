@@ -28,7 +28,8 @@ import {
 
 type Candidate = {
 	key: string;
-	proof: "needed" | { due: number; revision?: string };
+	due: number;
+	revision?: string;
 };
 
 type DraftClock = { id: string; due: number };
@@ -130,17 +131,13 @@ export function useWorkspaceTabCleanup(
 				for (const id of ids) {
 					const candidate = candidates.get(id);
 					if (!candidate) continue;
-					const prior = candidate.proof;
 					const revision = revisions.get(id);
+					if (revision !== undefined && candidate.revision === revision)
+						expired.add(candidate.key);
 					// A missing proof breaks the chain but not the clock: the next
 					// ordinary sweep can recover even if no feed or store event arrives.
-					candidate.proof = { revision, due: now + WORKSPACE_INACTIVE_MS };
-					if (
-						revision !== undefined &&
-						typeof prior === "object" &&
-						prior.revision === revision
-					)
-						expired.add(candidate.key);
+					candidate.revision = revision;
+					candidate.due = now + WORKSPACE_INACTIVE_MS;
 				}
 				if (expired.size) remove(expired, stillCurrent);
 			} finally {
@@ -172,12 +169,22 @@ export function useWorkspaceTabCleanup(
 					}
 				}
 				if (!inFlight && connected && epoch) {
-					const ids = new Set<string>();
-					for (const [id, { proof }] of candidates) {
-						if (proof === "needed" || proof.due <= now) ids.add(id);
-						else wakeAt = Math.min(wakeAt, proof.due);
+					const due: Array<[string, number]> = [];
+					for (const [id, candidate] of candidates) {
+						if (candidate.due <= now) due.push([id, candidate.due]);
+						else wakeAt = Math.min(wakeAt, candidate.due);
 					}
-					if (ids.size) {
+					if (due.length) {
+						// Cap requests, not candidates. Older deadlines go first, so
+						// page misses on retry or newly opened tabs cannot keep a
+						// waiting tab out. Ties don't depend on strip order.
+						due.sort(
+							([a, deadlineA], [b, deadlineB]) =>
+								deadlineA - deadlineB || a.localeCompare(b),
+						);
+						const ids = new Set(
+							due.slice(0, DESKTOP_SESSION_PAGE_LIMIT).map(([id]) => id),
+						);
 						inFlight = true;
 						void checkBatch(ids, epoch, generation);
 					}
@@ -261,22 +268,17 @@ export function useWorkspaceTabCleanup(
 				}
 			}
 			if (draftChanged) plan();
-			// Select deterministically, so dragging tabs cannot invalidate evidence.
-			const ids = [...desired.keys()]
-				.sort()
-				.slice(0, DESKTOP_SESSION_PAGE_LIMIT);
-			const bounded = new Set(ids);
 			let changed = false;
 			for (const [id, { key }] of candidates) {
-				if (!bounded.has(id) || desired.get(id) !== key) {
+				if (desired.get(id) !== key) {
 					candidates.delete(id);
 					changed = true;
 				}
 			}
-			for (const id of ids) {
-				const key = desired.get(id);
-				if (key !== undefined && !candidates.has(id)) {
-					candidates.set(id, { key, proof: "needed" });
+			const now = performance.now();
+			for (const [id, key] of desired) {
+				if (!candidates.has(id)) {
+					candidates.set(id, { key, due: now });
 					changed = true;
 				}
 			}
@@ -330,7 +332,8 @@ export function useWorkspaceTabCleanup(
 			} else if (frame.type === "session_status") {
 				const candidate = candidates.get(frame.session_id);
 				if (!candidate) return;
-				candidate.proof = "needed";
+				candidate.revision = undefined;
+				candidate.due = performance.now();
 				generation++;
 				plan();
 			}

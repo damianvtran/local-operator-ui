@@ -481,6 +481,37 @@ test("a page miss retries on the next interval and must earn two fresh matching 
 	assert.equal(feed.calls.length, 4, "closed tabs no longer need probes");
 });
 
+test("a full batch of page misses cannot starve the 501st background tab's two receipts", async (t) => {
+	const offPage = Array.from({ length: 500 }, (_, index) =>
+		index.toString(16).padStart(12, "0"),
+	);
+	const feed = installTransport(t, {
+		answer: (requested) => result(requested.includes(B) ? [wireRow(B)] : []),
+	});
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A, ...offPage, B],
+		rows: rowsFor([A, B]),
+	});
+	const tick = withClock(t);
+	const requests = () => feed.calls.map((ids) => [ids.length, ids.includes(B)]);
+	await enable();
+	assert.deepEqual(requests(), [
+		[500, false],
+		[1, true],
+	]);
+	assert.deepEqual(feed.calls[0], offPage);
+	assert.deepEqual(feed.calls[1], [B]);
+	assert.ok(find(B), "one receipt does not close the tab");
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.equal(feed.calls.length, 2, "page misses do not retry early");
+	assert.ok(find(B));
+	await tick(1);
+	assert.deepEqual(feed.calls, [offPage, [B], offPage, [B]]);
+	const kept = [A, ...offPage];
+	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
+});
+
 test("a tab not in the cached catalogue can age only on fresh Core receipts", async (t) => {
 	const feed = installTransport(t);
 	await mount(t, { feedAvailable: true, rows: rowsFor([A]) });
