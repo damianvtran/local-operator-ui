@@ -10,7 +10,7 @@
  * section 4). The same function runs in the theme build
  * (`scripts/generate-theme-css.mjs`, through `paletteBlock`) and at runtime for
  * a composed palette, and its relay-web and React Native copies must reproduce
- * the golden vectors pinned in `scripts/chart-palette.test.mjs` byte for byte.
+ * the golden vectors pinned in `scripts/inline-chart.test.mjs` byte for byte.
  *
  * WHAT IT GUARANTEES.
  *   - Slot 1 is always the accent, untouched (the theme's identity colour).

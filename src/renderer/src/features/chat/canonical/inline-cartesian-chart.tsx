@@ -43,11 +43,11 @@ import {
 	barsHorizontal,
 	fixedCountTicks,
 	niceTicks,
+	planXLabels,
 	plotHeight,
 	project,
 	snap,
 	svgPath,
-	thinLabels,
 	truncateToWidth,
 	withUnit,
 } from "./inline-chart-model";
@@ -298,27 +298,31 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 		const rightAt = rightTicks ? project(rightTicks, y0, y1) : null;
 
 		// ---- x labels (vertical charts) ---------------------------------------
-		const axisLabels = labels.map(axisText);
-		const plan =
-			kind === "horizontal" ? null : thinLabels(axisLabels.map(measure), slot);
-		const xLabels = plan
-			? plan.shown.map((category) => {
-					const text = truncateToWidth(
-						axisLabels[category],
-						plan.maxWidth,
+		/* Planned on each label's real box at its real anchor (line: first at
+		   start, last at end), inside the SVG's own width; see planXLabels. */
+		const xLabels =
+			kind === "horizontal"
+				? []
+				: planXLabels({
+						texts: labels.map(axisText),
+						xs: labels.map((_, category) => centre(category)),
+						anchors: labels.map((_, category) =>
+							lineLike && n > 1
+								? category === 0
+									? "start"
+									: category === n - 1
+										? "end"
+										: "middle"
+								: "middle",
+						),
+						bounds: [0, width],
 						measure,
-					);
-					const anchor: "start" | "middle" | "end" =
-						lineLike && n > 1
-							? category === 0
-								? "start"
-								: category === n - 1
-									? "end"
-									: "middle"
-							: "middle";
-					return { category, text, x: centre(category), anchor };
-				})
-			: [];
+					}).map(({ index, text, x, anchor }) => ({
+						category: index,
+						text,
+						x,
+						anchor,
+					}));
 
 		// ---- bars -------------------------------------------------------------
 		const bars: BarRect[] = [];
@@ -444,7 +448,7 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 	]);
 
 	// ---- pointer → mark --------------------------------------------------------
-	const locate = (event: ReactPointerEvent<SVGSVGElement>): Mark | null => {
+	const locate = (event: ReactPointerEvent<Element>): Mark | null => {
 		if (!layout) return null;
 		const box = event.currentTarget.getBoundingClientRect();
 		const px = event.clientX - box.left;
@@ -514,8 +518,14 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 		if (!active || !layout) return null;
 		const { category } = active;
 		const raw = series.map(({ values }) => values[category]);
+		/* A stack that mixes signs has no meaningful "share of total": shares of
+		   the gross |sum| contradicted the net Total row beside them (79.5% +
+		   20.5% next to Total 52 of 70 - 18; design review D2). Such a column
+		   keeps its Total and drops the shares (cross-surface decision X6). */
+		const mixedSigns =
+			stacked && raw.some((n) => n > 0) && raw.some((n) => n < 0);
 		const shares =
-			percent || stacked
+			(percent || stacked) && !mixedSigns
 				? categoryShares(raw.map((n) => Math.abs(n)))
 				: undefined;
 		const rows: TooltipRow[] = series.map((entry, index) => ({
@@ -555,8 +565,11 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 					below: bar ? bar.x + bar.width : layout.y0,
 				};
 			} else {
+				/* Grouped, stacked and percent anchor at the HOVERED bar or segment,
+				   not the column's top: a flipped tooltip then starts under that
+				   segment instead of under the zero line (QA Q3, decision X4). */
 				const target =
-					mode === "grouped"
+					mode === "grouped" || stacked || percent
 						? bars.find((bar) => bar.series === active.series)
 						: undefined;
 				const tops = bars.map((bar) => Math.min(bar.base, bar.tip));
@@ -567,7 +580,11 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 						: tops.length
 							? Math.min(...tops)
 							: layout.y1,
-					below: tops.length ? Math.max(...tops) : layout.y1,
+					below: target
+						? Math.max(target.base, target.tip)
+						: tops.length
+							? Math.max(...tops)
+							: layout.y1,
 				};
 			}
 		}
@@ -590,20 +607,33 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 	})();
 
 	// ---- data table ---------------------------------------------------------
-	const columns = [
-		{ label: "" },
-		...series.map((entry, index) => ({
-			// A single series is the title itself; its header carries the unit.
-			label: multi
-				? withUnitHeader(entry.label, unitFor(index))
-				: (unitFor(index) ?? ""),
-			numeric: true,
-		})),
-	];
-	const rows = labels.map((label, category) => [
-		label,
-		...series.map(({ values }) => numbers.exact(values[category])),
-	]);
+	// Memoised so a hover does not re-render the (memo) tables; review R5.
+	const columns = useMemo(
+		() => [
+			{ label: "" },
+			...series.map((entry) => {
+				const unit =
+					dual && entry.axis === "right" ? value.rightUnit : value.unit;
+				return {
+					// A single series is the title itself; its header carries the unit.
+					label:
+						series.length > 1
+							? withUnitHeader(entry.label, unit)
+							: (unit ?? ""),
+					numeric: true,
+				};
+			}),
+		],
+		[series, dual, value.unit, value.rightUnit],
+	);
+	const rows = useMemo(
+		() =>
+			labels.map((label, category) => [
+				label,
+				...series.map(({ values }) => numbers.exact(values[category])),
+			]),
+		[labels, series, numbers],
+	);
 
 	const activeSeries = active
 		? Math.min(active.series, series.length - 1)
@@ -671,22 +701,18 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 						width={width}
 						height={layout.svgHeight}
 						viewBox={`0 0 ${width} ${layout.svgHeight}`}
+						direction="ltr"
 						className="block touch-pan-y select-none overflow-visible"
-						onPointerMove={(event) =>
-							marks.point(locate(event), event.pointerType)
-						}
-						onPointerDown={(event) =>
-							event.pointerType === "touch" &&
-							marks.point(locate(event), "touch", true)
-						}
-						onPointerLeave={marks.leave}
+						{...marks.pointerHandlers(locate, { scrub: kind === "line" })}
 					>
 						{/* Gridlines and tick labels: no spine, no tick marks. */}
 						{kind === "horizontal"
 							? layout.ticks.ticks.map((tick, index) => {
 									const x = Math.round(layout.valueAt(tick)) + 0.5;
 									return (
-										<g key={`grid-${tick}`}>
+										// By index: a degenerate domain can repeat a tick value (X11).
+										// biome-ignore lint/suspicious/noArrayIndexKey: ticks are positional; values may repeat.
+										<g key={`grid-${index}`}>
 											<line
 												x1={x}
 												x2={x}
@@ -718,7 +744,8 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 							: layout.ticks.ticks.map((tick, index) => {
 									const y = snap(layout.valueAt(tick));
 									return (
-										<g key={`grid-${tick}`}>
+										// biome-ignore lint/suspicious/noArrayIndexKey: ticks are positional; values may repeat (X11).
+										<g key={`grid-${index}`}>
 											<line
 												x1={layout.x0}
 												x2={layout.x1}
@@ -776,6 +803,8 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 							: layout.xLabels.map(({ category, text, x, anchor }) => (
 									<text
 										key={`x-${category}`}
+										// Which category this label names, for box checks in tests.
+										data-lo-chart-xlabel={category}
 										x={x}
 										y={layout.y1 + 18}
 										textAnchor={anchor}
@@ -873,6 +902,7 @@ export function InlineCartesianChart({ value }: { value: CartesianInput }) {
 					<ChartTooltip
 						anchor={readout.anchor}
 						width={width}
+						bottom={layout?.y1 ?? 0}
 						heading={labels[active?.category ?? 0]}
 						rows={readout.rows}
 					/>

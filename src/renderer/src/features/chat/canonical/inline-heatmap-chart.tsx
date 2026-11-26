@@ -31,7 +31,7 @@ import {
 import {
 	axisText,
 	heatmapRowHeight,
-	thinLabels,
+	planXLabels,
 	truncateToWidth,
 	withUnit,
 } from "./inline-chart-model";
@@ -41,9 +41,23 @@ const CELL_GAP = 2;
 const CELL_RADIUS = 3;
 const BOTTOM = 24;
 
-/** The sequential fill at `fraction` of the domain: `t = 12 + 88 x fraction`. */
+/**
+ * The ramp's low end: the accent's share of the mix at the domain minimum.
+ *
+ * WHY 28, NOT THE SPEC'S 12. The mix base is `surface`, which window glass
+ * does not paint, so at 12% a 0 cell measured 1.02:1 against the rendered
+ * dark glass ground: "0 tickets" read as empty ground and as "No data"
+ * (design review D3, decision X10). At 28% the 0 cell is at least 1.39:1
+ * against canvas, surface, message and the glass ground in localOperatorDark,
+ * localOperatorLight, highContrastLight and dracula, and carries the accent's
+ * hue, while the ramp still spans 28-100 as the spec's linear map.
+ */
+export const HEAT_FLOOR = 28;
+
+/** The sequential fill at `fraction`: `t = 28 + 72 x fraction` (see HEAT_FLOOR). */
 export function heatFill(fraction: number) {
-	const strength = Math.round((12 + 88 * fraction) * 10) / 10;
+	const strength =
+		Math.round((HEAT_FLOOR + (100 - HEAT_FLOOR) * fraction) * 10) / 10;
 	return `color-mix(in oklab, var(--color-accent) ${strength}%, var(--color-surface))`; // i18n: ignore generated CSS colour, not display copy.
 }
 
@@ -89,10 +103,14 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 		const x0 = Math.min(cap, Math.ceil(widest)) + 8;
 		const plotWidth = Math.max(1, width - x0);
 		const slot = plotWidth / Math.max(1, columns);
-		const plan = thinLabels(
-			value.columns.map((c) => measure(axisText(c))),
-			slot,
-		);
+		// Centred column labels, planned on their real boxes (planXLabels).
+		const columnLabels = planXLabels({
+			texts: value.columns.map(axisText),
+			xs: value.columns.map((_, column) => x0 + (column + 0.5) * slot),
+			anchors: value.columns.map(() => "middle" as const),
+			bounds: [0, width],
+			measure,
+		});
 		return {
 			pitch,
 			x0,
@@ -102,18 +120,14 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 			rowLabels: value.rowLabels.map((label) =>
 				truncateToWidth(label, x0 - 8, measure),
 			),
-			columnLabels: plan.shown.map((column) => ({
-				column,
-				text: truncateToWidth(
-					axisText(value.columns[column]),
-					plan.maxWidth,
-					measure,
-				),
+			columnLabels: columnLabels.map(({ index, text }) => ({
+				column: index,
+				text,
 			})),
 		};
 	}, [width, font, value.rowLabels, value.columns, columns, rowCount]);
 
-	const locate = (event: ReactPointerEvent<SVGSVGElement>) => {
+	const locate = (event: ReactPointerEvent<Element>) => {
 		if (!layout) return null;
 		const box = event.currentTarget.getBoundingClientRect();
 		const px = event.clientX - box.left;
@@ -124,6 +138,23 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 			return null;
 		return { category: column, series: row };
 	};
+
+	// Memoised so a hover does not re-render the (memo) tables; review R5.
+	const dataColumns = useMemo(
+		() => [
+			{ label: value.unit ?? "" },
+			...value.columns.map((label) => ({ label, numeric: true })),
+		],
+		[value.unit, value.columns],
+	);
+	const dataRows = useMemo(
+		() =>
+			value.rows.map((cells, row) => [
+				value.rowLabels[row],
+				...cells.map((cell) => (cell === null ? "—" : numbers.exact(cell))),
+			]),
+		[value.rows, value.rowLabels, numbers],
+	);
 
 	const readout = (() => {
 		if (!active || !layout) return null;
@@ -187,15 +218,9 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 						width={width}
 						height={layout.svgHeight}
 						viewBox={`0 0 ${width} ${layout.svgHeight}`}
+						direction="ltr"
 						className="block select-none"
-						onPointerMove={(event) =>
-							marks.point(locate(event), event.pointerType)
-						}
-						onPointerDown={(event) =>
-							event.pointerType === "touch" &&
-							marks.point(locate(event), "touch", true)
-						}
-						onPointerLeave={marks.leave}
+						{...marks.pointerHandlers(locate)}
 					>
 						<defs>
 							{/* Missing values: a 45 degree hatch of hairline-strong,
@@ -275,23 +300,14 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 					<ChartTooltip
 						anchor={readout.anchor}
 						width={width}
+						bottom={layout?.plotHeight ?? 0}
 						heading={readout.heading}
 						rows={readout.rows}
 					/>
 				)}
 				<LiveRegion text={readout?.text ?? ""} />
 			</ChartRoot>
-			<ChartData
-				describedById={dataId}
-				columns={[
-					{ label: value.unit ?? "" },
-					...value.columns.map((label) => ({ label, numeric: true })),
-				]}
-				rows={value.rows.map((cells, row) => [
-					value.rowLabels[row],
-					...cells.map((cell) => (cell === null ? "—" : numbers.exact(cell))),
-				])}
-			/>
+			<ChartData describedById={dataId} columns={dataColumns} rows={dataRows} />
 		</figure>
 	);
 }

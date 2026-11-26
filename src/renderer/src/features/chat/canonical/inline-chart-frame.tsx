@@ -17,6 +17,8 @@ import {
 	type CSSProperties,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
+	memo,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -97,23 +99,71 @@ export function useMergedRef<T>(
 
 let measuringContext: CanvasRenderingContext2D | null | undefined;
 /**
- * Width of `text` at the 12px meta step in `fontFamily`. Canvas measurement
- * where it exists; otherwise the spec's 6.6px-per-character estimate.
+ * Width of `text` at the 12px meta step in `fontFamily`, from a real canvas
+ * `measureText` wherever a document exists; the spec's 6.6px-per-character
+ * estimate only where there is no canvas at all (server render, jsdom).
+ *
+ * Two traps this avoids (the relay shipped one of them): the canvas is built
+ * lazily on the first measurement, which happens after mount, so a server
+ * render that runs first must NOT cache "no canvas" for the client; and an
+ * empty computed font family measures with the generic family instead of
+ * silently falling back to the estimate. Every label width (x-label thinning,
+ * y gutter, donut labels) goes through here, as do the tests' box checks.
  */
 export function textWidth(text: string, fontFamily: string): number {
-	if (measuringContext === undefined) {
+	if (measuringContext === undefined && typeof document !== "undefined") {
 		try {
-			measuringContext =
-				typeof document === "undefined"
-					? null
-					: document.createElement("canvas").getContext("2d");
+			measuringContext = document.createElement("canvas").getContext("2d");
 		} catch {
 			measuringContext = null;
 		}
 	}
-	if (!measuringContext || !fontFamily) return Array.from(text).length * 6.6;
-	measuringContext.font = `12px ${fontFamily}`;
+	if (!measuringContext) return Array.from(text).length * 6.6;
+	measuringContext.font = `12px ${fontFamily || "sans-serif"}`;
 	return measuringContext.measureText(text).width;
+}
+
+/** Test seam: forget the cached canvas so the next measurement rebuilds it. */
+export function resetTextMeasurer() {
+	measuringContext = undefined;
+}
+
+/**
+ * Compact tick formatting with as few decimals (0-3) as render every tick of
+ * the axis EXACTLY, so no two ticks read the same.
+ *
+ * WHY. A fixed one decimal turned a tight high-magnitude line axis (the
+ * near-zero rule means 10 050-10 300 keeps a step of 50) into
+ * `10.1K 10.1K 10.2K 10.2K`, and 1 000 000-1 004 000 into five `1M`s (code
+ * review R1). The decimals a tick needs are read from the locale's own compact
+ * mantissa (`formatToParts` fraction digits), because compact scales differ by
+ * locale (K/M in en, 万 in zh-CN, लाख in hi). Exact implies distinct; when a tick
+ * would need more than 3 decimals, or labels still repeat, the axis falls back
+ * to full grouped numbers. Returns null for that fallback.
+ */
+export function compactTickFormat(
+	locale: string,
+	ticks: number[],
+): Intl.NumberFormat | null {
+	const probe = new Intl.NumberFormat(locale, {
+		notation: "compact",
+		maximumFractionDigits: 20,
+	});
+	let decimals = 0;
+	for (const tick of ticks) {
+		const fraction = probe
+			.formatToParts(tick)
+			.find((part) => part.type === "fraction");
+		decimals = Math.max(decimals, fraction?.value.length ?? 0);
+	}
+	if (decimals > 3) return null;
+	const format = new Intl.NumberFormat(locale, {
+		notation: "compact",
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	});
+	const labels = ticks.map((tick) => format.format(tick));
+	return new Set(labels).size === labels.length ? format : null;
 }
 
 export type ChartNumbers = {
@@ -123,6 +173,12 @@ export type ChartNumbers = {
 	share: (fraction: number) => string;
 	/** A share rounded to a whole percent, for direct pie labels: `38%`. */
 	shareShort: (fraction: number) => string;
+	/**
+	 * A pie share, everywhere a pie shows one (labels, legend, in-ring text,
+	 * tooltip, centre readout): a whole percent, and `<1%` under 0.5% so a real
+	 * slice never reads `0%` (cross-surface decision X9).
+	 */
+	pieShare: (fraction: number) => string;
 	/** A 0-100 percent-mode tick: `25%`. */
 	percentTick: (value: number) => string;
 	/** Tick labels for a domain: compact from 10 000, else the step's decimals. */
@@ -144,21 +200,25 @@ export function useChartNumbers(): ChartNumbers {
 			maximumFractionDigits: 0,
 		});
 		const percentTick = new Intl.NumberFormat(locale, { style: "percent" });
+		// `<` is a mathematical sign, the same in every shipped locale; the
+		// number beside it is the locale's own 1%.
+		const underOne = `<${shareShort.format(0.01)}`; // i18n: ignore math sign + localized number, no words
 		return {
 			percentTick: (value) => percentTick.format(value / 100),
 			exact: (value) => exact.format(value),
 			share: (fraction) => share.format(fraction),
 			shareShort: (fraction) => shareShort.format(fraction),
+			pieShare: (fraction) =>
+				fraction > 0 && fraction < 0.005
+					? underOne
+					: shareShort.format(fraction),
 			tick: (ticks) => {
-				const format = new Intl.NumberFormat(
-					locale,
-					compactTicks(ticks)
-						? { notation: "compact", maximumFractionDigits: 1 }
-						: {
-								minimumFractionDigits: Math.min(20, ticks.decimals),
-								maximumFractionDigits: Math.min(20, ticks.decimals),
-							},
-				);
+				const format =
+					(compactTicks(ticks) && compactTickFormat(locale, ticks.ticks)) ||
+					new Intl.NumberFormat(locale, {
+						minimumFractionDigits: Math.min(20, ticks.decimals),
+						maximumFractionDigits: Math.min(20, ticks.decimals),
+					});
 				return (value) => format.format(value);
 			},
 		};
@@ -181,11 +241,22 @@ export function useAnnounce() {
 export type Mark = { category: number; series: number };
 type Source = "pointer" | "touch" | "keyboard";
 
+/** A touch that moves further than this is a scroll or a scrub, not a tap. */
+export const TAP_SLOP = 8;
+
 /**
  * The active-mark state and its keyboard model (spec section 5): one tab stop,
  * focus activates mark 0, Left/Right move by category, Up/Down by series,
- * Home/End jump, Escape hides the tooltip and keeps focus. Touch pins a mark
- * until the same mark or anything outside the chart is tapped.
+ * Home/End jump, Escape hides the tooltip and keeps focus.
+ *
+ * Touch (cross-surface decision X7): a tap pins a mark; tapping the same mark,
+ * empty plot or anything outside the chart's figure dismisses it. The tap is
+ * decided on pointer-UP within an 8px slop, never on pointer-down: a scroll
+ * that merely starts on a chart must not pin it (UX review U1). When the
+ * browser takes the gesture over for scrolling it sends `pointercancel`,
+ * which drops the pending touch AND any pinned mark, so no tooltip or dimming
+ * is left behind. Renderers that scrub (line/series) pass `scrub`: a touch
+ * moving mostly horizontally past the slop follows the finger instead.
  */
 export function useActiveMark({
 	categories,
@@ -202,37 +273,114 @@ export function useActiveMark({
 	useEffect(() => {
 		if (!pinned) return;
 		const outside = (event: PointerEvent) => {
-			if (!rootRef.current?.contains(event.target as Node)) setState(null);
+			/* The figure, not just the plot: the narrow donut's legend rows sit
+			   outside the focus root, and tapping one must toggle its slice. */
+			const scope = rootRef.current?.closest("figure") ?? rootRef.current;
+			if (!scope?.contains(event.target as Node)) setState(null);
 		};
 		document.addEventListener("pointerdown", outside);
 		return () => document.removeEventListener("pointerdown", outside);
 	}, [pinned]);
-	const point = useCallback(
-		(mark: Mark | null, pointerType: string, tap = false) => {
-			const source: Source = pointerType === "touch" ? "touch" : "pointer";
-			setState((previous) => {
-				if (!mark) return previous?.source === "pointer" ? null : previous;
-				if (
-					tap &&
-					previous?.source === "touch" &&
-					previous.mark.category === mark.category &&
-					previous.mark.series === mark.series
-				)
-					return null;
-				if (
-					previous?.source === source &&
-					previous.mark.category === mark.category &&
-					previous.mark.series === mark.series
-				)
-					return previous;
-				return { mark, source };
-			});
-		},
-		[],
-	);
+	const point = useCallback((mark: Mark | null, pointerType: string) => {
+		const source: Source = pointerType === "touch" ? "touch" : "pointer";
+		setState((previous) => {
+			if (!mark) return previous?.source === "pointer" ? null : previous;
+			if (
+				previous?.source === source &&
+				previous.mark.category === mark.category &&
+				previous.mark.series === mark.series
+			)
+				return previous;
+			return { mark, source };
+		});
+	}, []);
 	const leave = useCallback(() => {
 		setState((previous) => (previous?.source === "pointer" ? null : previous));
 	}, []);
+	/* The touch in progress. A ref, not state: nothing shows until pointer-up
+	   decides it was a tap (or the finger moves far enough to scrub). */
+	const touch = useRef<{
+		id: number;
+		x: number;
+		y: number;
+		mark: Mark | null;
+		moved: boolean;
+		scrubbing: boolean;
+	} | null>(null);
+	const tap = useCallback((mark: Mark | null) => {
+		setState((previous) => {
+			const pinnedNow = previous?.source === "touch" ? previous : null;
+			if (!mark) return pinnedNow ? null : previous;
+			if (
+				pinnedNow &&
+				pinnedNow.mark.category === mark.category &&
+				pinnedNow.mark.series === mark.series
+			)
+				return null;
+			return { mark, source: "touch" };
+		});
+	}, []);
+	const cancel = useCallback(() => {
+		touch.current = null;
+		setState((previous) => (previous?.source === "touch" ? null : previous));
+	}, []);
+	/**
+	 * Pointer handlers for a mark layer. `locate` maps an event to the mark under
+	 * it (or null for empty plot). Mouse and pen hover; touch taps (and, with
+	 * `scrub`, drags horizontally).
+	 */
+	const pointerHandlers = useCallback(
+		(
+			locate: (event: ReactPointerEvent<Element>) => Mark | null,
+			{ scrub = false }: { scrub?: boolean } = {},
+		) => {
+			const hover = (event: ReactPointerEvent<Element>) => {
+				if (event.pointerType !== "touch")
+					point(locate(event), event.pointerType);
+			};
+			return {
+				onPointerEnter: hover,
+				onPointerMove: (event: ReactPointerEvent<Element>) => {
+					if (event.pointerType !== "touch") return hover(event);
+					const current = touch.current;
+					if (!current || current.id !== event.pointerId) return;
+					const dx = event.clientX - current.x;
+					const dy = event.clientY - current.y;
+					if (!current.moved && Math.hypot(dx, dy) <= TAP_SLOP) return;
+					if (!current.moved) {
+						current.moved = true;
+						current.scrubbing = scrub && Math.abs(dx) > Math.abs(dy);
+					}
+					if (current.scrubbing) {
+						const mark = locate(event);
+						if (mark) point(mark, "touch");
+					}
+				},
+				onPointerDown: (event: ReactPointerEvent<Element>) => {
+					if (event.pointerType !== "touch") return;
+					touch.current = {
+						id: event.pointerId,
+						x: event.clientX,
+						y: event.clientY,
+						mark: locate(event),
+						moved: false,
+						scrubbing: false,
+					};
+				},
+				onPointerUp: (event: ReactPointerEvent<Element>) => {
+					if (event.pointerType !== "touch") return;
+					const current = touch.current;
+					touch.current = null;
+					// A scrub leaves its last mark pinned; only a still touch taps.
+					if (current && current.id === event.pointerId && !current.moved)
+						tap(current.mark);
+				},
+				onPointerCancel: cancel,
+				onPointerLeave: leave,
+			};
+		},
+		[point, tap, cancel, leave],
+	);
 	const onKeyDown = useCallback(
 		(event: ReactKeyboardEvent) => {
 			const last = Math.max(0, categories - 1);
@@ -307,6 +455,7 @@ export function useActiveMark({
 		rootRef,
 		point,
 		leave,
+		pointerHandlers,
 		rootProps: { onKeyDown, onFocus, onBlur },
 	};
 }
@@ -321,45 +470,161 @@ export type TooltipRow = {
 };
 
 /**
+ * Where a tooltip is anchored, in the chart root's coordinates.
+ *
+ * - `x`, `y`: the point it sits 8px above (a bar top, the hovered segment's
+ *   top, the highest line point).
+ * - `below`: the mark's lower edge, where it flips to when above would cross
+ *   the chart's top.
+ * - `beside`: instead of above/below, sit 8px clear of the horizontal span
+ *   `[left, right]` on `side` (1 right, -1 left), centred on `y`. The wide
+ *   donut uses it so the tooltip never covers the ring or the centre readout
+ *   (design review D1).
+ */
+export type TooltipAnchor = {
+	x: number;
+	y: number;
+	below?: number;
+	beside?: { left: number; right: number; side: 1 | -1 };
+};
+
+const TOOLTIP_INSET = 4;
+const TOOLTIP_OFFSET = 8;
+/** `max-w-64`: the shared tooltip's width cap. */
+const TOOLTIP_MAX = 256;
+
+/** The width a beside-placed tooltip may take on its roomier side. */
+export function besideRoom(
+	beside: NonNullable<TooltipAnchor["beside"]>,
+	width: number,
+) {
+	const right = width - TOOLTIP_INSET - (beside.right + TOOLTIP_OFFSET);
+	const left = beside.left - TOOLTIP_OFFSET - TOOLTIP_INSET;
+	return { left, right };
+}
+
+/**
+ * Tooltip placement, pure so it can be pinned by tests (cross-surface
+ * decisions X4/X5). `w`/`h` are the tooltip's measured size, `width` the
+ * chart box's width and `bottom` the lowest edge it may reach: the plot's
+ * bottom, so it never covers the x-axis labels, and never the chart box's
+ * bottom (the "Chart data" button sits right under it).
+ *
+ * Above the anchor first; below the mark when above crosses the top; then
+ * clamped inside `[0, bottom]` (QA Q3: a flipped stacked tooltip used to run
+ * 48px past the plot over the Chart data button). Horizontally clamped 4px
+ * inside the box.
+ */
+export function placeTooltip({
+	anchor,
+	w,
+	h,
+	width,
+	bottom,
+}: {
+	anchor: TooltipAnchor;
+	w: number;
+	h: number;
+	width: number;
+	bottom: number;
+}): { left: number; top: number } {
+	const clampTop = (top: number) =>
+		Math.max(0, Math.min(top, Math.max(0, bottom - h)));
+	if (anchor.beside) {
+		const room = besideRoom(anchor.beside, width);
+		const fits = (side: 1 | -1) => (side > 0 ? room.right : room.left) >= w;
+		const preferred = anchor.beside.side;
+		const side = fits(preferred)
+			? preferred
+			: fits(-preferred as 1 | -1)
+				? (-preferred as 1 | -1)
+				: room.right >= room.left
+					? 1
+					: -1;
+		const left =
+			side > 0
+				? anchor.beside.right + TOOLTIP_OFFSET
+				: anchor.beside.left - TOOLTIP_OFFSET - w;
+		return { left, top: clampTop(anchor.y - h / 2) };
+	}
+	let top = anchor.y - TOOLTIP_OFFSET - h;
+	if (top < 0) top = (anchor.below ?? anchor.y) + TOOLTIP_OFFSET;
+	const left = Math.max(
+		TOOLTIP_INSET,
+		Math.min(anchor.x - w / 2, width - w - TOOLTIP_INSET),
+	);
+	return { left, top: clampTop(top) };
+}
+
+/**
  * The floating readout. The SAME visual contract as the shared tooltip
  * (`shared/components/ui/tooltip.tsx`): `data-lo-floating`, no border, the
  * elevated ground with one `shadow-overlay`, window glass via
  * `data-glass-overlay`, `max-w-64`, no entrance animation and never a pointer
  * target. It is absolutely positioned inside the chart box, so it never
- * changes layout: 8px above the anchor, flipped below when it would cross the
- * chart's top edge, clamped 4px inside the left and right edges.
+ * changes layout; `placeTooltip` decides where.
  */
 export function ChartTooltip({
 	anchor,
 	width,
+	bottom,
 	heading,
 	rows,
 }: {
-	anchor: { x: number; y: number; below?: number } | null;
+	anchor: TooltipAnchor | null;
 	width: number;
+	/** Lowest edge the tooltip may reach (usually the plot's bottom). */
+	bottom: number;
 	heading?: string;
 	rows: TooltipRow[];
 }) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [position, setPosition] = useState<{ left: number; top: number }>();
 	const content = JSON.stringify([heading, rows]);
+	const beside = anchor?.beside;
+	/* Beside the ring there may be less than 256px: cap the width BEFORE
+	   measuring so the content wraps into the room it has, never onto the ring. */
+	const maxWidth = beside
+		? Math.max(
+				0,
+				Math.min(
+					TOOLTIP_MAX,
+					Math.max(
+						besideRoom(beside, width).left,
+						besideRoom(beside, width).right,
+					),
+				),
+			)
+		: undefined;
 	useIsomorphicLayoutEffect(() => {
 		const node = ref.current;
 		if (!node || !anchor) {
 			setPosition(undefined);
 			return;
 		}
-		const w = node.offsetWidth;
-		const h = node.offsetHeight;
-		let top = anchor.y - 8 - h;
-		if (top < 0) top = (anchor.below ?? anchor.y) + 8;
-		const left = Math.max(4, Math.min(anchor.x - w / 2, width - w - 4));
+		const next = placeTooltip({
+			anchor,
+			w: node.offsetWidth,
+			h: node.offsetHeight,
+			width,
+			bottom,
+		});
 		setPosition((previous) =>
-			previous?.left === left && previous.top === top
+			previous?.left === next.left && previous.top === next.top
 				? previous
-				: { left, top },
+				: next,
 		);
-	}, [anchor?.x, anchor?.y, anchor?.below, width, content]);
+	}, [
+		anchor?.x,
+		anchor?.y,
+		anchor?.below,
+		beside?.left,
+		beside?.right,
+		beside?.side,
+		width,
+		bottom,
+		content,
+	]);
 	if (!anchor) return null;
 	return (
 		<div
@@ -372,6 +637,7 @@ export function ChartTooltip({
 			style={{
 				left: position?.left ?? 0,
 				top: position?.top ?? 0,
+				maxWidth,
 				visibility: position ? "visible" : "hidden",
 			}}
 		>
@@ -445,9 +711,12 @@ export function ChartRoot({
 			aria-roledescription={t("ui.chat.inline_chart.role")}
 			aria-labelledby={titleId}
 			aria-describedby={describedById}
+			/* LTR on the root AND (in each renderer) the SVG: an inherited `rtl`
+			   (ur) would flip every text-anchor and the tooltip's flow while the
+			   geometry stays left-to-right (cross-surface decision X8). */
 			dir="ltr"
 			className={cn("relative mt-2 rounded-sm", className)}
-			style={style}
+			style={{ direction: "ltr", ...style }}
 			{...keys}
 		>
 			{children}
@@ -535,8 +804,12 @@ function DataTable({
  * `aria-describedby` points at a `hidden` copy (`describedById`): hidden
  * content a description references is still read, and the copy keeps the
  * description available while the visible table is collapsed.
+ *
+ * Memoised (code review R5): it holds two copies of up to 32 x 5 cells, and
+ * the chart re-renders on every active-mark change. Callers pass memoised
+ * `columns`/`rows`, so a hover never re-renders the tables.
  */
-export function ChartData({
+export const ChartData = memo(function ChartData({
 	describedById,
 	columns,
 	rows,
@@ -561,7 +834,7 @@ export function ChartData({
 			</div>
 		</div>
 	);
-}
+});
 
 /** Title, then the 16px unit/legend row (spec section 1, block rhythm). */
 export function ChartHeader({

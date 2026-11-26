@@ -110,7 +110,7 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 		};
 	}, [width, font, value.data, numbers]);
 
-	const locate = (event: ReactPointerEvent<SVGSVGElement>) => {
+	const locate = (event: ReactPointerEvent<Element>) => {
 		if (!layout) return null;
 		const box = event.currentTarget.getBoundingClientRect();
 		const px = event.clientX - box.left;
@@ -126,6 +126,19 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 		});
 		return best < 0 ? null : { category: order.indexOf(best), series: 0 };
 	};
+
+	// Memoised so a hover does not re-render the (memo) tables; review R5.
+	const dataColumns = useMemo(
+		() => [
+			{ label: value.xLabel, numeric: true },
+			{ label: value.yLabel, numeric: true },
+		],
+		[value.xLabel, value.yLabel],
+	);
+	const dataRows = useMemo(
+		() => value.data.map(([x, y]) => [numbers.exact(x), numbers.exact(y)]),
+		[value.data, numbers],
+	);
 
 	const readout = (() => {
 		if (activePoint === null || !layout || !marks.active) return null;
@@ -171,20 +184,15 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 						width={width}
 						height={layout.svgHeight}
 						viewBox={`0 0 ${width} ${layout.svgHeight}`}
+						direction="ltr"
 						className="block select-none overflow-visible"
-						onPointerMove={(event) =>
-							marks.point(locate(event), event.pointerType)
-						}
-						onPointerDown={(event) =>
-							event.pointerType === "touch" &&
-							marks.point(locate(event), "touch", true)
-						}
-						onPointerLeave={marks.leave}
+						{...marks.pointerHandlers(locate)}
 					>
 						{layout.yTicks.ticks.map((tick, index) => {
 							const y = snap(layout.toY(tick));
 							return (
-								<g key={`y-${tick}`}>
+								// biome-ignore lint/suspicious/noArrayIndexKey: ticks are positional; values may repeat (X11).
+								<g key={`y-${index}`}>
 									<line
 										x1={layout.x0}
 										x2={layout.x1}
@@ -211,7 +219,8 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 						{layout.xTicks.ticks.map((tick, index) => {
 							const x = Math.round(layout.toX(tick)) + 0.5;
 							return (
-								<g key={`x-${tick}`}>
+								// biome-ignore lint/suspicious/noArrayIndexKey: ticks are positional; values may repeat (X11).
+								<g key={`x-${index}`}>
 									<line
 										x1={x}
 										x2={x}
@@ -256,6 +265,7 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 					<ChartTooltip
 						anchor={readout.anchor}
 						width={width}
+						bottom={layout?.y1 ?? 0}
 						rows={readout.rows}
 					/>
 				)}
@@ -264,14 +274,7 @@ export function InlineScatterChart({ value }: { value: Scatter }) {
 			<div className="mt-1 wrap-anywhere text-end text-ink-muted text-meta">
 				<bdi>{value.xLabel}</bdi>
 			</div>
-			<ChartData
-				describedById={dataId}
-				columns={[
-					{ label: value.xLabel, numeric: true },
-					{ label: value.yLabel, numeric: true },
-				]}
-				rows={value.data.map(([x, y]) => [numbers.exact(x), numbers.exact(y)])}
-			/>
+			<ChartData describedById={dataId} columns={dataColumns} rows={dataRows} />
 		</figure>
 	);
 }

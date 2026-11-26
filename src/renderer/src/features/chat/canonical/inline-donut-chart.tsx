@@ -11,13 +11,7 @@
  */
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import {
-	type PointerEvent as ReactPointerEvent,
-	useEffect,
-	useId,
-	useMemo,
-	useState,
-} from "react";
+import { useId, useMemo, useState } from "react";
 import {
 	ChartData,
 	ChartHeader,
@@ -29,6 +23,7 @@ import {
 	LiveRegion,
 	OTHER_INK,
 	SLOT_INK,
+	type TooltipAnchor,
 	type TooltipRow,
 	textWidth,
 	useActiveMark,
@@ -66,6 +61,12 @@ const FOLDED_LISTED = 8;
 /**
  * Resolved slot colours, re-read when the theme changes (a composed theme
  * swaps `data-theme`), for the narrow donut's in-ring percent contrast check.
+ *
+ * The observer is attached in a LAYOUT effect on mount, NOT gated on
+ * `enabled` (QA Q2): `enabled` only turns true after the first width
+ * measurement, and a theme switch landing between that commit's colour read
+ * and a later-attached observer was never seen, so a cold-loaded light story
+ * kept the dark palette's black in-ring text (3.75:1 on #137742).
  */
 function useSlotColours(
 	ref: { readonly current: HTMLElement | null },
@@ -73,15 +74,15 @@ function useSlotColours(
 ) {
 	const [colours, setColours] = useState<string[]>([]);
 	const [theme, setTheme] = useState(0);
-	useEffect(() => {
-		if (!enabled || typeof MutationObserver === "undefined") return;
+	useIsomorphicLayoutEffect(() => {
+		if (typeof MutationObserver === "undefined") return;
 		const observer = new MutationObserver(() => setTheme((n) => n + 1));
 		observer.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ["data-theme", "class"],
 		});
 		return () => observer.disconnect();
-	}, [enabled]);
+	}, []);
 	useIsomorphicLayoutEffect(() => {
 		const node = ref.current;
 		if (!enabled || !node) return;
@@ -164,7 +165,7 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 					height - 8,
 				);
 				own.forEach(({ index, elbow, anchor }, order) => {
-					const share = numbers.shareShort(slices[index].share);
+					const share = numbers.pieShare(slices[index].share);
 					const shareWidth = measure(` ${share}`) + 4;
 					labels.push({
 						index,
@@ -191,18 +192,9 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 				.filter(({ slice }) => slice.share < LABEL_SHARE)
 		: [];
 
-	const enter = (index: number) => (event: ReactPointerEvent) =>
-		marks.point({ category: index, series: 0 }, event.pointerType);
-	const tap = (index: number) => (event: ReactPointerEvent) => {
-		if (event.pointerType === "touch")
-			marks.point({ category: index, series: 0 }, "touch", true);
-	};
-	const markHandlers = (index: number) => ({
-		onPointerEnter: enter(index),
-		onPointerMove: enter(index),
-		onPointerDown: tap(index),
-		onPointerLeave: marks.leave,
-	});
+	// Slices, their labels and legend rows: hover, or tap decided on pointer-up.
+	const markHandlers = (index: number) =>
+		marks.pointerHandlers(() => ({ category: index, series: 0 }));
 	const inkOf = (index: number) => {
 		const slot = slices[index].slot;
 		return slot === null ? OTHER_INK : SLOT_INK[slot];
@@ -213,7 +205,7 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 		const slice = slices[active];
 		const amount = withUnit(numbers.exact(slice.amount), value.unit);
 		const share = t("ui.chat.inline_chart.share_of_total", {
-			share: numbers.share(slice.share),
+			share: numbers.pieShare(slice.share),
 		});
 		const rows: TooltipRow[] = [
 			{ ink: inkOf(active), value: amount, note: share },
@@ -232,17 +224,27 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 				});
 		}
 		const mid = (slice.start + slice.end) / 2;
-		const point = polar(
-			layout.cx + (wide ? 0 : (width - layout.svgWidth) / 2),
-			layout.cy,
-			layout.outer + 8,
-			mid,
-		);
+		const cx = layout.cx + (wide ? 0 : (width - layout.svgWidth) / 2);
+		const point = polar(cx, layout.cy, layout.outer + 8, mid);
+		/* Beside the ring on the slice's own side, never inside the outer
+		   radius: a flip-below used to drop a top slice's tooltip onto the hole,
+		   where the glass let the centre readout ghost through (design review
+		   D1, decision X5). Angles run clockwise from 12 o'clock, so sin > 0 is
+		   the right half. */
+		const anchor: TooltipAnchor = {
+			x: point.x,
+			y: point.y,
+			beside: {
+				left: cx - layout.outer,
+				right: cx + layout.outer,
+				side: Math.sin(mid) >= 0 ? 1 : -1,
+			},
+		};
 		return {
 			rows,
 			amount,
-			share: numbers.share(slice.share),
-			anchor: { x: point.x, y: point.y, below: point.y },
+			share: numbers.pieShare(slice.share),
+			anchor,
 			text: announce([slice.label, amount, share], active, slices.length),
 		};
 	})();
@@ -281,21 +283,26 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 		</div>
 	);
 
-	const columns = [
-		{ label: "" },
-		{ label: value.unit ?? "", numeric: true },
-		{ label: "%", numeric: true },
-	];
-	const shareOf = (amount: number) => {
+	// Memoised so a hover does not re-render the (memo) tables; review R5.
+	const columns = useMemo(
+		() => [
+			{ label: "" },
+			{ label: value.unit ?? "", numeric: true },
+			{ label: "%", numeric: true },
+		],
+		[value.unit],
+	);
+	/* The table is the exact-values view, so it keeps one decimal; the
+	   whole-percent rule (X9) is for the chart's own labels and readouts. */
+	const rows = useMemo(() => {
 		const peak = Math.max(...value.data.map(([, n]) => n)) || 1;
 		const sum = value.data.reduce((acc, [, n]) => acc + n / peak, 0) || 1;
-		return amount / peak / sum;
-	};
-	const rows = value.data.map(([label, amount]) => [
-		label,
-		numbers.exact(amount),
-		numbers.share(shareOf(amount)),
-	]);
+		return value.data.map(([label, amount]) => [
+			label,
+			numbers.exact(amount),
+			numbers.share(amount / peak / sum),
+		]);
+	}, [value.data, numbers]);
 
 	return (
 		<figure className="min-w-0" data-lo-inline-ui="pie">
@@ -321,6 +328,7 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 						width={layout.svgWidth}
 						height={layout.height}
 						viewBox={`0 0 ${layout.svgWidth} ${layout.height}`}
+						direction="ltr"
 						className="mx-auto block select-none overflow-visible"
 					>
 						<g className={ENTER}>
@@ -365,7 +373,7 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 										dominantBaseline="middle"
 										className="pointer-events-none text-meta tabular-nums"
 									>
-										{numbers.shareShort(slice.share)}
+										{numbers.pieShare(slice.share)}
 									</text>
 								);
 							})}
@@ -403,10 +411,13 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 					</svg>
 				)}
 				{centre}
-				{wide && readout && (
+				{/* Narrow or touch: the centre readout IS the tooltip (spec
+				    section 5); a floating one would sit under the finger. */}
+				{wide && marks.source !== "touch" && readout && (
 					<ChartTooltip
 						anchor={readout.anchor}
 						width={width}
+						bottom={layout?.height ?? 0}
 						heading={slices[active ?? 0].label}
 						rows={readout.rows}
 					/>
@@ -427,7 +438,9 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 							{...markHandlers(index)}
 						>
 							<bdi>{slice.label}</bdi>{" "}
-							<span className="tabular-nums">{numbers.share(slice.share)}</span>
+							<span className="tabular-nums">
+								{numbers.pieShare(slice.share)}
+							</span>
 							{order < small.length - 1 ? ", " : ""}
 						</span>
 					))}
@@ -455,7 +468,7 @@ export function InlineDonutChart({ value }: { value: CategoryChart }) {
 								{slice.label}
 							</bdi>
 							<span className="text-ink-muted tabular-nums">
-								{numbers.shareShort(slice.share)}
+								{numbers.pieShare(slice.share)}
 							</span>
 						</li>
 					))}

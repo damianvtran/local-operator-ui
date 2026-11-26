@@ -62,9 +62,18 @@ const MULTIPLIERS = [1, 2, 2.5, 5];
 // Floor/ceil on a quotient like 0.3 / 0.1 lands a hair off a whole number.
 const EPSILON = 1e-9;
 
-/** Target tick count `clamp(3, floor(plotHeight / 48), 6)`. */
+/**
+ * Target tick count `clamp(4, floor(plotHeight / 48), 6)`.
+ *
+ * WHY 4, NOT THE SPEC'S 3. At a 180px plot (narrow windows) a target of 3
+ * forced the operator's 84.04-153.66 USD series onto a step of 50
+ * (`50 100 150 200`), so the data used under half of the plot: the "scale is
+ * off" complaint again. A floor of 4 gives `80 100 120 140 160` at 180px as
+ * well as at 240px (design review D4; the cross-surface decision X1, shared
+ * with relay web and React Native).
+ */
 export function tickTarget(height: number): number {
-	return Math.min(6, Math.max(3, Math.floor(height / 48)));
+	return Math.min(6, Math.max(4, Math.floor(height / 48)));
 }
 
 function decimalsOf(multiplier: number, exponent: number): number {
@@ -104,8 +113,12 @@ function ticksFor(
 	const high =
 		count === undefined ? Math.ceil(max / step - EPSILON) : low + count - 1;
 	const ticks: number[] = [];
+	/* Round away float noise (0.1 x 3 = 0.30000000000000004) to 15 significant
+	   digits. `toFixed(decimals)` did this too, but capped at 20 decimals it
+	   collapsed every tick of a domain below ~1e-20 to 0 (duplicate ticks,
+	   duplicate React keys); significant digits keep any magnitude. */
 	for (let index = low; index <= high; index++)
-		ticks.push(Number((index * step).toFixed(Math.min(20, decimals))));
+		ticks.push(Number((index * step).toPrecision(15)));
 	return { ticks, min: ticks[0], max: ticks[ticks.length - 1], step, decimals };
 }
 
@@ -205,34 +218,155 @@ export function withUnit(value: string, unit?: string): string {
 	return TIGHT_UNIT.test(unit) ? `${value}${unit}` : `${value} ${unit}`;
 }
 
-export type LabelPlan = {
-	/** Category indices whose label is drawn, ascending. */
-	shown: number[];
-	stride: number;
-	/** Longest a drawn label may be before it truncates with an ellipsis. */
-	maxWidth: number;
+export type LabelAnchor = "start" | "middle" | "end";
+
+/** One drawn x label: its category, its (possibly truncated) text, where it
+ * is anchored, and the horizontal box it actually occupies. */
+export type PlacedLabel = {
+	index: number;
+	text: string;
+	x: number;
+	anchor: LabelAnchor;
+	left: number;
+	right: number;
 };
 
+/** The box a label of `width` occupies when drawn at `x` with `anchor`. */
+export function labelBox(
+	x: number,
+	width: number,
+	anchor: LabelAnchor,
+): [number, number] {
+	if (anchor === "start") return [x, x + width];
+	if (anchor === "end") return [x - width, x];
+	return [x - width / 2, x + width / 2];
+}
+
+/** Shown x labels never come closer than this (cross-surface decision X2). */
+export const LABEL_MIN_GAP = 4;
+/** The breathing room thinning aims for before it has to truncate. */
+const LABEL_COMFORT_GAP = 12;
+
 /**
- * X-label thinning (spec section 2): stride `k = ceil((maxLabelW + 12) / slotW)`,
- * show `0, k, 2k...` and always the last; when the last would collide with the
- * previous shown label, the previous one goes (never the first). Labels never
- * rotate; a shown label wider than `k x slotW - 8` truncates.
+ * X-label thinning on REAL boxes.
+ *
+ * WHY NOT THE SPEC'S STRIDE FORMULA. `k = ceil((maxLabelW + 12) / slotW)`
+ * spaces label CENTRES, but a line chart anchors its first label at `start`
+ * and its last at `end`, so an edge label spends its whole width towards its
+ * neighbour, not half. Timestamps and long category names overlapped by up to
+ * 134px at 360px (code review R2, QA Q1). So this plans with each label's
+ * actual box at its actual anchor, measured by the renderer's own `measure`:
+ *
+ *  1. Each label first truncates to what the chart bounds allow at its anchor
+ *     (a centred bar label near the edge, a long start-anchored first label).
+ *  2. The smallest stride `k` whose shown set `0, k, 2k...` (plus the last,
+ *     dropping the previous one when its box would crowd the last) fits with
+ *     a 12px gap wins: no truncation needed.
+ *  3. If no stride fits, only the first and the last show. The first keeps
+ *     its text; the last truncates with `…` to the space actually left after
+ *     a 4px gap (the first gives way only so the last can keep an ellipsis).
+ *
+ * Guarantee: no two shown boxes overlap, and they keep at least 4px apart,
+ * for any count and label length; the first and last always show unless the
+ * plot is too narrow to hold even two ellipses.
  */
-export function thinLabels(widths: number[], slotWidth: number): LabelPlan {
-	const count = widths.length;
-	if (count === 0) return { shown: [], stride: 1, maxWidth: 0 };
-	const widest = Math.max(...widths);
-	const stride = Math.max(1, Math.ceil((widest + 12) / Math.max(1, slotWidth)));
-	const shown: number[] = [];
-	for (let index = 0; index < count; index += stride) shown.push(index);
+export function planXLabels({
+	texts,
+	xs,
+	anchors,
+	bounds,
+	measure,
+}: {
+	texts: string[];
+	xs: number[];
+	anchors: LabelAnchor[];
+	/** The horizontal extent labels may use: the SVG's own box. */
+	bounds: [number, number];
+	measure: (text: string) => number;
+}): PlacedLabel[] {
+	const count = texts.length;
+	if (count === 0) return [];
+	const [low, high] = bounds;
+	const ellipsis = measure("…");
+	// 1. The room each label has inside the bounds, at its own anchor.
+	const roomOf = (index: number) => {
+		const x = xs[index];
+		if (anchors[index] === "start") return high - x;
+		if (anchors[index] === "end") return x - low;
+		return 2 * Math.min(x - low, high - x);
+	};
+	const text = texts.map((label, index) =>
+		truncateToWidth(label, Math.max(ellipsis, roomOf(index)), measure),
+	);
+	const widths = text.map(measure);
+	const box = (index: number, width = widths[index]) =>
+		labelBox(xs[index], width, anchors[index]);
+	const place = (index: number, label = text[index]): PlacedLabel => {
+		const [left, right] = box(index, measure(label));
+		return {
+			index,
+			text: label,
+			x: xs[index],
+			anchor: anchors[index],
+			left,
+			right,
+		};
+	};
+	if (count === 1) return [place(0)];
+
 	const last = count - 1;
-	if (shown[shown.length - 1] !== last) {
-		const previous = shown[shown.length - 1];
-		if (previous !== 0 && last - previous < stride) shown.pop();
-		shown.push(last);
+	const clear = (a: number, b: number, gap: number) =>
+		box(a)[1] + gap <= box(b)[0];
+	// 2. The smallest stride that fits untruncated.
+	for (let stride = 1; stride < count; stride++) {
+		const shown: number[] = [];
+		for (let index = 0; index < count; index += stride) shown.push(index);
+		if (shown[shown.length - 1] !== last) {
+			const previous = shown[shown.length - 1];
+			if (previous !== 0 && !clear(previous, last, LABEL_COMFORT_GAP))
+				shown.pop();
+			shown.push(last);
+		}
+		if (
+			shown.every(
+				(index, order) =>
+					order === 0 || clear(shown[order - 1], index, LABEL_COMFORT_GAP),
+			)
+		)
+			return shown.map((index) => place(index));
 	}
-	return { shown, stride, maxWidth: Math.max(0, stride * slotWidth - 8) };
+
+	// 3. First and last only; the last truncates to the space it really has.
+	if (clear(0, last, LABEL_MIN_GAP)) return [place(0), place(last)];
+	/* The widest the last may be with its right (end anchor) or centre
+	   (middle anchor) fixed and its left edge at `edge`. */
+	const lastRoom = (edge: number) => {
+		const x = xs[last];
+		return anchors[last] === "middle" ? 2 * (x - edge) : x - edge;
+	};
+	let firstText = text[0];
+	if (lastRoom(box(0)[1] + LABEL_MIN_GAP) < ellipsis) {
+		// Even an ellipsis cannot sit there: the first gives way to it.
+		const lastLeft = box(last, ellipsis)[0];
+		const maxRight = lastLeft - LABEL_MIN_GAP;
+		const x = xs[0];
+		const firstRoom =
+			anchors[0] === "middle"
+				? 2 * (maxRight - x)
+				: anchors[0] === "end"
+					? Number.POSITIVE_INFINITY
+					: maxRight - x;
+		// Too narrow for two ellipses: the first label alone.
+		if (firstRoom < ellipsis) return [place(0)];
+		firstText = truncateToWidth(text[0], firstRoom, measure);
+	}
+	const first = place(0, firstText);
+	const lastText = truncateToWidth(
+		text[last],
+		lastRoom(first.right + LABEL_MIN_GAP),
+		measure,
+	);
+	return [first, place(last, lastText)];
 }
 
 /** Truncate `text` with an ellipsis until `measure` fits `maxWidth`. */
