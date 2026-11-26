@@ -103,11 +103,31 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 		const x0 = Math.min(cap, Math.ceil(widest)) + 8;
 		const plotWidth = Math.max(1, width - x0);
 		const slot = plotWidth / Math.max(1, columns);
-		// Centred column labels, planned on their real boxes (planXLabels).
+		/* Column labels, planned on their real boxes (planXLabels). Inner
+		   columns centre on their cell; the first and last anchor at the plot's
+		   outer cell edges (start / end), the way line charts anchor theirs.
+		   WHY: a centred edge label only has room for one slot inside the
+		   chart, so on a dense heatmap (24 hourly columns) the last label
+		   truncated to a bare `…` (code review R9, cross-surface C2). Anchored
+		   at the edge it gets the whole plot width and the planner thins the
+		   inner labels around it instead. A single column stays centred. */
+		const last = columns - 1;
 		const columnLabels = planXLabels({
 			texts: value.columns.map(axisText),
-			xs: value.columns.map((_, column) => x0 + (column + 0.5) * slot),
-			anchors: value.columns.map(() => "middle" as const),
+			xs: value.columns.map((_, column) =>
+				last > 0 && column === 0
+					? x0
+					: last > 0 && column === last
+						? x0 + columns * slot
+						: x0 + (column + 0.5) * slot,
+			),
+			anchors: value.columns.map((_, column) =>
+				last > 0 && column === 0
+					? ("start" as const)
+					: last > 0 && column === last
+						? ("end" as const)
+						: ("middle" as const),
+			),
 			bounds: [0, width],
 			measure,
 		});
@@ -120,9 +140,11 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 			rowLabels: value.rowLabels.map((label) =>
 				truncateToWidth(label, x0 - 8, measure),
 			),
-			columnLabels: columnLabels.map(({ index, text }) => ({
+			columnLabels: columnLabels.map(({ index, text, x, anchor }) => ({
 				column: index,
 				text,
+				x,
+				anchor,
 			})),
 		};
 	}, [width, font, value.rowLabels, value.columns, columns, rowCount]);
@@ -255,12 +277,13 @@ export function InlineHeatmapChart({ value }: { value: Heatmap }) {
 								{label}
 							</text>
 						))}
-						{layout.columnLabels.map(({ column, text }) => (
+						{layout.columnLabels.map(({ column, text, x, anchor }) => (
 							<text
 								key={`column-${column}`}
-								x={layout.x0 + (column + 0.5) * layout.slot}
+								data-lo-chart-xlabel={column}
+								x={x}
 								y={layout.plotHeight + 16}
-								textAnchor="middle"
+								textAnchor={anchor}
 								className={cn("fill-ink-muted text-meta", DIM_TRANSITION)}
 								opacity={active && active.category !== column ? DIM : 1}
 							>

@@ -175,8 +175,9 @@ export type ChartNumbers = {
 	shareShort: (fraction: number) => string;
 	/**
 	 * A pie share, everywhere a pie shows one (labels, legend, in-ring text,
-	 * tooltip, centre readout): a whole percent, and `<1%` under 0.5% so a real
-	 * slice never reads `0%` (cross-surface decision X9).
+	 * tooltip, centre readout): a whole percent, `<1%` under 0.5% so a real
+	 * slice never reads `0%` (cross-surface decision X9), and `>99%` from 99.5%
+	 * so a slice beside another never reads `100%` (R10).
 	 */
 	pieShare: (fraction: number) => string;
 	/** A 0-100 percent-mode tick: `25%`. */
@@ -203,15 +204,21 @@ export function useChartNumbers(): ChartNumbers {
 		// `<` is a mathematical sign, the same in every shipped locale; the
 		// number beside it is the locale's own 1%.
 		const underOne = `<${shareShort.format(0.01)}`; // i18n: ignore math sign + localized number, no words
+		const overNinetyNine = `>${shareShort.format(0.99)}`; // i18n: ignore math sign + localized number, no words
 		return {
 			percentTick: (value) => percentTick.format(value / 100),
 			exact: (value) => exact.format(value),
 			share: (fraction) => share.format(fraction),
 			shareShort: (fraction) => shareShort.format(fraction),
+			/* `>99%` mirrors `<1%`: a 99.5-99.9% slice rounded to `100%` while a
+			   neighbour read `<1%` (code review R10). A share below 1 always
+			   has a non-zero sibling, since shares sum to the whole. */
 			pieShare: (fraction) =>
 				fraction > 0 && fraction < 0.005
 					? underOne
-					: shareShort.format(fraction),
+					: fraction >= 0.995 && fraction < 1
+						? overNinetyNine
+						: shareShort.format(fraction),
 			tick: (ticks) => {
 				const format =
 					(compactTicks(ticks) && compactTickFormat(locale, ticks.ticks)) ||

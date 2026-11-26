@@ -1367,3 +1367,225 @@ test("tiny values render without duplicate tick keys (R6, X11)", async () => {
 		[],
 	);
 });
+
+// ---- round-2 remediation -------------------------------------------------------
+
+const tickTexts = (container) =>
+	[...svgOf(container).querySelectorAll("text[dominant-baseline]")].map(
+		(node) => node.textContent,
+	);
+
+test("C1: compact ticks are exact, never rounded to a neighbouring step", async () => {
+	// [0, 10 300] steps by 2.5K: a 0-decimal compact format printed 3K, 8K and
+	// 13K for 2 500, 7 500 and 12 500 on another surface (cross-surface C1).
+	const bars = await mount({
+		type: "bar",
+		title: "Requests",
+		data: [
+			["a", 0],
+			["b", 5_150],
+			["c", 10_300],
+		],
+	});
+	const quarter = tickTexts(bars);
+	for (const wrong of ["3K", "8K", "13K"])
+		assert.ok(!quarter.includes(wrong), `${wrong} in ${quarter}`);
+	assert.ok(
+		quarter.includes("2.5K") || quarter.includes("2,500"),
+		String(quarter),
+	);
+	const million = chart.compactTickFormat("en", [1e6, 1.25e6, 1.5e6]);
+	assert.deepEqual(
+		[1e6, 1.25e6, 1.5e6].map((tick) => million.format(tick)),
+		["1.00M", "1.25M", "1.50M"],
+	);
+	// A tiny domain takes the plain path with the step's own decimals.
+	const tiny = await mount({
+		type: "line",
+		title: "Tiny",
+		data: [
+			["a", 1e-6],
+			["b", 1.25e-6],
+		],
+	});
+	const tinyTicks = tickTexts(tiny);
+	assert.ok(tinyTicks.includes("0.00000125"), String(tinyTicks));
+	assert.equal(new Set(tinyTicks).size, tinyTicks.length, String(tinyTicks));
+	// The round-1 cases stay unique.
+	for (const values of [
+		[10_050, 10_300],
+		[1_000_000, 1_004_000],
+	]) {
+		const ticks = chart.niceTicks(values, 240, "near").ticks;
+		const format = chart.compactTickFormat("en", ticks);
+		const labels = ticks.map((tick) => format.format(tick));
+		assert.equal(new Set(labels).size, labels.length, String(labels));
+	}
+});
+
+test("C3: ticks keep 15 significant digits, so 1e12+1...1e12+4 stay distinct", async () => {
+	const values = [1e12 + 1, 1e12 + 2, 1e12 + 3, 1e12 + 4];
+	const ticks = chart.niceTicks(values, 240, "near").ticks;
+	assert.equal(new Set(ticks).size, ticks.length, String(ticks));
+	for (const value of values) assert.ok(ticks.includes(value), String(ticks));
+	const container = await mount({
+		type: "line",
+		title: "Big",
+		data: values.map((value, index) => [`p${index}`, value]),
+	});
+	const labels = tickTexts(container);
+	assert.ok(labels.includes("1,000,000,000,001"), String(labels));
+	assert.equal(new Set(labels).size, labels.length, String(labels));
+});
+
+test("C2/R9: hourly heatmap edge column labels never collapse to a bare ellipsis", async () => {
+	const hours = Array.from(
+		{ length: 24 },
+		(_, hour) => `${String(hour).padStart(2, "0")}:00`,
+	);
+	for (const width of [328, 360, 760]) {
+		const container = await mount(
+			{
+				type: "heatmap",
+				title: "Tickets by hour",
+				columns: hours,
+				rowLabels: ["Mon", "Tue"],
+				rows: [hours.map((_, i) => i), hours.map((_, i) => 24 - i)],
+			},
+			width,
+		);
+		const boxes = xLabelBoxes(container);
+		const where = `heatmap W ${width}`;
+		assert.equal(boxes[0].category, 0, `${where}: first shown`);
+		assert.equal(boxes.at(-1).category, 23, `${where}: last shown`);
+		for (const box of boxes) {
+			const full = hours[box.category];
+			assert.ok(
+				box.text === full ||
+					(box.text.endsWith("…") && Array.from(box.text).length - 1 >= 3),
+				`${where}: ${box.text} for ${full}`,
+			);
+		}
+		assertDisjoint(boxes, width, where);
+	}
+});
+
+test("D7: a thinned axis accepts an 8px gap before dropping more labels", () => {
+	// Design review D7's measured geometry: SpendNarrow at 328px, x0 45, x8
+	// 332, `Nov 16` 38.85px, `Nov 24` 40.43px, the inner labels ~40.1px. The
+	// every-other step leaves 11.3px before `Nov 24`; it must keep 5 labels.
+	const texts = SPEND.data.map(([label]) => chart.axisText(label));
+	const widths = { "Nov 16": 38.85, "Nov 24": 40.43 };
+	const measure = (text) =>
+		widths[text] ??
+		(text === "…" ? 8 : text.length < 6 ? text.length * 6.7 : 40.1);
+	const xs = texts.map((_, i) => 45 + (i * (332 - 45)) / 8);
+	const anchors = texts.map((_, i) =>
+		i === 0 ? "start" : i === 8 ? "end" : "middle",
+	);
+	const placed = chart.planXLabels({
+		texts,
+		xs,
+		anchors,
+		bounds: [0, 344],
+		measure,
+	});
+	assert.deepEqual(
+		placed.map(({ index }) => index),
+		[0, 2, 4, 6, 8],
+	);
+	const gap = placed.at(-1).left - placed.at(-2).right;
+	assert.ok(gap >= 8 && gap < 12, `gap ${gap}`);
+	// An unthinned axis still needs the 12px aim: 3 labels 10px apart thin.
+	const three = chart.planXLabels({
+		texts: ["aaaa", "bbbb", "cccc"],
+		xs: [0, 50, 100],
+		anchors: ["start", "middle", "end"],
+		bounds: [0, 100],
+		measure: (text) => (text === "…" ? 8 : text.length * 10),
+	});
+	assert.deepEqual(
+		three.map(({ index }) => index),
+		[0, 2],
+	);
+});
+
+test("Q4: when first and last both have to shrink, both truncate evenly 12px apart", () => {
+	const measure = (text) => Array.from(text).length * 6.6;
+	const texts = Array.from(
+		{ length: 8 },
+		(_, i) => `Week ${i + 1} of the quarterly reporting period`,
+	);
+	const x0 = 40;
+	const x1 = 348;
+	const xs = texts.map((_, i) => x0 + (i * (x1 - x0)) / 7);
+	const anchors = texts.map((_, i) =>
+		i === 0 ? "start" : i === 7 ? "end" : "middle",
+	);
+	const [first, last, ...rest] = chart.planXLabels({
+		texts,
+		xs,
+		anchors,
+		bounds: [0, 360],
+		measure,
+	});
+	assert.equal(rest.length, 0);
+	assert.equal(first.index, 0);
+	assert.equal(last.index, 7);
+	assert.ok(first.text.endsWith("…"), first.text);
+	assert.ok(last.text.endsWith("…"), last.text);
+	assert.ok(
+		last.left - first.right >= 12 - 1e-9,
+		`${first.right} ${last.left}`,
+	);
+	assert.ok(
+		Math.abs(measure(first.text) - measure(last.text)) <= 6.6 + 1e-9,
+		`${first.text} vs ${last.text}`,
+	);
+	// A short first label keeps its text; the last takes the rest.
+	const [short, long] = chart.planXLabels({
+		texts: ["Wk 1", texts[7]],
+		xs: [x0, 300],
+		anchors: ["start", "end"],
+		bounds: [0, 312],
+		measure,
+	});
+	assert.equal(short.text, "Wk 1");
+	assert.ok(long.text.endsWith("…"), long.text);
+	assert.ok(long.left - short.right >= 12 - 1e-9);
+	assert.ok(long.left - short.right < 12 + 6.6);
+});
+
+test("R10: a 99.5-99.9% pie slice reads >99% beside a non-zero neighbour", async () => {
+	const narrow = await mount(
+		{
+			type: "pie",
+			title: "Share",
+			data: [
+				["Main", 9_960],
+				["Speck", 40],
+			],
+		},
+		360,
+	);
+	assert.deepEqual(
+		[...narrow.querySelectorAll("li")].map((node) => node.textContent),
+		["Main>99%", "Speck<1%"],
+	);
+	// A lone non-zero slice is the whole pie: 100%.
+	const whole = await mount(
+		{
+			type: "pie",
+			title: "Share",
+			data: [
+				["Only", 5],
+				["None", 0],
+			],
+		},
+		360,
+	);
+	assert.match(
+		[...whole.querySelectorAll("li")].map((node) => node.textContent)[0],
+		/^Only100%$/,
+	);
+});

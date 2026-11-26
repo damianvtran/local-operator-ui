@@ -246,6 +246,14 @@ export function labelBox(
 export const LABEL_MIN_GAP = 4;
 /** The breathing room thinning aims for before it has to truncate. */
 const LABEL_COMFORT_GAP = 12;
+/**
+ * The gap a THINNED axis (stride 2 and up) accepts before it drops more
+ * labels. WHY: holding every stride to 12px cost the operator's 9-point spend
+ * axis at 328px two labels and its even rhythm (5 labels to 3, on 3- and
+ * 5-day intervals) over an 11.3px gap (design review D7). 8px still reads as
+ * separate labels; a full, unthinned axis keeps the 12px aim.
+ */
+const LABEL_THINNED_GAP = 8;
 
 /**
  * X-label thinning on REAL boxes.
@@ -260,11 +268,13 @@ const LABEL_COMFORT_GAP = 12;
  *  1. Each label first truncates to what the chart bounds allow at its anchor
  *     (a centred bar label near the edge, a long start-anchored first label).
  *  2. The smallest stride `k` whose shown set `0, k, 2k...` (plus the last,
- *     dropping the previous one when its box would crowd the last) fits with
- *     a 12px gap wins: no truncation needed.
- *  3. If no stride fits, only the first and the last show. The first keeps
- *     its text; the last truncates with `…` to the space actually left after
- *     a 4px gap (the first gives way only so the last can keep an ellipsis).
+ *     dropping the previous one when its box would crowd the last) fits wins:
+ *     no truncation needed. Stride 1 needs a 12px gap; a thinned stride
+ *     accepts 8px before stepping up (LABEL_THINNED_GAP).
+ *  3. If no stride fits, only the first and the last show: whole when they
+ *     clear 4px, else BOTH truncate with `…` about evenly, 12px apart (4px if
+ *     12 cannot hold two ellipses). A short label keeps its text and leaves
+ *     the rest to the other.
  *
  * Guarantee: no two shown boxes overlap, and they keep at least 4px apart,
  * for any count and label length; the first and last always show unless the
@@ -319,54 +329,90 @@ export function planXLabels({
 		box(a)[1] + gap <= box(b)[0];
 	// 2. The smallest stride that fits untruncated.
 	for (let stride = 1; stride < count; stride++) {
+		const gap = stride === 1 ? LABEL_COMFORT_GAP : LABEL_THINNED_GAP;
 		const shown: number[] = [];
 		for (let index = 0; index < count; index += stride) shown.push(index);
 		if (shown[shown.length - 1] !== last) {
 			const previous = shown[shown.length - 1];
-			if (previous !== 0 && !clear(previous, last, LABEL_COMFORT_GAP))
-				shown.pop();
+			if (previous !== 0 && !clear(previous, last, gap)) shown.pop();
 			shown.push(last);
 		}
 		if (
 			shown.every(
-				(index, order) =>
-					order === 0 || clear(shown[order - 1], index, LABEL_COMFORT_GAP),
+				(index, order) => order === 0 || clear(shown[order - 1], index, gap),
 			)
 		)
 			return shown.map((index) => place(index));
 	}
 
-	// 3. First and last only; the last truncates to the space it really has.
-	if (clear(0, last, LABEL_MIN_GAP)) return [place(0), place(last)];
-	/* The widest the last may be with its right (end anchor) or centre
-	   (middle anchor) fixed and its left edge at `edge`. */
-	const lastRoom = (edge: number) => {
-		const x = xs[last];
-		return anchors[last] === "middle" ? 2 * (x - edge) : x - edge;
+	/* The first and last labels, truncated to share the span between them
+	   `gap` apart, or null when either could not keep even an ellipsis.
+	   WHY EVENLY: keeping the first whole and truncating only the last left
+	   them 4px apart, which reads as one long string (`Week 1 of the
+	   quarterly reporting period Week 8 of the…`, QA Q4). Each label's room
+	   grows linearly as the split point moves away from its anchor (x1 for a
+	   start/end anchor, x2 for a centred one), so the even split solves
+	   `a0 (e - x0) = aL (xL - e - gap)` for the first's right edge `e`. */
+	const splitEdges = (gap: number): [string, string] | null => {
+		const x0 = xs[0];
+		const xL = xs[last];
+		const firstRoom = (right: number) =>
+			anchors[0] === "start"
+				? right - x0
+				: anchors[0] === "middle"
+					? 2 * (right - x0)
+					: right >= x0
+						? Number.POSITIVE_INFINITY
+						: Number.NEGATIVE_INFINITY;
+		const lastRoom = (left: number) =>
+			anchors[last] === "end"
+				? xL - left
+				: anchors[last] === "middle"
+					? 2 * (xL - left)
+					: left <= xL
+						? Number.POSITIVE_INFINITY
+						: Number.NEGATIVE_INFINITY;
+		let first: number;
+		let lastWidth: number;
+		if (anchors[0] === "end") {
+			// Its right edge is pinned at x0: shrinking it frees nothing.
+			first = Number.POSITIVE_INFINITY;
+			lastWidth = lastRoom(x0 + gap);
+		} else if (anchors[last] === "start") {
+			first = firstRoom(xL - gap);
+			lastWidth = Number.POSITIVE_INFINITY;
+		} else {
+			const a0 = anchors[0] === "start" ? 1 : 2;
+			const aL = anchors[last] === "end" ? 1 : 2;
+			const right = (aL * (xL - gap) + a0 * x0) / (a0 + aL);
+			const even = a0 * (right - x0);
+			first = even;
+			lastWidth = even;
+			// A label shorter than its even share keeps its text; the other
+			// takes what it leaves.
+			if (widths[0] <= even) lastWidth = lastRoom(box(0)[1] + gap);
+			else if (widths[last] <= even) first = firstRoom(box(last)[0] - gap);
+		}
+		const firstMax = Math.min(first, roomOf(0));
+		const lastMax = Math.min(lastWidth, roomOf(last));
+		// A label narrower than an ellipsis only needs its own width.
+		if (
+			firstMax < Math.min(ellipsis, widths[0]) ||
+			lastMax < Math.min(ellipsis, widths[last])
+		)
+			return null;
+		return [
+			truncateToWidth(texts[0], firstMax, measure),
+			truncateToWidth(texts[last], lastMax, measure),
+		];
 	};
-	let firstText = text[0];
-	if (lastRoom(box(0)[1] + LABEL_MIN_GAP) < ellipsis) {
-		// Even an ellipsis cannot sit there: the first gives way to it.
-		const lastLeft = box(last, ellipsis)[0];
-		const maxRight = lastLeft - LABEL_MIN_GAP;
-		const x = xs[0];
-		const firstRoom =
-			anchors[0] === "middle"
-				? 2 * (maxRight - x)
-				: anchors[0] === "end"
-					? Number.POSITIVE_INFINITY
-					: maxRight - x;
-		// Too narrow for two ellipses: the first label alone.
-		if (firstRoom < ellipsis) return [place(0)];
-		firstText = truncateToWidth(text[0], firstRoom, measure);
-	}
-	const first = place(0, firstText);
-	const lastText = truncateToWidth(
-		text[last],
-		lastRoom(first.right + LABEL_MIN_GAP),
-		measure,
-	);
-	return [first, place(last, lastText)];
+
+	// 3. First and last only.
+	if (clear(0, last, LABEL_MIN_GAP)) return [place(0), place(last)];
+	const pair = splitEdges(LABEL_COMFORT_GAP) ?? splitEdges(LABEL_MIN_GAP);
+	// Too narrow for two ellipses: the first label alone.
+	if (!pair) return [place(0)];
+	return [place(0, pair[0]), place(last, pair[1])];
 }
 
 /** Truncate `text` with an ellipsis until `measure` fits `maxWidth`. */
