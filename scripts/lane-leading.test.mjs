@@ -596,23 +596,16 @@ test("no route column draws a right rule any more", () => {
 	);
 });
 
-test("the chat header's title starts on the content column's inset (operator, 2026-11-25)", () => {
+test("the chat header's title uses a 16px logical start inset", () => {
 	/*
-	 * "There needs to be more left padding on the title ... it's too tight to
-	 * the left". The title leads the header row, so the row's start padding IS
-	 * the title's left edge, and it must equal the column's left inset
-	 * (`CHAT_COLUMN_INSET`, 24px = the transcript's p-4 + its 8px scrollbar
-	 * gutter; the text's own edge only below `CHAT_MEASURE`). The EFFECTIVE
-	 * value is what counts: an unlayered `[data-chat-region="header"]` rule in
-	 * index.css beats the utility, which is how QA round 3 measured 4px with
-	 * `ps-6` in the source. The padding lives on the ROW, not the h2, so the rename input
-	 * shares the edge; the h2 and the input must carry no start inset of their
-	 * own or the edit would jump.
+	 * The 24px transcript gutter looked too wide beside the whitespace above
+	 * the title. The row uses ps-4 instead, so the title and its rename input
+	 * share the same 16px start edge without changing the toolbar height.
+	 * The effective value counts: an unlayered header rule in index.css once
+	 * beat the row utility, leaving only 4px.
 	 */
 	const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
-	const measure = readSource("src/renderer/src/features/chat/chat-measure.ts");
-	const inset = measure.match(/export const CHAT_COLUMN_INSET = "px-(\d+)";/);
-	assert.ok(inset, "CHAT_COLUMN_INSET must stay a px-<n> token");
+	const TITLE_START = "4";
 	const ROW =
 		/"@container\/chathdr flex min-h-10 shrink-0 items-center gap-3 ([^"]*)"/;
 	const leadingOf = (source) => {
@@ -624,8 +617,8 @@ test("the chat header's title starts on the content column's inset (operator, 20
 	const header = readSource(HEADER);
 	assert.equal(
 		leadingOf(header),
-		inset[1],
-		"the header row's logical start padding must equal the content column inset",
+		TITLE_START,
+		"the header row's logical start padding must be 16px (ps-4)",
 	);
 	assert.doesNotMatch(
 		header,
@@ -645,11 +638,9 @@ test("the chat header's title starts on the content column's inset (operator, 20
 
 	/*
 	 * The stylesheet must not take the start edge back. Any rule whose selector
-	 * names the header region and sets a start padding (logical, physical left,
-	 * or a shorthand) either equals the inset or does not exist; only the
-	 * utility should own it, so we require none.
+	 * names the header region must leave start padding (logical, physical left,
+	 * or a shorthand) to the row utility, even in the framed workspace.
 	 */
-	const insetPx = Number(inset[1]) * 4;
 	const startPaddingRules = (css) => {
 		const found = [];
 		for (const [, selector, body] of css
@@ -669,9 +660,9 @@ test("the chat header's title starts on the content column's inset (operator, 20
 	assert.deepEqual(
 		startPaddingRules(css),
 		[],
-		`no stylesheet rule may set the chat header's start padding; the row's ps-${inset[1]} (${insetPx}px) owns it`,
+		"no stylesheet rule may set the chat header's start padding; the row's ps-4 owns it",
 	);
-	// Negative control: the round-3 rule that overrode ps-6 with 4px.
+	// Negative control: the round-3 rule that overrode the row with 4px.
 	const regressed = css.replace(
 		/(\[data-workspace-inset\] > \[data-chat-region="header"\] \{)/,
 		"$1\n\tpadding-inline-start: 4px;",
@@ -682,14 +673,13 @@ test("the chat header's title starts on the content column's inset (operator, 20
 		1,
 		"the guard must catch the old 4px start padding",
 	);
-	// Negative control: the pre-fix `px-4` row has no matching start inset.
-	const before = header.replace(
-		ROW,
-		'"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4"',
-	);
+	// Negative control: the prior row reused the transcript's 24px inset.
+	const before = header.replace(ROW, (row) => row.replace("ps-4", "ps-6"));
+	assert.notEqual(before, header, "control mutation applied");
+	assert.equal(leadingOf(before), "6", "control restores the old 24px inset");
 	assert.notEqual(
 		leadingOf(before),
-		inset[1],
-		"the guard must reject the old px-4 row",
+		TITLE_START,
+		"the guard must reject the old ps-6 row",
 	);
 });

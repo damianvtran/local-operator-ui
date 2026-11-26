@@ -4376,15 +4376,10 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	display: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] {
-	/* END ONLY. The start edge belongs to the row's `ps-6` utility in
-	 * chat-header.tsx: the title leads the row, and the operator asked for it
-	 * to sit on the column's left inset (`CHAT_COLUMN_INSET`, 24px), not 4px
-	 * off the frame (PR #2099, 2026-11-25: "too tight to the left"). This rule
-	 * is unlayered, so any start padding here silently beats the utility -
-	 * which is how the first fix measured 4px. `scripts/lane-leading.test.mjs`
-	 * fails if a start padding comes back here. The trailing 12px is
-	 * unchanged from #2043's header alignment (fc4021f) and still wins over
-	 * the row's `pe-4` inside the framed workspace. */
+	/* END ONLY. The row in chat-header.tsx owns the title and rename's
+	 * shared start edge. This rule is unlayered, so setting start padding
+	 * here would override the row utility (as the old 4px rule did).
+	 * Keep the framed workspace's trailing actions aligned at 12px. */
 	padding-inline-end: 12px;
 }
 [data-workspace-inset] {
