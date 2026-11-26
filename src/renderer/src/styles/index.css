@@ -3262,13 +3262,19 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	}
 
 	[data-picker-label-reserve] {
+		display: block;
+	}
+
+	/* Clamp inside the grid cell without adding a second sentence to the label. */
+	[data-picker-label-reserve]::before {
+		content: attr(data-picker-label-reserve);
 		display: -webkit-box;
 		overflow: hidden;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 3;
 	}
 
-	[data-picker-label-lines="2"] [data-picker-label-reserve] {
+	[data-picker-label-lines="2"] [data-picker-label-reserve]::before {
 		-webkit-line-clamp: 2;
 	}
 }
