@@ -14,12 +14,9 @@
  * two are both "a list over this field", and they anchor to the same 4px gap
  * (`message-input.tsx` mounts both inside one `relative` wrapper), so a second
  * shell would be a second way of doing one thing. Copied deliberately and
- * exactly, from `slash-commands.tsx`: the anchor, the shell's
- * `overflow-hidden rounded-md bg-elevated shadow-overlay`, the
- * scroller split, the 36px row pitch, the `border-hairline` strips, the row inks,
- * the `bg-accent-wash` + 2px accent bar for the active row, the
- * `role="listbox"`/`role="option"` + `aria-activedescendant` contract with the
- * textarea keeping focus, `onMouseDown` `preventDefault` with the pick on
+ * from `slash-commands.tsx`: the anchor, solid floating ground, and fixed chrome
+ * around the scroller. The two share their visual treatment and the ARIA
+ * contract: the textarea keeps focus, `onMouseDown` prevents blur, the pick runs on
  * `onClick`, and the same `block: "nearest"` scroll-into-view.
  *
  * WHAT IT MUST NOT INHERIT, because the two grammars differ: there is no phase
@@ -65,6 +62,7 @@ import {
 	atRowId,
 	atSectionRuns,
 	atUnavailableReason,
+	projectDescriptionPreview,
 } from "./at-contract";
 import {
 	type AtRow,
@@ -78,6 +76,12 @@ import {
 	rowsFromListing,
 } from "./at-rank";
 import { type AtToken, atPickerToken, splitToken } from "./at-token";
+import {
+	SUGGESTION_FOOTER,
+	SUGGESTION_HEADING,
+	SUGGESTION_NOTICE,
+	SUGGESTION_ROW,
+} from "./composer-suggestion-style";
 
 /** The listing IPC, as this file uses it. Absent outside Electron. */
 type ListingBridge = {
@@ -145,6 +149,7 @@ export type AtCompletionState = {
 	/** How many entries the listing holds, for the footer's own count. */
 	entries: number;
 	notice: string;
+	noticeIsError: boolean;
 	loading: boolean;
 	/** True once the user has arrowed onto a row in THIS list. */
 	close(): void;
@@ -582,6 +587,7 @@ export function useAtPicker({
 		 * vanished exactly when the region truncated.
 		 */
 		entries,
+		noticeIsError: Boolean(listing?.error),
 		notice: atEmptyCopy({
 			error: listing?.error ?? null,
 			// Rows on screen mean the wait is not the state the user is looking at:
@@ -754,16 +760,14 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			<output
 				ref={shellRef}
 				data-lo-floating=""
+				data-lo-floating-finish=""
 				className={cn(
 					"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 					"overflow-hidden rounded-md bg-elevated",
 					"shadow-overlay",
 				)}
 			>
-				<span
-					data-mention-notice
-					className="block px-3 py-2 text-body-sm text-ink-muted"
-				>
+				<span data-mention-notice className={cn("block", SUGGESTION_NOTICE)}>
 					{state.unavailable}
 				</span>
 			</output>
@@ -786,9 +790,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	 * WHETHER THE SECTION HEADERS ARE DRAWN, which is exactly when the projection
 	 * carries a projects section. Two headers over one section is chrome — and a
 	 * lone "Files" header over the same listing the directory strip already names
-	 * is chrome twice — so the file-only popup renders byte-for-byte the surface
-	 * this app shipped before Projects existed, which is also what makes the
-	 * before/after evidence pair a fair comparison. The `aria-label` stays
+	 * is chrome twice. The `aria-label` stays
 	 * `"Files"` for the region, unchanged: it is the name the `mentions` driver
 	 * scene and the stories query the listbox by, and the sections are labelled
 	 * in-region by the header rows themselves.
@@ -827,6 +829,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			role="listbox"
 			aria-label={t("ui.chat.pickers.at_menu.region_label")}
 			data-lo-floating=""
+			data-lo-floating-finish=""
 			className={cn(
 				"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row
@@ -845,7 +848,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			 * truncates.
 			 */}
 			<div
-				className="truncate border-b border-hairline px-3 py-1 font-mono text-meta text-ink-dim"
+				className={cn(SUGGESTION_HEADING, "truncate font-mono")}
 				title={state.headerTitle}
 			>
 				{state.header}
@@ -883,7 +886,10 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 					 */
 					<div
 						data-mention-notice
-						className="px-3 py-2 text-body-sm text-ink-muted"
+						className={cn(
+							SUGGESTION_NOTICE,
+							state.noticeIsError && "text-danger",
+						)}
 					>
 						{state.notice}
 					</div>
@@ -903,7 +909,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 										 */
 										<li
 											role="presentation"
-											className="px-3 pt-2 pb-1 text-meta text-ink-muted"
+											className="px-4 pt-2 pb-1 text-meta leading-[17px] font-semibold text-ink-muted"
 										>
 											{row.section === "project"
 												? t("ui.chat.pickers.at_menu.heading.projects")
@@ -931,20 +937,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 * base layer gives it the pointer, and an explicit utility would
 									 * also beat that layer's disabled arm for a disabled option.
 									 */
-									className={cn(
-										"relative flex items-baseline gap-3 px-3 py-2",
-										index === state.active
-											? cn(
-													"bg-accent-wash",
-													// The row Enter will apply was carried by hue alone in the
-													// slash popup — the wash measures 1.000:1 against its own
-													// ground in `dune` — so the 2px accent bar on the leading
-													// edge is the second, non-luminance signal, and it costs
-													// no layout.
-													"before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
-												)
-											: "bg-transparent",
-									)}
+									className={SUGGESTION_ROW}
 									onMouseDown={(event) => {
 										// Focus, not the pick: preventing the default keeps the
 										// textarea's caret and draft position, which a focus change to
@@ -967,11 +960,14 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 * column to give — the parent column beside it is `flex-1 min-w-0`
 									 * `truncate` and already yields, and with `nowrap` and a zero minimum
 									 * width this one keeps every pixel until the row cannot fit at all and
-									 * only then ellipsises. A row that fits is byte-identical to the
-									 * frames taken before it, which is every committed frame at every
-									 * width: only a name too long for the region changes.
+									 * only then ellipsises.
 									 */}
-									<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
+									<span
+										className={cn(
+											"min-w-0 shrink truncate font-medium text-ink",
+											row.section !== "project" && "font-mono",
+										)}
+									>
 										{row.name}
 									</span>
 									{/*
@@ -998,11 +994,13 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 										 * is not mono, and empty (not a placeholder) when the store has
 										 * none to show.
 										 */
-										<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
-											{row.detail ?? null}
+										<span className="min-w-0 flex-1 truncate text-ink-muted">
+											{row.detail
+												? projectDescriptionPreview(row.detail)
+												: null}
 										</span>
 									) : (
-										<span className="min-w-0 flex-1 truncate font-mono text-body-sm text-ink-muted">
+										<span className="min-w-0 flex-1 truncate font-mono text-ink-muted">
 											{row.parent === state.header ? null : row.parent}
 										</span>
 									)}
@@ -1011,7 +1009,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 * app's own composer already says "Working directory", and the tag
 									 * answers the one question a path cannot.
 									 */}
-									<span className="shrink-0 text-meta text-ink-dim">
+									<span className="shrink-0 text-meta text-ink-muted">
 										{row.section === "project"
 											? t("ui.chat.pickers.at_menu.tag.project")
 											: row.directory
@@ -1025,13 +1023,15 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 				)}
 			</div>
 			{/*
-			 * One bordered strip, the Enter line read off the active row and the count
+			 * One quiet strip, the Enter line from the active row and the count
 			 * on the right. The count is the one fact a scrolled list cannot show, and
 			 * it is absent when there is nothing to add.
 			 */}
-			<div className="flex items-baseline justify-between gap-3 border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-				<p>{state.footer}</p>
-				{count ? <p>{count}</p> : null}
+			<div className={cn(SUGGESTION_FOOTER, "flex items-baseline gap-2")}>
+				<p className="min-w-0 flex-1 truncate" title={state.footer}>
+					{state.footer}
+				</p>
+				{count ? <p className="shrink-0 tabular-nums">{count}</p> : null}
 			</div>
 		</div>
 	);

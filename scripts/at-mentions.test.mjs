@@ -78,6 +78,7 @@ const {
 	AT_ROW_PITCH,
 	AT_SECTION_HEADER_PITCH,
 	atUnavailableReason,
+	projectDescriptionPreview,
 } = contract;
 
 /* ---------------------------------------------------------------- grammar -- */
@@ -628,6 +629,20 @@ test("Escape closes, and everything else is the composer's", () => {
 	assert.deepEqual(atKeyIntent({ ...KEY, key: "Escape" }), { kind: "close" });
 	assert.deepEqual(atKeyIntent({ ...KEY, key: "a" }), { kind: "pass" });
 	assert.deepEqual(atKeyIntent({ ...KEY, key: "Backspace" }), { kind: "pass" });
+});
+
+test("a project preview drops only the opening Markdown heading marker", () => {
+	const description = "\n  ## Shipped scope\n#123 remains literal";
+	const [project] = rank.projectAtRows([{ name: "billing", description }]);
+	assert.equal(project.detail, description);
+	assert.equal(project.path, "project:billing");
+	assert.equal(
+		projectDescriptionPreview(project.detail),
+		"Shipped scope\n#123 remains literal",
+	);
+	for (const literal of ["#123", "C# support", "Use ## here", "    # code"]) {
+		assert.equal(projectDescriptionPreview(literal), literal);
+	}
 });
 
 test("the row budget is measured, clamped, and a whole number of rows", () => {
