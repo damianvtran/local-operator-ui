@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "没有待处理的请求。它们均已结束——请查看“已结束”。",
 	"ui.chat.ask_panel.empty.none_settled": "尚无已结束的请求。它们都还处于待处理状态。",
 	"ui.chat.ask_panel.filter.all": "全部",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "待处理",
 	"ui.chat.ask_panel.filter.settled": "已结束",
 	"ui.chat.ask_panel.landing.many": "{count, plural, other {#个问题已超时}}",

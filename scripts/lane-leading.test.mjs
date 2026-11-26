@@ -86,7 +86,14 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
 		classes: [
-			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+			/*
+			 * The WHOLE `className={cn(...)}` expression, as biome lays it out, and not
+			 * the bare class string: a bare string is found anywhere in the file, so a
+			 * dead or disabled copy of it would satisfy the entry while the root wore
+			 * something else. `@container/asks` trails the ground (the container class
+			 * is not part of the panel contract).
+			 */
+			'className={cn(\n\t\t\t\t"panel-top-pad flex h-full flex-col bg-elevated @container/asks",\n\t\t\t)}',
 		],
 	},
 	{

@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "No hay consultas pendientes. Todas están atendidas — mira Atendidas.",
 	"ui.chat.ask_panel.empty.none_settled": "Aún no hay consultas atendidas. Todas siguen pendientes.",
 	"ui.chat.ask_panel.filter.all": "Todas",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "Pendientes",
 	"ui.chat.ask_panel.filter.settled": "Atendidas",
 	"ui.chat.ask_panel.landing.many": "{count, plural, one {# pregunta caducó} many {# de preguntas caducaron} other {# preguntas caducaron}}",

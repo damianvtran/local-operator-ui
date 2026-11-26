@@ -5122,7 +5122,6 @@ export type MessageParams = {
 	"ui.chat.ask_panel.empty.none_pending": undefined;
 	"ui.chat.ask_panel.empty.none_settled": undefined;
 	"ui.chat.ask_panel.filter.all": undefined;
-	"ui.chat.ask_panel.filter.chip": { label: string; count: number };
 	"ui.chat.ask_panel.filter.pending": undefined;
 	"ui.chat.ask_panel.filter.settled": undefined;
 	"ui.chat.ask_panel.landing.many": { count: number };
@@ -5209,6 +5208,7 @@ export type MessageParams = {
 	"ui.chat.asks.close_asks": undefined;
 	"ui.chat.asks.context.messages_since": { count: number; time: string };
 	"ui.chat.asks.conversation_asks": undefined;
+	"ui.chat.asks.copy_id": { id: string };
 	"ui.chat.asks.decline": undefined;
 	"ui.chat.asks.dismiss.answered_in_chat.note": undefined;
 	"ui.chat.asks.dismiss.answered_in_chat.title": undefined;
@@ -5226,6 +5226,7 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
 	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
+	"ui.chat.asks.progress": { answered: number; total: number };
 	"ui.chat.asks.proposal.field_changed": { label: string };
 	"ui.chat.asks.proposal.field_lines": {
 		label: string;
@@ -5243,7 +5244,7 @@ export type MessageParams = {
 	"ui.chat.asks.status.withdrawn": undefined;
 	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
-	"ui.chat.asks.urgent": undefined;
+	"ui.chat.asks.urgent_label": undefined;
 	"ui.chat.attachment_refusal.cannot_upload": undefined;
 	"ui.chat.attachment_refusal.clause.read": { name: string };
 	"ui.chat.attachment_refusal.clause.remote": { name: string };

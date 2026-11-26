@@ -28,7 +28,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { DrawerUpdates, DrawerTabs, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
+			'export { DrawerUpdates, DrawerTabs, drawerTabStep, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
 			'export { beginOptimisticWrite, applyConfirmedWrite, notificationKeys, useNotificationReadState, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
@@ -210,6 +210,12 @@ const ReadStateProbe = () => {
 
 /** The Notifications page instead of the drawer: same transport, same cache. */
 let screenKind = "drawer";
+/**
+ * THE TABS THE KEYBOARD ASKED FOR (agent review round 1, m5). `DrawerTabs` reports the
+ * chosen tab and nothing else observable says which stop the cycle landed on, so the
+ * strip's `onTab` records here and the cycle test reads it.
+ */
+const tabCalls = [];
 const PageScreen = () => h(DRAWER.NotificationsPage, { nowMs: NOW });
 const Screen = () => {
 	if (screenKind === "page") return h(PageScreen);
@@ -225,7 +231,7 @@ const Screen = () => {
 		),
 		h(DRAWER.DrawerTabs, {
 			tab: "updates",
-			onTab: () => {},
+			onTab: (next) => tabCalls.push(next),
 			asks: 0,
 			unreadUpdates: unread,
 			sessionless: false,
@@ -1834,5 +1840,159 @@ test("QA: replay an actual core HTTP partial receipt, preserving the global fact
 		assert.equal(final.unread_count, 2);
 	} finally {
 		client.clear();
+	}
+});
+
+/*
+ * THE STEP ENTERS FROM THE NEAR END WHEN THE DRAWER OPENS ON `all` (agent review
+ * round 2, m-a). `tab` is `all` while the strip is drawn in fleet scope, and that door
+ * belongs to the bar: the position used to be read from the shown tabs, which still
+ * held it, so the step landed one stop past Asks - ArrowRight opened Updates. The strip
+ * is mounted alone here so the test can open on a tab the drawer screen never sets.
+ */
+const mountStrip = async ({ tab, sessionless }) => {
+	const container = window.document.createElement("div");
+	window.document.body.append(container);
+	const root = createRoot(container);
+	const calls = [];
+	await act(async () => {
+		root.render(
+			h(DRAWER.DrawerTabs, {
+				tab,
+				onTab: (next) => calls.push(next),
+				asks: 0,
+				unreadUpdates: 0,
+				sessionless,
+			}),
+		);
+	});
+	return {
+		container,
+		calls,
+		unmount: async () => {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+};
+
+test("ArrowRight from All conversations lands on Asks, the first stop the strip draws", async () => {
+	const rig = await mountStrip({ tab: "all", sessionless: false });
+	try {
+		const strip = rig.container.querySelector('[role="tablist"]');
+		assert.ok(strip, "the strip is drawn");
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			["asks"],
+			"forward from the fleet tab steps onto Asks, not the Updates tab it already passed",
+		);
+		assert.equal(
+			window.document.activeElement?.getAttribute("data-drawer-tab"),
+			"asks",
+			"and focus follows the step",
+		);
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowLeft",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			["asks", "updates"],
+			"backward from the same miss enters at the last stop",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+/*
+ * A SESSIONLESS STRIP HAS NO STOP TO ENTER, SO A STRAY ARROW IS A NO-OP (agent review
+ * round 2, m-a). The component draws no strip without a conversation, but the handler
+ * must not index an empty cycle if it is ever focused: that is a throw, not a missed
+ * step. `drawerTabStep` is the shape the handler runs.
+ */
+test("a sessionless strip has no stop to enter, so an arrow key is a no-op, not a throw", async () => {
+	const rig = await mountStrip({ tab: "all", sessionless: true });
+	try {
+		assert.equal(
+			rig.container.querySelector('[role="tablist"]'),
+			null,
+			"no strip is drawn without a conversation",
+		);
+		assert.equal(
+			DRAWER.drawerTabStep([], "all", 1),
+			undefined,
+			"the step over no stops is undefined, where indexing the cycle would throw",
+		);
+		await act(async () => {
+			rig.container.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			[],
+			"and nothing asks the drawer to change tab",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+/*
+ * THE TAB CYCLE VISITS ONLY THE TABS THAT ARE DRAWN (agent review round 1, m5).
+ *
+ * `All conversations` left the strip for the drawer's own bar (design spec S4), but
+ * the cycle still carried it: ArrowRight from Updates called `onTab("all")` - which
+ * opens the fleet drawer - and the focus hand-off then queried a `[data-drawer-tab]`
+ * that no longer exists, so the stop was invisible, unfocusable and silent. The bar's
+ * quiet link is that scope's door now; the keyboard must not invent a second one.
+ */
+test("the tab cycle skips the All conversations stop, which the strip no longer draws", async () => {
+	tabCalls.length = 0;
+	const rig = await mount();
+	try {
+		const strip = rig.q('[role="tablist"]');
+		assert.ok(strip, "the strip is drawn");
+		assert.equal(
+			rig.q('[data-drawer-tab="all"]'),
+			null,
+			"no control carries the stop, so no cycle may land on it",
+		);
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			tabCalls,
+			["asks"],
+			"from Updates, forwards is Asks - never the fleet scope behind an undrawn stop",
+		);
+		assert.equal(
+			window.document.activeElement?.getAttribute("data-drawer-tab"),
+			"asks",
+			"and the keyboard lands on the tab the cycle chose",
+		);
+	} finally {
+		await rig.unmount?.();
 	}
 });

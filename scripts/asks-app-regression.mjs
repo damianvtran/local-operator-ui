@@ -1253,8 +1253,14 @@ export const CASES = {
 							(labelled
 								? (document.getElementById(labelled)?.textContent ?? "").trim()
 								: null),
+						/*
+						 * THE VISIBLE SCOPE LINE: innerText rather than textContent is what makes it
+						 * visible. The bar draws two registers of the same sentence (the whole phrase
+						 * at 520px and up, the clause alone below it), so the text content holds both
+						 * and only the rendered one is what a reader sees.
+						 */
 						scope:
-							(document.querySelector("[data-ask-scope]")?.textContent ?? "").trim() ||
+							(document.querySelector("[data-ask-scope]")?.innerText ?? "").trim() ||
 							null,
 						padding: getComputedStyle(list).scrollPaddingBottom,
 						actionsVar: list.style.getPropertyValue("--lo-ask-actions-h"),

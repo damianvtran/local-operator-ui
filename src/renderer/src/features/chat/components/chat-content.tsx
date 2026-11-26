@@ -9,6 +9,7 @@ import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import {
+	DrawerAllConversations,
 	DrawerBackToTop,
 	DrawerTabs,
 	DrawerUpdates,
@@ -3974,7 +3975,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 														tab === "updates" ? (
 															<DrawerUpdates sessionId={sessionId} />
 														) : null,
-													action: <DrawerBackToTop tab={tab} />,
+													action: (
+														<>
+															{/*
+															 * THE ALL-CONVERSATIONS DOOR, IN THE BAR (design spec S4): the strip's
+															 * first row used to carry it and cost the list 28px of height at
+															 * every width. Quiet link beside the scope it widens, and it asks for
+															 * the fleet scope exactly as the old tab did.
+															 */}
+															<DrawerAllConversations
+																onSelect={() => {
+																	setDrawerTab(null);
+																	setAskDrawerOpen(true, "fleet");
+																}}
+															/>
+															<DrawerBackToTop tab={tab} />
+														</>
+													),
 												};
 											})()
 										: undefined
