@@ -1,6 +1,6 @@
 {
 	"ui.chat.inline_chart.also": "इसके अलावा:",
-	"ui.chat.inline_chart.data_toggle": "चार्ट डेटा",
+	"ui.chat.inline_chart.data_toggle": "चार्ट का डेटा",
 	"ui.chat.inline_chart.more": "+{count, number} और",
 	"ui.chat.inline_chart.no_data": "कोई डेटा नहीं",
 	"ui.chat.inline_chart.other": "अन्य ({count, number})",
