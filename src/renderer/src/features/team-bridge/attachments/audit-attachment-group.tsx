@@ -5,7 +5,7 @@ import {
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
 	BridgeAttachmentDescriptor,
 	BridgeFileDescriptor,
@@ -25,6 +25,8 @@ import {
 	useAuditAttachment,
 } from "./use-audit-attachment";
 
+export type AuditReviewState = "loading" | "unavailable" | "ready";
+
 function AuditImage({
 	scope,
 	attachment,
@@ -32,6 +34,7 @@ function AuditImage({
 	index,
 	count,
 	register,
+	onReviewState,
 	onOpen,
 	openerRef,
 }: {
@@ -41,6 +44,7 @@ function AuditImage({
 	index: number;
 	count: number;
 	register: (id: string, value: AuditImageState) => void;
+	onReviewState?: (id: string, state: AuditReviewState) => void;
 	onOpen: () => void;
 	openerRef: (node: HTMLButtonElement | null) => void;
 }) {
@@ -51,6 +55,23 @@ function AuditImage({
 		attempt,
 	);
 	const url = source.state === "ready" ? source.url : null;
+	const [decoded, setDecoded] = useState<{
+		url: string;
+		ready: boolean;
+	} | null>(null);
+	const failedDecode = decoded?.url === url && !decoded.ready;
+	const reviewState =
+		source.state === "failed" || source.state === "unavailable" || failedDecode
+			? "unavailable"
+			: url && decoded?.url === url && decoded.ready
+				? "ready"
+				: "loading";
+	// Revoke readiness in the same commit as a changed URL, before the row can
+	// accept another click. The network result alone does not prove the image
+	// is usable by the renderer.
+	useLayoutEffect(() => {
+		onReviewState?.(attachment.id, reviewState);
+	}, [attachment.id, onReviewState, reviewState]);
 	const opener = useRef<HTMLButtonElement | null>(null);
 	const retryFocus = useRef(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish only resource changes, not callback identity.
@@ -71,13 +92,17 @@ function AuditImage({
 	/* The member transcript's tile and failure, so an owner reading the audit
 	 * sees the same picture a member does. No Save on an audit PICTURE (#1634):
 	 * decision a-fdf0 added a download for generic files only. */
-	if (source.state === "failed" || source.state === "unavailable")
+	if (
+		source.state === "failed" ||
+		source.state === "unavailable" ||
+		failedDecode
+	)
 		return (
 			<InlineImageFailure
 				box={slot.box}
 				label={label}
 				copy={t("ui.teamBridge.attachmentCard.unavailable")}
-				kind={source.state}
+				kind={source.state === "failed" ? "failed" : "unavailable"}
 				retryLabel={t("ui.teamBridge.attachments.retry_load")}
 				onRetry={
 					source.state === "failed"
@@ -97,6 +122,9 @@ function AuditImage({
 			overflow={slot.overflow}
 			label={label}
 			busy={!url}
+			onImageReadiness={
+				onReviewState && url ? (ready) => setDecoded({ url, ready }) : undefined
+			}
 			openLabel={t("ui.teamBridge.attachments.open", {
 				index: String(index + 1),
 				count: String(count),
@@ -120,6 +148,7 @@ export function AuditAttachmentGroup({
 	compact = false,
 	files = [],
 	fileCount = files.length,
+	review,
 }: {
 	attachments: readonly BridgeAttachmentDescriptor[];
 	count: number;
@@ -134,6 +163,10 @@ export function AuditAttachmentGroup({
 		| (OwnerAuditScope & { conversationId: string; messageId: string })
 		| null;
 	compact?: boolean;
+	review?: {
+		revision: string;
+		onState: (id: string, state: AuditReviewState) => void;
+	};
 }) {
 	useI18nLocale();
 	const authorityKey = JSON.stringify(
@@ -203,6 +236,7 @@ export function AuditAttachmentGroup({
 				compact={compact}
 				files={files}
 				fileCount={fileCount}
+				inlineReview={Boolean(review)}
 				readFile={
 					scope
 						? (file) =>
@@ -220,8 +254,13 @@ export function AuditAttachmentGroup({
 										key={auditAttachmentKey({
 											...scope,
 											attachmentId: attachment.id,
+											reviewRevision: review?.revision,
 										})}
-										scope={{ ...scope, attachmentId: attachment.id }}
+										scope={{
+											...scope,
+											attachmentId: attachment.id,
+											reviewRevision: review?.revision,
+										}}
 										attachment={attachment}
 										slot={slot}
 										index={images.findIndex(
@@ -229,6 +268,7 @@ export function AuditAttachmentGroup({
 										)}
 										count={images.length}
 										register={register}
+										onReviewState={review?.onState}
 										openerRef={(node) => {
 											openers.current[attachment.id] = node;
 										}}

@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "Mã tham chiếu {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Chỉ loại bỏ tin nhắn này ({reference}) mà không đọc? Tin nhắn sẽ không đến được tác nhân của bạn. Việc loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác.",
 	"ui.teamBridge.holds.discard_unread_label": "Loại bỏ tin nhắn {reference} mà không đọc",
-	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ."
+	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ.",
+	"ui.teamBridge.holds.state.confirmed_delivered": "Đã chuyển",
+	"ui.teamBridge.holds.state.confirmed_discarded": "Đã loại bỏ",
+	"ui.teamBridge.holds.state.confirmation_pending": "Đang chờ xác nhận"
 }

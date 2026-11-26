@@ -14712,6 +14712,9 @@ export type MessageParams = {
 	"ui.teamBridge.holds.show_less": undefined;
 	"ui.teamBridge.holds.state.chose_deliver": undefined;
 	"ui.teamBridge.holds.state.chose_discard": undefined;
+	"ui.teamBridge.holds.state.confirmation_pending": undefined;
+	"ui.teamBridge.holds.state.confirmed_delivered": undefined;
+	"ui.teamBridge.holds.state.confirmed_discarded": undefined;
 	"ui.teamBridge.holds.state.deliver_expired": undefined;
 	"ui.teamBridge.holds.state.discard_recorded": undefined;
 	"ui.teamBridge.holds.state.not_applied": undefined;

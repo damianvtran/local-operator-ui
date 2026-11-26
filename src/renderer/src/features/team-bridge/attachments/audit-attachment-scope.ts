@@ -8,6 +8,8 @@ export type AuditAttachmentScope = OwnerAuditScope & {
 	conversationId: string;
 	messageId: string;
 	attachmentId: string;
+	/** Approval media must be reread for a replaced hold/descriptor, never sent to core. */
+	reviewRevision?: string;
 };
 
 export function auditAttachmentKey(scope: AuditAttachmentScope): string {
@@ -18,6 +20,7 @@ export function auditAttachmentKey(scope: AuditAttachmentScope): string {
 		scope.conversationId,
 		scope.messageId,
 		scope.attachmentId,
+		...(scope.reviewRevision === undefined ? [] : [scope.reviewRevision]),
 	]);
 }
 

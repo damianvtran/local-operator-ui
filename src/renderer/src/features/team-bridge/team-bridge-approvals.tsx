@@ -42,6 +42,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import {
 	type ApprovalDecisionRow,
 	type ApprovalRefusal,
@@ -64,7 +65,13 @@ import {
 	senderLabel,
 	toggleSelected,
 } from "./team-bridge-approvals-model";
-import { TeamBridgeHeldMessages } from "./team-bridge-held-messages";
+import {
+	ApprovalSenderAvatar,
+	type HeldInbox,
+	TeamBridgeHeldMessages,
+} from "./team-bridge-held-messages";
+import { useTeamBridgeAccount } from "./team-bridge-owner";
+import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
 	type ApprovalFlowState,
 	useApprovalDecide,
@@ -72,7 +79,7 @@ import {
 	useApprovalRequests,
 	useForeignPromptTraces,
 } from "./use-team-bridge-approvals";
-import { useHeldMessages, useHoldsSupported } from "./use-team-bridge-holds";
+import { useHoldsSupported } from "./use-team-bridge-holds";
 
 type ListState = "loading" | "error" | "ready";
 
@@ -129,6 +136,10 @@ export function TeamBridgeRequestsView({
 	initialSelected,
 	held = null,
 	heldCount = 0,
+	heldHistory = null,
+	heldWaitingState = "ready",
+	hasHeldHistory = false,
+	memberFor,
 }: {
 	/** The "Held messages" section, drawn under the waiting requests (B4b). */
 	held?: ReactNode;
@@ -139,6 +150,12 @@ export function TeamBridgeRequestsView({
 	 * "No requests are waiting."
 	 */
 	heldCount?: number;
+	heldHistory?: ReactNode;
+	heldWaitingState?: ListState;
+	hasHeldHistory?: boolean;
+	memberFor?: (
+		accountId: string | null,
+	) => TeamBridgeDirectoryMember | undefined;
 	/** Rows ticked on first render; stories use it to frame the batch bar. */
 	initialSelected?: readonly string[];
 	/** Which tab opens first; stories and frames use it to show the history. */
@@ -173,7 +190,8 @@ export function TeamBridgeRequestsView({
 	const sectionRef = useRef<HTMLElement>(null);
 	const statusRef = useRef<HTMLDivElement>(null);
 	const inFlight = flow.phase === "authorizing" || flow.phase === "deciding";
-	const heldFirst = heldCount > 0 && rows.length === 0;
+	const heldFirst =
+		(heldCount > 0 || heldWaitingState !== "ready") && rows.length === 0;
 	// A new approval or the last hold settling moves this section between the
 	// two sibling slots below. Its stable keyed boundary must move with it:
 	// remounting would abandon a human-confirmed batch and erase its results.
@@ -325,7 +343,7 @@ export function TeamBridgeRequestsView({
 							)}
 						</div>
 					) : rows.length === 0 ? (
-						heldCount > 0 ? null : (
+						heldFirst ? null : (
 							<p className="text-sm text-ink-muted">
 								{t("ui.teamBridge.approvals.empty")}
 							</p>
@@ -404,11 +422,12 @@ export function TeamBridgeRequestsView({
 									{t("ui.teamBridge.approvals.excluded", { count: excluded })}
 								</p>
 							)}
-							<ul className="flex flex-col gap-2">
+							<ul className="flex flex-col divide-y divide-hairline">
 								{rows.map((row) => (
 									<RequestRow
 										key={row.message_id}
 										row={row}
+										member={memberFor?.(row.sender.account_id)}
 										checked={live.has(row.message_id)}
 										blocked={blocked}
 										showBatch={!batchUnavailable}
@@ -431,13 +450,18 @@ export function TeamBridgeRequestsView({
 					)}
 					{!heldFirst && heldSection}
 				</TabsContent>
-				<TabsContent value="history">
-					<DecisionHistory
-						state={history.state}
-						rows={history.rows}
-						decided={decided}
-						onOpenCard={onOpenCard}
-					/>
+				<TabsContent value="history" className="flex flex-col gap-3">
+					{(!hasHeldHistory ||
+						history.state !== "ready" ||
+						history.rows.length > 0) && (
+						<DecisionHistory
+							state={history.state}
+							rows={history.rows}
+							decided={decided}
+							onOpenCard={onOpenCard}
+						/>
+					)}
+					{heldHistory}
 				</TabsContent>
 			</Tabs>
 		</section>
@@ -446,6 +470,7 @@ export function TeamBridgeRequestsView({
 
 function RequestRow({
 	row,
+	member,
 	checked,
 	blocked,
 	showBatch,
@@ -455,6 +480,7 @@ function RequestRow({
 	onDecide,
 }: {
 	row: ApprovalRequestRow;
+	member?: TeamBridgeDirectoryMember;
 	checked: boolean;
 	blocked: boolean;
 	showBatch: boolean;
@@ -478,9 +504,7 @@ function RequestRow({
 	const expires = stamp(row.request.expires_at);
 	const sessionId = row.ask?.session_id ?? null;
 	return (
-		/* `elevated`, one lightness step above the page: rows are grouped by
-		   ground value, never by a border (docs/branding.md). */
-		<li className="flex gap-3 rounded-lg bg-elevated p-3 text-ink">
+		<li className="flex gap-3 py-3 text-ink">
 			{showBatch && row.decidable ? (
 				<Checkbox
 					className="mt-0.5"
@@ -492,6 +516,11 @@ function RequestRow({
 			) : (
 				showBatch && <span className="w-4 shrink-0" aria-hidden="true" />
 			)}
+			<ApprovalSenderAvatar
+				member={member}
+				label={sender}
+				unknown={!row.sender.name && !row.sender.email}
+			/>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
 					<span className="truncate font-medium">{sender}</span>
@@ -510,7 +539,14 @@ function RequestRow({
 					)}
 				</p>
 				{row.excerpt && (
-					<p className="line-clamp-3 text-sm text-ink-muted">{row.excerpt}</p>
+					/* The request wire supplies an excerpt, not the full ask. Do not
+					   pretend it is proof of the full message; Open card stays available. */
+					<p
+						dir="auto"
+						className="whitespace-pre-wrap break-words text-sm text-ink"
+					>
+						{row.excerpt}
+					</p>
 				)}
 				{reason && (
 					<p className="text-meta text-ink-dim">
@@ -806,7 +842,7 @@ function DecisionHistory({
 			</p>
 		);
 	return (
-		<ul className="flex flex-col gap-2">
+		<ul className="flex flex-col divide-y divide-hairline">
 			{rows.map((row) => {
 				const when = stamp(row.decided_at);
 				/* U2: WHAT was decided, for decisions made on this machine. The
@@ -817,7 +853,7 @@ function DecisionHistory({
 				return (
 					<li
 						key={row.request_id}
-						className="flex flex-col gap-0.5 rounded-lg bg-elevated p-3 text-ink"
+						className="flex flex-col gap-0.5 py-3 text-ink"
 					>
 						<p className="flex min-w-0 items-baseline gap-2 text-sm">
 							<span className="shrink-0 font-medium">
@@ -883,7 +919,12 @@ export function TeamBridgeRequests() {
 	);
 	const decide = useApprovalDecide(lookup);
 	const holdsSupported = useHoldsSupported();
-	const holds = useHeldMessages(holdsSupported, { panel: true });
+	const { accountId } = useTeamBridgeAccount();
+	const directory = useTeamBridgeDirectory(
+		requests.data?.tenant_id ?? null,
+		true,
+		accountId,
+	);
 	const listState: ListState = requests.isError
 		? "error"
 		: requests.isPending
@@ -894,15 +935,16 @@ export function TeamBridgeRequests() {
 		: decisions.isPending
 			? "loading"
 			: "ready";
-	return (
+	const render = (inbox?: HeldInbox) => (
 		<TeamBridgeRequestsView
-			held={
-				holdsSupported ? (
-					/* With no requests either, one empty state, not two (D1). */
-					<TeamBridgeHeldMessages hideWhenEmpty={rows.length === 0} />
-				) : null
+			held={inbox?.waiting}
+			heldCount={inbox?.count}
+			heldWaitingState={inbox?.waitingState}
+			heldHistory={inbox?.history}
+			hasHeldHistory={inbox?.hasHistory}
+			memberFor={(id) =>
+				directory.data?.members.find((member) => member.account_id === id)
 			}
-			heldCount={holdsSupported ? (holds.data?.items.length ?? 0) : 0}
 			listState={listState}
 			rows={rows}
 			flow={decide.state}
@@ -918,5 +960,11 @@ export function TeamBridgeRequests() {
 			decided={decidedSnapshot}
 			history={{ state: historyState, rows: decisions.data ?? [] }}
 		/>
+	);
+	// Capability negotiation must not remount tabs or erase a native selection.
+	return (
+		<TeamBridgeHeldMessages supported={holdsSupported} hideWhenEmpty>
+			{render}
+		</TeamBridgeHeldMessages>
 	);
 }

@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "Reference {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Discard only this message ({reference}) without reading it? It won’t reach your agent. The discard is recorded on this device and can’t be undone.",
 	"ui.teamBridge.holds.discard_unread_label": "Discard message {reference} without reading it",
-	"ui.teamBridge.holds.state.discard_recorded": "Discard recorded on this device. No server confirmation has been received."
+	"ui.teamBridge.holds.state.discard_recorded": "Discard recorded on this device. No server confirmation has been received.",
+	"ui.teamBridge.holds.state.confirmed_delivered": "Delivered",
+	"ui.teamBridge.holds.state.confirmed_discarded": "Discarded",
+	"ui.teamBridge.holds.state.confirmation_pending": "Awaiting confirmation"
 }
