@@ -10804,9 +10804,10 @@ export function ChatSidebar({
 								 * there exactly as it does at 600 - only a window tall enough that the
 								 * available space clears the content never scrolls.
 								 */
-								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
+								/* Both finish layers follow the leading padding: a fixed wash
+								 * would lower muted-text contrast under the top scroll clip. */
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto bg-local p-2"
 								data-sidebar-view-panel
-								/* Finish only: preserve the shared popover material and scroll cap. */
 								data-lo-floating-finish=""
 							>
 								<ChatSidebarViewMenu

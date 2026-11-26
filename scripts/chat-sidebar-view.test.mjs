@@ -1959,6 +1959,8 @@ test("a hidden section cannot move, and a hidden neighbour makes a new one adjac
 const VIEW_POPOVER_ROOT =
 	/<PopoverContent\b[^>]*\bdata-sidebar-view-panel\b[^>]*/;
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
+const JSX_CLASS_NAME = /\bclassName="([^"]+)"/;
+const CLASS_SPACING = /\s+/;
 
 test("the live View options root opts into the shared floating finish", () => {
 	const source = readFileSync(SIDEBAR, "utf8").replace(BLOCK_COMMENT, "");
@@ -1966,6 +1968,22 @@ test("the live View options root opts into the shared floating finish", () => {
 	// or on the adjacent Create popover, which is not part of this adoption.
 	const root = source.match(VIEW_POPOVER_ROOT);
 	assert.ok(root?.[0].includes('data-lo-floating-finish=""'));
+});
+
+test("the View options finish scrolls with the leading padding, not the viewport edge", () => {
+	const source = readFileSync(SIDEBAR, "utf8").replace(BLOCK_COMMENT, "");
+	const root = source.match(VIEW_POPOVER_ROOT)?.[0];
+	const classes = root?.match(JSX_CLASS_NAME)?.[1].split(CLASS_SPACING);
+	// The finish has two layers. A single local attachment applies to both,
+	// so even muted ink clipped at the top edge can't pass under either one.
+	assert.ok(
+		classes?.includes("overflow-y-auto"),
+		"View must remain scrollable",
+	);
+	assert.ok(
+		classes.includes("bg-local"),
+		"the finish must follow the scrollable padding",
+	);
 });
 
 test("the component draws the band's controls and the popover's four groups", () => {
