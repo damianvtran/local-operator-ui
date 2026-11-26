@@ -345,6 +345,14 @@ test("units: no space before %, ‰ and degrees, one space otherwise", () => {
 	assert.equal(chart.withUnit("21", "°C"), "21°C");
 	assert.equal(chart.withUnit("140.61", "USD"), "140.61 USD");
 	assert.equal(chart.withUnit("7"), "7");
+	assert.equal(chart.withUnit("7", ""), "7");
+	assert.equal(chart.withUnit("90", "°"), "90°");
+	assert.equal(chart.withUnit("3", "‰"), "3‰");
+	// The author's label passes through verbatim, even one that reads like a
+	// byte unit: the spec's numbers are already in that unit, so no rescaling
+	// or locale unit symbol applies (see `withUnit`'s doc on the size guard).
+	assert.equal(chart.withUnit("2.5", "MB"), "2.5 MB");
+	assert.equal(chart.withUnit("12", "req/s"), "12 req/s");
 	assert.equal(chart.axisText("Nov 24 · rollout"), "Nov 24");
 	assert.equal(chart.axisText("Nov 24"), "Nov 24");
 });

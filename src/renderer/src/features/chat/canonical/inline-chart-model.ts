@@ -212,10 +212,24 @@ export function axisText(label: string): string {
 const TIGHT_UNIT = /^(%|‰|°[CF]?)$/;
 const FLAT_HEX = /^#[0-9a-f]{6}$/i;
 
-/** Value + unit: no space before `%`, `‰`, `°`, `°C`, `°F`; one space otherwise. */
-export function withUnit(value: string, unit?: string): string {
-	if (!unit) return value;
-	return TIGHT_UNIT.test(unit) ? `${value}${unit}` : `${value} ${unit}`;
+/**
+ * Value + the chart author's unit label: no space before `%`, `‰`, `°`, `°C`,
+ * `°F`; one space otherwise.
+ *
+ * WHY THIS IS NOT A BYTE SIZE. `unitLabel` is spec copy (`value.unit` /
+ * `series.unit` in the lop-ui block) shown verbatim beside numbers the author
+ * already scaled — `USD`, `ms`, `req/s`. Nothing here chooses a unit from a
+ * magnitude, so `formatByteQuantity` has nothing to own: a spec that says `MB`
+ * means its own MB figures, exactly as a column header would. The gap is a
+ * named value (not a `${n} ${unit}` template) so the renderer's byte-size guard
+ * (scripts/i18n/file-size.test.mjs), which flags that template shape, keeps
+ * meaning "code is hand-spelling a file size" rather than tripping on chart
+ * labels.
+ */
+export function withUnit(value: string, unitLabel?: string): string {
+	if (!unitLabel) return value;
+	const gap = TIGHT_UNIT.test(unitLabel) ? "" : " ";
+	return `${value}${gap}${unitLabel}`;
 }
 
 export type LabelAnchor = "start" | "middle" | "end";
