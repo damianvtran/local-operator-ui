@@ -11,7 +11,9 @@
  * nobody was looking at. Now:
  *
  *   - SET by a trusted tab-strip selection (`selected`), or by a press on the
- *     tab's own page (`pagePressed`) that is NOT synthesized by the agent;
+ *     tab's own page (`pagePressed`) that is NOT synthesized by the agent. If
+ *     the primary press is delivered before window focus arrives, the same
+ *     click's release (`pageReleased`) can engage once the window is focused;
  *   - CLEARED when the window loses focus (`windowBlurred`), when another tab
  *     (or none) becomes active (`activated`), when the app's own renderer
  *     takes focus FROM a page (its `focus` event; a tab-strip click already
@@ -21,21 +23,18 @@
  *     agent's next one), and when the tab closes or changes hands. A
  *     navigation the page or the person makes does not clear it.
  *
- * WHY A PAGE PRESS NEEDS `synthetic`. Electron raises `before-mouse-event` from
- * the RenderWidgetHost's mouse-event callbacks
- * (`shell/browser/api/electron_api_web_contents.cc`, `OnMouseEvent` registered
- * with `RenderWidgetHostImpl::AddMouseEventCallback`), and DevTools'
- * `Input.dispatchMouseEvent` forwards through that same host, so the event
- * itself cannot tell a person from the agent. The host therefore passes the
- * pool's own record of an agent input command in flight for that view
- * (`CdpPool.isDispatchingInput`): a press seen while one is in flight is the
- * agent's and engages nothing (fail closed: a person pressing at that exact
- * moment simply has to press again). The window must also be focused and the
- * tab the active one \u2014 a person cannot press a page they cannot see.
+ * WHY BOTH EDGES NEED `synthetic`. Electron's `before-mouse-event` fires in
+ * the page's input path for DevTools' `Input.dispatchMouseEvent` too (measured
+ * on Electron 45.1.0), so a trusted DOM click does not distinguish human from
+ * agent. Only the main process knows when a CDP input command is in flight
+ * (`CdpPool.isDispatchingInput`). Neither edge may engage during that command.
+ * At engagement the window must still be focused and this tab active.
  */
 export interface PagePress {
 	/** An agent's CDP input command was in flight for this view. */
 	synthetic: boolean;
+	/** Only the primary button can complete a focus-acquiring click. */
+	primary: boolean;
 	windowFocused: boolean;
 	/** The tab is the one the window shows. */
 	active: boolean;
@@ -43,18 +42,45 @@ export interface PagePress {
 
 export class TabEngagement {
 	private tabId: number | null = null;
+	private awaitingFocusedRelease: number | null = null;
 
 	selected(tabId: number, trusted: boolean, windowFocused: boolean): void {
-		if (trusted && windowFocused) this.tabId = tabId;
+		if (!trusted || !windowFocused) return;
+		this.awaitingFocusedRelease = null;
+		this.tabId = tabId;
 	}
 
 	pagePressed(tabId: number, press: PagePress): void {
-		if (!press.synthetic && press.windowFocused && press.active)
+		this.pagePointerLeft(tabId); // a new press supersedes an unfinished one
+		if (press.synthetic || !press.active) return;
+		if (press.windowFocused) this.tabId = tabId;
+		else if (press.primary) this.awaitingFocusedRelease = tabId;
+	}
+
+	pageReleased(tabId: number, release: PagePress): void {
+		if (this.awaitingFocusedRelease !== tabId) return;
+		// Consume even an invalid release: a trailing input edge cannot re-use
+		// this press, nor can a release alone grant engagement.
+		this.awaitingFocusedRelease = null;
+		if (
+			release.primary &&
+			!release.synthetic &&
+			release.windowFocused &&
+			release.active
+		)
 			this.tabId = tabId;
 	}
 
+	/** Release outside the page may never reach its native input observer. */
+	pagePointerLeft(tabId: number): void {
+		if (this.awaitingFocusedRelease === tabId)
+			this.awaitingFocusedRelease = null;
+	}
+
 	activated(tabId: number | null): void {
-		if (this.tabId !== tabId) this.clearAll();
+		if (this.tabId !== tabId) this.tabId = null;
+		if (this.awaitingFocusedRelease !== tabId)
+			this.awaitingFocusedRelease = null;
 	}
 
 	/** The person left the app: engagement is not carried across the absence. */
@@ -63,11 +89,13 @@ export class TabEngagement {
 	}
 
 	clear(tabId: number): void {
-		if (this.tabId === tabId) this.clearAll();
+		if (this.tabId === tabId) this.tabId = null;
+		this.pagePointerLeft(tabId);
 	}
 
 	clearAll(): void {
 		this.tabId = null;
+		this.awaitingFocusedRelease = null;
 	}
 
 	has(tabId: number): boolean {
