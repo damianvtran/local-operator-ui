@@ -2258,7 +2258,12 @@ export const UpdateNotification = ({
 	 * an authoritative equality already retired.
 	 */
 	const acceptBackendObservation = useCallback(
-		(reported: string | null, id?: number, scope?: string) => {
+		(
+			reported: string | null,
+			id?: number,
+			scope?: string,
+			endsMatchingConvergence = false,
+		) => {
 			const observed = backendObservation.current;
 			const version = readableVersion(reported);
 			// Legacy events have no place in the ordered stream. Let them report
@@ -2266,8 +2271,11 @@ export const UpdateNotification = ({
 			if (id === undefined) return true;
 			if (observed.observationId !== undefined && id <= observed.observationId)
 				return false;
-			// Versions order readings of ONE install, not independent attachments.
+			// Versions order ordinary readings of one install. A newer deadline
+			// for the pending promotion can report a real rollback of `current`.
+			// The ID still orders it; the version floor must not keep progress alive.
 			if (
+				!endsMatchingConvergence &&
 				scope &&
 				scope === observed.installScope &&
 				version &&
@@ -2870,8 +2878,9 @@ export const UpdateNotification = ({
 				if (
 					!acceptBackendObservation(
 						info.version,
-						info.observationId,
-						info.installScope,
+						observationId,
+						installScope,
+						info.convergenceEnded && followsConvergence,
 					)
 				)
 					return;

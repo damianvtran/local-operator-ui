@@ -3013,6 +3013,50 @@ test("proven convergence is nonblocking, with a warning only for measured sustai
 	}
 });
 
+test("only a newer matching deadline can finish convergence at a rolled-back version", async () => {
+	for (const runningVersion of [null, "0.113.7"]) {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		updater.emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: true,
+			observationId: 1,
+		});
+		handle.render();
+		await settleServerUpdate(handle, true);
+		const inFlight = () => useUpdateNoticeStore.getState().inflight.backend;
+		const deadline = {
+			...CHECK_AFTER_PROMOTION,
+			version: "0.113.8",
+			runningVersion,
+			observationId: 2,
+			bootVersionVerified: false,
+			observationOnly: true,
+			convergenceEnded: true,
+		};
+		const notify = (payload) => {
+			updater.emit("backend-update-not-available", payload);
+			handle.render();
+		};
+		assert.equal(inFlight(), true);
+		notify({ ...deadline, observationId: 0 });
+		assert.equal(inFlight(), true, "an older deadline cannot end progress");
+		notify({ ...deadline, installScope: "/another/install" });
+		assert.equal(inFlight(), true, "another install cannot end this promotion");
+		notify({ ...deadline, convergenceEnded: false });
+		assert.equal(inFlight(), true, "a lower ordinary reading is not terminal");
+		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
+		notify(deadline);
+		assert.equal(inFlight(), false, "the owning deadline ends the promotion");
+		assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+		assert.equal(
+			showsText(handle, EXTERNAL_SKEW_HEADING),
+			runningVersion !== null,
+			"only measured skew against the rolled-back install warns",
+		);
+	}
+});
+
 /**
  * R2-3: silence on SUCCESS is the one outcome this panel must not produce.
  *
