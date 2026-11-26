@@ -10940,21 +10940,23 @@ const driveGlobalUpdate = async ({
 		 */
 		updateService.fleetDrainBudgetMs = drainBudgetMs;
 		updateService.fleetDrainPollMs = drainPollMs;
-		updateService.resolveBackendUpdatePlan = async () => ({
-			canManageUpdate: true,
-			updateCommand: "lop update",
-			remedy:
-				"The app updates this install and then restarts the server it started.",
-			detail: "synthetic plan",
-			sourceBuild: false,
-			managedRoute,
-			installedInstallVersion: before,
-		});
 		updateService.resolveLocalOperatorPath = () => shimPath;
-		// The pre-run read and the post-run read, in the order the attempt takes
-		// them; anything after those repeats the last one.
-		const readings = [before, after];
 		if (!realEvidenceReads) {
+			// A generation fixture must let the check build a fresh plan from the
+			// serving prefix. Pinning the plan to `before` manufactures offline
+			// skew even when both the prefix on disk and its boot record agree.
+			updateService.resolveBackendUpdatePlan = async () => ({
+				canManageUpdate: true,
+				updateCommand: "lop update",
+				remedy:
+					"The app updates this install and then restarts the server it started.",
+				detail: "synthetic plan",
+				sourceBuild: false,
+				managedRoute,
+				installedInstallVersion: before,
+			});
+			// The pre-run and post-run reads; after those repeat the last one.
+			const readings = [before, after];
 			/*
 			 * The scripted reading, for the cases that are about what the service does with a
 			 * version rather than about which install it came from: it ignores the install the
@@ -11250,6 +11252,12 @@ for (const scenario of [
 			}
 			if (scenario === "equal check") {
 				run.updateService.networkIsReachable = () => false;
+				const current = join(root, "current", "tools", "local-operator");
+				assert.equal(realpathSync(current), next);
+				assert.equal(resolveDistributionMarkers(current).version, "0.113.9");
+				assert.equal(resolveDistributionMarkers(sibling).version, "0.113.9");
+				const promotion = run.updateService.attachedPromotion;
+				assert.ok(promotion, "the deadline is armed after completion");
 				attachEqualVersion(sibling);
 				run.updateService.observeAttachedPromotion();
 				assert.equal(
@@ -11263,9 +11271,10 @@ for (const scenario of [
 					undefined,
 					"silent check rejects same-version sibling",
 				);
-				assert.ok(
+				assert.equal(
 					run.updateService.attachedPromotion,
-					"the deadline stays armed",
+					promotion,
+					"the original deadline stays armed",
 				);
 				attachEqualVersion(next);
 				await run.updateService.checkForBackendUpdates(true);

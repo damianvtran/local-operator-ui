@@ -2877,6 +2877,10 @@ test("unscoped unattended measured skew still warns after scoped equality", () =
 });
 
 test("only pressed convergence with verified equality affirms success", async () => {
+	// As on screen, measure the open success alert, not a flattened subtree:
+	// an unmeasured session count adds a second line to the same toast.
+	const successAlerts = (handle) =>
+		visible(handle).filter(({ variant }) => variant === "success");
 	for (const [pressed, verified] of [
 		[true, true],
 		[false, true],
@@ -2884,13 +2888,16 @@ test("only pressed convergence with verified equality affirms success", async ()
 	]) {
 		const handle = mountNotification();
 		if (pressed) startServerUpdate(handle);
+		// Main sends completion before the update invoke returns. The press
+		// earns a toast only when a later observation verifies that completion.
+		assert.equal(updater.backendUpdates.length, pressed ? 1 : 0);
 		updater.emit("backend-update-completed", {
 			...EXTERNAL_PROMOTION,
 			converging: true,
 		});
 		handle.render();
 		if (pressed) await settleServerUpdate(handle, true);
-		assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+		assert.deepEqual(successAlerts(handle), []);
 		assert.equal(useUpdateNoticeStore.getState().inflight.backend, true);
 		updater.emit("backend-update-not-available", {
 			...CHECK_AFTER_PROMOTION,
@@ -2902,7 +2909,10 @@ test("only pressed convergence with verified equality affirms success", async ()
 		handle.render();
 		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
 		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
-		assert.equal(showsText(handle, BACKEND_SUCCESS), pressed && verified);
+		assert.deepEqual(
+			successAlerts(handle).map(({ lines }) => lines[0]),
+			pressed && verified ? [BACKEND_SUCCESS] : [],
+		);
 	}
 });
 
