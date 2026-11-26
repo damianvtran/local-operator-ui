@@ -41,6 +41,7 @@ import { createWorkspaceTabReveal } from "./workspace-tab-reveal";
 const WORKSPACE_DRAG = "application/x-lo-workspace-tab";
 
 type Props = {
+	viewport: { pinned: number; regular: number };
 	activeKey?: string;
 	/** The open conversation's REAL name, or null while it has none (never a placeholder). */
 	activeTitle: string | null;
@@ -65,6 +66,7 @@ function startsGroup(entries: readonly { group: string }[], index: number) {
 }
 
 export function WorkspaceTabs({
+	viewport,
 	activeKey,
 	activeTitle,
 	tabs,
@@ -172,13 +174,23 @@ export function WorkspaceTabs({
 
 	useLayoutEffect(() => {
 		if (!strip.current) return;
+		const pinned = pinnedLane.current;
+		const regular = regularLane.current;
+		// Restore before painting or measuring the selection; revealing an
+		// already visible tab must not animate from a new scrollport's zero.
+		if (pinned && viewport.pinned) pinned.scrollLeft = viewport.pinned;
+		if (regular && viewport.regular) regular.scrollLeft = viewport.regular;
 		const controller = createWorkspaceTabReveal(strip.current);
 		reveal.current = controller;
 		return () => {
+			// Sample live offsets while lanes are still connected, not a delayed
+			// scroll event or an animation's destination.
+			viewport.pinned = pinned?.scrollLeft ?? 0;
+			viewport.regular = regular?.scrollLeft ?? 0;
 			controller.dispose();
 			reveal.current = undefined;
 		};
-	}, []);
+	}, [viewport]);
 
 	useLayoutEffect(() => {
 		// The title button is only part of the painted row: the active More and

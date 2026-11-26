@@ -131,25 +131,32 @@ const noop = () => {};
 function fixture(t, tabs) {
 	const host = document.querySelector("#root");
 	const root = createRoot(host);
-	const render = (activeKey, options = {}) =>
+	const viewport = { pinned: 0, regular: 0 };
+	// A keyed ancestor must recreate the actual DOM lanes, like SessionPanel.
+	const render = (activeKey, { mountKey, ...options } = {}) =>
 		act(() =>
 			root.render(
-				createElement(WorkspaceTabs, {
-					activeKey,
-					activeTitle: null,
-					tabs,
-					autoClose: false,
-					titles: Object.fromEntries(tabs.map(({ key }) => [key, key])),
-					onAutoCloseChange: noop,
-					onTitleSeen: noop,
-					onFocusHandled: noop,
-					onOpen: noop,
-					onClose: noop,
-					onCloseMany: noop,
-					onPin: noop,
-					onMove: noop,
-					...options,
-				}),
+				createElement(
+					"section",
+					{ key: mountKey },
+					createElement(WorkspaceTabs, {
+						viewport,
+						activeKey,
+						activeTitle: null,
+						tabs,
+						autoClose: false,
+						titles: Object.fromEntries(tabs.map(({ key }) => [key, key])),
+						onAutoCloseChange: noop,
+						onTitleSeen: noop,
+						onFocusHandled: noop,
+						onOpen: noop,
+						onClose: noop,
+						onCloseMany: noop,
+						onPin: noop,
+						onMove: noop,
+						...options,
+					}),
+				),
 			),
 		);
 	t.after(() => {
@@ -165,15 +172,26 @@ function laneLayout(
 	host,
 	name,
 	bounds,
-	{ width = 100, rtl = false, defer = false, closeOverflow = () => 0 } = {},
+	{
+		width = 100,
+		rtl = false,
+		defer = false,
+		closeOverflow = () => 0,
+		snap = (value) => value,
+	} = {},
 ) {
 	const lane = host.querySelector(`[data-workspace-${name}]`);
 	const moves = [];
-	let destination;
-	const end = () => {
-		if (destination !== undefined) lane.scrollLeft = clamp(destination);
-		destination = undefined;
+	let current;
+	const end = async () => {
+		if (current) lane.scrollLeft = current.left;
+		current?.resolve();
+		current = undefined;
 		lane.dispatchEvent(new window.Event("scrollend"));
+	};
+	const superseded = [];
+	const settleSuperseded = async () => {
+		for (const resolve of superseded.splice(0)) resolve();
 	};
 	const farEdge = () =>
 		Math.max(
@@ -186,7 +204,15 @@ function laneLayout(
 		rtl
 			? Math.max(-farEdge(), Math.min(0, value))
 			: Math.min(farEdge(), Math.max(0, value));
+	let offset = lane.scrollLeft;
 	Object.defineProperties(lane, {
+		// Blink doesn't expose a live scroll offset for a disconnected lane.
+		scrollLeft: {
+			get: () => (lane.isConnected ? offset : 0),
+			set: (value) => {
+				offset = value;
+			},
+		},
 		clientWidth: { get: () => width },
 		scrollWidth: { get: () => width + Math.max(0, farEdge()) },
 	});
@@ -194,11 +220,18 @@ function laneLayout(
 	lane.getBoundingClientRect = () => box(10, 10 + width);
 	lane.scrollTo = ({ left, behavior }) => {
 		moves.push({ left, behavior });
-		if (behavior === "smooth" && defer) destination = left;
-		else {
-			destination = undefined;
-			lane.scrollLeft = clamp(left);
+		if (current) superseded.push(current.resolve);
+		current = undefined;
+		const actual = snap(clamp(left));
+		// Chromium promises settle even if quantization makes this a no-op
+		// with no scrollend event. Only a real deferred move needs `end()`.
+		if (behavior === "smooth" && defer && actual !== lane.scrollLeft) {
+			return new Promise((resolve) => {
+				current = { resolve, left: actual };
+			});
 		}
+		lane.scrollLeft = actual;
+		return Promise.resolve();
 	};
 	const rows = () =>
 		[...lane.children].map((row, index) => {
@@ -229,7 +262,7 @@ function laneLayout(
 			};
 			return row;
 		});
-	return { lane, rows: rows(), syncRows: rows, moves, end };
+	return { lane, rows: rows(), syncRows: rows, moves, end, settleSuperseded };
 }
 
 function expectVisible(lane, row) {
@@ -274,7 +307,58 @@ test("route selection reveals the whole active row, not just the visible title",
 	}
 });
 
-test("active title growth and preceding shifts coalesce without restarting native motion", (t) => {
+test("keyed conversation and draft switches keep both lane offsets before revealing", (t) => {
+	const tabs = [tab("first"), tab("second"), tab("last"), tab("pin", true)];
+	const { host, render } = fixture(t, tabs);
+	const regularBounds = [
+		[24, 95],
+		[105, 159],
+		[174, 248],
+	];
+	const pinnedBounds = [[0, 160]];
+	render("first", { mountKey: "session:first" });
+	const prevRegular = laneLayout(host, "regular", regularBounds);
+	const prevPinned = laneLayout(host, "pinned", pinnedBounds);
+	frame();
+	prevRegular.lane.scrollLeft = 102;
+	prevPinned.lane.scrollLeft = 30;
+	expectVisible(prevRegular.lane, prevRegular.rows[1]);
+
+	render("second", { mountKey: "session:second" });
+	const regular = laneLayout(host, "regular", regularBounds);
+	const pinned = laneLayout(host, "pinned", pinnedBounds);
+	assert.notEqual(regular.lane, prevRegular.lane);
+	assert.notEqual(pinned.lane, prevPinned.lane);
+	assert.deepEqual(
+		[regular.lane.scrollLeft, pinned.lane.scrollLeft],
+		[102, 30],
+	);
+	frame();
+	expectVisible(regular.lane, regular.rows[1]);
+	assert.deepEqual([regular.moves, pinned.moves], [[], []]);
+
+	const draft = {
+		...tab("draft"),
+		target: { kind: "draft", id: "draft:fixture" },
+	};
+	render("draft", { mountKey: "draft:fixture", tabs: [...tabs, draft] });
+	const nextRegular = laneLayout(host, "regular", [
+		...regularBounds,
+		[252, 315],
+	]);
+	const nextPinned = laneLayout(host, "pinned", pinnedBounds);
+	assert.deepEqual(
+		[nextRegular.lane.scrollLeft, nextPinned.lane.scrollLeft],
+		[102, 30],
+	);
+	frame();
+	expectVisible(nextRegular.lane, nextRegular.rows[3]);
+	assert.deepEqual(nextRegular.moves, [{ left: 215, behavior: "smooth" }]);
+	assert.equal(nextPinned.lane.scrollLeft, 30);
+	assert.deepEqual(nextPinned.moves, []);
+});
+
+test("active title growth and preceding shifts coalesce without restarting native motion", async (t) => {
 	const { host, render } = fixture(t, [tab("previous"), tab("active")]);
 	const bounds = [
 		[0, 60],
@@ -301,17 +385,17 @@ test("active title growth and preceding shifts coalesce without restarting nativ
 	resize(rows[0]);
 	frame();
 	assert.equal(moves.length, 1);
-	end();
+	await end();
 	frame();
 	assert.deepEqual(moves[1], { left: 56, behavior: "smooth" });
-	end();
+	await end();
 	resize(rows[0], rows[1], lane);
 	frame();
 	expectVisible(lane, rows[1]);
 	assert.equal(moves.length, 2);
 });
 
-test("draft insertion and promotion use the current row, not a queued inactive one", (t) => {
+test("draft insertion and promotion use the current row, not a queued inactive one", async (t) => {
 	const first = tab("first");
 	const last = tab("last");
 	const draft = {
@@ -333,7 +417,7 @@ test("draft insertion and promotion use the current row, not a queued inactive o
 	const rows = syncRows();
 	frame();
 	assert.deepEqual(moves, [{ left: 104, behavior: "smooth" }]);
-	end();
+	await end();
 	expectVisible(lane, rows[2]);
 
 	const promoted = { ...draft, target: { kind: "session", id: "admitted" } };
@@ -345,7 +429,7 @@ test("draft insertion and promotion use the current row, not a queued inactive o
 	bounds[2][1] = 215;
 	resize(rows[2]);
 	frame();
-	end();
+	await end();
 	expectVisible(lane, rows[2]);
 	assert.deepEqual(moves[1], { left: 115, behavior: "smooth" });
 });
@@ -356,7 +440,128 @@ const pointer = (node, type) => {
 	act(() => node.dispatchEvent(event));
 };
 
-test("pointer hold cancels stale motion; the ensuing click reveals only the new selection", (t) => {
+test("canceled pointer press defers one reveal of the latest title until release", (t) => {
+	const { host, render } = fixture(t, [tab("first"), tab("active")]);
+	const bounds = [
+		[0, 52],
+		[56, 96],
+	];
+	const { lane, rows, moves } = laneLayout(host, "regular", bounds);
+	render("active");
+	frame();
+	pointer(rows[0].querySelector("button"), "pointerdown");
+	bounds[1][1] = 132;
+	resize(rows[1]);
+	frame();
+	bounds[1][1] = 138;
+	resize(rows[1]);
+	frame();
+	assert.deepEqual(moves, []);
+	assert.equal(rows[1].getBoundingClientRect().right, 148);
+	pointer(window, "pointercancel");
+	frame();
+	expectVisible(lane, rows[1]);
+	assert.deepEqual(moves, [{ left: 38, behavior: "smooth" }]);
+});
+
+test("a deferred rename cannot undo keyboard focus scrolling to another tab", (t) => {
+	const { host, render } = fixture(t, [
+		tab("first"),
+		tab("active"),
+		tab("next"),
+	]);
+	const bounds = [
+		[0, 52],
+		[56, 96],
+		[156, 211],
+	];
+	const { lane, rows, moves } = laneLayout(host, "regular", bounds);
+	render("active");
+	frame();
+	pointer(rows[0].querySelector("button"), "pointerdown");
+	bounds[1][1] = 138;
+	resize(rows[1]);
+	frame();
+	pointer(window, "pointerup");
+	const focused = rows[2].querySelector("button");
+	focused.focus();
+	assert.equal(focused.matches(":focus-visible"), true);
+	lane.scrollLeft = 120; // Native Tab-focus scrolling, not implemented by jsdom.
+	frame();
+	expectVisible(lane, rows[2]);
+	assert.equal(lane.scrollLeft, 120);
+	assert.deepEqual(moves, []);
+});
+
+test("an 80%-zoom snapped no-op does not block later rename reveal", async (t) => {
+	const { host, render } = fixture(t, [
+		tab("first"),
+		tab("active"),
+		tab("after"),
+	]);
+	const bounds = [
+		[0, 64],
+		[90, 130.546875],
+		[180, 250],
+	];
+	const { lane, rows, moves, end } = laneLayout(host, "regular", bounds, {
+		defer: true,
+		// Model integer internal offsets without manufacturing a scrollend.
+		snap: (left) => Math.round(left * 0.8) / 0.8,
+	});
+	lane.scrollLeft = 30;
+	render("active");
+	frame();
+	assert.equal(lane.scrollLeft, 30);
+	assert.deepEqual(moves, [{ left: 30.546875, behavior: "smooth" }]);
+	await Promise.resolve();
+	bounds[1][1] = 170;
+	resize(rows[1]);
+	frame();
+	assert.deepEqual(moves[1], { left: 70, behavior: "smooth" });
+	await end();
+	expectVisible(lane, rows[1]);
+});
+
+test("a superseded promise or same-lane scrollend cannot settle a later request", async (t) => {
+	const { host, render } = fixture(t, [
+		tab("first"),
+		tab("second"),
+		tab("third"),
+	]);
+	const bounds = [
+		[0, 55],
+		[60, 132],
+		[136, 196],
+	];
+	const { lane, rows, moves, end, settleSuperseded } = laneLayout(
+		host,
+		"regular",
+		bounds,
+		{ defer: true },
+	);
+	render("third");
+	frame();
+	render("second");
+	frame();
+	assert.deepEqual(moves, [
+		{ left: 96, behavior: "smooth" },
+		{ left: 0, behavior: "instant" },
+		{ left: 32, behavior: "smooth" },
+	]);
+	bounds[1][1] = 145;
+	resize(rows[1]);
+	frame();
+	await settleSuperseded();
+	lane.dispatchEvent(new window.Event("scrollend"));
+	frame();
+	assert.equal(moves.length, 3);
+	await end();
+	frame();
+	assert.deepEqual(moves[3], { left: 45, behavior: "smooth" });
+});
+
+test("pointer hold cancels stale motion; the ensuing click reveals only the new selection", async (t) => {
 	const { host, render } = fixture(t, [
 		tab("first"),
 		tab("second"),
@@ -389,7 +594,7 @@ test("pointer hold cancels stale motion; the ensuing click reveals only the new 
 	pointer(window, "pointerup");
 	act(() => button.click());
 	frame();
-	end();
+	await end();
 	expectVisible(lane, rows[1]);
 	assert.equal(
 		moves.length,
@@ -399,7 +604,7 @@ test("pointer hold cancels stale motion; the ensuing click reveals only the new 
 	assert.equal(document.activeElement, button);
 });
 
-test("context menu and drag take priority over late layout changes", (t) => {
+test("context menu and drag take priority until they release the pending layout change", async (t) => {
 	const { host, render } = fixture(t, [tab("first"), tab("active")]);
 	const bounds = [
 		[0, 52],
@@ -422,7 +627,8 @@ test("context menu and drag take priority over late layout changes", (t) => {
 		button.dispatchEvent(new window.Event("dragend", { bubbles: true })),
 	);
 	frame();
-	assert.deepEqual(moves, []);
+	assert.deepEqual(moves, [{ left: 16, behavior: "smooth" }]);
+	await Promise.resolve();
 
 	act(() =>
 		rows[1].dispatchEvent(
@@ -434,7 +640,7 @@ test("context menu and drag take priority over late layout changes", (t) => {
 	bounds[1][1] = 136;
 	resize(rows[1]);
 	frame();
-	assert.deepEqual(moves, []);
+	assert.equal(moves.length, 1);
 
 	act(() =>
 		menu.dispatchEvent(
@@ -443,14 +649,13 @@ test("context menu and drag take priority over late layout changes", (t) => {
 	);
 	assert.ok(!document.querySelector("[data-workspace-tab-context-menu]"));
 	frame();
-	assert.deepEqual(moves, []);
-	bounds[1][1] = 145;
-	resize(rows[1]);
-	frame();
-	assert.deepEqual(moves, [{ left: 45, behavior: "smooth" }]);
+	assert.deepEqual(moves, [
+		{ left: 16, behavior: "smooth" },
+		{ left: 36, behavior: "smooth" },
+	]);
 });
 
-test("manual horizontal scrolling owns its lane until explicit selection", (t) => {
+test("manual horizontal scrolling supersedes deferred geometry until explicit selection", async (t) => {
 	const { host, render } = fixture(t, [
 		tab("first"),
 		tab("active"),
@@ -464,7 +669,7 @@ test("manual horizontal scrolling owns its lane until explicit selection", (t) =
 	const pinned = laneLayout(host, "pinned", [[0, 120]]);
 	render("active");
 	frame();
-	regular.end();
+	await regular.end();
 	pinned.lane.scrollLeft = 12;
 	act(() =>
 		pinned.lane.dispatchEvent(
@@ -476,8 +681,13 @@ test("manual horizontal scrolling owns its lane until explicit selection", (t) =
 	frame();
 	assert.deepEqual(regular.moves[1], { left: 49, behavior: "smooth" });
 	assert.deepEqual(pinned.moves, []);
-	regular.end();
+	await regular.end();
 
+	pointer(regular.rows[0].querySelector("button"), "pointerdown");
+	bounds[1][1] = 157;
+	resize(regular.rows[1]);
+	frame();
+	assert.equal(regular.moves.length, 2);
 	act(() =>
 		regular.lane.dispatchEvent(
 			new window.WheelEvent("wheel", {
@@ -488,6 +698,7 @@ test("manual horizontal scrolling owns its lane until explicit selection", (t) =
 		),
 	);
 	regular.lane.scrollLeft = 0;
+	pointer(window, "pointerup");
 	bounds[1][1] = 160;
 	resize(regular.rows[1]);
 	frame();

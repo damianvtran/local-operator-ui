@@ -510,6 +510,9 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		"MutationObserver",
 		"NodeFilter",
 		"ResizeObserver",
+		"AbortController",
+		"requestAnimationFrame",
+		"cancelAnimationFrame",
 		"IS_REACT_ACT_ENVIRONMENT",
 	];
 	for (const key of globals) {
@@ -739,6 +742,7 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			pinned: false,
 		}));
 		const props = {
+			viewport: { pinned: 0, regular: 0 },
 			activeKey: tabs[0].key,
 			activeTitle: privateTitle,
 			tabs,

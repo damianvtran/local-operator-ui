@@ -63,10 +63,9 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 	let target: HTMLElement | null = null;
 	let lastLayout: Layout | undefined;
 	let frame: number | undefined;
-	let selection = false;
+	let pending: "selection" | "layout" | undefined;
 	let manual = false;
-	let motion: HTMLElement | undefined;
-	let followUp = false;
+	let motion: { lane: HTMLElement } | undefined;
 	let dragging = false;
 	const pointers = new Set<number>();
 
@@ -75,11 +74,9 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 		frame = undefined;
 	};
 	const stopMotion = () => {
-		if (motion) {
-			motion.scrollTo({ left: motion.scrollLeft, behavior: "instant" });
-			motion = undefined;
-		}
-		followUp = false;
+		const lane = motion?.lane;
+		motion = undefined;
+		if (lane) lane.scrollTo({ left: lane.scrollLeft, behavior: "instant" });
 	};
 	const schedule = () => {
 		if (!target || manual || frame !== undefined) return;
@@ -87,48 +84,75 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 			frame = undefined;
 			const layout = measure(target);
 			if (!layout) return;
-			const changed = layoutChanged(lastLayout, layout);
-			if (changed) lastLayout = layout;
-			if (pointers.size || dragging || strip.querySelector(OPEN_MENU)) return;
-			if (!selection && !changed && !followUp) return;
-			selection = false;
-			// Let native smooth scrolling settle before correcting a moving edge.
-			// Streaming title/layout changes leave one follow-up, not a restart per
-			// resize. A fresh selection can still cancel the motion immediately.
-			if (motion) {
-				followUp = true;
-				return;
+			if (layoutChanged(lastLayout, layout)) {
+				lastLayout = layout;
+				pending ??= "layout";
 			}
-			followUp = false;
+			// Geometry observed during a press or native animation is still
+			// relevant. Keep one correction, measured again when the lane is free.
+			if (
+				!pending ||
+				motion ||
+				pointers.size ||
+				dragging ||
+				strip.querySelector(OPEN_MENU)
+			)
+				return;
+			const isSelection = pending === "selection";
+			pending = undefined;
 			const { lane } = layout;
+			// Native Tab focus can scroll another row into view without selecting
+			// it. Do not steal that viewport for a late rename or interrupted move.
+			const focused = document.activeElement;
+			if (
+				!isSelection &&
+				focused?.matches(":focus-visible") &&
+				lane.contains(focused) &&
+				!target?.contains(focused)
+			)
+				return;
 			const left = nearestOffset(layout);
 			if (Math.abs(left - lane.scrollLeft) <= EDGE_TOLERANCE) return;
 			const reduce = window.matchMedia(
 				"(prefers-reduced-motion: reduce)",
 			).matches;
-			if (!reduce) motion = lane;
 			// Unlike scrollIntoView this cannot move the transcript, page or other lane.
-			lane.scrollTo({ left, behavior: reduce ? "instant" : "smooth" });
+			if (reduce) {
+				lane.scrollTo({ left, behavior: "instant" });
+				return;
+			}
+			const request = { lane };
+			motion = request;
+			// Bundled Chromium returns a promise, even for a zoom-rounded no-op
+			// that emits no scrollend. TS's DOM types still say void; a host
+			// without the promise must not indefinitely lock out the next reveal.
+			const completion = lane.scrollTo({
+				left,
+				behavior: "smooth",
+			}) as unknown as Promise<unknown> | undefined;
+			const settle = () => {
+				// Cancellation or a new selection can supersede this request in the
+				// same lane before its native promise callback runs.
+				if (motion !== request) return;
+				motion = undefined;
+				if (pending) schedule();
+			};
+			if (completion) void completion.then(settle, settle);
+			else settle();
 		});
 	};
 
 	const interrupt = () => {
 		cancelFrame();
+		if (motion) pending ??= "layout";
 		stopMotion();
-		selection = false;
-	};
-	const resume = () => {
-		// Don't replay incidental layout changes that occurred under a held
-		// pointer, menu or drag. An explicit selection made there is different.
-		lastLayout = measure(target);
-		if (selection) schedule();
 	};
 	const onPointerDown = (event: PointerEvent) => {
 		pointers.add(event.pointerId);
 		interrupt();
 	};
 	const onPointerEnd = (event: PointerEvent) => {
-		if (pointers.delete(event.pointerId)) resume();
+		if (pointers.delete(event.pointerId)) schedule();
 	};
 	const onWheel = (event: WheelEvent) => {
 		const lane = target?.parentElement;
@@ -142,6 +166,7 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 		// again. A late ResizeObserver notification cannot snap it back.
 		manual = true;
 		interrupt();
+		pending = undefined;
 	};
 	const onDragStart = () => {
 		dragging = true;
@@ -151,18 +176,13 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 		if (!dragging) return;
 		dragging = false;
 		pointers.clear(); // Native HTML drag cancels the initiating pointer.
-		resume();
+		schedule();
 	};
 	const onBlur = () => {
 		if (!pointers.size && !dragging) return;
 		pointers.clear();
 		dragging = false;
-		resume();
-	};
-	const onScrollEnd = (event: Event) => {
-		if (!motion || event.target !== motion) return;
-		motion = undefined;
-		if (followUp) schedule();
+		schedule();
 	};
 
 	// Capture on the real DOM strip (not React's portal event path) and release
@@ -172,7 +192,6 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 	strip.addEventListener("pointerdown", onPointerDown, capture);
 	strip.addEventListener("wheel", onWheel, { ...capture, passive: true });
 	strip.addEventListener("dragstart", onDragStart, capture);
-	strip.addEventListener("scrollend", onScrollEnd, capture);
 	window.addEventListener("pointerup", onPointerEnd, capture);
 	window.addEventListener("pointercancel", onPointerEnd, capture);
 	window.addEventListener("dragend", onDragEnd, capture);
@@ -186,13 +205,13 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 			target = tab;
 			lastLayout = undefined;
 			manual = false;
-			selection = tab !== null;
+			pending = tab ? "selection" : undefined;
 			schedule();
 		},
 		layoutChanged: schedule,
 		menuChanged(open: boolean) {
 			if (open) interrupt();
-			else resume();
+			else schedule();
 		},
 		dispose() {
 			listeners.abort();
