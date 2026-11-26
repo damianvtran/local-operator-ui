@@ -67,7 +67,7 @@ export function useWorkspaceTabCleanup(
 		let generation = 0;
 		let disposed = false;
 		let scheduled = false;
-		let inFlight = false;
+		let inFlightIds: ReadonlySet<string> | undefined;
 		let draftCheckInFlight = false;
 		let consoleGeneration = 0;
 		let timer: ReturnType<typeof setTimeout> | undefined;
@@ -107,6 +107,12 @@ export function useWorkspaceTabCleanup(
 			}
 		}
 
+		function invalidateCandidate(id: string) {
+			// Only named IDs can invalidate this proof read. Waiting tabs still
+			// reset their own clocks without replaying someone else's capped batch.
+			if (inFlightIds?.has(id)) generation++;
+		}
+
 		async function checkBatch(
 			ids: Set<string>,
 			requestEpoch: string,
@@ -141,7 +147,7 @@ export function useWorkspaceTabCleanup(
 				}
 				if (expired.size) remove(expired, stillCurrent);
 			} finally {
-				inFlight = false;
+				inFlightIds = undefined;
 				plan();
 			}
 		}
@@ -168,7 +174,7 @@ export function useWorkspaceTabCleanup(
 						void checkDrafts(due);
 					}
 				}
-				if (!inFlight && connected && epoch) {
+				if (!inFlightIds && connected && epoch) {
 					const due: Array<[string, number]> = [];
 					for (const [id, candidate] of candidates) {
 						if (candidate.due <= now) due.push([id, candidate.due]);
@@ -185,7 +191,7 @@ export function useWorkspaceTabCleanup(
 						const ids = new Set(
 							due.slice(0, DESKTOP_SESSION_PAGE_LIMIT).map(([id]) => id),
 						);
-						inFlight = true;
+						inFlightIds = ids;
 						void checkBatch(ids, epoch, generation);
 					}
 				}
@@ -272,6 +278,8 @@ export function useWorkspaceTabCleanup(
 			for (const [id, { key }] of candidates) {
 				if (desired.get(id) !== key) {
 					candidates.delete(id);
+					// Fence even transient vetoes that revert during the read.
+					invalidateCandidate(id);
 					changed = true;
 				}
 			}
@@ -282,11 +290,7 @@ export function useWorkspaceTabCleanup(
 					changed = true;
 				}
 			}
-			if (changed) {
-				// Invalidate even if membership later changes right back while in flight.
-				generation++;
-				plan();
-			}
+			if (changed) plan();
 		}
 
 		function reset(nextEpoch: string | undefined) {
@@ -334,7 +338,7 @@ export function useWorkspaceTabCleanup(
 				if (!candidate) return;
 				candidate.revision = undefined;
 				candidate.due = performance.now();
-				generation++;
+				invalidateCandidate(frame.session_id);
 				plan();
 			}
 		});

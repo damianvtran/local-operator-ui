@@ -512,6 +512,77 @@ test("a full batch of page misses cannot starve the 501st background tab's two r
 	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
 });
 
+test("501st background tab churn does not replay the other 500 IDs", async (t) => {
+	const batch = Array.from({ length: 500 }, (_, index) =>
+		index.toString(16).padStart(12, "0"),
+	);
+	const [visible, ...offPage] = batch;
+	const arm = Promise.withResolvers();
+	const expiry = Promise.withResolvers();
+	const feed = installTransport(t, {
+		answer: (requested, count) =>
+			count === 1
+				? arm.promise
+				: count === 3
+					? expiry.promise
+					: result(requested.includes(B) ? [wireRow(B)] : []),
+	});
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A, ...batch, B],
+		rows: rowsFor([A, visible, B]),
+	});
+	const tick = withClock(t);
+	const requests = () => feed.calls.map((ids) => [ids.length, ids.includes(B)]);
+	await enable();
+	assert.deepEqual(feed.calls, [batch]);
+	await act(() => current.pin(find(B).key));
+	await act(() => current.pin(find(B).key));
+	await act(() => arm.resolve(result([wireRow(visible)])));
+	assert.deepEqual(
+		requests(),
+		[
+			[500, false],
+			[1, true],
+		],
+		"off-batch membership does not replay the arm request",
+	);
+	assert.ok(find(visible));
+	assert.ok(find(B));
+
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [batch, [B], batch]);
+	await act(() => {
+		feed.status("complete");
+		expiry.resolve(result([wireRow(visible)]));
+	});
+	assert.deepEqual(
+		requests(),
+		[
+			[500, false],
+			[1, true],
+			[500, false],
+			[1, true],
+		],
+		"off-batch status does not replay the expiry request",
+	);
+	const kept = [A, ...offPage];
+	const waiting = [...kept, B];
+	assert.deepEqual(tabSnapshot(), { rendered: waiting, saved: waiting });
+	assert.equal(canonical.getState().activeSessionId, A);
+	assert.equal(dom.window.location.hash, `#/chat/${A}`);
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.equal(
+		feed.calls.length,
+		4,
+		"the waiting tab starts a new full interval",
+	);
+	assert.ok(find(B), "the status frame broke its earlier proof chain");
+	await tick(1);
+	assert.deepEqual(feed.calls.slice(4), [[...offPage, B]]);
+	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
+});
+
 test("a tab not in the cached catalogue can age only on fresh Core receipts", async (t) => {
 	const feed = installTransport(t);
 	await mount(t, { feedAvailable: true, rows: rowsFor([A]) });
