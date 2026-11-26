@@ -8,6 +8,7 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import { useLayoutEffect, useRef } from "react";
+import { DRAFT_CONSOLE_OWNER } from "../../../../../shared/console-owner";
 import {
 	DESKTOP_SESSION_PAGE_LIMIT,
 	type DesktopResponse,
@@ -27,8 +28,22 @@ import {
 
 type Candidate = {
 	key: string;
-	proof: "needed" | "unproved" | { revision: string; due: number };
+	proof: "needed" | { due: number; revision?: string };
 };
+
+type DraftClock = { id: string; due: number };
+
+function draftConsoleIsEmpty(state: unknown): boolean {
+	if (typeof state !== "object" || state === null) return false;
+	const { available, reason, surfaces } = state as Record<string, unknown>;
+	// A pane fallback can look empty when its read failed. Only main's explicit
+	// scoped listing (or a deliberately disabled host) can clear this veto.
+	return (
+		Array.isArray(surfaces) &&
+		surfaces.length === 0 &&
+		(available === true || (available === false && reason === "disabled"))
+	);
+}
 
 export function useWorkspaceTabCleanup(
 	enabled: boolean,
@@ -52,10 +67,44 @@ export function useWorkspaceTabCleanup(
 		let disposed = false;
 		let scheduled = false;
 		let inFlight = false;
+		let draftCheckInFlight = false;
+		let consoleGeneration = 0;
 		let timer: ReturnType<typeof setTimeout> | undefined;
-		// Local tab eligibility and clock only, never catalogue membership. The
-		// query cannot select rows outside the page; a miss just keeps the tab.
+		const consoleApi = window.api?.console;
+		// A catalogue row may veto, but only an opted-in Core receipt can arm
+		// a conversation's clock. The query cannot select rows outside the page.
 		const candidates = new Map<string, Candidate>();
+		const draftClocks = new Map<string, DraftClock>();
+
+		async function checkDrafts(due: Map<string, DraftClock>) {
+			const consoleAtRequest = consoleGeneration;
+			const stillCurrent = () =>
+				!disposed && consoleAtRequest === consoleGeneration;
+			try {
+				let empty = false;
+				try {
+					empty = draftConsoleIsEmpty(
+						await consoleApi?.state(DRAFT_CONSOLE_OWNER),
+					);
+				} catch {
+					// A failed read can't distinguish an empty draft from a live shell.
+				}
+				if (disposed) return;
+				const expired = new Set<string>();
+				const nextCheck = performance.now() + WORKSPACE_INACTIVE_MS;
+				for (const [key, clock] of due) {
+					// Dropping and rearming a clock marks even transient ineligibility
+					// while the console read was outstanding (selection, send, input).
+					if (draftClocks.get(key) !== clock) continue;
+					if (empty && stillCurrent()) expired.add(key);
+					clock.due = nextCheck;
+				}
+				if (expired.size) remove(expired, stillCurrent);
+			} finally {
+				draftCheckInFlight = false;
+				plan();
+			}
+		}
 
 		async function checkBatch(
 			ids: Set<string>,
@@ -72,7 +121,7 @@ export function useWorkspaceTabCleanup(
 						workspace_rest_id: [...ids],
 					});
 				} catch {
-					// Transport failure is an unproved observation, not a retry trigger.
+					// Transport failure has the same authority as a page miss: none.
 				}
 				if (!stillCurrent()) return;
 				const revisions = workspaceRestRevisions(response, ids, requestEpoch);
@@ -83,13 +132,15 @@ export function useWorkspaceTabCleanup(
 					if (!candidate) continue;
 					const prior = candidate.proof;
 					const revision = revisions.get(id);
-					candidate.proof = "unproved";
-					if (revision === undefined) continue;
-					// A previously armed candidate only enters this batch once due.
-					// A different opaque token starts a new full interval, not a close.
-					if (typeof prior === "object" && prior.revision === revision)
+					// A missing proof breaks the chain but not the clock: the next
+					// ordinary sweep can recover even if no feed or store event arrives.
+					candidate.proof = { revision, due: now + WORKSPACE_INACTIVE_MS };
+					if (
+						revision !== undefined &&
+						typeof prior === "object" &&
+						prior.revision === revision
+					)
 						expired.add(candidate.key);
-					else candidate.proof = { revision, due: now + WORKSPACE_INACTIVE_MS };
 				}
 				if (expired.size) remove(expired, stillCurrent);
 			} finally {
@@ -106,24 +157,32 @@ export function useWorkspaceTabCleanup(
 			queueMicrotask(() => {
 				scheduled = false;
 				clearTimeout(timer);
-				if (disposed || inFlight || !connected || !epoch) return;
+				if (disposed) return;
 				const now = performance.now();
-				const ids = new Set<string>();
 				let wakeAt = Number.POSITIVE_INFINITY;
-				for (const [id, { proof }] of candidates) {
-					if (
-						proof === "needed" ||
-						(typeof proof === "object" && proof.due <= now)
-					)
-						ids.add(id);
-					else if (typeof proof === "object")
-						wakeAt = Math.min(wakeAt, proof.due);
+				if (!draftCheckInFlight && draftClocks.size) {
+					const due = new Map<string, DraftClock>();
+					for (const [key, clock] of draftClocks) {
+						if (clock.due <= now) due.set(key, clock);
+						else wakeAt = Math.min(wakeAt, clock.due);
+					}
+					if (due.size) {
+						draftCheckInFlight = true;
+						void checkDrafts(due);
+					}
 				}
-				if (ids.size) {
-					inFlight = true;
-					void checkBatch(ids, epoch, generation);
-				} else if (Number.isFinite(wakeAt))
-					timer = setTimeout(plan, wakeAt - now);
+				if (!inFlight && connected && epoch) {
+					const ids = new Set<string>();
+					for (const [id, { proof }] of candidates) {
+						if (proof === "needed" || proof.due <= now) ids.add(id);
+						else wakeAt = Math.min(wakeAt, proof.due);
+					}
+					if (ids.size) {
+						inFlight = true;
+						void checkBatch(ids, epoch, generation);
+					}
+				}
+				if (Number.isFinite(wakeAt)) timer = setTimeout(plan, wakeAt - now);
 			});
 		}
 
@@ -136,30 +195,72 @@ export function useWorkspaceTabCleanup(
 				state.drafts,
 			);
 			const desired = new Map<string, string>();
-			if (connected && epoch && !state.statusUnavailable.includes("liveness")) {
-				for (const tab of liveTabs.current) {
-					const { id } = tab.target;
+			const eligibleDrafts = new Map<string, string>();
+			const canProbeSessions =
+				connected && epoch && !state.statusUnavailable.includes("liveness");
+			for (const tab of liveTabs.current) {
+				const { id } = tab.target;
+				if (
+					tab.pinned ||
+					sameWorkspaceTarget(active, tab.target) ||
+					composerHasUnsentPayload(input[id]) ||
+					// Pre-admission or recovered sends can still own their send key.
+					composerHasUnsentPayload(input[`send:${id}`])
+				)
+					continue;
+				if (tab.target.kind === "draft") {
+					const draft = state.drafts[id];
+					// The canonical row owns create/admission even before the tab
+					// catches up to a sessionId. A warm or recoverable send is work.
 					if (
-						tab.target.kind !== "session" ||
-						tab.pinned ||
-						sameWorkspaceTarget(active, tab.target) ||
-						!bulkReceiptSessionIdPattern.test(id) ||
-						state.validatingSessionId === id ||
-						state.forgotten[id] !== undefined ||
-						!workspaceRowCanRest(
-							state.sessions.find((row) => row.session_id === id),
-						) ||
-						Object.values(state.drafts).some((draft) =>
-							draftBelongsToSession(draft, id),
-						) ||
-						composerHasUnsentPayload(input[id]) ||
-						// Pre-admission or recovered sends can still own their send key.
-						composerHasUnsentPayload(input[`send:${id}`])
+						draft &&
+						state.activeDraftKey !== id &&
+						!draft.sessionId &&
+						!draft.warmId &&
+						!draft.pending &&
+						!draft.admissionAttempted &&
+						!draft.error &&
+						!draft.undelivered &&
+						!draft.submittedText &&
+						!draft.submittedAttachments?.length &&
+						!draft.submittedImages?.length &&
+						!draft.submittedFiles?.length
 					)
-						continue;
-					desired.set(id, tab.key);
+						eligibleDrafts.set(tab.key, id);
+					continue;
+				}
+				if (
+					!canProbeSessions ||
+					!bulkReceiptSessionIdPattern.test(id) ||
+					state.validatingSessionId === id ||
+					state.forgotten[id] !== undefined ||
+					state.placementFacts[id]?.locality === "remote" ||
+					Object.values(state.drafts).some((draft) =>
+						draftBelongsToSession(draft, id),
+					)
+				)
+					continue;
+				const row = state.sessions.find((row) => row.session_id === id);
+				if (row && !workspaceRowCanRest(row)) continue;
+				desired.set(id, tab.key);
+			}
+			let draftChanged = false;
+			for (const [key, clock] of draftClocks) {
+				if (eligibleDrafts.get(key) !== clock.id) {
+					draftClocks.delete(key);
+					draftChanged = true;
 				}
 			}
+			for (const [key, id] of eligibleDrafts) {
+				if (!draftClocks.has(key)) {
+					draftClocks.set(key, {
+						id,
+						due: performance.now() + WORKSPACE_INACTIVE_MS,
+					});
+					draftChanged = true;
+				}
+			}
+			if (draftChanged) plan();
 			// Select deterministically, so dragging tabs cannot invalidate evidence.
 			const ids = [...desired.keys()]
 				.sort()
@@ -204,6 +305,7 @@ export function useWorkspaceTabCleanup(
 					next.activeSessionId !== previous.activeSessionId ||
 					next.validatingSessionId !== previous.validatingSessionId ||
 					next.statusUnavailable !== previous.statusUnavailable ||
+					next.placementFacts !== previous.placementFacts ||
 					next.forgotten !== previous.forgotten
 				)
 					syncCandidates();
@@ -212,6 +314,11 @@ export function useWorkspaceTabCleanup(
 		const offInput = useConversationInputStore.subscribe((next, previous) => {
 			if (next.inputByConversation !== previous.inputByConversation)
 				syncCandidates();
+		});
+		// Every draft shares a pending console owner. Any main-side listing
+		// change during the expiry read makes that reading insufficient.
+		const offConsole = consoleApi?.onStateChanged(() => {
+			consoleGeneration++;
 		});
 		// Observe the existing relay. Status frames can invalidate a clock, but
 		// no headline (including a baseline) can arm it or prove expiry.
@@ -244,6 +351,7 @@ export function useWorkspaceTabCleanup(
 			recheck.current = undefined;
 			offState();
 			offFrames();
+			offConsole?.();
 			offSessions();
 			offInput();
 		};
