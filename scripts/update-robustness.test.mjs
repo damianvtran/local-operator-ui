@@ -10646,6 +10646,9 @@ const driveGlobalUpdate = async ({
 	 * case says, so a press that verified the wrong install could not be caught.
 	 */
 	realEvidenceReads = false,
+	// Keep route selection fixed for verdict-only tests that use real evidence.
+	// Opt out only when the check must re-plan against the newly serving prefix.
+	realUpdatePlan = false,
 	restartOk = true,
 	runGate = null,
 	/*
@@ -10941,10 +10944,7 @@ const driveGlobalUpdate = async ({
 		updateService.fleetDrainBudgetMs = drainBudgetMs;
 		updateService.fleetDrainPollMs = drainPollMs;
 		updateService.resolveLocalOperatorPath = () => shimPath;
-		if (!realEvidenceReads) {
-			// A generation fixture must let the check build a fresh plan from the
-			// serving prefix. Pinning the plan to `before` manufactures offline
-			// skew even when both the prefix on disk and its boot record agree.
+		if (!realUpdatePlan) {
 			updateService.resolveBackendUpdatePlan = async () => ({
 				canManageUpdate: true,
 				updateCommand: "lop update",
@@ -10955,6 +10955,8 @@ const driveGlobalUpdate = async ({
 				managedRoute,
 				installedInstallVersion: before,
 			});
+		}
+		if (!realEvidenceReads) {
 			// The pre-run and post-run reads; after those repeat the last one.
 			const readings = [before, after];
 			/*
@@ -11148,6 +11150,9 @@ for (const scenario of [
 					"local-operator",
 				),
 				realEvidenceReads: true,
+				// A plan pinned to `before` would manufacture offline skew even
+				// when the serving prefix and its boot record agree.
+				realUpdatePlan: scenario === "equal check",
 				runGate: async () => {
 					symlinkSync(promoted, join(root, "candidate"));
 					renameSync(join(root, "candidate"), join(root, "current"));
