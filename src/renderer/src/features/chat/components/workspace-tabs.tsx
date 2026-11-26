@@ -36,6 +36,7 @@ import {
 } from "../workspace-tabs-model";
 
 import { WORKSPACE_INACTIVE_MINUTES } from "../workspace-tab-cleanup";
+import { createWorkspaceTabReveal } from "./workspace-tab-reveal";
 
 const WORKSPACE_DRAG = "application/x-lo-workspace-tab";
 
@@ -86,12 +87,14 @@ export function WorkspaceTabs({
 	const draggedKey = useRef<string | null>(null);
 	const menuFocusKey = useRef<string>();
 	const strip = useRef<HTMLElement>(null);
+	const reveal = useRef<ReturnType<typeof createWorkspaceTabReveal>>();
 	const tabMenuByKeyboard = useRef(false);
 	const tabMenuActed = useRef(false);
 	const ordered = displayedWorkspaceTabs(tabs);
 	const pinned = ordered.filter((tab) => tab.pinned);
 	const regular = ordered.filter((tab) => !tab.pinned);
 	const activePosition = ordered.findIndex(({ key }) => key === activeKey);
+	const activeTab = ordered[activePosition];
 	// Pins survive "close all" by contract; the item disables when only pins remain.
 	const closeAllKeys = workspaceBulkCloseKeys(tabs, "", "all", false);
 	const [overflow, setOverflow] = useState(false);
@@ -168,14 +171,39 @@ export function WorkspaceTabs({
 	}, [tabs, sessions, onTitleSeen]);
 
 	useLayoutEffect(() => {
+		if (!strip.current) return;
+		const controller = createWorkspaceTabReveal(strip.current);
+		reveal.current = controller;
+		return () => {
+			controller.dispose();
+			reveal.current = undefined;
+		};
+	}, []);
+
+	useLayoutEffect(() => {
+		// The title button is only part of the painted row: the active More and
+		// Close siblings must fit too. The row can remount on pin/unpin.
+		const row = activeTab
+			? buttons.current
+					.get(activeTab.key)
+					?.closest<HTMLElement>("[data-workspace-tab]")
+			: null;
+		reveal.current?.select(row ?? null);
+	}, [activeTab]);
+
+	useLayoutEffect(() => {
 		const lanes = [pinnedLane.current, regularLane.current].filter(
 			(lane) => lane !== null,
 		);
-		const measure = () =>
+		const measure = () => {
 			setOverflow(
 				tabs.length > 0 &&
 					lanes.some((lane) => lane.scrollWidth > lane.clientWidth),
 			);
+			// Siblings count: a preceding title can move the active row without
+			// changing its width. The same observation serves both jobs.
+			reveal.current?.layoutChanged();
+		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		for (const lane of lanes) {
@@ -190,11 +218,6 @@ export function WorkspaceTabs({
 			activePosition >= 0 && activeKey
 				? buttons.current.get(activeKey)
 				: undefined;
-		button?.scrollIntoView({
-			block: "nearest",
-			inline: "nearest",
-			container: "nearest",
-		} as ScrollIntoViewOptions);
 		if (button && focusRequested) {
 			button.focus({ preventScroll: true });
 			onFocusHandled();
@@ -329,6 +352,20 @@ export function WorkspaceTabs({
 		}
 	};
 
+	const menuVisibilityChanged = (open: boolean) =>
+		reveal.current?.menuChanged(open);
+	const openTab = (tab: WorkspaceTab) => {
+		// A click on the already selected tab is still deliberate navigation,
+		// including after manually scrolling it out of view.
+		if (tab.key === activeKey) {
+			const row = buttons.current
+				.get(tab.key)
+				?.closest<HTMLElement>("[data-workspace-tab]");
+			if (row) reveal.current?.select(row, true);
+		}
+		onOpen(tab);
+	};
+
 	const renderTab = (tab: WorkspaceTab) => {
 		const { key } = tab;
 		const active = key === activeKey;
@@ -338,7 +375,7 @@ export function WorkspaceTabs({
 			onCloseAutoFocus: (event: Event) => restoreTabFocus(event, key, false),
 		};
 		return (
-			<ContextMenu key={key}>
+			<ContextMenu key={key} onOpenChange={menuVisibilityChanged}>
 				<ContextMenuTrigger asChild>
 					{renderTabRow(tab, active, menuContentProps)}
 				</ContextMenuTrigger>
@@ -406,7 +443,7 @@ export function WorkspaceTabs({
 					type="button"
 					className="flex h-8 min-w-0 items-center gap-1.5 rounded-sm px-2 text-body-sm"
 					aria-current={active ? "page" : undefined}
-					onClick={() => onOpen(tab)}
+					onClick={() => openTab(tab)}
 					draggable
 					onDragStart={(event) => {
 						// A drag from another window/page cannot open anything or choose a source.
@@ -455,7 +492,7 @@ export function WorkspaceTabs({
 				 * growing the tab. `scripts/workspace-tabs.test.mjs` holds this.
 				 */}
 				{active && (
-					<DropdownMenu>
+					<DropdownMenu onOpenChange={menuVisibilityChanged}>
 						<DropdownMenuTrigger asChild>
 							<button
 								type="button"
@@ -539,6 +576,7 @@ export function WorkspaceTabs({
 				<DropdownMenu
 					onOpenChange={(open) => {
 						if (open) menuFocusKey.current = undefined;
+						menuVisibilityChanged(open);
 					}}
 				>
 					<DropdownMenuTrigger asChild>
@@ -579,7 +617,7 @@ export function WorkspaceTabs({
 									key={tab.key}
 									onSelect={() => {
 										menuFocusKey.current = tab.key;
-										onOpen(tab);
+										openTab(tab);
 									}}
 									aria-current={tab.key === activeKey ? "page" : undefined}
 								>

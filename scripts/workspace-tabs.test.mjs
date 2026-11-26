@@ -475,7 +475,7 @@ test("negative control: an order-blind, pin-blind rule fails the same expectatio
 });
 
 const TAB_CONTEXT_MENU =
-	/<ContextMenu key=\{key\}>\s*<ContextMenuTrigger asChild>\s*\{renderTabRow\(/;
+	/<ContextMenu key=\{key\}(?: onOpenChange=\{menuVisibilityChanged\})?>\s*<ContextMenuTrigger asChild>\s*\{renderTabRow\(/;
 const KEYBOARD_OPENER_KEYS =
 	/event\.key !== "ContextMenu" && !\(event\.shiftKey && event\.key === "F10"\)/;
 const KEYBOARD_OPENER_CALL = /if \(openTabMenuFromKeyboard\(event\)\) return;/;
@@ -485,8 +485,11 @@ const STRIP_CLOSE_ALL =
  * The ellipsis is MOUNTED on the active tab only (design D2, review R2): an
  * opacity-hidden trigger on every tab kept a 24px hole and a Tab stop in each.
  */
-const TAB_MORE_ACTIVE_ONLY =
-	/\{active && \(\s*<DropdownMenu>\s*<DropdownMenuTrigger asChild>\s*<button\s+type="button"\s+data-workspace-tab-more=""/;
+const ACTIVE_DROPDOWN =
+	/\{active && \(\s*<DropdownMenu(?: onOpenChange=\{menuVisibilityChanged\})?>/;
+const TAB_MORE_ACTIVE_ONLY = new RegExp(
+	`${ACTIVE_DROPDOWN.source}\\s*<DropdownMenuTrigger asChild>\\s*<button\\s+type="button"\\s+data-workspace-tab-more=""`,
+);
 /* Both openers group Pin | Move left, Move right | closes with the menu separator (D3). */
 const CONTEXT_SEPARATED =
 	/startsGroup\(entries, index\) && <ContextMenuSeparator \/>\}\s*<ContextMenuItem/;
@@ -596,10 +599,7 @@ test("negative control: the wiring guard rejects a strip whose ellipsis left the
 		),
 	);
 	// The round-1 shape: an ellipsis mounted on every tab.
-	const everyTab = strip.replace(
-		/\{active && \(\s*<DropdownMenu>/,
-		"<DropdownMenu>",
-	);
+	const everyTab = strip.replace(ACTIVE_DROPDOWN, "<DropdownMenu>");
 	assert.notEqual(everyTab, strip, "control mutation applied");
 	assert.throws(() => assertTabMenuWiring(everyTab, hook, page));
 	// A flat, ungrouped context menu.
