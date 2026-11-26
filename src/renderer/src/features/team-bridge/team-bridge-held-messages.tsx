@@ -28,6 +28,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -656,6 +657,11 @@ function HeldRow({
 		(media?.revision === reviewRevision &&
 			Object.values(media.states).includes("unavailable"));
 	const armed = { ...bodyArmed, deliver: bodyArmed.deliver && reviewed };
+	// Keep the two one-click decisions in distinct, stable slots while the
+	// same image resolves. Visibility reserves the slot; only readiness arms it.
+	const showDeliver = bodyArmed.deliver && (reviewed || canReviewImages);
+	const previewUnavailable = bodyArmed.deliver && !reviewed && mediaUnavailable;
+	const previewStatusId = useId();
 	const proofBody = onDecide && bodyArmed.deliver ? message?.body : null;
 	const literal = useMemo(
 		() => Boolean(proofBody && needsLiteralHoldBody(proofBody)),
@@ -758,10 +764,7 @@ function HeldRow({
 					) : (
 						!historical && !unread && <p>{holdReasonLabel(holdReason(item))}</p>
 					)}
-					{onDecide && bodyArmed.deliver && !reviewed && mediaUnavailable && (
-						<p>{t("ui.teamBridge.attachmentCard.metadata_only")}</p>
-					)}
-					{onDecide && armed.deliver && until && (
+					{onDecide && showDeliver && until && (
 						<p>{t("ui.teamBridge.holds.deliver_until", { time: until })}</p>
 					)}
 					{!decision &&
@@ -836,13 +839,17 @@ function HeldRow({
 						</output>
 					)}
 				</div>
-				{((onDecide && (armed.deliver || armed.discard)) || canHide) && (
+				{((onDecide && (showDeliver || armed.discard)) || canHide) && (
 					<div className="flex flex-wrap gap-2">
-						{onDecide && armed.deliver && (
+						{onDecide && showDeliver && (
 							<Button
 								size="sm"
 								variant="primary"
-								disabled={busy !== null}
+								disabled={!armed.deliver || busy !== null}
+								aria-busy={!reviewed && !mediaUnavailable ? true : undefined}
+								aria-describedby={
+									previewUnavailable ? previewStatusId : undefined
+								}
 								aria-label={t("ui.teamBridge.holds.deliver_label", { sender })}
 								onClick={() => press("deliver")}
 							>
@@ -880,6 +887,12 @@ function HeldRow({
 							</Button>
 						)}
 					</div>
+				)}
+				{/* Failure copy below the controls cannot move either click target. */}
+				{onDecide && previewUnavailable && (
+					<p id={previewStatusId} className="text-meta text-ink-muted">
+						{t("ui.teamBridge.attachmentCard.metadata_only")}
+					</p>
 				)}
 			</div>
 		</li>

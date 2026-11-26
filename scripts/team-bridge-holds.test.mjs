@@ -1901,7 +1901,7 @@ const mediaBytes = {
 	data: pngBytes,
 };
 
-test("mounted approval requires image display, keeps Discard, and revokes on media replacement or failure", () => {
+test("mounted approval keeps action slots through loading, decode, and failure", () => {
 	const attachment = Promise.withResolvers();
 	const replacement = Promise.withResolvers();
 	let mediaRequests = 0;
@@ -1914,6 +1914,7 @@ test("mounted approval requires image display, keeps Discard, and revokes on med
 	return withMountedHeldQueue(
 		{
 			audit: true,
+			onDecide: () => ({ status: 503, body: { detail: "Synthetic refusal" } }),
 			onReadAttachment: (request) => {
 				assert.equal(request.attachmentId, boundImage.id);
 				assert.equal(request.messageId, "bcmsg_1");
@@ -1940,20 +1941,60 @@ test("mounted approval requires image display, keeps Discard, and revokes on med
 				calls.filter(({ op }) => op === "team_bridge.owner_audit.attachment")
 					.length;
 			const image = () => host.querySelector('[data-tab="waiting"] img');
+			const decisions = () =>
+				calls.filter(({ op }) =>
+					/team_bridge\.holds\.(deliver|discard)$/.test(op),
+				);
+			const assertSlots = (deliver, discard, enabled) => {
+				assert.equal(
+					deliverButton(host),
+					deliver,
+					"Deliver keeps its DOM slot",
+				);
+				assert.equal(
+					discardButton(host),
+					discard,
+					"Discard keeps its DOM slot",
+				);
+				assert.equal(deliver.nextElementSibling, discard);
+				assert.equal(deliver.disabled, !enabled);
+				assert.equal(discard.disabled, false);
+				assert.match(
+					deliver.parentElement.previousElementSibling.textContent,
+					/Deliver by/,
+				);
+			};
 			await until(() => reads() === 1, "pending media read");
 			assert.ok(!image());
-			assert.ok(discardButton(host));
-			assert.ok(!deliverButton(host));
+			const deliver = deliverButton(host);
+			const discard = discardButton(host);
+			assert.ok(deliver && discard, "both action slots exist while loading");
+			assertSlots(deliver, discard, false);
+			assert.equal(deliver.getAttribute("aria-busy"), "true");
+			discard.focus();
+			deliver.focus();
+			assert.equal(dom.window.document.activeElement, discard);
+			await act(() => deliver.click());
+			assert.deepEqual(decisions(), []);
 			await act(() => attachment.resolve(mediaBytes));
 			await until(image, "image element awaiting decode");
-			assert.ok(!deliverButton(host), "a blob URL is not image readiness");
+			assertSlots(deliver, discard, false); // A blob URL is not image readiness.
+			await act(() => deliver.click());
+			assert.deepEqual(decisions(), []);
 			// jsdom has no image decoder. This is the DOM load boundary exercised
 			// with a real decoded browser PNG separately, not synthetic pixel proof.
 			await act(() => {
 				Object.defineProperty(image(), "naturalWidth", { value: 1 });
 				image().dispatchEvent(new dom.window.Event("load"));
 			});
-			assert.ok(deliverButton(host));
+			assertSlots(deliver, discard, true);
+			assert.equal(dom.window.document.activeElement, discard);
+			deliver.focus();
+			assert.equal(dom.window.document.activeElement, deliver);
+			await act(() => deliver.click());
+			assert.equal(decisions().length, 1);
+			assert.equal(decisions()[0].op, "team_bridge.holds.deliver");
+			assert.equal(decisions()[0].body_sha256, bodySha("with image"));
 			setAuditContent(message(null));
 			await refreshDetails();
 			await until(() => image() === null, "opaque count-only receipt");
@@ -1967,14 +2008,24 @@ test("mounted approval requires image display, keeps Discard, and revokes on med
 			setAuditContent(message({ ...boundImage, sha256: "3".repeat(64) }));
 			await refreshList();
 			await until(() => reads() === 2, "new media revision requested");
-			assert.ok(!deliverButton(host));
+			const replacementDeliver = deliverButton(host);
+			const replacementDiscard = discardButton(host);
+			assertSlots(replacementDeliver, replacementDiscard, false);
 			await act(() => replacement.resolve(mediaBytes));
 			await until(image, "replacement image DOM");
 			await act(() => image().dispatchEvent(new dom.window.Event("error")));
-			assert.ok(!deliverButton(host));
+			assertSlots(replacementDeliver, replacementDiscard, false);
+			await act(() => replacementDeliver.click());
+			assert.equal(decisions().length, 1);
 			assert.ok(!image());
-			assert.ok(discardButton(host));
 			assert.ok(host.textContent.includes("Attachment unavailable"));
+			const previewHint = replacementDeliver.parentElement.nextElementSibling;
+			assert.match(previewHint.textContent, /Preview unavailable in this view/);
+			assert.equal(
+				replacementDeliver.getAttribute("aria-describedby"),
+				previewHint.id,
+			);
+			assert.equal(replacementDeliver.hasAttribute("aria-busy"), false);
 			await switchAccount();
 			await until(
 				() => !host.querySelector('[data-hold-id="bcmsg_1"]'),
