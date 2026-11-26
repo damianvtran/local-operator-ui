@@ -644,7 +644,7 @@ const FINISH_DRAWS =
 const SPACING_REM = /--spacing:\s*([\d.]+)rem;/;
 const PANEL_HEX = /^#[\da-f]{6}$/i;
 const FORCED_FINISH_RESET =
-	/@media\s*\(forced-colors: active\)\s*\{\s*\[data-quick-picker\]\[data-picker-placement="anchored"\],\s*\[data-lo-floating-finish\]\s*\{\s*background-image:\s*none;\s*\}\s*\}/;
+	/@media\s*\(forced-colors: active\)\s*\{\s*\[data-lo-floating-finish\]\s*\{\s*background-image:\s*none;\s*\}/;
 const FORCED_PANEL_EDGE =
 	/@media\s*\(forced-colors: active\)\s*\{\s*\[data-lo-floating\]\s*\{\s*border:\s*1px solid CanvasText;/;
 

@@ -490,7 +490,7 @@ const DEFAULT_SAVE_FAILURE = () =>
  * are laid into the same grid cell as invisible generated content, so the cell
  * is already as tall as either before the box is ticked and nothing moves.
  *
- * Generated content rather than hidden spans: the wording lives in data
+ * Generated content rather than hidden DOM text: the wording lives in data
  * attributes, so it is not in the label's text or a query for the visible
  * sentence - a hidden copy in the DOM would answer every one of those as if it
  * were on screen. It stays out of the ACCESSIBLE NAME only because the
@@ -518,6 +518,7 @@ const ReservedLabelText: FC<{
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
+			data-picker-label-lines={capLines}
 			className={cn(
 				"grid",
 				capLines === 2 && "min-h-[2lh]",
@@ -535,6 +536,15 @@ const ReservedLabelText: FC<{
 			>
 				{text}
 			</span>
+			{capLines && (
+				// Reserve the lines the named receipt needs at the actual width,
+				// without leaving a blank line when all the wordings already fit.
+				<span
+					aria-hidden="true"
+					data-picker-label-reserve={wordings[2]}
+					className="invisible col-start-1 row-start-1 hidden"
+				/>
+			)}
 		</span>
 	);
 };
@@ -2303,7 +2313,10 @@ export const ModelPicker: FC<PickerContext> = ({
 				 */
 				<div className="grid gap-1">
 					{(!draft || scopeControl) && (
-						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1">
+						<div
+							data-model-picker-checks=""
+							className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1"
+						>
 							{!draft && (
 								<div className="min-w-0 grow basis-48 [&_label]:min-w-0 [&_label]:flex-1">
 									{/* The control, not the saved model's name, sets the width.

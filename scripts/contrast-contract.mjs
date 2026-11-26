@@ -585,7 +585,7 @@ const STRUCTURAL_CALL_SITES = [
 		what: "non-anchored picker option row pointer tint",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		must: '!anchored &&\n\t\t\t\t\t\tisHovered &&\n\t\t\t\t\t\t!isActive &&\n\t\t\t\t\t\t!option.disabled &&\n\t\t\t\t\t\t"bg-accent-wash"',
-		why: "dialog and fallback rows keep their accent wash for settable pointer targets, distinct from keyboard selection; anchored Model/Effort instead paint their own neutral pointer tone",
+		why: "dialog and fallback rows keep their accent wash for settable pointer targets, distinct from keyboard selection; anchored Model/Effort instead tint their own palette-derived paper",
 	},
 	{
 		what: "anchored picker option row pointer scope",
@@ -606,11 +606,11 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "anchored picker option row pointer tone",
 		file: "src/renderer/src/styles/index.css",
-		/* A shipped recipe pin, not a new palette floor: the pointer tone comes
-		 * from neutral paper, not an accent role in the flat-hex palette loop. */
+		/* Pin the shipped recipe: the pointer step uses the palette ground, not
+		 * a separate accent role that may be indistinguishable from the paper. */
 		must: `--picker-pointer: light-dark(
 		color-mix(in srgb, var(--picker-paper), black 10%),
-		color-mix(in srgb, var(--picker-paper), white 9%)
+		color-mix(in srgb, var(--picker-paper), white 7%)
 	);`,
 		why: "anchored hover steps darker on light paper and brighter on dark paper, without needing accent tint or a perimeter",
 	},
@@ -1316,6 +1316,57 @@ for (const entry of palettes) evaluatePalette(run, entry);
 					: `\`bg-accent/${alphas.join(", ")}\``
 			} but this gate measures \`LOADING_PILL_ALPHA ${LOADING_PILL_ALPHA}\` - the class that ships and the number every pill assertion used must be one value`,
 		);
+	}
+}
+
+/* Read the anchored Model row's actual sRGB paint, not the generic floating
+ * panel pair. This runs for Standard and each composed preset. */
+{
+	const source = readFileSync(
+		join(ROOT, "src/renderer/src/styles/index.css"),
+		"utf8",
+	);
+	const scope = '[data-quick-picker][data-picker-placement="anchored"]';
+	const target =
+		'[role="option"]:is([aria-selected="true"], [data-picked="true"])';
+	const rules = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+	const metadata = rules.includes(
+		`${scope} ${target} [class~="text-ink-muted"] { color: var(--lo-ink); }`,
+	)
+		? "ink"
+		: "inkMuted";
+	const activeMix = rules.match(
+		/--picker-active: light-dark\( color-mix\(in srgb, var\(--picker-paper\), black (\d+)%\), color-mix\(in srgb, var\(--picker-paper\), white (\d+)%\) \);/,
+	);
+	if (
+		!activeMix ||
+		!rules.includes(`${scope} { --picker-paper: var(--lo-elevated);`) ||
+		!rules.includes(
+			`${scope} ${target} { background-color: var(--picker-active); }`,
+		)
+	) {
+		fail(
+			"anchored picker active/picked paint is unmeasured — read its actual ground and fill",
+		);
+	} else {
+		const [, lightMix, darkMix] = activeMix;
+		for (const { id, palette } of palettes) {
+			const light = glassSchemeOf(palette) === "light";
+			const fill = over(
+				light ? "#000000" : "#ffffff",
+				palette.elevated,
+				Number(light ? lightMix : darkMix) / 100,
+			);
+			for (const ink of new Set(["ink", metadata])) {
+				const contrast = ratio(palette[ink], fill);
+				run.assertions++;
+				if (contrast < 4.5) {
+					fail(
+						`${id}: anchored picker active/picked ${ink} on ${fill} is ${contrast.toFixed(2)}:1 (min 4.5:1)`,
+					);
+				}
+			}
+		}
 	}
 }
 
