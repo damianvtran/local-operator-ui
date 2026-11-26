@@ -85,6 +85,10 @@ import React, {
 	useState,
 } from "react";
 import {
+	DRAFT_CONSOLE_OWNER,
+	isDraftConsoleOwner,
+} from "../../../../../shared/console-owner";
+import {
 	type CanonicalFrontendState,
 	type CanonicalModel,
 	goalCapability,
@@ -378,6 +382,29 @@ type ChatContentProps = {
 	 * the identity a backend route can resolve. See `CanvasProps.sessionId`.
 	 */
 	sessionId?: string;
+	/**
+	 * The CONSOLE this pane is showing — a conversation's id, or the pending
+	 * local draft's owner (`DRAFT_CONSOLE_OWNER`) while the pane is still a
+	 * draft view.
+	 *
+	 * A SEPARATE PROP FROM `sessionId` BECAUSE THEY STOP AGREEING MID-SEND (QA
+	 * round 1's Q1, UX round 1's U1): the draft's first send patches the created
+	 * session id onto the draft row before the message is admitted, so `sessionId`
+	 * names a conversation the pane has not been adopted into yet. The transcript
+	 * half of this component must follow that id (it is where the message will
+	 * land), while the console pane must keep reading and creating under the
+	 * pending owner — the surfaces are still there, and main moves them only on an
+	 * accepted message. Read as `sessionId ?? DRAFT_CONSOLE_OWNER`, the pane would
+	 * have switched to the new conversation's empty console on the create's
+	 * answer, and a REFUSED first send left the user with “no console” while both
+	 * of their shells were running. Derived once by the page
+	 * (`consoleOwnerForView`) so every console reading below — the listing, the
+	 * open request, liveness, the unseen marks — asks about one owner.
+	 *
+	 * Absent means “derive it from `sessionId`”, the legacy reading, for callers
+	 * that have no draft (the Storybook panes).
+	 */
+	consoleOwner?: string | null;
 	/**
 	 * How many turns the canonical stream has seen end, forwarded to the canvas
 	 * so the code-memory panel can re-read when a cell finishes; see
@@ -1035,6 +1062,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		messageInputRef,
 		cwd,
 		sessionId,
+		consoleOwner: consoleOwnerProp,
 		turnTerminal,
 		cwdWritePath,
 		cwdPending,
@@ -2208,12 +2236,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * where the conversation's identity lives.
 		 */
 		const consoleUnseenAll = useUiPreferencesStore((s) => s.consoleUnseen);
+		const consoleOwner = consoleOwnerProp ?? sessionId ?? DRAFT_CONSOLE_OWNER;
 		const consoleUnseenMarks = useMemo(
-			() =>
-				sessionId === null
-					? []
-					: consoleUnseenAll.filter((mark) => mark.sessionId === sessionId),
-			[consoleUnseenAll, sessionId],
+			() => consoleUnseenAll.filter((mark) => mark.sessionId === consoleOwner),
+			[consoleUnseenAll, consoleOwner],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
 		/*
@@ -2226,7 +2252,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			(s) => s.consoleLiveSurface,
 		);
 		const consoleLiveCount =
-			consoleLiveSurface !== null && consoleLiveSurface.sessionId === sessionId
+			consoleLiveSurface !== null &&
+			consoleLiveSurface.sessionId === consoleOwner
 				? consoleLiveSurface.count
 				: 0;
 
@@ -2791,17 +2818,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * must not take the keyboard.
 								 */
 								setConsolePaneOpen(true);
-								requestConsoleOpen(sessionId);
+								requestConsoleOpen(consoleOwner);
 							}
 						: /*
-							 * ON A DRAFT THE ROW TOGGLES THE PANE AND FILES NO REQUEST (the
-							 * always-visible rail, D1, which retires design round 1's U3 rule for
-							 * the panel rows): the pane's draft state says "A console needs a
-							 * conversation", which is the answer to the press, and the request is
-							 * what spawns a console - there is no working directory to spawn one
-							 * in. The rail's console arm does the same (`togglePanelRailItem`).
+							 * ON A DRAFT THE PRESS OPENS A REAL TERMINAL NOW (the pending local
+							 * console): the pane's draft state used to be a notice saying "A console
+							 * needs a conversation", because there was no owner to make a surface
+							 * under and no directory to start one in. Both are answered now — main
+							 * keys it under `DRAFT_CONSOLE_OWNER` and it starts in the draft's staged
+							 * directory — so the press is the same request a conversation's is, and
+							 * the pane answers it the same way (create if none is live, else focus).
+							 *
+							 * THE ROW STAYS A TOGGLE WHILE THE PANE IS UP, which is the always-visible
+							 * rail's D1 rule for every pane; only the OPEN half files a request. A
+							 * fresh New chat press mints a new draft key but the SAME owner, so the
+							 * shell the previous draft opened is the one this press focuses — that
+							 * is the whole point of the owner being a constant rather than the key.
+							 * The rail's console arm files the same request (`togglePanelRailItem`).
 							 */
-							() => setConsolePaneOpen(!isConsolePaneOpen)
+							() => {
+								if (isConsolePaneOpen) {
+									setConsolePaneOpen(false);
+									return;
+								}
+								setConsolePaneOpen(true);
+								requestConsoleOpen(consoleOwner);
+							}
 				}
 				onOpenCodeReview={
 					/*
@@ -4223,7 +4265,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							tourTag="console-pane-slot"
 						>
 							<ConsolePane
-								sessionId={sessionId ?? null}
+								/*
+								 * THE PANE'S API IS `null` FOR A DRAFT, which is what arms its
+								 * Escape rule and its draft copy; the owner itself is the pending
+								 * constant, so a draft view is passed as “no session”. See
+								 * `consoleOwner`: it is the pending owner even after the draft's
+								 * create answered, which is the state this split exists for.
+								 */
+								sessionId={
+									isDraftConsoleOwner(consoleOwner) ? null : consoleOwner
+								}
+								draft={isDraftConsoleOwner(consoleOwner) ? { cwd } : null}
 								onClose={() => setConsolePaneOpen(false)}
 								allowCommandSubmit={allowCommandSubmit}
 							/>
@@ -4299,6 +4351,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				<InPanelRailHost>
 					<PanelRail
 						sessionId={sessionId ?? null}
+						/* THE CONSOLE'S OWNER, not the transcript's: on a held or refused
+						   first send these differ, and the pane answers only its own
+						   owner (`consoleOwnerForView`, agent review round 2 R2a). */
+						consoleOwner={consoleOwner}
 						runDetails={runDetails ?? null}
 						mcpServers={mcpServers}
 						listOnScreen={listOnScreen}

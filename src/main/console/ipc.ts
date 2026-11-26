@@ -61,6 +61,7 @@ export const CONSOLE_IPC_CHANNELS = [
 	"console-state",
 	"console-cleanup-owner",
 	"console-create-surface",
+	"console-adopt-pending",
 	"console-close-surface",
 	"console-open-pane",
 	"console-close-pane",
@@ -108,6 +109,29 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 	ipcMain.handle("console-cleanup-owner", (event, sessionId: unknown) => {
 		const host = authorize(event);
 		return host.cleanupOwner(stringOrThrow(sessionId, "sessionId"));
+	});
+
+	/*
+	 * THE DRAFT'S CONSOLE, HANDED TO THE CONVERSATION ITS FIRST SEND CREATED.
+	 *
+	 * A renderer op like `console-create-surface` and for the same reason: the move
+	 * is the app's own bookkeeping about a surface a person made at a pane, not a
+	 * session-scoped command, and the renderer is the only caller that knows the
+	 * conversation's id the moment the message is accepted. It is one op rather than
+	 * the agent wire's `console_create` because an agent must not be able to hand
+	 * ANY session the surfaces a person opened on a draft they never sent from
+	 * (`dispatchConsole` refuses the pending owner for the same reason from the other
+	 * side).
+	 */
+	ipcMain.handle("console-adopt-pending", (event, request: unknown) => {
+		const host = authorize(event);
+		const input =
+			request && typeof request === "object"
+				? (request as Record<string, unknown>)
+				: {};
+		return host.adoptPendingConsole(
+			stringOrThrow(input.sessionId, "sessionId"),
+		);
 	});
 
 	ipcMain.handle("console-state", (event, sessionId: unknown) => {

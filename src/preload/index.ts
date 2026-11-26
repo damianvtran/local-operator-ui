@@ -1561,6 +1561,11 @@ const api = {
 		/** Completed agent surfaces only; retained history stays on disk. */
 		cleanupOwner: (sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-cleanup-owner", sessionId),
+		/** Attach the pending local draft's console surfaces to the conversation a
+		 * successful first send created (same handle, same pty, same history). A no-op
+		 * when the draft never opened one. */
+		adoptPending: (sessionId: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-adopt-pending", { sessionId }),
 		/** Create a surface the USER asked for. Main sets the origin to `user`; the
 		 * renderer cannot name it, because provenance is not a renderer's to claim. */
 		createSurface: (request: {

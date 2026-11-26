@@ -25,6 +25,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { DRAFT_CONSOLE_OWNER } from "../../../../../shared/console-owner";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
@@ -47,7 +48,6 @@ import {
 	ConsoleEndedBar,
 	ConsoleHistoryEnd,
 	ConsoleLoading,
-	ConsoleNotice,
 	ConsoleSecureBar,
 	ConsoleUnavailable,
 } from "./console-states";
@@ -133,6 +133,20 @@ const REVEAL_ON_HOVER_OR_FOCUS =
 export interface ConsolePaneProps {
 	/** The conversation this pane is scoped to, or `null` on a draft. */
 	sessionId: string | null;
+	/**
+	 * THE LOCAL DRAFT THIS PANE IS SHOWING, when there is no conversation yet.
+	 *
+	 * Its `cwd` is the directory the draft's first send will run in
+	 * (`canonical-sessions-store`'s staged value, the same one the composer's chip
+	 * paints), and it is the one thing a draft's shell needs that a conversation's
+	 * does not: main resolves a session's own directory, but a draft has no session
+	 * to resolve. Absent-which the shell starts in main's fallback (`resolveCwd`).
+	 *
+	 * The draft's identity is NOT carried here: every draft shares one pending
+	 * console (`DRAFT_CONSOLE_OWNER`), which is what lets a fresh New chat press find
+	 * the terminal the previous one started. That rule lives in the shared constant.
+	 */
+	draft?: { cwd?: string } | null;
 	onClose: () => void;
 	/**
 	 * THE SUBMIT GUARD for a suggested command's confirmed Run (`submit: true`),
@@ -151,18 +165,21 @@ export interface ConsolePaneProps {
 
 export const ConsolePane: FC<ConsolePaneProps> = ({
 	sessionId,
+	draft,
 	onClose,
 	allowCommandSubmit,
 }) => {
 	/*
-	 * THE DRAFT STATE CLOSES ON ESCAPE, like its siblings (UX round 1, U2): the Run
-	 * details and Code review notices a draft's doors open close on an unclaimed
-	 * Escape, and this state reads as one of them. Armed ONLY on a draft: a live
-	 * console is a terminal, and Escape is a key the program in it owns (an
-	 * editor's mode switch, a TUI's back) - closing the pane on it would take that
-	 * key from every program run here.
+	 * THE CONSOLE'S OWNER, WHICH IS NOT ALWAYS A CONVERSATION.
+	 *
+	 * A live session's pane reads and creates under that session's id; a draft has
+	 * none, so it uses the pending owner every draft shares
+	 * (`src/shared/console-owner.ts`). One expression because everything below —
+	 * the listing filter, the lens, the liveness the rail reads, the open request's
+	 * name — is a question about the owner already, and a second spelling is how two
+	 * of them would end up asking about different consoles.
 	 */
-	usePaneNoticeEscape(onClose, sessionId === null);
+	const owner = sessionId ?? DRAFT_CONSOLE_OWNER;
 	/** The slot's lens. See the header comment for why this is not `useState`. */
 	const stored = useUiPreferencesStore((state) => state.consoleActiveSurface);
 	const setStored = useUiPreferencesStore(
@@ -234,20 +251,32 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 	   pulse (§12.2's two states), asked once rather than per row. */
 	const blipPulsing = useConsoleBlipPulse(unseen);
 
-	const session = useConsoleSession(sessionId);
+	const session = useConsoleSession(owner, draft?.cwd);
 	const surfaces = useMemo(
-		() => surfacesForSession(session.snapshot, sessionId),
-		[session.snapshot, sessionId],
+		() => surfacesForSession(session.snapshot, owner),
+		[session.snapshot, owner],
 	);
+	/*
+	 * ESCAPE CLOSES A DRAFT PANE THAT HOLDS NO TERMINAL (UX round 1, U2), and stops
+	 * being armed the moment one exists.
+	 *
+	 * The draft shape of this pane used to be a notice, and the notices' rule is that
+	 * an unclaimed Escape closes them. The draft now holds a real terminal as soon as
+	 * the user opens it, so the sibling rule must not eat the program's own key: a
+	 * live console is an editor, a TUI, a shell prompt — Escape is theirs. A draft
+	 * pane with nothing running yet (loading, empty, a refused create) still reads as
+	 * a notice and still closes.
+	 */
+	usePaneNoticeEscape(onClose, sessionId === null && surfaces.length === 0);
 	const surface = useMemo(
-		() => pickActiveSurface(session.snapshot, sessionId, stored),
-		[session.snapshot, sessionId, stored],
+		() => pickActiveSurface(session.snapshot, owner, stored),
+		[session.snapshot, owner, stored],
 	);
 	/** The surface an explicit open may focus instead of the one the lens remembers
 	 * (see `consoleOpenAction`): the most recently active RUNNING surface. */
 	const liveSurface = useMemo(
-		() => pickLiveSurface(session.snapshot, sessionId),
-		[session.snapshot, sessionId],
+		() => pickLiveSurface(session.snapshot, owner),
+		[session.snapshot, owner],
 	);
 	const setConsoleLiveSurface = useUiPreferencesStore(
 		(state) => state.setConsoleLiveSurface,
@@ -264,10 +293,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 	 */
 	useEffect(() => {
 		setConsoleLiveSurface(
-			sessionId,
+			owner,
 			session.loading ? 0 : surfaces.filter((row) => row.running).length,
 		);
-	}, [sessionId, session.loading, surfaces, setConsoleLiveSurface]);
+	}, [owner, session.loading, surfaces, setConsoleLiveSurface]);
 	// The fact dies with the pane: a stale count from a closed pane would light (or
 	// unlight) the rail for a conversation nobody is looking at. It is a transient
 	// projection, not the persisted preferences it sits beside (`persistedUiPreferences`
@@ -753,7 +782,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 			 */
 			if (
 				creating ||
-				openIntent === sessionId ||
+				openIntent === owner ||
 				awaitingSurface ||
 				session.snapshot.displayedSurface !== surfaceId
 			)
@@ -782,7 +811,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 		creating,
 		openIntent,
 		session.snapshot.displayedSurface,
-		sessionId,
+		owner,
 		surface,
 		unseen,
 	]);
@@ -809,8 +838,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 	 * set) would otherwise paint "No console in this session" with a live `+` for one
 	 * frame (design round 1, D1).
 	 */
-	const unansweredForThisSession =
-		openIntent !== null && openIntent === sessionId;
+	const unansweredForThisSession = openIntent !== null && openIntent === owner;
 	/**
 	 * A create has answered WITH a surface, and this pane's own listing has not caught up
 	 * yet. It exists because the answer and the listing are two different commits: the
@@ -844,7 +872,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 		if (action === "none") {
 			// `available: false` with the read settled is main's own "no console can
 			// exist here" (§15): the pane renders that state, and the request is done.
-			if (!session.loading) clearOpenIntent(sessionId);
+			if (!session.loading) clearOpenIntent(owner);
 			return;
 		}
 		/*
@@ -901,7 +929,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 				})
 				.finally(() => {
 					endCreate();
-					clearOpenIntent(sessionId);
+					clearOpenIntent(owner);
 				});
 		} else {
 			/*
@@ -918,12 +946,12 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 			}
 			// The surface the request was for is already in the pane, so its mirror is mounted
 			// (or mounts with the token) and the caret is armed at once.
-			clearOpenIntent(sessionId);
+			clearOpenIntent(owner);
 			setFocusRequest((value) => value + 1);
 		}
 	}, [
 		unansweredForThisSession,
-		sessionId,
+		owner,
 		session.loading,
 		session.createSurface,
 		available,
@@ -1042,66 +1070,17 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 		allowCommandSubmit,
 	]);
 
-	if (sessionId === null) {
-		return (
-			<div
-				data-glass-region="pane"
-				className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
-			>
-				{/* The slot's bar at the slot's height and with no ground of its own, so
-				    the pane reads as one surface and the bar does not move between a
-				    draft and a conversation — and the CLOSE control is in it for
-				    the same reason every other occupant of this slot has one: a pane the
-				    user cannot close from inside is a pane they have to find the trigger
-				    for, and a draft carries the control even though a draft has no session
-				    for its `+` to act on. */}
-				<div
-					className={cn(
-						"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
-						/*
-						 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
-						 * Electron draws the caption buttons into the client area's top-right 40px,
-						 * and a pane's toolbar is the row that reaches the window's right edge while
-						 * that pane is open - so its trailing control has to end before them.
-						 *
-						 * PADDING here where the chat header uses a spacer, and the difference is the
-						 * row rather than the rule: this row is a single `justify-between` line whose
-						 * last child IS the control that must clear the buttons, so reserving the
-						 * width at the end is the same thing as moving it left. The header cannot use
-						 * padding because its action cluster is `ml-auto` inside a row that can wrap,
-						 * and padding there would spend the buttons' width on the wrapped line too.
-						 * `max(0.5rem, ...)` keeps the row's own 8px at rest, which is where
-						 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch). The inset
-						 * is the shell's `--chrome-inset-end-pane` - the OS buttons' width LESS the 44px
-						 * panel rail that now stands under their trailing part (#872) - with the full
-						 * inset as the fallback for a pane rendered outside the shell.
-						 */
-						"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
-					)}
-					data-tour-tag="console-pane-header"
-				>
-					<span className={cn("shrink-0 text-meta text-ink-dim")}>
-						{t("ui.console.pane.label")}
-					</span>
-					<Tooltip content={t("ui.console.pane.close")}>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label={t("ui.console.pane.close")}
-							onClick={onClose}
-							data-tour-tag="console-pane-close"
-						>
-							<PanelRightClose aria-hidden="true" />
-						</Button>
-					</Tooltip>
-				</div>
-				<ConsoleNotice
-					title={t("ui.console.pane.needs_conversation.title")}
-					detail={t("ui.console.pane.needs_conversation.detail")}
-				/>
-			</div>
-		);
-	}
+	/*
+	 * THERE IS NO DRAFT-ONLY EARLY RETURN ANY MORE.
+	 *
+	 * It said "A console needs a conversation" and disabled the `+`, because a draft
+	 * had no working directory to spawn a shell in and no session to own one. Both
+	 * halves are now answered rather than refused: the shell is owned by the pending
+	 * draft console (`DRAFT_CONSOLE_OWNER`) and starts in the draft's staged
+	 * directory (`draft.cwd`) — so a New Conversation opens a real terminal
+	 * immediately, and the first successful send hands it to the conversation it
+	 * creates (main's `adoptPendingConsole`) with the same handle, pty and history.
+	 */
 
 	const body = () => {
 		/*
@@ -1172,12 +1151,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 					/>
 				);
 			}
-			return (
-				<ConsoleEmpty
-					onCreate={createFromPress}
-					disabled={sessionId === null}
-				/>
-			);
+			return <ConsoleEmpty onCreate={createFromPress} />;
 		}
 		return (
 			<div className={cn("flex min-h-0 grow flex-col")}>

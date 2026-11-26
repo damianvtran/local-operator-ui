@@ -49,8 +49,19 @@ import {
 } from "./panel-rail-model";
 
 export type PanelRailProps = {
-	/** The conversation, or null on a draft (the console's open request needs one). */
+	/** The conversation, or null on a draft (the asks door's scope reads it). */
 	sessionId: string | null;
+	/**
+	 * WHICH CONSOLE THE CONSOLE ITEM OPENS, from the page's `consoleOwnerForView`
+	 * — the same rule the pane it opens is scoped by. It stops agreeing with
+	 * `sessionId` between a draft's create and its accepted first send, which is
+	 * exactly when a request filed against the transcript would be ignored by
+	 * the mounted pane (agent review round 2, R2a).
+	 *
+	 * Absent means “derive it from `sessionId`”, the legacy reading for callers
+	 * with no draft view (the stories and fixtures).
+	 */
+	consoleOwner?: string | null;
 	/**
 	 * The session's run view model, or null before the frame is read or on a draft.
 	 * The Run details item is present either way; null only bares its label.
@@ -184,6 +195,7 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  */
 export const PanelRail: FC<PanelRailProps> = ({
 	sessionId,
+	consoleOwner,
 	runDetails,
 	mcpServers,
 	listOnScreen,
@@ -234,10 +246,12 @@ export const PanelRail: FC<PanelRailProps> = ({
 	const platform = useMemo(rendererPlatform, []);
 	const capFor = (actionId: ActionId) =>
 		displayChord(actionId, bindings, platform);
-	/* The context the shared toggles read: the conversation the console opens in,
-	   and the queue this route's ask door opens. */
+	/* The context the shared toggles read: the conversation the view is showing,
+	   the console's OWN owner (a different fact mid-send, R2a), and the queue this
+	   route's ask door opens. */
 	const actionContext: PanelRailActionContext = {
 		sessionId,
+		consoleOwner,
 		askScope,
 		canvasConversationId,
 	};
