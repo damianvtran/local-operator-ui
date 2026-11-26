@@ -51,6 +51,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { useEffect } from "react";
+import { consoleOwnerForView } from "../../../../shared/console-owner";
 import { chordFromEvent } from "./chord-capture";
 import { buildChordMap } from "./keymap-chord";
 import type { ActionId, ShortcutBindings } from "./keymap-registry";
@@ -115,10 +116,16 @@ const railIdOf = (actionId: ActionId) =>
  * Run one action: the toggle functions are the rail's — one path, two doors
  * (the click and the chord cannot drift into two behaviours for one control).
  *
- * The console's conversation id is derived HERE, from the same
- * `panelSessionIdOfView` expression the pane keys on, because the dispatcher has
- * no rail props to read: a stale request against a switched conversation would
- * run a shell nobody asked for.
+ * The view's ids are derived HERE, from the same expressions the page and the
+ * pane key on, because the dispatcher has no rail props to read: a stale request
+ * against a switched conversation would run a shell nobody asked for.
+ *
+ * THE CONSOLE'S OWNER IS NOT THE VIEW'S SESSION ID (agent review round 2, R2a).
+ * Between a draft's create and its accepted first send the view carries the
+ * created transcript's id while the pane is still the pending console, so the
+ * chord derives the owner from `consoleOwnerForView` — the rule the chat page
+ * itself uses — and passes it as `consoleOwner`, leaving `sessionId` for the ask
+ * and canvas arms whose identity it remains.
  */
 function runKeymapAction(actionId: ActionId): void {
 	const sessions = useCanonicalSessionsStore.getState();
@@ -131,8 +138,13 @@ function runKeymapAction(actionId: ActionId): void {
 			draft?.sessionId,
 			sessions.activeSessionId,
 		) ?? null;
+	const consoleOwner = consoleOwnerForView(
+		sessions.activeDraftKey !== null,
+		sessionId,
+	);
 	togglePanelRailItem(railIdOf(actionId), {
 		sessionId,
+		consoleOwner,
 		askScope: sessionId === null ? "fleet" : "session",
 		/*
 		 * THE CANVAS STORE'S KEY, derived the way the chat page keys the pane it

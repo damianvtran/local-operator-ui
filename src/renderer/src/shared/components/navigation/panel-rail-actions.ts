@@ -42,16 +42,45 @@ export function panelRailDoorPresent(
 /**
  * What a toggle needs to know beyond the store.
  *
- * Both fields are optional because the arms that read them are the console's
- * and the ask's; the other four act on store state alone, and a caller that
- * only drives one of those (the run trigger's click) does not fabricate values
- * for fields its action cannot read. An arm whose required field is absent
+ * The fields are optional because the arms that read them are the console's,
+ * the ask's and the canvas's; the others act on store state alone, and a caller
+ * that only drives one of those (the run trigger's click) does not fabricate
+ * values for fields its action cannot read. An arm whose required field is absent
  * returns `false` — "did not act", the return value the callers use exactly for
  * the cases where the press could not mean anything.
  */
 export type PanelRailActionContext = {
-	/** The conversation the console opens in; null on a draft. */
+	/**
+	 * The conversation this route is showing, as the VIEW reads it — on a draft
+	 * whose first send has already created its transcript this is the created
+	 * session's id (`panelSessionIdOfView`), before the message is admitted.
+	 *
+	 * IT IS NOT WHAT THE CONSOLE OPENS ON: that is `consoleOwner` below.
+	 */
 	sessionId?: string | null;
+	/**
+	 * WHICH CONSOLE THIS PRESS OPENS, from `consoleOwnerForView`: the pending
+	 * local console's constant while the view is still a draft, the
+	 * conversation's id otherwise.
+	 *
+	 * A FIELD OF ITS OWN, not a convenience (agent review round 2, R2a). A
+	 * draft's first send patches the created transcript's id onto the draft row
+	 * before the message is admitted (and keeps it through a refusal, so the
+	 * retry addresses the same conversation), while the pane is still scoped to
+	 * the pending owner. Read as `sessionId`, the press filed an open for a
+	 * conversation the console has NOT been handed to yet — the closed drawer
+	 * opened onto a pane that ignored the request, creating no shell and
+	 * focusing nothing. The rail's door, the header's row and the chord all
+	 * derive this from the same rule the pane does (`consoleOwnerForView`), so
+	 * caller and pane cannot disagree.
+	 *
+	 * ASK AND CANVAS KEEP READING `sessionId`: conversation identity is not
+	 * repurposed across arms.
+	 *
+	 * Absent is the legacy reading for callers with no draft view (the stories
+	 * and fixtures): `sessionId ?? DRAFT_CONSOLE_OWNER`.
+	 */
+	consoleOwner?: string | null;
 	/** Which queue the ask door opens (the scope the route's own door passes). */
 	askScope?: AskScope;
 	/**
@@ -172,7 +201,19 @@ export function togglePanelRailItem(
 			 * directory is the draft's, and main starts the shell there.
 			 */
 			state.setConsolePaneOpen(true);
-			state.requestConsoleOpen(context.sessionId ?? DRAFT_CONSOLE_OWNER);
+			/*
+			 * THE REQUEST NAMES THE CONSOLE'S OWNER, NOT THE VIEW'S TRANSCRIPT
+			 * (agent review round 2, R2a): on a draft whose send is held or refused
+			 * those two differ, and a request filed against the transcript is one the
+			 * mounted pane — scoped by `consoleOwnerForView` — ignores, which is a
+			 * pane that opens and never creates or focuses the shell the user asked
+			 * for. `?? DRAFT_CONSOLE_OWNER` keeps the legacy callers' meaning (a
+			 * caller with no draft view has no wire owner, and the constant is the
+			 * pending console's one spelling).
+			 */
+			state.requestConsoleOpen(
+				context.consoleOwner ?? context.sessionId ?? DRAFT_CONSOLE_OWNER,
+			);
 			return true;
 		}
 		case "ask": {

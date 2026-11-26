@@ -60,6 +60,7 @@ const bundle = await build({
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, projectsRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
 			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+			export { DRAFT_CONSOLE_OWNER } from "./src/shared/console-owner";
 			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { captureRefusal } from "./src/renderer/src/shared/keymap/keymap-chord";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -162,6 +163,7 @@ const {
 	QueryClientProvider,
 	projectsRailLabels,
 	useCanvasStore,
+	DRAFT_CONSOLE_OWNER,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
@@ -784,6 +786,86 @@ test("the console item follows liveness, and an open history pane still toggles 
 	});
 });
 
+test("the console item opens the PENDING console while a draft's first send is unadmitted (R2a)", async () => {
+	/*
+	 * THE SAME VIEW THE PANE IS SCOPED BY (agent review round 2, R2a). After a
+	 * draft's create answers, the view carries the created transcript's id while
+	 * the pane is still the pending local console (`consoleOwnerForView`), so the
+	 * rail's `sessionId` and the console's owner differ. The item used to file its
+	 * request against `sessionId`; the pane ignores a request for a conversation
+	 * it is not showing, so the drawer opened onto a console that neither started
+	 * the shell the user asked for nor took the caret into a running one. Both
+	 * states are here - no shell yet, and a pending shell already live - plus the
+	 * established control, where the two ids agree by construction.
+	 */
+	await mount(async (api) => {
+		const TRANSCRIPT = "44444444-4444-4444-4444-444444444444";
+		const held = (liveConsole) =>
+			rail({
+				sessionId: TRANSCRIPT,
+				consoleOwner: DRAFT_CONSOLE_OWNER,
+				consoleLiveCount: liveConsole ? 1 : 0,
+			});
+
+		/* HELD, WITH NO SHELL YET: the press must reach the pending owner so the
+		   pane starts a shell. */
+		reset(api, DRAFT);
+		api.store({
+			consoleOpenIntent: null,
+			consoleLiveSurface: null,
+		});
+		await api.render(held(false));
+		await api.click(api.item("console"));
+		let state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "the item opens the pane");
+		assert.equal(
+			state.consoleOpenIntent,
+			DRAFT_CONSOLE_OWNER,
+			"no shell: the request names the pending console, not the transcript",
+		);
+
+		/* REFUSED, WITH THE PENDING SHELL ALREADY RUNNING: the same view, one
+		   surface live under the pending owner. The request is the focus, and it
+		   must still name the pending console. */
+		reset(api, DRAFT);
+		api.store({
+			consoleOpenIntent: null,
+			consoleLiveSurface: { sessionId: DRAFT_CONSOLE_OWNER, count: 1 },
+		});
+		await api.render(held(true));
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true);
+		assert.equal(
+			state.consoleOpenIntent,
+			DRAFT_CONSOLE_OWNER,
+			"live shell: the focus request names the pending console too",
+		);
+
+		/* CONTROL: on an established conversation the owner IS the session id. */
+		reset(api, DRAWABLE);
+		api.store({
+			consoleOpenIntent: null,
+			consoleLiveSurface: null,
+		});
+		await api.render(
+			rail({
+				sessionId: "session-1",
+				consoleOwner: "session-1",
+				consoleLiveCount: 0,
+			}),
+		);
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true);
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"control: a conversation's item still opens its own console",
+		);
+	});
+});
+
 test("pressing an item claims the slot: the others are cleared, and a second press closes", async () => {
 	await mount(async (api) => {
 		reset(api);
@@ -998,20 +1080,31 @@ test("every door is present on a draft, and none is disabled (D1)", async () => 
 	});
 });
 
-test("a door pressed on a draft opens its pane, and the console files no open request (D1)", async () => {
+test("a door pressed on a draft opens its pane, and the console asks for the pending shell (D1)", async () => {
 	await mount(async (api) => {
 		reset(api, DRAFT);
-		api.store({ consoleOpenIntent: null });
+		api.store({ consoleOpenIntent: null, consoleLiveSurface: null });
 		await api.render(
-			rail({ runDetails: null, sessionId: null, askScope: "fleet" }),
+			rail({
+				runDetails: null,
+				sessionId: null,
+				/* The chat surface's own prop for a fresh draft (`consoleOwnerForView`). */
+				consoleOwner: DRAFT_CONSOLE_OWNER,
+				askScope: "fleet",
+			}),
 		);
 		await api.click(api.item("console"));
 		const state = useUiPreferencesStore.getState();
 		assert.equal(state.isConsolePaneOpen, true, "the pane opens on a draft");
+		/* THIS CELL USED TO ASSERT `null` - “no conversation, so no console is
+		   requested” - which was true while a draft's console was only a notice.
+		   Round 1 gave the draft a real terminal under the pending owner, so the
+		   press deliberately files the request; R2a is that this request must name
+		   that owner and not the view's session. */
 		assert.equal(
 			state.consoleOpenIntent,
-			null,
-			"no conversation, so no console is requested",
+			DRAFT_CONSOLE_OWNER,
+			"a draft's console is real: the press asks the pending owner for a shell",
 		);
 		assert.deepEqual(
 			api.pressed(),
@@ -2625,11 +2718,23 @@ test("on a draft the ... menu carries all six panel rows, in rail order (D1)", a
 		"src/renderer/src/features/chat/components/chat-content.tsx",
 	);
 	assert.ok(/onToggleAsks=\{\(\) => \{/.test(content), "onToggleAsks is gated");
+	/*
+	 * THE DRAFT ARM EXISTS, AND ITS SHAPE IS "close if open, else open AND
+	 * request". The pin used to look for `setConsolePaneOpen(!isConsolePaneOpen)`
+	 * - the round-0 draft arm that only flipped the flag, back when a draft's
+	 * console was a notice with nothing to open. Round 1 replaced that with the
+	 * real terminal under the pending owner, and the gate has been failing on the
+	 * branch's own text since: it fails against `git show
+	 * 83db40aaed4:src/.../chat-content.tsx` exactly as it did against the head
+	 * that R2a was raised on, so it is repaired here rather than widened - what
+	 * the gate must hold is that the draft arm files the pending console's
+	 * request, which is also the request R2a keeps pointed at the right owner.
+	 */
 	assert.ok(
-		/onOpenConsole=\{\s*sessionId\s*\?[\s\S]{0,2400}?:[\s\S]{0,800}?\(\) => setConsolePaneOpen\(!isConsolePaneOpen\)/.test(
+		/onOpenConsole=\{\s*sessionId\s*\?[\s\S]{0,1400}?:\s*(?:\/\*[\s\S]*?\*\/\s*)?\(\) => \{[\s\S]{0,700}?requestConsoleOpen\(consoleOwner\);/.test(
 			content,
 		),
-		"onOpenConsole has no draft arm",
+		"onOpenConsole has a draft arm: the toggle files the pending console's request",
 	);
 	assert.ok(
 		/onOpenCodeReview=\{[\s\S]{0,900}?\(\) =>\s*setCodeReviewPaneOpen\(/.test(

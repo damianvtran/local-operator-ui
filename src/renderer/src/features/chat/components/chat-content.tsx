@@ -4334,6 +4334,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				<InPanelRailHost>
 					<PanelRail
 						sessionId={sessionId ?? null}
+						/* THE CONSOLE'S OWNER, not the transcript's: on a held or refused
+						   first send these differ, and the pane answers only its own
+						   owner (`consoleOwnerForView`, agent review round 2 R2a). */
+						consoleOwner={consoleOwner}
 						runDetails={runDetails ?? null}
 						mcpServers={mcpServers}
 						listOnScreen={listOnScreen}
