@@ -53,6 +53,8 @@ const ROUTE_CHROME_WRAPPER =
 const STRIP_CHROME_ROLE = /data-glass-region="chrome"/;
 const NESTED_CHROME_TRANSPARENT =
 	/html\[data-glass~="pane"\]\s*\[data-browser-route-chrome\]\s*\[data-glass-region="chrome"\]\s*\{\s*background-color: transparent;\s*\}/;
+const CONSOLE_PANE =
+	"src/renderer/src/features/console/components/console-pane.tsx";
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
@@ -115,11 +117,21 @@ const PANEL_COLUMNS = [
 		],
 	},
 	{
-		path: "src/renderer/src/features/console/components/console-pane.tsx",
-		classes: [
-			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
-			'"panel-top-pad relative flex h-full flex-col bg-elevated @container/consolepane"',
-		],
+		/*
+		 * ONE root, read as tokens. Base kept TWO `panel-top-pad` roots in this file
+		 * - the draft notice's column and the console's own - and this entry listed
+		 * both literals, so it kept asking for a notice this PR deletes along with
+		 * the pad the console really wears. `relative` and `@container/consolepane`
+		 * sit between the pad and the ground, so a literal would also make an
+		 * unrelated utility's position part of the contract; the facts this entry
+		 * exists for (the shared pad, a full-height column, the ground it paints)
+		 * stay independently required instead.
+		 */
+		path: CONSOLE_PANE,
+		root: {
+			marker: 'data-tour-tag="console-pane"',
+			required: ["panel-top-pad", "flex", "h-full", "flex-col", "bg-elevated"],
+		},
 	},
 	{
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
@@ -144,8 +156,48 @@ const PANEL_COLUMNS = [
 	},
 ];
 
+/**
+ * One utility, as a whole token: `bg-elevated` must not be satisfied by
+ * `hover:bg-elevated`, nor `panel-top-pad` by a longer name that merely
+ * contains it.
+ */
+const utility = (token) => new RegExp(`(?<![\\w:./-])${token}(?![\\w/-])`);
+
+/**
+ * Read ONE root element's own class expression, located by the marker attribute
+ * the element carries, and require each utility in it independently.
+ *
+ * Ordered adjacency is deliberately NOT part of the contract: a root grows
+ * utilities between its pad and its ground (`relative`, `@container/*`), and a
+ * literal that pins their order fails on a change that altered nothing about the
+ * strip. What the entry is for survives - drop `panel-top-pad` and the panel's
+ * first row starts under the traffic lights; swap the ground and the strip shows
+ * the wrong tone - because each token is read on its own.
+ */
+function assertRootTokens(path, source, { marker, required }) {
+	const at = source.indexOf(marker);
+	assert.notEqual(
+		at,
+		-1,
+		`${path}: no element carries ${marker}, so this file cannot say which root it is asserting about. A root that lost its marker has to be re-read before this entry can claim anything`,
+	);
+	const open = source.lastIndexOf("className=", at);
+	assert.ok(
+		open !== -1 && at - open < 2000,
+		`${path}: the element carrying ${marker} has no class expression of its own before it - the root is asserted from the element's own class string, so this file must be re-read`,
+	);
+	const expression = source.slice(open, source.indexOf("}", open) + 1);
+	for (const token of required) {
+		assert.match(
+			expression,
+			utility(token),
+			`${path}: the root carrying ${marker} lost \`${token}\`. A panel that does not wear panel-top-pad starts its first row under the traffic lights, and one that paints from y32 leaves the wrong ground in the strip - the seam the operator reported three times`,
+		);
+	}
+}
+
 test("every full-height panel owns the strip and pads its own first row", () => {
-	for (const { path, classes } of PANEL_COLUMNS) {
+	for (const { path, classes = [], root } of PANEL_COLUMNS) {
 		const source = readSource(path);
 		for (const literal of classes) {
 			assert.ok(
@@ -153,6 +205,7 @@ test("every full-height panel owns the strip and pads its own first row", () => 
 				`${path} lost a migrated panel: expected ${literal}. A panel that does not wear panel-top-pad starts its first row under the traffic lights, and one that paints from y32 leaves the wrong ground in the strip - the seam the operator reported three times`,
 			);
 		}
+		if (root) assertRootTokens(path, source, root);
 	}
 });
 
