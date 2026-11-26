@@ -21,12 +21,12 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/app-shell-chat-dark.webp">
-    <source media="(prefers-color-scheme: light)" srcset="./resources/readme/app-shell-chat-light.webp">
-    <img alt="The desktop app with sidebar navigation, two workspace tabs in the title bar, a release checklist in chat, and the message composer below." src="./resources/readme/app-shell-chat-light.webp">
+    <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/team-run-hero-2x-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="./resources/readme/team-run-hero-2x-light.webp">
+    <img alt="Local Operator showing the Product team in the sidebar, the manager dividing checkout recovery work among three agents, and the message composer below." src="./resources/readme/team-run-hero-2x-light.webp" width="840">
   </picture>
   <br />
-  <sub>Local Operator v0.64.8 — sample release checklist conversation.</sub>
+  <sub>Staged Local Operator demo: the Product team splits checkout recovery across three agents.</sub>
 </p>
 
 <br />
