@@ -122,14 +122,18 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** Metadata stays outside the raw frame through all three delivery paths. */
 test("snapshot receipts distinguish direct, buffered replay and adopted live delivery", async () => {
 	const r = rig();
-	const event = () => ({
+	const event = (id, start) => ({
+		streamId: id,
 		kind: "data",
 		data: '{"type":"snapshot"}',
 		receipt: {
-			streamId: "synthetic1",
+			streamId: id,
 			sessionId: "123456abcdef",
 			chars: 19,
-			mainRecordEpochMs: 1,
+			mainFetchStartEpochMs: start,
+			mainHeadersEpochMs: start + 2,
+			mainFirstDataEpochMs: start + 4,
+			mainRecordEpochMs: start + 6,
 			mainFoldMs: 0,
 			mainObserverMs: 0,
 			mainEmitMs: 0,
@@ -139,7 +143,7 @@ test("snapshot receipts distinguish direct, buffered replay and adopted live del
 	const direct = subscribeDesktopStream({ sessionId: "123456abcdef" }, (e) =>
 		seen.push(e),
 	);
-	const a = event();
+	const a = event("a".repeat(32), 100);
 	Object.freeze(a.receipt);
 	Object.freeze(a);
 	r.emit(0, a);
@@ -151,32 +155,66 @@ test("snapshot receipts distinguish direct, buffered replay and adopted live del
 		"contextBridge envelope stays untouched",
 	);
 	direct();
+	capabilities({ journalOrder: false, peerJournalSource: false });
 	prewarmSessionStream("123456abcdef");
-	const b = event();
+	const b = event("b".repeat(32), 200);
+	Object.freeze(b.receipt);
+	Object.freeze(b);
 	r.emit(1, b);
 	assert.equal(seen.length, 1);
 	const adopted = subscribeDesktopStream(
 		{
 			sessionId: "123456abcdef",
-			openFrame: false,
+			openFrame: true,
 			journalOrder: false,
 			peerJournalSource: false,
 		},
 		(e) => seen.push(e),
 	);
 	await flush();
+	assert.equal(r.calls.length, 2, "adoption does not start a replacement GET");
+	assert.equal(r.calls[1].openFrame, true);
 	assert.equal(seen[1].receipt.delivery, "replay");
+	for (const [key, value] of Object.entries(b.receipt))
+		assert.equal(seen[1].receipt[key], value, key);
+	assert.notEqual(seen[1].receipt.streamId, seen[0].receipt.streamId);
 	assert.ok(Number.isFinite(seen[1].receipt.bufferedAt));
 	assert.ok(seen[1].receipt.deliveryAt >= seen[1].receipt.bufferedAt);
-	const c = event();
+	const c = {
+		streamId: b.streamId,
+		kind: "data",
+		data: '{"type":"heartbeat"}',
+	};
 	r.emit(1, c);
-	assert.equal(seen[2].receipt.delivery, "live");
-	assert.equal(seen[2].receipt.bufferedAt, undefined);
+	assert.equal(
+		seen[2].receipt,
+		undefined,
+		"no receipt is attached to later live frames",
+	);
 	assert.deepEqual(
 		seen.map((e) => e.data),
 		[a.data, b.data, c.data],
 	);
 	adopted();
+
+	prewarmSessionStream("123456abcdef");
+	const live = subscribeDesktopStream(
+		{
+			sessionId: "123456abcdef",
+			openFrame: true,
+			journalOrder: false,
+			peerJournalSource: false,
+		},
+		(e) => seen.push(e),
+	);
+	await flush();
+	const d = event("d".repeat(32), 300);
+	r.emit(2, d);
+	assert.equal(r.calls.length, 3);
+	assert.equal(seen[3].receipt.delivery, "live");
+	assert.equal(seen[3].receipt.bufferedAt, undefined);
+	assert.equal(seen[3].receipt.streamId, d.streamId);
+	live();
 });
 
 /**
