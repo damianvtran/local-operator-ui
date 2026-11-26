@@ -23,10 +23,10 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/app-shell-chat-dark.webp">
     <source media="(prefers-color-scheme: light)" srcset="./resources/readme/app-shell-chat-light.webp">
-    <img alt="The app's chat view: an agent's reply, the run details panel with two subagents running, and their shared to-do list." src="./resources/readme/app-shell-chat-light.webp">
+    <img alt="The desktop app with sidebar navigation, two workspace tabs in the title bar, a release checklist in chat, and the message composer below." src="./resources/readme/app-shell-chat-light.webp">
   </picture>
   <br />
-  <sub><code>the app at work</code> — a conversation with an agent, two subagents running beside it, and the to-do list they share.</sub>
+  <sub>Local Operator v0.64.8 — sample release checklist conversation.</sub>
 </p>
 
 <br />
