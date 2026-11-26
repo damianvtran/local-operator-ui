@@ -1,6 +1,5 @@
 /**
- * The sidebar's two PRIMARY rows - `New chat` and `Search` - and the boundary
- * the operator asked the first of them to lose.
+ * The sidebar's `New chat` row and the boundary the operator asked it to lose.
  *
  *     node --test scripts/new-chat-row.test.mjs
  *
@@ -13,14 +12,10 @@
  * the whole fix, which is exactly why it needs a guard - a one-token deletion is
  * also a one-token re-addition.
  *
- * WHAT MOVED, AND WHY THIS FILE MOVED WITH IT. The row used to live in the chat
- * list's own header, under a search field, a disclosure and an `All chats` row.
- * The chat redesign (§C1) makes `New chat` and `Search` the two primary rows at
- * the TOP of the one sidebar, above the destinations, and `All chats` is gone
- * (the list is sectioned by RUNNING / TODAY / THIS WEEK / OLDER instead). So the
- * row's home is `sidebar-navigation.tsx` and the row it has to stay identical to
- * is `Search` beside it - both take one shared `DESTINATION_ROW`, which is where
- * the box they are aligned on lives now.
+ * The chat redesign moved `New chat` from the list header to the top of the
+ * sidebar, above the destinations. It must still use their `DESTINATION_ROW`
+ * box. `Search` used to share that box but is now a global titlebar control,
+ * reachable with the sidebar expanded or collapsed.
  *
  * HOW THIS FILE ASSERTS, AND WHAT THAT COSTS. The sidebar cannot be rendered in
  * isolation - it reads the router, the canonical-sessions store and the desktop
@@ -37,8 +32,8 @@
  * `// no border-control here, see above`, which would satisfy the pin while the
  * attribute was absent and break it once it was present.
  *
- * What this file does NOT prove: that anything is VISIBLE, or that the two rows
- * really land on the same left inset. That is a fact about the box the class
+ * What this file does NOT prove: that anything is VISIBLE, or that New chat
+ * and the destinations really land on the same left inset. That is a fact about the box the class
  * produces, and it is measured from the live DOM in the rig's own geometry
  * assertions (the `l-sidebar` states) rather than from source.
  */
@@ -52,6 +47,9 @@ const ROOT = process.cwd();
 const NAV =
 	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx";
 const source = readFileSync(join(ROOT, NAV), "utf8");
+const SEARCH_ROW = /\bprimaryRow\(\s*Search\b/;
+const TITLEBAR_SEARCH =
+	/data-command-palette-trigger=""(?:(?!<\/Button>)[\s\S])*?onClick=\{\(\) => useUiPreferencesStore\.getState\(\)\.openCommandPalette\(\)\}(?:(?!<\/Button>)[\s\S])*?<Search aria-hidden="true" \/>/;
 
 /** The 8px-on-the-ramp inset `DESTINATION_ROW` supplies, and the box it sits in. */
 const ROW_HEIGHT = /\bh-\[30px\]/;
@@ -68,42 +66,16 @@ const ROW_GAP = /\bgap-2\b/;
 const ROW_BOX_OVERRIDE =
 	/\b(?:p|px|py|pl|pr|pt|pb|h|gap|min-h|space-x)-[^\s"']+/;
 
-/*
- * How the two primary rows may legitimately differ: the label they carry, the
- * cap they print, the chord-wired attribute they are anchored by, and the
- * current/disabled vocabulary `New chat` alone can reach (Search is never the
- * current view and is never disabled, so it declares neither).
- */
-const NEW_CHAT_ONLY_TOKENS = [
-	"disabled:hover:bg-transparent",
-	"disabled:text-ink-disabled",
-];
-
 /**
  * The row's current-draft predicate, which `aria-current` has to agree with.
  *
  * It is `untargetedDraft` now - an untargeted draft is the one this row stages,
- * and a draft WITH a target belongs to its agent's row - and it is declared once
- * above both rows so a second spelling is a failing test rather than a quiet
- * divergence.
+ * and a draft WITH a target belongs to its agent's row.
  */
 const CURRENT_DRAFT_PREDICATE = /current: untargetedDraft/;
 
 const ARIA_CURRENT_PAGE =
 	/aria-current=\{props\.current \? "page" : undefined\}/;
-
-/** The `className={cn(...)}` expression of the row a label is rendered by. */
-const classExpressionFor = (label) => {
-	const labelAt = source.indexOf(`"${label}"`);
-	assert.notEqual(
-		labelAt,
-		-1,
-		`no row renders the label ${JSON.stringify(label)}`,
-	);
-	const lineAt = source.lastIndexOf("\n", labelAt);
-	const call = source.slice(lineAt, source.indexOf("\n", labelAt));
-	return stripComments(call);
-};
 
 /** Comments out of a slice, so prose about a rule cannot satisfy it. */
 function stripComments(text) {
@@ -152,16 +124,12 @@ const classLiterals = (text) =>
 		.map((match) => match[1])
 		.join(" ");
 
-/** One class token, for comparing two rows' own class strings. */
-const WHITESPACE = /\s+/;
-
 /** A border ROLE token, so a future `border-b` divider reads as its own decision. */
 const BORDER_ROLE = /\bborder(-|\b)/;
 
 /*
- * `DESTINATION_ROW`, the shared box both primary rows take - and now also the
- * four destination rows below them, which is why the alignment is stated on the
- * constant rather than on any one row.
+ * `DESTINATION_ROW`, the shared box New chat and the destinations take. Pin
+ * the alignment on the constant rather than on any one row.
  */
 const destinationRow = (() => {
 	const start = source.indexOf("const DESTINATION_ROW =");
@@ -169,10 +137,8 @@ const destinationRow = (() => {
 })();
 
 /**
- * The two primary rows' own class expressions, read through the helper that
- * renders them: `primaryRow` receives the tokens as ARGUMENTS rather than as
- * inline literals, so the pin is on the call sites plus the helper's own
- * `cn(...)` body - which is the one place a border could come back.
+ * New chat takes its classes from `primaryRow`. Pin both the call site and
+ * the helper's `cn(...)` body so neither can reintroduce an inset.
  */
 const primaryRowBody = (() => {
 	const start = source.indexOf("const primaryRow = (");
@@ -192,11 +158,11 @@ test("the primary-row helper declares no boundary of its own", () => {
 	const classes = classLiterals(primaryRowBody);
 	assert.ok(
 		!BORDER_ROLE.test(classes),
-		`the primary rows carry a border role again, so they no longer sit on the destinations' inset:\n${primaryRowBody}`,
+		`New chat carries a border role again, so it no longer sits on the destinations' inset:\n${primaryRowBody}`,
 	);
 	assert.ok(
 		primaryRowBody.includes("DESTINATION_ROW"),
-		"the rows must keep taking DESTINATION_ROW, which is where their box and inset live",
+		"New chat must keep taking DESTINATION_ROW, which supplies the shared box and inset",
 	);
 });
 
@@ -211,52 +177,41 @@ test("DESTINATION_ROW still carries the box the rows are aligned on", () => {
 	// one, so a border here would be a new line on six rows at once.
 	assert.ok(
 		!BORDER_ROLE.test(destinationRow),
-		`DESTINATION_ROW grew a boundary, which every destination and both primary rows now wear:\n${destinationRow}`,
+		`DESTINATION_ROW grew a boundary, which New chat and every destination now wear:\n${destinationRow}`,
 	);
 });
 
-/*
- * The RELATIONSHIP, not the absence of a string.
- *
- * The pin above is an absence check on `border-control`, and the regression it
- * exists for has a second entry that stays invisible to it: an inset added to
- * ONE of the two primary rows. So the property is stated directly, and it is now
- * structural rather than comparative: BOTH rows are rendered by the one helper,
- * and neither call site passes a class string of its own - so the two are the
- * same element twice by construction, and there is no "the pair drifted" state
- * left to test for.
- */
-test("both primary rows come from the one helper, with no class of their own", () => {
-	for (const label of ["New chat", "Search"]) {
-		const at = source.indexOf(
-			`primaryRow(\n\t\t${label === "Search" ? "Search" : "MessageSquarePlus"}`,
-		);
-		assert.notEqual(at, -1, `no primaryRow call renders ${label}`);
-		// The call ends at the `\t);` that closes its argument list, not at the
-		// first `});` in the file - the props object closes with `},` and the
-		// helper's own JSX is further down, so a loose anchor sweeps in other rows.
-		const call = source.slice(at, source.indexOf("\n\t);", at));
-		assert.ok(
-			!call.includes("className"),
-			`${label} declares a class of its own, so the two rows can drift apart:\n${call}`,
-		);
-		assert.equal(
-			classLiterals(call).match(ROW_BOX_OVERRIDE),
-			null,
-			`${label} passes a box override, so it no longer takes DESTINATION_ROW's box:\n${call}`,
-		);
-	}
-	// And the helper is the ONLY place the shared box is named, once.
+test("New chat takes the shared destination box without a row-local inset", () => {
+	const at = source.indexOf("primaryRow(\n\t\tMessageSquarePlus,");
+	assert.notEqual(at, -1, "New chat must use the primaryRow helper");
+	const end = source.indexOf("\n\t);", at);
+	assert.notEqual(end, -1, "the New chat call is not delimited");
+	const call = stripComments(source.slice(at, end));
+	assert.ok(!call.includes("className"), "New chat declares its own classes");
+	assert.doesNotMatch(classLiterals(call), ROW_BOX_OVERRIDE);
+	// The helper must name the shared box once, without a second spelling.
 	assert.equal(
 		(primaryRowBody.match(/DESTINATION_ROW/g) ?? []).length,
 		1,
-		"the helper names the shared box more than once, which is two rows by another name",
+		"the helper must name the shared box exactly once",
 	);
 	assert.equal(
 		(primaryRowBody.match(/disabled:/g) ?? []).length,
 		2,
-		"the disabled vocabulary is one predicate pair on the shared string, not a second rule",
+		"the helper has one disabled predicate pair, not a second rule",
 	);
+});
+
+test("global Search opens the command palette from the titlebar, not a sidebar row", () => {
+	assert.doesNotMatch(stripComments(source), SEARCH_ROW);
+	const controls = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/shared/components/navigation/desktop-navigation-controls.tsx",
+		),
+		"utf8",
+	);
+	assert.match(stripComments(controls), TITLEBAR_SEARCH);
 });
 
 test("the row keeps every affordance that marks it as the action", () => {
@@ -318,6 +273,6 @@ test("the row prints the cap the chord is, from the one module that spells it", 
 	assert.match(
 		primaryRowBody,
 		/<KeyboardShortcut shortcut=\{caps\} joined \/>/,
-		"the rows lost their joined caps, so the chord reads as three marks again",
+		"New chat lost its joined caps, so the chord reads as separate marks again",
 	);
 });

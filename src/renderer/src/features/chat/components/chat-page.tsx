@@ -35,6 +35,7 @@ import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
 } from "@shared/components/composer/message-input";
+import { desktopHistoryKeepsFocus } from "@shared/components/navigation/desktop-navigation-focus";
 import {
 	hasPendingSend,
 	pendingSendForView,
@@ -1976,7 +1977,8 @@ function SessionPanel({
 	 */
 	const paneHasSession = Boolean(sessionId);
 	useEffect(() => {
-		if (draftKey) input.current?.focusInput();
+		if (draftKey && !desktopHistoryKeepsFocus(document.activeElement))
+			input.current?.focusInput();
 	}, [draftKey]);
 	useEffect(() => {
 		if (!sessionId || !canonical.frontend) return;

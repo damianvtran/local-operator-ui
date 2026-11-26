@@ -57,20 +57,11 @@ test("U-1 macOS hides the titlebar while retaining the native traffic lights", (
 	for (const input of [integrated, native]) {
 		assert.deepEqual(
 			titlebarOptions("darwin", input),
-			{ titleBarStyle: "hidden" },
-			"#462's decision is the shipped design and does not vary by mode: it has no fragile dependency to escape from, and the lane the renderer reserves is derived from the OS frame",
+			{ titleBarStyle: "hidden", trafficLightPosition: { x: 12, y: 12 } },
+			"the real controls share the navigation row and never depend on WCO",
 		);
 	}
 	const darwin = titlebarOptions("darwin", integrated);
-	/*
-	 * Each field is named because each is exactly the kind of thing a later "let us
-	 * line the brand up with the lights" or "let us use the WCO geometry on mac too"
-	 * edit adds. `trafficLightPosition` moved them for nothing once already (the note
-	 * on the function records the withdrawal), and macOS WCO would add no pixels
-	 * while handing the renderer a geometry main already reproduces from its own
-	 * full-screen events.
-	 */
-	assert.equal("trafficLightPosition" in darwin, false);
 	assert.equal("titleBarOverlay" in darwin, false);
 	assert.equal("hiddenInset" in darwin, false);
 });
@@ -393,8 +384,8 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	);
 	assert.match(
 		css,
-		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="mac"\]\s*\{[\s\S]*?--chrome-strip-h:\s*32px;/,
-		"#477's 32px lane is a constant on macOS, which deliberately does not enable WCO",
+		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="mac"\]\s*\{[\s\S]*?--chrome-strip-h:\s*40px;/,
+		"Mac traffic lights are centered at y20, with no WCO required",
 	);
 	assert.match(
 		css,

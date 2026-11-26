@@ -354,7 +354,7 @@ test("click: a passkey row lands on its conversation's browser pane with the hel
 		["openTab", 1],
 		["session", "session:a"],
 		["pane", true],
-		["navigate", "/chat"],
+		["navigate", "/chat/session:a"],
 	]);
 });
 
@@ -376,7 +376,7 @@ test("click: a site-access row names the request for the approvals card, and ope
 		["noteConsent", "e1"],
 		["session", "session:b"],
 		["pane", true],
-		["navigate", "/chat"],
+		["navigate", "/chat/session:b"],
 	]);
 });
 

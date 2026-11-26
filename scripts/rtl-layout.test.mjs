@@ -214,7 +214,7 @@ test("one direction provider gives every portalled menu the locale direction", (
 	const entry = source("src/renderer/src/main.tsx");
 	assert.match(
 		entry,
-		/<LocaleDirectionProvider>\s*<App \/>\s*<\/LocaleDirectionProvider>/,
+		/<LocaleDirectionProvider>\s*<DesktopNavigationRouter>\s*<App \/>\s*<\/DesktopNavigationRouter>\s*<\/LocaleDirectionProvider>/,
 		"the provider wraps the app, so menus opened on any route inherit it",
 	);
 	// The logical insets the review names were converted on the primitive; they

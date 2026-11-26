@@ -34,7 +34,8 @@ const row = readFileSync(
 ).match(/export const rowCurrent =\s*("[^"]+")/)[1];
 const SIDEBAR_MODULE = /chat\/components\/chat-sidebar$/;
 const ANY_MODULE = /.*/;
-const SIGN_IN_ROUTE = /#\/settings\?section=radient/;
+const SIGN_IN_HREF = "#/settings?section=radient";
+const SIGN_IN_ANCHOR = `href="${SIGN_IN_HREF}"`;
 const STALE_MARKER = /private-stale-marker/;
 const TRY_AGAIN = /Try again/;
 const bundle = await build({
@@ -46,6 +47,7 @@ const bundle = await build({
  export * from "./src/renderer/src/shared/hooks/radient-account-authority";
  export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
  export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
+ export { HashRouter } from "react-router-dom";
  `,
 		resolveDir: process.cwd(),
 	},
@@ -81,6 +83,8 @@ const m = compiled.exports;
 const error = (status, code) =>
 	new m.DesktopControlError(status, "synthetic refusal", undefined, code);
 const h = React.createElement;
+// Use the same router as the app so the real sign-in Link gets its hash href.
+const inRouter = (child) => h(m.HashRouter, null, child);
 const scope = { accountId: "audit_owner", tenantId: "audit_tenant" };
 function seed() {
 	const client = new m.QueryClient({
@@ -131,10 +135,12 @@ async function mount(response, hook = m.useOwnerAuditConversations) {
 	const show = async (visible, keys = ["probe"]) =>
 		act(async () =>
 			root.render(
-				h(
-					m.QueryClientProvider,
-					{ client },
-					visible ? keys.map((key) => h(Probe, { key })) : null,
+				inRouter(
+					h(
+						m.QueryClientProvider,
+						{ client },
+						visible ? keys.map((key) => h(Probe, { key })) : null,
+					),
 				),
 			),
 		);
@@ -145,6 +151,10 @@ async function mount(response, hook = m.useOwnerAuditConversations) {
 		query: () => query,
 		show,
 		text: () => document.getElementById("root").textContent,
+		links: () =>
+			Array.from(document.querySelectorAll("#root a"), (link) =>
+				link.getAttribute("href"),
+			),
 		close: async () => {
 			await act(async () => root.unmount());
 			client.clear();
@@ -245,13 +255,13 @@ test("four actionable states map from typed errors; permission/not-found have no
 			state,
 		);
 		const markup = renderToStaticMarkup(
-			h(m.AuditFailure, { state, retry() {} }),
+			inRouter(h(m.AuditFailure, { state, retry() {} })),
 		);
 		assert.equal(
 			markup.includes("Try again"),
 			state === "error" || state === "unavailable",
 		);
-		if (state === "auth") assert.match(markup, SIGN_IN_ROUTE);
+		assert.equal(markup.includes(SIGN_IN_ANCHOR), state === "auth");
 		if (state === "permission" || state === "not-found" || state === "auth") {
 			assert.equal(
 				m.readState({
@@ -264,17 +274,20 @@ test("four actionable states map from typed errors; permission/not-found have no
 			);
 		}
 		const rail = renderToStaticMarkup(
-			h(m.OwnerAuditRailView, {
-				conversations: [],
-				state,
-				onSelect() {},
-				retry() {},
-			}),
+			inRouter(
+				h(m.OwnerAuditRailView, {
+					conversations: [],
+					state,
+					onSelect() {},
+					retry() {},
+				}),
+			),
 		);
 		assert.equal(
 			rail.includes("Try again"),
 			state === "error" || state === "unavailable",
 		);
+		assert.equal(rail.includes(SIGN_IN_ANCHOR), state === "auth");
 	}
 	assert.equal(
 		m.readState({ isPending: true, isError: false, auditAuthRequired: true }),
@@ -333,6 +346,7 @@ test("401 without completed refresh waits at most one window and surfaces auth w
 		assert.equal(rig.requests.length, 1);
 		assert.equal(m.auditFailureState(rig.query().error), "auth");
 		assert.ok(Date.now() - start >= m.AUDIT_AUTH_SETTLEMENT_MS);
+		assert.deepEqual(rig.links(), [SIGN_IN_HREF]);
 	} finally {
 		await rig.close();
 	}

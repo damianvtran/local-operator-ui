@@ -20,6 +20,7 @@ import {
 import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
+import { DesktopNavigationControls } from "@shared/components/navigation/desktop-navigation-controls";
 import { t } from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -136,6 +137,8 @@ type ChatLayoutProps = {
 	insetRouteBody?: boolean;
 	/** Stories default to the mounted rail; the app supplies the matched route. */
 	showChatRail?: boolean;
+	/** The desktop shell has a HashRouter; isolated layout stories need not. */
+	showDesktopNavigation?: boolean;
 };
 
 /**
@@ -150,8 +153,6 @@ type ChatLayoutProps = {
 type SidebarFrame = {
 	/** Whether the full sidebar is docked rather than drawn as the icon strip. */
 	expanded: boolean;
-	/** The one control that toggles the user's persisted open/closed preference. */
-	onCollapse: () => void;
 };
 
 const SidebarFrameContext = createContext<SidebarFrame | null>(null);
@@ -177,6 +178,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	routeSidebar = false,
 	insetRouteBody = false,
 	showChatRail = true,
+	showDesktopNavigation = false,
 }) => {
 	/*
 	 * The measured boxes and pane stop are physical coordinates, while the
@@ -590,6 +592,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	return (
 		<div
 			data-workspace-shell=""
+			data-desktop-navigation-shell={showDesktopNavigation ? "" : undefined}
 			className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
 			/*
 			 * THE RAIL'S WIDTH, PUBLISHED FOR THE CSS THAT HAS TO SUBTRACT IT (#872).
@@ -612,7 +615,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			}
 		>
 			{/*
-			 * THE macOS LANE: ONE TRANSPARENT OVERLAY, FOR EVERY ROUTE.
+			 * THE TITLEBAR LANE: ONE TRANSPARENT OVERLAY, FOR EVERY ROUTE.
 			 *
 			 * Electron leaves the native traffic lights over the renderer once the
 			 * title bar is hidden (`src/main/titlebar-options.ts`), so the window has
@@ -627,12 +630,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			 * report of the same seam, 2026-10-20). The columns now reach y0 and
 			 * paint their own ground through the strip - the panel contract in
 			 * `styles/index.css` - and this element is only the drag surface.
-			 * Nothing interactive stands above y32 (each panel pads its own content
-			 * by `--panel-top-pad`), so the overlay has no press to steal.
-			 *
-			 * It is `display: none` outside the mac/leading gate (the rule in
-			 * `styles/index.css`, keyed on the chrome attributes), so a platform
-			 * whose OS is not drawing over the app loses nothing to it.
+			 * The app controls and workspace tabs explicitly opt out of dragging;
+			 * the lane is hidden when the native frame or fullscreen owns the top.
 			 *
 			 * `data-slot-edge` STAYS: it is the geometry handle the evidence rigs
 			 * read the pane's leading edge from, not a paint stop.
@@ -644,6 +643,13 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 				data-slot-edge={slotEdge}
 				className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
 			/>
+			{showDesktopNavigation && (
+				<DesktopNavigationControls
+					expanded={layout.mode === "docked"}
+					routeOwnsSidebar={routeOwnsSidebar}
+					toggleSidebar={toggleSidebar}
+				/>
+			)}
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div
 					ref={leftColumnRef}
@@ -681,7 +687,6 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 						<SidebarFrameContext.Provider
 							value={{
 								expanded: layout.mode === "docked",
-								onCollapse: toggleSidebar,
 							}}
 						>
 							{sidebar}
@@ -741,7 +746,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					className="flex h-full min-w-0 grow flex-col overflow-hidden"
 					style={
 						{
-							"--panel-top-pad": "var(--chrome-strip-h)",
+							"--panel-top-pad":
+								"var(--app-navigation-row-h, var(--chrome-strip-h))",
 						} as CSSProperties
 					}
 				>
