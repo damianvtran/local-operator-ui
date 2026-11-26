@@ -6,6 +6,7 @@ import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
+	BackendUpdateStatus,
 } from "../main/update-service";
 import type {
 	AttachmentUploadResult,
@@ -793,39 +794,7 @@ declare global {
 					callback: (message: string) => void,
 				) => () => void;
 				onBackendUpdateNotAvailable: (
-					callback: (info: {
-						/** The version the INSTALL on disk reports. */
-						version: string;
-						/**
-						 * The version the daemon serving this app reports, when readable.
-						 *
-						 * Carried on this state because it is the one QA Q-1 found: an
-						 * install already at the published version whose daemon still serves
-						 * the old build makes no offer, so the offer's own detail was never
-						 * rendered and the user was told nothing at all.
-						 */
-						runningVersion?: string | null;
-						/** Whether the app may restart the daemon that is behind. */
-						restartable?: boolean;
-						/**
-						 * Whether the check that sent this pair READ the published release.
-						 *
-						 * False is the network-unavailable pass (QA round 3, Q3-1): the
-						 * install/running pair is measured locally, so an offline machine can
-						 * still be told its daemon trails the install - but nothing on that
-						 * pass compared the install against a release, so the renderer's
-						 * sentence may not call it current. Absent means it was read.
-						 */
-						releaseRead?: boolean;
-						/**
-						 * Whether the INSTALL this check read is the app's own environment.
-						 *
-						 * Carried on this state too because it is where the skew panel actually
-						 * appears (install current, daemon behind) - the panel's control takes
-						 * both ownership readings (design D5).
-						 */
-						appOwnedEnvironment?: boolean;
-					}) => void,
+					callback: (info: BackendUpdateStatus) => void,
 				) => () => void;
 				onBackendUpdateCompleted: (
 					callback: (completion: BackendUpdateCompletion | null) => void,
