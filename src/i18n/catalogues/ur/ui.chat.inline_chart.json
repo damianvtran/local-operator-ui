@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "مزید:",
+	"ui.chat.inline_chart.data_toggle": "چارٹ کا ڈیٹا",
+	"ui.chat.inline_chart.more": "+{count, number} مزید",
+	"ui.chat.inline_chart.no_data": "کوئی ڈیٹا نہیں",
+	"ui.chat.inline_chart.other": "دیگر ({count, number})",
+	"ui.chat.inline_chart.pair": "{label}: {value}",
+	"ui.chat.inline_chart.position": "{count, number} میں سے {index, number}",
+	"ui.chat.inline_chart.right_axis": "{label} · دایاں محور",
+	"ui.chat.inline_chart.role": "چارٹ",
+	"ui.chat.inline_chart.share_of_total": "کل کا {share}",
+	"ui.chat.inline_chart.total": "کل"
+}

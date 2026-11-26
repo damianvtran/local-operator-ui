@@ -1,0 +1,32 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4294254e545e-inlinechart-zh-cn",
+	"date": "2026-11-26",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer session 4294254e545e), not the translator (desktop coder subagent). Read committed bytes of PR #2137 at 865f4cd3fac0; authored no translation. Same served model as the translator (anthropic/claude-opus-5-5): disclosed.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2137,
+	"head": "865f4cd3fac0",
+	"scope": "All 11 keys of ui.chat.inline_chart against en + en context and their renderer call sites: meaning, terse idiom, ICU args byte-identical, NFC, no Cc/Cf, full-width punctuation (：（）), Han/Latin spacing per zh-CN style guide, length, role/announcement suitability ('第 N 项，共 M 项' position); compared with audited relay.chart and native mobile.session.inline_chart_data. data_toggle matches native '图表数据'.",
+	"namespace": "ui.chat.inline_chart",
+	"status": "passed",
+	"sha256": {
+		"en": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+		"zh-CN": "f99dd24dd28d340e8b75050910baa9ee30c05d78f7c47c5b56625180ed74a25e",
+		"context": "1a53d28f36f64e2a4e9efd72087c1c8ab84ee35ad580a99d0035a745669a8525",
+		"style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"findings": [
+		{
+			"id": "zh-m1",
+			"severity": "MINOR",
+			"key": "ui.chat.inline_chart.more, ui.chat.inline_chart.position, ui.chat.inline_chart.share_of_total",
+			"status": "deferred",
+			"issue": "Spaces between Han text and the number placeholders. zh-CN style guide (Punctuation & typography): 'No space inserted between Chinese text and Latin/digit runs'; existing zh-CN ui.* catalogues are unspaced 2713 vs 190 spaced (e.g. 'Mermaid图表错误'). The audited relay/native equivalents carry the same spaces, so this is consistent across surfaces but off-guide.",
+			"fix": "more: '另有{count, number}项'; position: '第{index, number}项，共{count, number}项'; share_of_total: '占总数的{share}'"
+		}
+	],
+	"resolved": []
+}

@@ -135183,6 +135183,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "284aa8c52b18ceab994d6366b129064e6bb9e404a527370c631a956d38de2645",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean",
+					"instance": "4294254e545e-inlinechart-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-es.json",
+					"receipt_sha256": "78b3c0787f5961e3103420bbd86786c17341c3c6df4acd40860ccd773d483795",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "f4672b08f6fe8f4e96234e07451a3efab9048a873220928de2ce0ae5d8268a64",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean",
+					"instance": "4294254e545e-inlinechart-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-ru.json",
+					"receipt_sha256": "99f1a22a252eba023d6b65c538f3acff1e68a5991694a908c532a5c6dbbe4d39",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "c0c0d38fd7c99aada91cfb7a3dc80eb624eb68f8002afbe6dff53ad9b77ac31f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean",
+					"instance": "4294254e545e-inlinechart-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-ur.json",
+					"receipt_sha256": "df0004bc16d5ca8e1025174767daf4536e34e87eb46ca57f57dd005bffa08f65",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "2a880111d89a5f45cd517cbabc20ef8f3491eb0f4e926b24e917f95049b2ae48",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean-with-findings",
+					"instance": "4294254e545e-inlinechart-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-fr.json",
+					"receipt_sha256": "11fa343c262ce0fad9e2e83e46533a4f7c7161431d91c7c8708e8072c4769253",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. Findings deferred in receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "34dab596d2ad52a48ad3bec7fbbb138da99bf224d875f39025623366e8338c87",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean-with-findings",
+					"instance": "4294254e545e-inlinechart-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-vi.json",
+					"receipt_sha256": "b5a309b9084e7322c9ad712a468451d23ae50c8114ba2bd603ad7f5ed93e2fc7",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. Findings deferred in receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "f99dd24dd28d340e8b75050910baa9ee30c05d78f7c47c5b56625180ed74a25e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean-with-findings",
+					"instance": "4294254e545e-inlinechart-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-zh-cn.json",
+					"receipt_sha256": "350f84265e5bc9a0de3ed09b93a86deeb2fd9f92030ce158ab42ceb49390f5c8",
+					"scope": "PR #2137 round 1 @ 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. Findings deferred in receipt."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.inline_chart",
+			"source_sha256": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+			"target_sha256": "50412154d7b98ced3b2241effe5ef39ac5659c95e49776250cb8c1d92d651034",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-26"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-26",
+					"result": "clean",
+					"instance": "4294254e545e-inlinechart-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4294254e545e-inlinechart-hi.json",
+					"receipt_sha256": "75271cfa82640d965da69befb19db5143d92571ff5d243338534f1a7064e0adc",
+					"scope": "PR #2137 round 2 (hi data_toggle fix) on 865f4cd",
+					"note": "Auditor (reviewer 4294254e545e) and translator (desktop coder) share served model anthropic/claude-opus-5-5: disclosed. Round-1 hi-M1 resolved."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

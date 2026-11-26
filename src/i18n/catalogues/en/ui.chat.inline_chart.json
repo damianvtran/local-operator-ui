@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "Also:",
+	"ui.chat.inline_chart.data_toggle": "Chart data",
+	"ui.chat.inline_chart.more": "+{count, number} more",
+	"ui.chat.inline_chart.no_data": "No data",
+	"ui.chat.inline_chart.other": "Other ({count, number})",
+	"ui.chat.inline_chart.pair": "{label}: {value}",
+	"ui.chat.inline_chart.position": "{index, number} of {count, number}",
+	"ui.chat.inline_chart.right_axis": "{label} · right axis",
+	"ui.chat.inline_chart.role": "chart",
+	"ui.chat.inline_chart.share_of_total": "{share} of total",
+	"ui.chat.inline_chart.total": "Total"
+}

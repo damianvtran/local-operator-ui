@@ -32,11 +32,18 @@
  * Legibility and distinguishability are different properties and need
  * different maths.
  */
-export const toLab = (hex) => {
-	const [r, g, b] = [1, 3, 5].map((i) => {
-		const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
-		return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-	});
+export const toLab = (hex) =>
+	linearToLab(
+		[1, 3, 5].map((i) => {
+			const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+			return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		}),
+	);
+
+/** CIELAB (D65) from LINEAR sRGB channels. Split out of `toLab` for the chart
+ * palette, which measures colour-vision simulations in linear light and must
+ * not round them to a hex first (rounding flips near-tied greedy picks). */
+export const linearToLab = ([r, g, b]) => {
 	const X = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
 	const Y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
 	const Z = (r * 0.0193339 + g * 0.119192 + b * 0.9503041) / 1.08883;
@@ -46,9 +53,10 @@ export const toLab = (hex) => {
 };
 
 /** CIEDE2000 difference between two hex colours. */
-export const deltaE = (h1, h2) => {
-	const [L1, a1, b1] = toLab(h1);
-	const [L2, a2, b2] = toLab(h2);
+export const deltaE = (h1, h2) => deltaELab(toLab(h1), toLab(h2));
+
+/** CIEDE2000 difference between two CIELAB triples. */
+export const deltaELab = ([L1, a1, b1], [L2, a2, b2]) => {
 	const RAD = Math.PI / 180;
 	const DEG = 180 / Math.PI;
 	const Cb = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;

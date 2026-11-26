@@ -1,0 +1,23 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4294254e545e-inlinechart-ur",
+	"date": "2026-11-26",
+	"locale": "ur",
+	"independence": "Independent i18n auditor (lopdev reviewer session 4294254e545e), not the translator (desktop coder subagent). Read committed bytes of PR #2137 at 865f4cd3fac0; authored no translation. Same served model as the translator (anthropic/claude-opus-5-5): disclosed.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2137,
+	"head": "865f4cd3fac0",
+	"scope": "All 11 keys of ui.chat.inline_chart against en + en context and their renderer call sites: meaning, idiom (Urdu, not Hindi-ised), register, ICU args byte-identical, NFC, no Cc/Cf or manual bidi controls, Latin digits, length, role/announcement suitability ('M میں سے N' position); compared with audited relay.chart and native mobile.session.inline_chart_data. data_toggle matches native 'چارٹ کا ڈیٹا'.",
+	"namespace": "ui.chat.inline_chart",
+	"status": "passed",
+	"sha256": {
+		"en": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+		"ur": "c0c0d38fd7c99aada91cfb7a3dc80eb624eb68f8002afbe6dff53ad9b77ac31f",
+		"context": "1a53d28f36f64e2a4e9efd72087c1c8ab84ee35ad580a99d0035a745669a8525",
+		"style_guide": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"findings": [],
+	"resolved": []
+}

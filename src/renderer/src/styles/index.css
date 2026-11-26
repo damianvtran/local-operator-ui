@@ -1622,6 +1622,19 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 	   which is a step on the button's ramp and promises nothing about the ground
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */
 	--color-chart-bar-hover: var(--lo-chart-bar-hover);
+	/* Categorical chart slots (series 1-4, pie slices 1-6). DERIVED from the
+	   composed palette by `src/shared/theme-engine/chart-palette.mjs` and emitted
+	   by `paletteBlock`, so every built-in, contrast preset and custom accent has
+	   them; slot 1 is the accent. Distinct hues at >= 3.05:1 on every ground, never
+	   shades of the accent (inline chart spec section 4). The accent fallback only
+	   covers a partial capture palette that carries no canvas/accent pair. */
+	--color-chart-1: var(--lo-chart-1, var(--lo-accent));
+	--color-chart-2: var(--lo-chart-2, var(--lo-accent));
+	--color-chart-3: var(--lo-chart-3, var(--lo-accent));
+	--color-chart-4: var(--lo-chart-4, var(--lo-accent));
+	--color-chart-5: var(--lo-chart-5, var(--lo-accent));
+	--color-chart-6: var(--lo-chart-6, var(--lo-accent));
+	--color-chart-7: var(--lo-chart-7, var(--lo-accent));
 
 	/* The composer's structured-token ink, for the leading `/word` a user typed:
 	   its own role because `info` is the accent's twin in three palettes and the

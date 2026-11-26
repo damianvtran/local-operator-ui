@@ -1,0 +1,93 @@
+{
+	"ui.chat.inline_chart.also": {
+		"role": "lead-in before a one-line list of pie slices too small to label on the chart",
+		"tone": "plain, sentence case",
+		"length": "One or two words; followed by items like 'A 2.1%, B 0.8%'.",
+		"note": "Meta-size text under a donut chart in a chat answer.",
+		"placeholders": {}
+	},
+	"ui.chat.inline_chart.data_toggle": {
+		"role": "button that expands the exact values behind an inline chart as a table",
+		"tone": "noun phrase, sentence case, no verb",
+		"length": "Two or three words; sits under the chart beside a chevron.",
+		"note": "Collapsed by default. The same label ships on the mobile app and the relay web viewer, keep it a short noun phrase.",
+		"placeholders": {}
+	},
+	"ui.chat.inline_chart.more": {
+		"role": "suffix in a pie chart tooltip after up to eight folded items, counting the rest",
+		"tone": "terse",
+		"length": "Very short.",
+		"note": "Shown in the tooltip of the 'Other' slice.",
+		"placeholders": {
+			"count": "number of further items not listed"
+		}
+	},
+	"ui.chat.inline_chart.no_data": {
+		"role": "tooltip for a heatmap cell whose value is missing",
+		"tone": "plain statement",
+		"length": "Two or three words.",
+		"note": "The cell is drawn hatched instead of filled.",
+		"placeholders": {}
+	},
+	"ui.chat.inline_chart.other": {
+		"role": "label of the pie chart slice that groups the smallest items",
+		"tone": "plain noun",
+		"length": "Short; appears as a slice label, legend row and tooltip heading.",
+		"note": "Pie charts with more than seven items keep the six largest and fold the rest into this slice.",
+		"placeholders": {
+			"count": "how many items were folded into the slice"
+		}
+	},
+	"ui.chat.inline_chart.pair": {
+		"role": "one line of a scatter-plot tooltip pairing an axis name with a value",
+		"tone": "neutral",
+		"length": "Placeholders dominate.",
+		"note": "Follow the locale's colon spacing convention.",
+		"placeholders": {
+			"label": "axis name authored by the assistant, e.g. 'Response time (ms)'",
+			"value": "formatted number"
+		}
+	},
+	"ui.chat.inline_chart.position": {
+		"role": "screen-reader position of the focused chart mark within its series",
+		"tone": "terse",
+		"length": "Very short.",
+		"note": "Read aloud after the mark's label and value, e.g. 'Nov 18, Spend, 140.61 USD, 3 of 9'.",
+		"placeholders": {
+			"index": "1-based position of the mark",
+			"count": "number of marks"
+		}
+	},
+	"ui.chat.inline_chart.right_axis": {
+		"role": "chart legend entry for a series plotted against the right-hand axis",
+		"tone": "terse, sentence case",
+		"length": "Label plus two or three words.",
+		"note": "Dual-axis charts draw the right-axis series dashed; this names which axis it reads against.",
+		"placeholders": {
+			"label": "series name authored by the assistant, e.g. 'Latency'"
+		}
+	},
+	"ui.chat.inline_chart.role": {
+		"role": "accessible role description announced for an inline chart",
+		"tone": "lowercase common noun, as screen readers announce role names",
+		"length": "One word.",
+		"note": "Used as aria-roledescription, so a screen reader says e.g. 'Revenue by region, chart'.",
+		"placeholders": {}
+	},
+	"ui.chat.inline_chart.share_of_total": {
+		"role": "tooltip line giving a mark's share of the whole",
+		"tone": "terse",
+		"length": "Short.",
+		"note": "Shown for pie slices, percent and stacked bars, e.g. '38.2% of total'.",
+		"placeholders": {
+			"share": "formatted percentage including its percent sign"
+		}
+	},
+	"ui.chat.inline_chart.total": {
+		"role": "label for a sum: the centre of a donut at rest and the last row of a stacked-bar tooltip",
+		"tone": "plain noun",
+		"length": "One word.",
+		"note": "Meta-size text.",
+		"placeholders": {}
+	}
+}
