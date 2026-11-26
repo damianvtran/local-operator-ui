@@ -10806,6 +10806,8 @@ export function ChatSidebar({
 								 */
 								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
 								data-sidebar-view-panel
+								/* Finish only: preserve the shared popover material and scroll cap. */
+								data-lo-floating-finish=""
 							>
 								<ChatSidebarViewMenu
 									view={view}

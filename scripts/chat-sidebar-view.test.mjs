@@ -1956,6 +1956,18 @@ test("a hidden section cannot move, and a hidden neighbour makes a new one adjac
 	assert.equal(canMoveSection(shuffled, "today", 1), true);
 });
 
+const VIEW_POPOVER_ROOT =
+	/<PopoverContent\b[^>]*\bdata-sidebar-view-panel\b[^>]*/;
+const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
+
+test("the live View options root opts into the shared floating finish", () => {
+	const source = readFileSync(SIDEBAR, "utf8").replace(BLOCK_COMMENT, "");
+	// The wash belongs on the panel edge, not on the first scrollable group
+	// or on the adjacent Create popover, which is not part of this adoption.
+	const root = source.match(VIEW_POPOVER_ROOT);
+	assert.ok(root?.[0].includes('data-lo-floating-finish=""'));
+});
+
 test("the component draws the band's controls and the popover's four groups", () => {
 	// The markup assertions this suite can make about a component it cannot
 	// render: the three icon-only buttons exist, each is named for a screen

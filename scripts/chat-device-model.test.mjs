@@ -36,6 +36,19 @@ const code = (path) =>
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/(^|[^:])\/\/.*$/gm, "$1");
 
+const DEVICE_PICKER_ROOT =
+	/<DropdownMenuContent\b[^>]*\bdata-device-picker=""[^>]*/;
+
+test("the Device picker root opts into the shared floating finish", () => {
+	const source = code(
+		"src/renderer/src/features/chat/device/chat-header-device.tsx",
+	);
+	// The primitive owns the ground and shadow; putting the finish on an inner
+	// list would move the wash into the scrolling ink instead of the panel edge.
+	const root = source.match(DEVICE_PICKER_ROOT);
+	assert.ok(root?.[0].includes('data-lo-floating-finish=""'));
+});
+
 const bundle = await build({
 	stdin: {
 		contents: [
