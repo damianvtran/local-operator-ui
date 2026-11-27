@@ -836,6 +836,19 @@ for (const mode of [
 	test(`actual native drive rejects ${mode}`, async () => {
 		const ctx = oracleContext(mode);
 		await assert.rejects(modelUncertaintyCase.drive(ctx));
+		if (mode === "unconsumed-get") {
+			const diagnostic = ctx.stamps.find(
+				(entry) =>
+					entry.label === "post-frame-transition:consumer-diagnostic-model-get",
+			);
+			assert(
+				diagnostic,
+				"failure must persist diagnostic metadata before cleanup",
+			);
+			assert.equal(diagnostic.value.matching_receipt, null);
+			assert.equal(diagnostic.value.renderer_request_token, "unavailable");
+			assert(diagnostic.value.polls > 0);
+		}
 	});
 }
 

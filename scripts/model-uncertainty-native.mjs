@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { consumptionTelemetry } from "./model-consumption-telemetry.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
 
 export function verifyModelExitArtifacts(output) {
@@ -1240,12 +1241,13 @@ export const modelUncertaintyCase = {
 			realBackend: backend,
 		} = ctx;
 		assert(backend);
-		const trace = async (start = false) => {
+		const trace = async (start = false, onObserved = undefined) => {
 			const result = await api.verb(
 				cdp,
 				"modelAuthority",
 				start ? { start: true } : {},
 			);
+			onObserved?.(result);
 			assert.equal(result.armed, true, "real consumer observer is not armed");
 			assert.equal(result.fault, false, "consumer witness failed/truncated");
 			return result;
@@ -1274,20 +1276,47 @@ export const modelUncertaintyCase = {
 				"original carrier has no seq witness",
 			);
 			let receipt;
-			await waitFor(async () => {
-				const observed = await trace();
-				receipt = observed.receipts
-					.slice(after)
-					.find(
-						(r) =>
-							r.carrier === carrier &&
-							r.sessionId === backend.sessionId &&
-							r.epoch === authority.epoch &&
-							r.seq === authority.seq &&
-							r.disposition === disposition,
+			let pollError;
+			const telemetry = consumptionTelemetry(
+				capture,
+				{
+					carrier,
+					sessionId: backend.sessionId,
+					epoch: authority.epoch,
+					seq: authority.seq,
+					disposition,
+				},
+				after,
+			);
+			try {
+				await waitFor(async () => {
+					const observed = await trace(false, (result) =>
+						telemetry.observe(result),
 					);
-				return Boolean(receipt);
-			}, 15_000);
+					receipt = observed.receipts
+						.slice(after)
+						.find(
+							(r) =>
+								r.carrier === carrier &&
+								r.sessionId === backend.sessionId &&
+								r.epoch === authority.epoch &&
+								r.seq === authority.seq &&
+								r.disposition === disposition,
+						);
+					return Boolean(receipt);
+				}, 15_000);
+			} catch (error) {
+				pollError = error;
+				throw error;
+			} finally {
+				// Persist even when the original completion assertion fails; stamp
+				// writes measurements before the owning finally drains app/backend.
+				if (record)
+					stamp(
+						`post-frame-transition:consumer-diagnostic-${carrier}`,
+						telemetry.finish(receipt, pollError),
+					);
+			}
 			assert(
 				receipt,
 				`released ${carrier} was dropped/unconsumed; no frame substitutes for completion`,
@@ -1512,7 +1541,17 @@ export const modelUncertaintyCase = {
 		await fence("model-b-sse-get-pending");
 		await noWrites();
 		const freshCursor = (await trace()).receipts.length;
+		stamp("post-frame-transition:model-get-release-requested", {
+			driver_monotonic_ms: performance.now(),
+			capture_id: fresh.id,
+			request_index: fresh.request_index,
+			correlation_token: fresh.telemetry?.correlation_token ?? null,
+			renderer_request_token: "unavailable",
+		});
 		await backend.control("release", { indices: [fresh.id] });
+		stamp("post-frame-transition:model-get-release-acknowledged", {
+			driver_monotonic_ms: performance.now(),
+		});
 		await consumed("model-get", fresh, "live", freshCursor);
 		const assertB = async (label) => {
 			const value = await geometry(label);

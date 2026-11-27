@@ -56,6 +56,36 @@ class Contracts(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"".join(x.get("body", b"") for x in sent), original)
         self.assertEqual(len(gate.captures), 1)
 
+    async def test_gateway_telemetry_times_release_without_claiming_renderer_identity(self):
+        gate = module.DeliveryGate()
+        gate.session_id = "aaaaaaaaaaaa"
+        gate.hold_reads = True
+        async def app(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200})
+            await send({"type": "http.response.body", "body": b"original"})
+        task = asyncio.create_task(self.invoke(app, gate))
+        for _ in range(20):
+            if gate.captures:
+                break
+            await asyncio.sleep(0)
+        telemetry = gate.captures[0]["telemetry"]
+        self.assertNotIn("response_send_ms", telemetry)  # held is not delivered
+        self.assertNotIn("release_ms", telemetry)
+        gate.release([0])
+        released = telemetry["release_ms"]
+        gate.release([0])
+        self.assertEqual(telemetry["release_ms"], released)
+        await asyncio.wait_for(task, 1)
+        self.assertLessEqual(telemetry["request_start_ms"], telemetry["hold_ms"])
+        self.assertLessEqual(telemetry["hold_ms"], telemetry["release_ms"])
+        self.assertLessEqual(telemetry["release_ms"], telemetry["response_send_ms"])
+        self.assertTrue(telemetry["response_complete"])
+        self.assertEqual(telemetry["renderer_request_token"], "unavailable")
+        self.assertIsNone(telemetry["remaining_client_budget_ms"])
+        self.assertRegex(telemetry["correlation_token"], r"^gateway-[a-f0-9]{32}-0$")
+        self.assertNotIn("original", json.dumps(telemetry))
+        self.assertEqual(telemetry["elapsed_at_release_ms"], released - telemetry["request_start_ms"])
+
     async def test_gate_never_polices_default_writes(self):
         gate = module.DeliveryGate()
         gate.hold_reads = True
