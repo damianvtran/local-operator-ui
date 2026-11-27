@@ -86,9 +86,9 @@ export function useWorkspaceTabs(
 	);
 	const removeInactive = useCallback(
 		(keys: ReadonlySet<string>, stillCurrent: () => boolean) => {
-			// Only a matching expiry reply takes this synchronous path. React can
-			// cache an eager updater before commit; commit the strip and its layout-
-			// effect preference write before input, feed, or opt-out can interleave.
+			// Commit only the strip after a guarded expiry; never discard a draft or
+			// session. React can cache an eager updater, so commit the strip and its
+			// layout-effect preference write before input, feed, or opt-out can interleave.
 			flushSync(() => {
 				if (
 					!stillCurrent() ||

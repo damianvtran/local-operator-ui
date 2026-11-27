@@ -76,8 +76,9 @@ let current;
  * tests that assert the no-survivor fallback lands on a real draft.
  */
 const pageStartDraft = () => {
-	canonical.getState().stageDraft(undefined, true);
+	const key = canonical.getState().stageDraft(undefined, true);
 	navigate("/chat");
+	return key;
 };
 function Fixture({ feedAvailable, realDraft }) {
 	current = useWorkspaceTabs(
@@ -123,6 +124,7 @@ async function mount(
 		forgotten: {},
 		drafts,
 		statusUnavailable: [],
+		placementFacts: {},
 	});
 	canonical.getState().setActiveSession(A);
 	composer.setState({ inputByConversation: input });
@@ -255,14 +257,27 @@ function installTransport(
 	{
 		answer = (requested) => result(requested.map((id) => wireRow(id))),
 		startEpoch = epoch,
+		consoleState = () => ({ available: true, surfaces: [] }),
 	} = {},
 ) {
+	const consoleListeners = new Set();
+	const consoleCalls = [];
 	const listeners = new Set();
 	const states = new Set();
 	const calls = [];
 	const errors = [];
 	let initialWatch = 0;
 	dom.window.api = {
+		console: {
+			state: (id) => {
+				consoleCalls.push(id);
+				return consoleState(consoleCalls.length);
+			},
+			onStateChanged: (f) => {
+				consoleListeners.add(f);
+				return () => consoleListeners.delete(f);
+			},
+		},
 		desktop: {
 			request: (request) => {
 				// The native bridge validates this schema and uses this endpoint
@@ -316,6 +331,10 @@ function installTransport(
 	};
 	return {
 		calls,
+		consoleCalls,
+		consoleChanged: () => {
+			for (const f of consoleListeners) f();
+		},
 		watches: () => initialWatch,
 		subscriptions: () => listeners.size + states.size,
 		disconnect: () => {
@@ -391,7 +410,11 @@ test("cold proof arms without new frames; one fresh batch drops only untouched l
 		rows.find((row) => row.session_id === J),
 		{ locality: "remote" },
 	);
-	const feed = installTransport(t);
+	const feed = installTransport(t, {
+		// I remains off-page: it can be requested but Core cannot decorate it.
+		answer: (requested) =>
+			result(requested.filter((id) => id !== I).map((id) => wireRow(id))),
+	});
 	await mount(t, {
 		feedAvailable: true,
 		ids: open,
@@ -412,17 +435,17 @@ test("cold proof arms without new frames; one fresh batch drops only untouched l
 	assert.deepEqual(tabSnapshot(), { rendered: open, saved: open });
 	await enable();
 	assert.equal(feed.watches(), 1);
-	assert.deepEqual(feed.calls, [[L, M, B]]);
+	assert.deepEqual(feed.calls, [[I, L, M, B]]);
 	await act(() => current.move(find(G).key, find(C).key));
 	const reordered = ids();
 	assert.notDeepEqual(reordered, open);
 	await tick(WORKSPACE_INACTIVE_MS - 1);
-	assert.deepEqual(feed.calls, [[L, M, B]]);
+	assert.deepEqual(feed.calls, [[I, L, M, B]]);
 	assert.deepEqual(ids(), reordered);
 	await tick(1);
 	assert.deepEqual(feed.calls, [
-		[L, M, B],
-		[L, M, B],
+		[I, L, M, B],
+		[I, L, M, B],
 	]);
 	const kept = reordered.filter((id) => ![B, L, M].includes(id));
 	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
@@ -433,6 +456,322 @@ test("cold proof arms without new frames; one fresh batch drops only untouched l
 		"probe and drop do not edit catalogue rows",
 	);
 	assert.equal(canonical.getState().activeSessionId, A);
+});
+
+test("a page miss retries on the next interval and must earn two fresh matching receipts", async (t) => {
+	const feed = installTransport(t, {
+		answer: (_requested, count) =>
+			count === 2 ? result([wireRow(A)]) : result([wireRow(B)]),
+	});
+	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	assert.ok(find(B));
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	await tick(1);
+	assert.deepEqual(feed.calls, [[B], [B], [B]]);
+	assert.ok(find(B), "a miss breaks the chain even when the revision returns");
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [[B], [B], [B], [B]]);
+	assert.deepEqual(tabSnapshot(), { rendered: [A], saved: [A] });
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.equal(feed.calls.length, 4, "closed tabs no longer need probes");
+});
+
+test("a full batch of page misses cannot starve the 501st background tab's two receipts", async (t) => {
+	const offPage = Array.from({ length: 500 }, (_, index) =>
+		index.toString(16).padStart(12, "0"),
+	);
+	const feed = installTransport(t, {
+		answer: (requested) => result(requested.includes(B) ? [wireRow(B)] : []),
+	});
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A, ...offPage, B],
+		rows: rowsFor([A, B]),
+	});
+	const tick = withClock(t);
+	const requests = () => feed.calls.map((ids) => [ids.length, ids.includes(B)]);
+	await enable();
+	assert.deepEqual(requests(), [
+		[500, false],
+		[1, true],
+	]);
+	assert.deepEqual(feed.calls[0], offPage);
+	assert.deepEqual(feed.calls[1], [B]);
+	assert.ok(find(B), "one receipt does not close the tab");
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.equal(feed.calls.length, 2, "page misses do not retry early");
+	assert.ok(find(B));
+	await tick(1);
+	assert.deepEqual(feed.calls, [offPage, [B], offPage, [B]]);
+	const kept = [A, ...offPage];
+	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
+});
+
+test("501st background tab churn does not replay the other 500 IDs", async (t) => {
+	const batch = Array.from({ length: 500 }, (_, index) =>
+		index.toString(16).padStart(12, "0"),
+	);
+	const [visible, ...offPage] = batch;
+	const arm = Promise.withResolvers();
+	const expiry = Promise.withResolvers();
+	const feed = installTransport(t, {
+		answer: (requested, count) =>
+			count === 1
+				? arm.promise
+				: count === 3
+					? expiry.promise
+					: result(requested.includes(B) ? [wireRow(B)] : []),
+	});
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A, ...batch, B],
+		rows: rowsFor([A, visible, B]),
+	});
+	const tick = withClock(t);
+	const requests = () => feed.calls.map((ids) => [ids.length, ids.includes(B)]);
+	await enable();
+	assert.deepEqual(feed.calls, [batch]);
+	await act(() => current.pin(find(B).key));
+	await act(() => current.pin(find(B).key));
+	await act(() => arm.resolve(result([wireRow(visible)])));
+	assert.deepEqual(
+		requests(),
+		[
+			[500, false],
+			[1, true],
+		],
+		"off-batch membership does not replay the arm request",
+	);
+	assert.ok(find(visible));
+	assert.ok(find(B));
+
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [batch, [B], batch]);
+	await act(() => {
+		feed.status("complete");
+		expiry.resolve(result([wireRow(visible)]));
+	});
+	assert.deepEqual(
+		requests(),
+		[
+			[500, false],
+			[1, true],
+			[500, false],
+			[1, true],
+		],
+		"off-batch status does not replay the expiry request",
+	);
+	const kept = [A, ...offPage];
+	const waiting = [...kept, B];
+	assert.deepEqual(tabSnapshot(), { rendered: waiting, saved: waiting });
+	assert.equal(canonical.getState().activeSessionId, A);
+	assert.equal(dom.window.location.hash, `#/chat/${A}`);
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.equal(
+		feed.calls.length,
+		4,
+		"the waiting tab starts a new full interval",
+	);
+	assert.ok(find(B), "the status frame broke its earlier proof chain");
+	await tick(1);
+	assert.deepEqual(feed.calls.slice(4), [[...offPage, B]]);
+	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
+});
+
+test("a tab not in the cached catalogue can age only on fresh Core receipts", async (t) => {
+	const feed = installTransport(t);
+	await mount(t, { feedAvailable: true, rows: rowsFor([A]) });
+	const tick = withClock(t);
+	await enable();
+	assert.deepEqual(feed.calls, [[B]]);
+	assert.ok(find(B));
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	assert.deepEqual(tabSnapshot(), { rendered: [A], saved: [A] });
+});
+
+test("an empty background draft ages out of the strip without discarding its canonical row", async (t) => {
+	const feed = installTransport(t);
+	await mount(t, { feedAvailable: true, ids: [A] });
+	const tick = withClock(t);
+	let draft;
+	await act(() => {
+		draft = pageStartDraft();
+	});
+	await act(() => {
+		canonical.getState().setActiveSession(A);
+		navigate(`/chat/${A}`);
+	});
+	assert.ok(find(draft));
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.ok(find(draft), "opt-in is still required");
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.ok(find(draft));
+	const row = canonical.getState().drafts[draft];
+	await tick(1);
+	assert.deepEqual(tabSnapshot(), { rendered: [A], saved: [A] });
+	assert.equal(canonical.getState().drafts[draft], row);
+	assert.deepEqual(
+		feed.calls,
+		[],
+		"drafts are local strip state, not Core IDs",
+	);
+	assert.deepEqual(feed.consoleCalls, ["draft:local-console"]);
+	await act(() => canonical.getState().openDraft(draft));
+	assert.ok(find(draft), "the same canonical draft can be reopened");
+});
+
+test("draft reconciliation preserves selected, pinned, text, attachments and admission work", async (t) => {
+	const feed = installTransport(t);
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A],
+		rows: [{ ...cold, session_id: A, active: true }],
+	});
+	const tick = withClock(t);
+	const stage = async () => {
+		let key;
+		await act(() => {
+			key = pageStartDraft();
+		});
+		return key;
+	};
+	const empty = await stage();
+	const pinned = await stage();
+	await act(() => current.pin(find(pinned).key));
+	const text = await stage();
+	await act(() => composer.getState().setCurrentInput(text, "still composing"));
+	const attachments = await stage();
+	await act(() =>
+		composer.getState().addAttachment(attachments, {
+			id: "chip",
+			path: "/fixture.txt",
+			name: "fixture.txt",
+		}),
+	);
+	const sending = await stage();
+	const uncertain = await stage();
+	await act(() =>
+		canonical.setState((state) => ({
+			drafts: {
+				...state.drafts,
+				[sending]: { ...state.drafts[sending], pending: true },
+				[uncertain]: { ...state.drafts[uncertain], admissionAttempted: true },
+			},
+		})),
+	);
+	const active = await stage();
+	await enable();
+	const draftRows = canonical.getState().drafts;
+	const inputRows = composer.getState().inputByConversation;
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(ids(), [
+		A,
+		pinned,
+		text,
+		attachments,
+		sending,
+		uncertain,
+		active,
+	]);
+	assert.equal(find(empty), undefined);
+	assert.equal(canonical.getState().drafts, draftRows);
+	assert.equal(canonical.getState().activeDraftKey, active);
+	assert.equal(composer.getState().inputByConversation, inputRows);
+	assert.deepEqual(
+		feed.consoleCalls,
+		["draft:local-console"],
+		"one scoped listing covers every expired draft",
+	);
+});
+
+test("pending console surfaces and intervening console changes keep background drafts", async (t) => {
+	const late = Promise.withResolvers();
+	const emptyListing = { available: true, surfaces: [] };
+	const feed = installTransport(t, {
+		consoleState: (count) =>
+			count === 1
+				? { available: true, surfaces: [{ surface: "con:1:fixture" }] }
+				: count === 2
+					? late.promise
+					: emptyListing,
+	});
+	await mount(t, { feedAvailable: true, ids: [A] });
+	const tick = withClock(t);
+	let draft;
+	await act(() => {
+		draft = pageStartDraft();
+	});
+	await act(() => canonical.getState().setActiveSession(A));
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.ok(find(draft), "a pending console surface is shared by every draft");
+	await tick(WORKSPACE_INACTIVE_MS);
+	await act(() => {
+		feed.consoleChanged();
+		late.resolve(emptyListing);
+	});
+	assert.ok(
+		find(draft),
+		"an empty listing from before a console transition is stale",
+	);
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(ids(), [A]);
+	assert.equal(feed.consoleCalls.length, 3);
+});
+
+test("a transient composer edit during the console read restarts the draft clock", async (t) => {
+	const late = Promise.withResolvers();
+	const listing = { available: true, surfaces: [] };
+	const feed = installTransport(t, {
+		consoleState: (count) => (count === 1 ? late.promise : listing),
+	});
+	await mount(t, { feedAvailable: true, ids: [A] });
+	const tick = withClock(t);
+	let draft;
+	await act(() => {
+		draft = pageStartDraft();
+	});
+	await act(() => canonical.getState().setActiveSession(A));
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	await act(() => {
+		composer.getState().setCurrentInput(draft, "brief work");
+		composer.getState().setCurrentInput(draft, "");
+		late.resolve(listing);
+	});
+	assert.ok(find(draft));
+	assert.equal(feed.consoleCalls.length, 1);
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.ok(find(draft));
+	await tick(1);
+	assert.deepEqual(ids(), [A]);
+});
+
+test("off-cache remote placement vetoes a matching in-flight receipt", async (t) => {
+	const late = Promise.withResolvers();
+	const feed = installTransport(t, {
+		answer: (_requested, count) =>
+			count === 1 ? result([wireRow(B)]) : late.promise,
+	});
+	await mount(t, { feedAvailable: true, rows: rowsFor([A]) });
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	await act(() => {
+		canonical.setState({ placementFacts: { [B]: { locality: "remote" } } });
+		late.resolve(result([wireRow(B)]));
+	});
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(tabSnapshot(), { rendered: [A, B], saved: [A, B] });
+	assert.deepEqual(feed.calls, [[B], [B]]);
 });
 
 test("old Core stays inert even with a ready-looking headline and an unstamped cold row", async (t) => {
@@ -452,9 +791,15 @@ test("old Core stays inert even with a ready-looking headline and an unstamped c
 	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
 	const tick = withClock(t);
 	await enable();
-	await tick(WORKSPACE_INACTIVE_MS * 2);
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.deepEqual(feed.calls, [[B]], "omission does not retry immediately");
+	await tick(1);
 	assert.deepEqual(ids(), [A, B]);
-	assert.deepEqual(feed.calls, [[B]], "omission is not an automatic retry");
+	assert.deepEqual(
+		feed.calls,
+		[[B], [B]],
+		"old Core remains safe after a bounded retry",
+	);
 });
 
 test("a changed cold revision at expiry starts a new full interval before repeated proof can drop", async (t) => {
@@ -489,7 +834,7 @@ for (const [kind, latest] of Object.entries({
 		body: { result: { next_cursor: "more", sessions: [wireRow(A)] } },
 	}),
 })) {
-	test(`fresh ${kind} keeps the tab and does not poll`, async (t) => {
+	test(`fresh ${kind} keeps the tab and waits a full interval to retry`, async (t) => {
 		const feed = installTransport(t, {
 			answer: (_requested, count) =>
 				count === 1 ? result([wireRow(B)]) : latest(),
@@ -499,9 +844,12 @@ for (const [kind, latest] of Object.entries({
 		await enable();
 		await tick(WORKSPACE_INACTIVE_MS);
 		await act(() => canonical.setState({ sessions: rowsFor([A, B]) }));
-		await tick(WORKSPACE_INACTIVE_MS * 2);
+		await tick(WORKSPACE_INACTIVE_MS - 1);
 		assert.deepEqual(ids(), [A, B]);
 		assert.deepEqual(feed.calls, [[B], [B]]);
+		await tick(1);
+		assert.deepEqual(ids(), [A, B]);
+		assert.deepEqual(feed.calls, [[B], [B], [B]]);
 	});
 }
 
@@ -625,7 +973,7 @@ test("a deferred sibling reorder replays without resurrecting an expired tab", a
 	await mount(t, {
 		feedAvailable: true,
 		ids: [A, B, C],
-		rows: rowsFor([A, B]),
+		rows: [...rowsFor([A, B]), { ...cold, session_id: C, pinned: true }],
 	});
 	const tick = withClock(t);
 	await enable();
