@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
 import {
 	appendFileSync,
 	chmodSync,
@@ -50,7 +51,7 @@ import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy"; export * from "./src/main/update-shipit";',
+			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy"; export * from "./src/main/update-shipit"; export { readProcessStartStamp } from "./src/main/install-group-run"; export { updateMessageOf } from "./src/renderer/src/shared/utils/update-error-copy";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -111,6 +112,7 @@ const {
 	moveToApplications,
 	parsePendingInstallMarker,
 	parsePipShowVersion,
+	readPendingServerUpdateMarker,
 	serverUpdateFailureSentence,
 	parseSealViolations,
 	pendingInstallAgeSeconds,
@@ -136,6 +138,7 @@ const {
 	watchdogSignals,
 	watchdogSwapTarget,
 	writePendingInstallMarker,
+	writePendingServerUpdateMarker,
 } = install;
 
 /**
@@ -7490,7 +7493,7 @@ const loadUpdateServiceModule = async ({
 			 * pass while the function the app calls answered something else.
 			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift"; export * from "./src/main/desktop-stream";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift"; export * from "./src/main/desktop-stream"; export * from "./src/main/update-operation";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -7566,6 +7569,13 @@ const loadUpdateServiceModule = async ({
 						if (args.path === "electron") {
 							return fixture(`
 								const paths = globalThis.__loTestPaths;
+								import { EventEmitter } from "node:events";
+								const appEvents = new EventEmitter();
+								globalThis.__loAppEvents = appEvents;
+								export const autoUpdater = new EventEmitter();
+								globalThis.__loNativeUpdater = autoUpdater;
+								autoUpdater.getFeedURL = () => "http://127.0.0.1:1";
+								autoUpdater.checkForUpdates = () => {};
 								export const app = {
 									// A getter rather than a literal, so a test can put the app on
 									// the unpackaged side of the decisions gated on it - which is the
@@ -7583,9 +7593,10 @@ const loadUpdateServiceModule = async ({
 									getName: () => "Local Operator",
 									getAppPath: () => process.cwd(),
 									whenReady: async () => {},
-									on: () => app,
-									once: () => app,
-									quit: () => {},
+									on: (...args) => appEvents.on(...args),
+									once: (...args) => appEvents.once(...args),
+									removeListener: (...args) => appEvents.removeListener(...args),
+									quit: () => globalThis.__loTestAppQuit?.(),
 									relaunch: () => {},
 									exit: () => {},
 									isReady: () => true,
@@ -7660,7 +7671,8 @@ const loadUpdateServiceModule = async ({
 								 * that swallowed registrations could not tell whether that
 								 * path still works.
 								 */
-								const listeners = new Map();
+								// AppUpdater has its own error logger even without a window.
+								const listeners = new Map([["error", [() => {}]]]);
 								const register = (event, handler) => {
 									listeners.set(event, [...(listeners.get(event) ?? []), handler]);
 									return autoUpdater;
@@ -7668,6 +7680,10 @@ const loadUpdateServiceModule = async ({
 								export const autoUpdater = {
 									on: (event, handler) => register(event, handler),
 									once: (event, handler) => register(event, handler),
+									removeListener: (event, handler) => {
+										listeners.set(event, (listeners.get(event) ?? []).filter((fn) => fn !== handler));
+										return autoUpdater;
+									},
 									removeAllListeners: (event) => {
 										if (event === undefined) listeners.clear();
 										else listeners.delete(event);
@@ -7675,7 +7691,9 @@ const loadUpdateServiceModule = async ({
 									},
 									listeners: (event) => listeners.get(event) ?? [],
 									emit: (event, payload) => {
-										for (const handler of [...(listeners.get(event) ?? [])]) handler(payload);
+										const handlers = listeners.get(event) ?? [];
+										if (event === "error" && handlers.length === 0) throw payload;
+										for (const handler of [...handlers]) handler(payload);
 									},
 									/*
 									 * The library's own ORDER, which is the part that matters
@@ -8019,6 +8037,463 @@ test("a failed update-backend reports on backend-update-error and resolves false
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
 	}
+});
+
+// Drive registered handlers on both sides of dispose/reopen. The gates replace
+// native or filesystem effects, not the IPC, lease, or backend update routing.
+test("registered update IPC shares one owner across reopened windows", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "lo-update-operation-"));
+	globalThis.__loTestPaths = {
+		home: root,
+		userData: root,
+		appData: root,
+		temp: root,
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const appCleanup = Promise.withResolvers();
+	const appCleanupEntered = Promise.withResolvers();
+	const backendWork = Promise.withResolvers();
+	const backendWorkEntered = Promise.withResolvers();
+	const sent = [];
+	const actions = [];
+	let windowService;
+	let autoUpdating = false;
+	let failHold = false;
+	const backend = {
+		getStartupMode: () => service.LocalOperatorStartupMode.APP_BUNDLED_VENV,
+		checkIsAutoUpdating: () => autoUpdating,
+		isUsingExternalBackend: () => false,
+		setAutoUpdating: (held) => {
+			if (failHold) throw Error("backend hold failed");
+			autoUpdating = held;
+		},
+		stop: (keepBackend) => {
+			actions.push(["stop", keepBackend]);
+			appCleanupEntered.resolve();
+			return appCleanup.promise;
+		},
+	};
+	const open = () => {
+		windowService?.dispose();
+		windowService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					isDestroyed: () => false,
+					once: () => {},
+					send: (channel, payload) => sent.push([channel, payload]),
+				},
+			},
+			backend,
+			{ quietReason: "test" },
+		);
+		windowService.lastUpdateInfo = { version: "9.9.9" };
+		windowService.runInstallPreflight = async () => null;
+		windowService.stageInstallerHandoff = async () => ({ kind: "fallback" });
+		windowService.launchWatchdog = (version) => {
+			actions.push(["watchdog", version]);
+			return null;
+		};
+		windowService.readRunningBackend = async () => ({ version: "1.0.0" });
+		windowService.readServingInstall = () => ({ appOwned: true });
+		windowService.runAppOwnedUpdateAttempt = async (target) => {
+			actions.push(["backend", target]);
+			// A missing lease must fail as an unexpected result, not hang the test.
+			if (target !== "1.0.1") return true;
+			backendWorkEntered.resolve();
+			return backendWork.promise;
+		};
+		windowService.setupIpcHandlers();
+	};
+	t.after(() => {
+		appCleanup.resolve();
+		backendWork.resolve(false);
+		windowService?.dispose();
+		globalThis.__loTestPaths = undefined;
+		globalThis.__loTestAppCheck = undefined;
+		globalThis.__loTestDownload = undefined;
+		globalThis.__loTestAppQuit = undefined;
+		globalThis.__loAppEvents?.emit("quit");
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(root, { recursive: true, force: true });
+	});
+	const invoke = (channel, arg) => globalThis.__loIpcHandlers[channel]({}, arg);
+	const busy =
+		"Another update is running on this machine. Wait for it to finish, then try again.";
+	const assertBusyClick = async (channel) => {
+		const before = sent.length;
+		// Electron wraps invoke rejections; the shipped renderer unwraps them in
+		// each button's existing catch. There must not also be a refusal event.
+		const invokeViaBridge = async () => {
+			try {
+				return await invoke(channel);
+			} catch (error) {
+				throw new Error(`Error invoking remote method '${channel}': ${error}`);
+			}
+		};
+		await assert.rejects(
+			invokeViaBridge(),
+			(error) => install.updateMessageOf(error) === busy,
+		);
+		assert.equal(sent.length, before);
+	};
+	const feed = { isUpdateAvailable: true, updateInfo: { version: "9.9.9" } };
+	let feeds = 0;
+	globalThis.__loTestAppCheck = async () => {
+		feeds++;
+		return feed;
+	};
+
+	open();
+	const appInstall = invoke("quit-and-install");
+	await appCleanupEntered.promise;
+	open();
+	assert.equal(await invoke("update-backend", "loser"), false);
+	await assertBusyClick("quit-for-update-install");
+	assert.equal(await invoke("check-for-updates", { manual: true }), null);
+	assert.equal(feeds, 0);
+	const backendOffer = { latestVersion: "1.0.1" };
+	windowService.checkForBackendUpdates = async () => ({ info: backendOffer });
+	assert.equal(await invoke("check-for-backend-updates"), backendOffer);
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.deepEqual(actions, [["stop", false]]);
+	assert.equal(autoUpdating, false);
+	assert.ok(
+		sent.some(
+			([channel, payload]) =>
+				channel === "backend-update-error" &&
+				payload.authored === "message" &&
+				payload.phase === "update",
+		),
+	);
+	appCleanup.reject(Error("owned cleanup refused"));
+	assert.equal(await appInstall, false);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"app→backend after reopen: false, authored busy event, no backend mutation; refused app cleanup releases ownership",
+	);
+
+	const backendInstall = invoke("update-backend", "1.0.1");
+	await backendWorkEntered.promise;
+	open();
+	await assertBusyClick("quit-and-install");
+	await assertBusyClick("quit-for-update-install");
+	await assertBusyClick("download-update");
+	assert.equal(await invoke("update-backend", "another loser"), false);
+	assert.equal(
+		sent.at(-1)?.[1].message,
+		"A server update is already running. Let it finish before starting another.",
+	);
+	assert.equal(await invoke("check-for-updates", { manual: true }), feed);
+	assert.equal(feeds, 1);
+	assert.equal(service.currentUpdateOperation(), "backend");
+	assert.equal(autoUpdating, true);
+	assert.deepEqual(actions, [
+		["stop", false],
+		["backend", "1.0.1"],
+	]);
+	backendWork.resolve(true);
+	assert.equal(await backendInstall, true);
+	assert.equal(service.currentUpdateOperation(), null);
+	assert.equal(autoUpdating, false);
+	t.diagnostic(
+		"backend→app after reopen: all three desktop actions reply with one busy rejection; duplicate backend keeps its specific message; original backend succeeds",
+	);
+
+	failHold = true;
+	await assert.rejects(invoke("update-backend"), {
+		message: "backend hold failed",
+	});
+	failHold = false;
+	assert.equal(service.currentUpdateOperation(), null);
+	const download = Promise.withResolvers();
+	globalThis.__loTestDownload = () => download.promise;
+	const downloading = invoke("download-update");
+	assert.equal(await invoke("update-backend"), false);
+	download.reject(Error("test download failed"));
+	await assert.rejects(downloading, { message: "test download failed" });
+	assert.equal(service.currentUpdateOperation(), null);
+
+	// Closing the download's window removes its progress listener. Request
+	// cancellation, but don't let another writer start before it has settled.
+	const cancelledDownload = Promise.withResolvers();
+	let cancellationRequested = false;
+	globalThis.__loTestDownload = (token) => {
+		token.onCancelRequested(() => {
+			cancellationRequested = true;
+		});
+		return cancelledDownload.promise;
+	};
+	const abandonedDownload = invoke("download-update");
+	open();
+	assert.equal(cancellationRequested, true);
+	assert.equal(await invoke("update-backend"), false);
+	cancelledDownload.reject(Error("cancelled"));
+	await assert.rejects(abandonedDownload, { message: "cancelled" });
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"closing a downloading window requests cancellation but leaves the lease held until the updater settles",
+	);
+
+	globalThis.__loTestDownload = async () => ["test-update.zip"];
+	assert.deepEqual(await invoke("download-update"), ["test-update.zip"]);
+	backend.stop = async () => actions.push(["stop again"]);
+	const native = globalThis.__loNativeUpdater;
+	const appEvents = globalThis.__loAppEvents;
+	const updater = globalThis.__loAutoUpdater;
+	updater.quitAndInstall = (...args) =>
+		actions.push(["native fallback", ...args]);
+	if (process.platform === "darwin") {
+		native.checkForUpdates = () => actions.push(["native fetch"]);
+		// Mirror MacUpdater forwarding the native error before our scoped terminal.
+		native.on("error", (error) => updater.emit("error", error));
+		assert.equal(await invoke("quit-and-install"), true);
+		assert.deepEqual(actions.slice(-3), [
+			["stop again"],
+			["watchdog", "9.9.9"],
+			["native fetch"],
+		]);
+		const marker = readPendingInstallMarker(root);
+		const oldError = native.listeners("error").at(-1);
+		const oldDownloaded = native.listeners("update-downloaded").at(-1);
+		open();
+		assert.deepEqual(readPendingInstallMarker(root), marker);
+		await assertBusyClick("quit-and-install");
+		await assertBusyClick("download-update");
+		await assertBusyClick("quit-for-update-install");
+		assert.equal(await invoke("update-backend", "native loser"), false);
+		assert.equal(sent.at(-1)?.[1].message, busy);
+		assert.equal(await invoke("check-for-updates", { manual: true }), null);
+		updater.emit("error", Error("unrelated library error"));
+		native.emit("before-quit-for-update");
+		appEvents.emit("before-quit");
+		assert.equal(service.currentUpdateOperation(), "app");
+		windowService.dispose();
+		native.emit("error", Error("Squirrel failed with no window"));
+		assert.equal(service.currentUpdateOperation(), null);
+		assert.equal(autoUpdating, false);
+		open();
+		assert.equal(await invoke("quit-and-install"), true);
+		oldError();
+		oldDownloaded();
+		assert.equal(service.currentUpdateOperation(), "app");
+		assert.deepEqual(actions.at(-1), ["native fetch"]);
+		const preparedMarker = readPendingInstallMarker(root);
+		assert.ok(preparedMarker);
+		const squirrelRunning = () => ({
+			jobState: "running",
+			installerRunning: false,
+		});
+		open();
+		windowService.installLiveness = squirrelRunning;
+		// ShipIt can be live just before the native notification. Its marker alone
+		// is not yet permission to leave while the native fetch is pending.
+		await assertBusyClick("quit-for-update-install");
+		native.emit("update-downloaded");
+		assert.deepEqual(actions.at(-1), ["native fallback", false, true]);
+		assert.equal(service.currentUpdateOperation(), "app");
+		globalThis.__loTestAppQuit = () => {
+			actions.push(["native explicit quit", service.currentUpdateOperation()]);
+			assert.equal(windowService.quitForInFlightInstall("before-quit"), true);
+			assert.equal(windowService.inFlightInstallOwnsRelaunch(), true);
+		};
+		const quitStart = actions.length;
+		// A running launchd job by itself says nothing about which attempt owns it.
+		for (const unrelatedMarker of [
+			{ ...preparedMarker, startedAt: "2000-01-01T00:00:00.000Z" },
+			{ ...preparedMarker, targetVersion: "9.9.8" },
+		]) {
+			writePendingInstallMarker(root, unrelatedMarker);
+			await assertBusyClick("quit-for-update-install");
+		}
+		rmSync(pendingInstallMarkerPath(root));
+		await assertBusyClick("quit-for-update-install");
+		writePendingInstallMarker(root, preparedMarker);
+		windowService.installLiveness = () => ({
+			jobState: "registered",
+			installerRunning: false,
+		});
+		await assertBusyClick("quit-for-update-install");
+		windowService.installLiveness = squirrelRunning;
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(actions.length, quitStart, "refusals did not queue a quit");
+
+		assert.equal(invoke("quit-for-update-install"), true);
+		open();
+		windowService.installLiveness = squirrelRunning;
+		assert.equal(invoke("quit-for-update-install"), true);
+		await assertBusyClick("quit-and-install");
+		await assertBusyClick("download-update");
+		assert.equal(await invoke("update-backend", "native live loser"), false);
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.deepEqual(actions.slice(quitStart), [
+			["watchdog", preparedMarker.targetVersion],
+			["native explicit quit", "app"],
+		]);
+		assert.deepEqual(readPendingInstallMarker(root), preparedMarker);
+		native.emit("error", Error("late native error during ordinary quit"));
+		assert.equal(service.currentUpdateOperation(), "app");
+		assert.equal(service.acquireUpdateOperation("combined"), null);
+		assert.equal(service.acquireUpdateOperation("overnight"), null);
+		appEvents.emit("quit");
+		assert.equal(service.currentUpdateOperation(), null);
+		// The same marker can survive into another process or owner. It no longer
+		// confers the narrow exception once the original native token is gone.
+		for (const owner of ["app", "backend"]) {
+			const release = service.acquireUpdateOperation(owner);
+			assert.ok(release);
+			try {
+				await assertBusyClick("quit-for-update-install");
+				assert.equal(service.currentUpdateOperation(), owner);
+			} finally {
+				release();
+			}
+		}
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(actions.length, quitStart + 2);
+		assert.deepEqual(readPendingInstallMarker(root), preparedMarker);
+		t.diagnostic(
+			"prepared live native quit: one watchdog and one quit across reopen, no other writer; early, missing, registered, stale, wrong-target and unrelated-owner controls refused",
+		);
+		t.diagnostic(
+			"native: reply and reopen preserve the marker and owner; only native terminal error or final app quit releases; stale callbacks do not install or release",
+		);
+	} else {
+		assert.equal(await invoke("quit-and-install"), true);
+		assert.deepEqual(actions.at(-1), ["native fallback", false, true]);
+	}
+
+	// A live install can outlast the process that held the lease. Block writers
+	// against that marker, but allow the in-flight panel to get the app out of its way.
+	windowService.installLiveness = () => ({
+		jobState: "running",
+		installerRunning: false,
+	});
+	windowService.ensureWatchdogAfterInFlightQuit = () => {};
+	await assertBusyClick("quit-and-install");
+	await assertBusyClick("download-update");
+	assert.equal(await invoke("update-backend", "live install loser"), false);
+	assert.equal(sent.at(-1)?.[1].message, busy);
+
+	globalThis.__loTestAppQuit = () =>
+		actions.push(["quit", service.currentUpdateOperation()]);
+	assert.equal(invoke("quit-for-update-install"), true);
+	assert.equal(await invoke("update-backend"), false);
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.notDeepEqual(actions.at(-1), ["quit", "app"]);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(actions.at(-1), ["quit", "app"]);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"quit-only action owns the lease through its deferred app.quit, then releases",
+	);
+
+	const oldRelease = service.acquireUpdateOperation("app");
+	oldRelease();
+	const release = service.acquireUpdateOperation("app");
+	oldRelease();
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.equal(service.acquireUpdateOperation("overnight"), null);
+	release();
+	const releaseOvernight = service.acquireUpdateOperation("overnight");
+	assert.equal(service.acquireUpdateOperation("combined"), null);
+	releaseOvernight();
+	assert.equal(service.currentUpdateOperation(), null);
+});
+
+test("registered update IPC keeps a detached backend writer fenced", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "lo-update-group-"));
+	globalThis.__loTestPaths = {
+		home: root,
+		userData: root,
+		appData: root,
+		temp: root,
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	// Own a real, harmless group. Closing its stdin makes it exit naturally;
+	// all updater commands remain doubled. No process on the user's install runs.
+	const group = spawn(process.execPath, ["-e", "process.stdin.resume()"], {
+		detached: true,
+		stdio: ["pipe", "ignore", "ignore"],
+	});
+	const groupExit = once(group, "exit");
+	t.after(async () => {
+		group.stdin.end();
+		await groupExit;
+	});
+	await once(group, "spawn");
+	const groupPid = group.pid;
+	const groupStartedAt = install.readProcessStartStamp(groupPid);
+	assert.ok(groupStartedAt, "the fixture owns the recorded group identity");
+	const groupWatch = Promise.withResolvers();
+	let finishedWatching;
+	let windowService;
+	const backend = {
+		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+		setAutoUpdating: () => {},
+	};
+	const open = () => {
+		windowService?.dispose();
+		windowService = new service.UpdateService(null, backend, {
+			quietReason: "test",
+		});
+		windowService.readRunningBackend = async () => ({ version: "1.0.0" });
+		windowService.readServingInstall = () => ({ appOwned: false });
+		windowService.resolveBackendUpdatePlan = async () => ({
+			canManageUpdate: true,
+		});
+		windowService.runGlobalUpdateAttempt = async () => {
+			writePendingServerUpdateMarker(root, {
+				before: "1.0.0",
+				startedAt: new Date().toISOString(),
+				deadlineAt: null,
+				groupPid,
+				groupStartedAt,
+			});
+			return false;
+		};
+		const watch =
+			windowService.holdGlobalInstallGuardUntilGroupGone.bind(windowService);
+		windowService.holdGlobalInstallGuardUntilGroupGone = (pid) => {
+			groupWatch.resolve(pid);
+			finishedWatching = watch(pid);
+			return finishedWatching;
+		};
+		windowService.setupIpcHandlers();
+	};
+	t.after(async () => {
+		await finishedWatching;
+		windowService?.dispose();
+		globalThis.__loTestPaths = undefined;
+		globalThis.__loTestDownload = undefined;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(root, { recursive: true, force: true });
+	});
+	const invoke = (channel, arg) => globalThis.__loIpcHandlers[channel]({}, arg);
+	open();
+	assert.equal(await invoke("update-backend", "1.0.1"), false);
+	assert.equal(await groupWatch.promise, groupPid);
+	assert.equal(group.exitCode, null);
+	open();
+	globalThis.__loTestDownload = async () => ["app-update.zip"];
+	const busy = {
+		message:
+			"Another update is running on this machine. Wait for it to finish, then try again.",
+	};
+	await assert.rejects(invoke("quit-and-install"), busy);
+	await assert.rejects(invoke("download-update"), busy);
+	assert.equal(service.currentUpdateOperation(), "backend");
+	assert.equal(readPendingServerUpdateMarker(root).groupPid, groupPid);
+	group.stdin.end();
+	assert.deepEqual(await groupExit, [0, null]);
+	await finishedWatching;
+	assert.throws(() => process.kill(-groupPid, 0), { code: "ESRCH" });
+	assert.equal(readPendingServerUpdateMarker(root), null);
+	assert.deepEqual(await invoke("download-update"), ["app-update.zip"]);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"backend false came back before its group exited; reopen refused app writers until the exact group and marker were gone",
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -12304,6 +12779,27 @@ test("an update failure says what happened, and keeps the machine's words subord
 		 * is the machine's, on its own line. Asserted from the SHIPPED module, so
 		 * a reworded sentence cannot pass an assertion that repeats old words.
 		 */
+		const busy =
+			"Another update is running on this machine. Wait for it to finish, then try again.";
+		for (const [label, channel] of [
+			["Error starting the update", "quit-and-install"],
+			["Error quitting for the update", "quit-for-update-install"],
+		]) {
+			const wrapped = new Error(
+				`Error invoking remote method '${channel}': Error: ${busy}`,
+			);
+			const detail = copy.updateMessageOf(wrapped);
+			assert.deepEqual(copy.updateErrorCopy(`${label}: ${detail}`), {
+				sentence: busy,
+				detail: null,
+				action: null,
+			});
+			const unrelated = `Unexpected installer response: ${detail}`;
+			const generic = copy.updateErrorCopy(`${label}: ${unrelated}`);
+			assert.notEqual(generic.sentence, busy);
+			assert.equal(generic.detail, unrelated);
+			assert.equal(generic.action, null);
+		}
 		const bare = copy.updateErrorCopy("net::ERR_INTERNET_DISCONNECTED");
 		assert.match(bare.sentence, /update server/i);
 		assert.match(bare.sentence, /connection/i);

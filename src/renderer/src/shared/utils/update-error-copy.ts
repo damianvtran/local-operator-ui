@@ -276,6 +276,22 @@ export function updateErrorCopy(
 		};
 	}
 	const cleaned = stripErrorPrefixes(message).trim();
+	const busy = t("ui.common.updates.update_notification.failure_remedy_lock");
+	// These two buttons wrap IPC errors in a stage label. The shared-lease
+	// refusal is already authored copy, not a failed install or quit: compare
+	// the entire translated wrapper so machine text quoting it stays generic.
+	if (
+		cleaned ===
+			t("ui.common.updates.update_notification.error_starting_the_update", {
+				detail: busy,
+			}) ||
+		cleaned ===
+			t("ui.common.updates.update_notification.error_quitting_for_the_update", {
+				detail: busy,
+			})
+	) {
+		return { sentence: busy, detail: null, action: null };
+	}
 	const stage = updateStageOf(cleaned);
 	const fragment = transientTransportFragment(cleaned);
 	if (fragment === null) {

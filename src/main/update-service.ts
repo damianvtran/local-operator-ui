@@ -35,11 +35,13 @@ import {
 	ipcMain,
 	powerMonitor,
 } from "electron";
+import * as electron from "electron";
 import {
 	CancellationToken,
 	type UpdateInfo,
 	autoUpdater,
 } from "electron-updater";
+import type { AppUpdaterEvents } from "electron-updater/out/AppUpdater";
 import { t } from "../i18n";
 import { currentLocaleState, isLanguageTag } from "../i18n/locale";
 import {
@@ -217,6 +219,12 @@ import {
 	zipListingHasEmbeddedProfile,
 	zipMainExecutableEntry,
 } from "./update-install";
+import {
+	type TransferUpdateOperation,
+	acquireUpdateOperation,
+	currentUpdateOperation,
+	runUpdateOperation,
+} from "./update-operation";
 import {
 	DITTO_PATH,
 	EXTRACTION_TIMEOUT_MS,
@@ -2326,6 +2334,27 @@ function defaultStartRelaunchWatchdog(
 	});
 }
 
+// The native handoff belongs to the updater singleton, not to the window that
+// started it. Recovering windows preserve its early marker; only a prepared,
+// live handoff can let an explicit Quit cooperate with the existing lease.
+let nativeFallback: {
+	marker: PendingInstallMarker;
+	downloaded: boolean;
+	quit: "idle" | "scheduled" | "started";
+} | null = null;
+
+function sameInstallAttempt(
+	marker: PendingInstallMarker,
+	expected: PendingInstallMarker,
+): boolean {
+	return (
+		marker.startedAt === expected.startedAt &&
+		marker.targetVersion === expected.targetVersion &&
+		marker.artifactPath === expected.artifactPath &&
+		marker.installerPid === expected.installerPid
+	);
+}
+
 /**
  * Service to handle application updates using electron-updater
  * and backend updates using pip
@@ -2362,6 +2391,7 @@ export class UpdateService {
 	 * available", which is how `shouldFilterUpdateError` would otherwise read it.
 	 */
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
+	private readonly removeUpdateListeners: (() => void)[] = [];
 
 	/**
 	 * How long an update download may make no progress before it is cancelled, in ms.
@@ -2615,15 +2645,6 @@ export class UpdateService {
 	 * for one quit.
 	 */
 	private inFlightQuitWatchdogEnsured = false;
-
-	/**
-	 * True while `quit-and-install` is running its pre-flight.
-	 *
-	 * The pre-flight can take seconds over a large bundle and artifact, and the
-	 * whole point of it is that a second request must not run beside the first (see
-	 * the handler).
-	 */
-	private installPreflightInFlight = false;
 
 	/**
 	 * How long the rebuild install leg may hold back for the fleet, and how often
@@ -2992,6 +3013,18 @@ export class UpdateService {
 		}
 		const marker = readPendingInstallMarker(this.markerDir());
 		const liveness = this.installLiveness(marker);
+		const installInFlight = isInstallInFlight({
+			marker,
+			jobState: liveness.jobState,
+			installerRunning: liveness.installerRunning,
+		});
+		if (
+			marker &&
+			nativeFallback &&
+			!installInFlight &&
+			sameInstallAttempt(marker, nativeFallback.marker)
+		)
+			return;
 		/*
 		 * Which signal answered is logged whenever there is a marker to judge, because
 		 * it is the fact that decides which of the two panels a person gets - and
@@ -3018,11 +3051,7 @@ export class UpdateService {
 			// the one exception is the hand-off, the window in which launchd has the
 			// job but ShipIt has no pid yet, which `PENDING_INSTALL_HANDOFF_SECONDS`
 			// bounds (review R6, R11).
-			installInFlight: isInstallInFlight({
-				marker,
-				jobState: liveness.jobState,
-				installerRunning: liveness.installerRunning,
-			}),
+			installInFlight,
 		});
 
 		switch (outcome.kind) {
@@ -3587,7 +3616,13 @@ export class UpdateService {
 	public quitForInFlightInstall(context: string): boolean {
 		const marker = this.livePendingInstallMarker();
 		if (!marker) return false;
-		if (this.inFlightQuitWatchdogEnsured) return true;
+		if (
+			this.inFlightQuitWatchdogEnsured ||
+			(nativeFallback &&
+				nativeFallback.quit !== "idle" &&
+				sameInstallAttempt(marker, nativeFallback.marker))
+		)
+			return true;
 		this.inFlightQuitWatchdogEnsured = true;
 		logger.info(
 			`Quitting so the in-flight update install can finish (${context}).`,
@@ -3610,7 +3645,9 @@ export class UpdateService {
 	 * `app.relaunch` at the quit terminal) must stand down while this is true.
 	 */
 	public inFlightInstallOwnsRelaunch(): boolean {
-		return this.inFlightQuitWatchdogEnsured;
+		return (
+			this.inFlightQuitWatchdogEnsured || nativeFallback?.quit === "started"
+		);
 	}
 
 	/**
@@ -4931,13 +4968,17 @@ export class UpdateService {
 		// rest of them.
 		this.stopInstallInFlightRecheck();
 
-		// And a download's stall watchdog, for the same reason: it would otherwise
-		// survive the service and fire into a token whose download this window no
-		// longer owns.
+		// This window is about to lose its download-progress listener. Cancel the
+		// abandoned attempt through its token before disarming the watchdog, or a
+		// stalled download would keep the process-wide lease with no way to time out.
+		this.downloadCancellationToken?.cancel();
 		this.clearDownloadStallWatchdog();
 
-		// Remove all autoUpdater event listeners
-		autoUpdater.removeAllListeners();
+		// The updater singleton (including its own error listener) outlives a
+		// window. A native fallback can still send it an error with no window.
+		for (const remove of this.removeUpdateListeners.splice(0)) remove();
+		// A silent check can have temporarily swapped in its own listener.
+		autoUpdater.removeAllListeners("update-not-available");
 
 		// Remove all relevant IPC handlers
 		ipcMain.removeHandler("check-for-updates");
@@ -4995,6 +5036,9 @@ export class UpdateService {
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
 		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
+		// A reopened window must not change the process-wide feed under a download.
+		const owner = currentUpdateOperation();
+		if (owner === "app" || owner === "combined") return null;
 		const epoch = this.appFeedFetchEpoch + 1;
 		this.appFeedFetchEpoch = epoch;
 		const sequence = this.runAppFeedAttempts(fetchFeed, epoch);
@@ -5213,8 +5257,17 @@ export class UpdateService {
 	}
 
 	private setupUpdateEvents(): void {
+		const on = <Event extends keyof AppUpdaterEvents>(
+			event: Event,
+			listener: AppUpdaterEvents[Event],
+		) => {
+			autoUpdater.on(event, listener);
+			this.removeUpdateListeners.push(() =>
+				autoUpdater.removeListener(event, listener),
+			);
+		};
 		// When an update is available
-		autoUpdater.on("update-available", (info) => {
+		on("update-available", (info) => {
 			logger.info("Update available:", LogFileType.UPDATE_SERVICE, info);
 			this.lastUpdateInfo = info;
 
@@ -5236,7 +5289,7 @@ export class UpdateService {
 		});
 
 		// When no update is available
-		autoUpdater.on("update-not-available", (info) => {
+		on("update-not-available", (info) => {
 			logger.info("No update available:", LogFileType.UPDATE_SERVICE, info);
 			this.sendToRenderer("update-not-available", info);
 		});
@@ -5246,7 +5299,7 @@ export class UpdateService {
 		// Verified before it is forwarded: the renderer only offers "install now"
 		// once it has seen this event, so refusing here is what keeps an install
 		// prompt away from an artifact we cannot vouch for.
-		autoUpdater.on("update-downloaded", async (info) => {
+		on("update-downloaded", async (info) => {
 			logger.info("Update downloaded:", LogFileType.UPDATE_SERVICE, info);
 			this.lastUpdateInfo = info;
 
@@ -5261,12 +5314,12 @@ export class UpdateService {
 		});
 
 		// When there's an error with the update
-		autoUpdater.on("error", (err) => {
+		on("error", (err) => {
 			logger.error("Update error:", LogFileType.UPDATE_SERVICE, err);
 
 			// A download or an install that dies is not an availability problem:
 			// the user asked for something and it failed, so it has to be shown.
-			const actionable = this.updateStage !== "idle";
+			const actionable = this.updateStage !== "idle" || nativeFallback !== null;
 			/*
 			 * ONE OWNER PER FAILURE. This handler and the check that provoked the
 			 * error are two producers of one message, and until this gate existed
@@ -5338,7 +5391,7 @@ export class UpdateService {
 		});
 
 		// When update download progress changes
-		autoUpdater.on("download-progress", (progressObj) => {
+		on("download-progress", (progressObj) => {
 			logger.info(
 				"Download progress:",
 				LogFileType.UPDATE_SERVICE,
@@ -5361,9 +5414,7 @@ export class UpdateService {
 		});
 
 		// When the app is about to quit and install the update
-		// Using type assertion to handle the event that might not be in the type definitions
-		// biome-ignore lint/suspicious/noExplicitAny: This event is documented but not in the type definitions
-		(autoUpdater as any).on("before-quit-for-update", () => {
+		const beforeNativeQuit = () => {
 			logger.info(
 				"Application will quit and install update",
 				LogFileType.UPDATE_SERVICE,
@@ -5376,7 +5427,12 @@ export class UpdateService {
 			) {
 				this.mainWindow.webContents.send("before-quit-for-update");
 			}
-		});
+		};
+		const updaterEvents = autoUpdater as unknown as NodeJS.EventEmitter;
+		updaterEvents.on("before-quit-for-update", beforeNativeQuit);
+		this.removeUpdateListeners.push(() =>
+			updaterEvents.removeListener("before-quit-for-update", beforeNativeQuit),
+		);
 	}
 
 	/**
@@ -5445,6 +5501,179 @@ export class UpdateService {
 			LogFileType.UPDATE_SERVICE,
 		);
 		this.failedVerificationVersions.clear();
+	}
+
+	/**
+	 * electron-updater's MacUpdater exposes two different download events. Its
+	 * JS event means the proxy can *serve* the ZIP; only Electron's native event
+	 * means Squirrel has fetched it. With autoInstallOnAppQuit off, start the
+	 * same native check MacUpdater would start, then let MacUpdater do the quit
+	 * and close its proxy once its own native listener has recorded the download.
+	 * We own the fetch callback so an error can retire it before another attempt;
+	 * MacUpdater.quitAndInstall otherwise leaves a persistent callback behind.
+	 */
+	private startNativeFallback(
+		marker: PendingInstallMarker,
+		release: () => void,
+		backendHeld: boolean,
+	): void {
+		const native = electron.autoUpdater;
+		const handoff: NonNullable<typeof nativeFallback> = {
+			marker,
+			downloaded: false,
+			quit: "idle",
+		};
+		nativeFallback = handoff;
+		let finished = false;
+		const finish = (quitting: boolean) => {
+			if (finished) return;
+			finished = true;
+			native.removeListener("update-downloaded", onDownloaded);
+			native.removeListener("update-not-available", onUnavailable);
+			native.removeListener("error", onError);
+			app.removeListener("quit", onQuit);
+			nativeFallback = null;
+			this.updateStage = "idle";
+			try {
+				if (!quitting && !backendHeld)
+					this.backendService?.setAutoUpdating(false);
+			} finally {
+				release();
+			}
+		};
+		const onError = () => {
+			// Before the ordinary quit starts, a native terminal cancels the handoff.
+			// Once teardown actually begins, only final app quit may release it.
+			if (handoff.quit !== "started") finish(false);
+		};
+		const onUnavailable = () => {
+			if (finished || handoff.downloaded) return;
+			logger.warn(
+				"Squirrel found no update in the configured local feed",
+				LogFileType.UPDATE_SERVICE,
+			);
+			try {
+				autoUpdater.emit(
+					"error",
+					new Error(
+						t("ui.common.updates.update_notification.failure_cause_refused"),
+					),
+				);
+			} finally {
+				finish(false);
+			}
+		};
+		const onQuit = () => finish(true);
+		const onDownloaded = () => {
+			if (finished || handoff.downloaded) return;
+			handoff.downloaded = true;
+			try {
+				autoUpdater.quitAndInstall(false, true);
+			} catch (error) {
+				try {
+					autoUpdater.emit(
+						"error",
+						error instanceof Error ? error : new Error(String(error)),
+					);
+				} finally {
+					finish(false);
+				}
+			}
+		};
+		try {
+			// Neither native download-complete nor before-quit-for-update means
+			// this process is gone: Electron may still be closing its windows.
+			native.on("update-downloaded", onDownloaded);
+			native.on("update-not-available", onUnavailable);
+			native.on("error", onError);
+			app.once("quit", onQuit);
+			if (!native.getFeedURL()) {
+				// With no native feed configured there is no Squirrel command to
+				// emit a terminal event. Let the existing IPC catch report it.
+				logger.warn(
+					"No local feed is configured for the Squirrel fallback",
+					LogFileType.UPDATE_SERVICE,
+				);
+				throw new Error(
+					t("ui.common.updates.update_notification.failure_cause_refused"),
+				);
+			}
+			native.checkForUpdates();
+		} catch (error) {
+			finish(false);
+			throw error;
+		}
+	}
+
+	/**
+	 * Native quit may stall while closing a window (e.g. the macOS mini view
+	 * hides instead of closing). An ordinary app.quit runs the teardown that
+	 * removes that veto. This is an exit only, not another installer handoff:
+	 * the exact native attempt must still hold the app lease and be live.
+	 */
+	private quitForPreparedNativeInstall(): boolean {
+		const handoff = nativeFallback;
+		if (!handoff?.downloaded) return false;
+		const liveMarker = () => {
+			if (nativeFallback !== handoff || currentUpdateOperation() !== "app")
+				return null;
+			const marker = readPendingInstallMarker(this.markerDir());
+			if (!marker || !sameInstallAttempt(marker, handoff.marker)) return null;
+			const liveness = this.installLiveness(marker);
+			return liveness.jobState === "running" &&
+				isInstallInFlight({ marker, ...liveness })
+				? marker
+				: null;
+		};
+		const marker = liveMarker();
+		if (!marker) return false;
+		if (handoff.quit !== "idle") return true;
+		if (!this.inFlightQuitWatchdogEnsured)
+			this.ensureWatchdogAfterInFlightQuit(marker);
+		handoff.quit = "scheduled";
+		setImmediate(() => {
+			// A native terminal event may release the token before this deferred
+			// quit runs. Do not quit on behalf of a replacement owner or marker.
+			if (!liveMarker()) {
+				handoff.quit = "idle";
+				return;
+			}
+			handoff.quit = "started";
+			logger.info(
+				"Quitting so the in-flight native update install can finish.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			app.quit(); // Only the final quit event releases the native lease.
+		});
+		return true;
+	}
+
+	/** Reject busy IPCs once; the existing renderer catches own the message. */
+	private appUpdateBusy(): never {
+		throw new Error(
+			t("ui.common.updates.update_notification.failure_remedy_lock"),
+		);
+	}
+
+	private registerStandaloneAppOperation(
+		channel: "download-update" | "quit-and-install",
+		run: (transfer: TransferUpdateOperation) => Promise<unknown>,
+	): void {
+		ipcMain.handle(channel, async () => {
+			const release = acquireUpdateOperation("app");
+			if (!release) return this.appUpdateBusy();
+			return runUpdateOperation(release, async (transfer) => {
+				// A signed installer or ShipIt can outlive the process lease. A record
+				// alone is not a hold: require the installer's own live process/job.
+				if (
+					this.livePendingInstallMarker() ||
+					this.recordedUpdateStillRunning() !== null
+				) {
+					return this.appUpdateBusy();
+				}
+				return run(transfer);
+			});
+		});
 	}
 
 	public setupIpcHandlers(): void {
@@ -5649,8 +5878,7 @@ export class UpdateService {
 			},
 		);
 
-		// Download update
-		ipcMain.handle("download-update", async () => {
+		this.registerStandaloneAppOperation("download-update", async () => {
 			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
 			this.updateStage = "downloading";
 			/*
@@ -5718,27 +5946,8 @@ export class UpdateService {
 			}
 		});
 
-		// Quit and install update
-		//
-		// Async, and deliberately capable of refusing: this is the only place an
-		// install starts, and it starts only after the installed bundle and the
-		// staged artifact have been checked (see runInstallPreflight).
-		//
-		// One install at a time. The pre-flight can run `codesign` over a 1 GiB
-		// bundle and hash a 350 MB artifact, and for those seconds the panel used to
-		// look untouched with its primary button still live - so a second click
-		// re-entered the whole thing, spawned a second watchdog and overwrote the
-		// first marker's pid (review U5). The renderer also shows a pending state;
-		// this is the half that has to hold when something else calls in.
-		ipcMain.handle("quit-and-install", async () => {
-			if (this.installPreflightInFlight) {
-				logger.info(
-					"Ignoring a second install request while the pre-flight is still running.",
-					LogFileType.UPDATE_SERVICE,
-				);
-				return false;
-			}
-
+		// The lease spans pre-flight, backend cleanup and the installer handoff.
+		this.registerStandaloneAppOperation("quit-and-install", async (hold) => {
 			/*
 			 * An unpackaged instance never starts an install, and stating it here is what
 			 * makes that more than a detail: the marker below goes into the shared
@@ -5758,7 +5967,6 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			this.installPreflightInFlight = true;
 			this.updateStage = "installing";
 			let block: InstallBlock | null = null;
 			let handoff: InstallerHandoff | null = null;
@@ -5799,8 +6007,6 @@ export class UpdateService {
 					error,
 				);
 				return false;
-			} finally {
-				this.installPreflightInFlight = false;
 			}
 			if (block) {
 				this.updateStage = "idle";
@@ -5884,6 +6090,7 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			const backendHeld = this.backendService?.checkIsAutoUpdating?.() === true;
 			this.backendService?.setAutoUpdating(true);
 			if (installerPid != null) {
 				/*
@@ -5900,7 +6107,11 @@ export class UpdateService {
 				app.quit();
 				return true;
 			}
-			autoUpdater.quitAndInstall(false, true);
+			if (process.platform === "darwin") {
+				this.startNativeFallback(marker, hold(), backendHeld);
+			} else {
+				autoUpdater.quitAndInstall(false, true);
+			}
 			return true;
 		});
 
@@ -5942,31 +6153,49 @@ export class UpdateService {
 		 * instance of the target app is running before it swaps.
 		 */
 		ipcMain.handle("quit-for-update-install", () => {
-			const marker = readPendingInstallMarker(this.markerDir());
-			logger.info(
-				"Quitting so the in-flight update install can finish.",
-				LogFileType.UPDATE_SERVICE,
-			);
-			/*
-			 * Recorded the way `quitForInFlightInstall` records it, and before the
-			 * ensure rather than after: this handler IS the decision, and this app's
-			 * quit runs the other one again on the way out (`before-quit` asks the
-			 * same question). Without the flag the second answer finds
-			 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
-			 * two decisions and two watchdogs for one quit, where the window-close
-			 * gesture has always been one (UX U8). The flag is what makes "one
-			 * decision per quit" a property of the service rather than of which
-			 * gesture reached it.
-			 */
-			if (marker && !this.inFlightQuitWatchdogEnsured) {
-				this.inFlightQuitWatchdogEnsured = true;
-				this.ensureWatchdogAfterInFlightQuit(marker);
+			const release = acquireUpdateOperation("app");
+			if (!release) {
+				if (this.quitForPreparedNativeInstall()) return true;
+				return this.appUpdateBusy();
 			}
-			// Deferred so the reply reaches the renderer first: the button that
-			// asked for this reports a failure if the app quits mid-request, and
-			// the quit it asked for is happening either way.
-			setImmediate(() => app.quit());
-			return true;
+			// Keep the lease through the deferred quit, not just the IPC reply.
+			let quitScheduled = false;
+			try {
+				const marker = readPendingInstallMarker(this.markerDir());
+				logger.info(
+					"Quitting so the in-flight update install can finish.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				/*
+				 * Recorded the way `quitForInFlightInstall` records it, and before the
+				 * ensure rather than after: this handler IS the decision, and this app's
+				 * quit runs the other one again on the way out (`before-quit` asks the
+				 * same question). Without the flag the second answer finds
+				 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
+				 * two decisions and two watchdogs for one quit, where the window-close
+				 * gesture has always been one (UX U8). The flag is what makes "one
+				 * decision per quit" a property of the service rather than of which
+				 * gesture reached it.
+				 */
+				if (marker && !this.inFlightQuitWatchdogEnsured) {
+					this.inFlightQuitWatchdogEnsured = true;
+					this.ensureWatchdogAfterInFlightQuit(marker);
+				}
+				// Deferred so the reply reaches the renderer first: the button that
+				// asked for this reports a failure if the app quits mid-request, and
+				// the quit it asked for is happening either way.
+				setImmediate(() => {
+					try {
+						app.quit();
+					} finally {
+						release();
+					}
+				});
+				quitScheduled = true;
+				return true;
+			} finally {
+				if (!quitScheduled) release();
+			}
 		});
 	}
 
@@ -9299,6 +9528,7 @@ export class UpdateService {
 		backend: BackendServiceManager,
 		plan: { installedInstallVersion: string | null },
 		target: string | null,
+		transfer: TransferUpdateOperation,
 	): Promise<boolean> {
 		/*
 		 * THE RECORD IS CONSULTED HERE, NOT ONLY WRITTEN (review round 3, Q-3's
@@ -9410,7 +9640,18 @@ export class UpdateService {
 			const stillRunning = this.recordedUpdateStillRunning();
 			if (stillRunning !== null) {
 				handedOff = true;
-				void this.holdGlobalInstallGuardUntilGroupGone(stillRunning);
+				const release = transfer();
+				// The prompt verdict is not proof the writer stopped. Keep both
+				// guards until the existing exact-group watcher verifies exit.
+				void this.holdGlobalInstallGuardUntilGroupGone(stillRunning).then(
+					release,
+					(error) =>
+						logger.error(
+							"Could not verify updater group exit; keeping the update guard",
+							LogFileType.UPDATE_SERVICE,
+							error,
+						),
+				);
 			}
 			return landed;
 		} finally {
@@ -10335,6 +10576,34 @@ export class UpdateService {
 	}
 
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
+		const release = acquireUpdateOperation("backend");
+		if (!release)
+			return this.reportServerUpdateBusy(
+				currentUpdateOperation() === "backend",
+			);
+		return runUpdateOperation(release, async (transfer) => {
+			if (this.livePendingInstallMarker()) return this.reportServerUpdateBusy();
+			return this.runBackendUpdate(targetVersion, transfer);
+		});
+	}
+
+	private reportServerUpdateBusy(sameKind = false): false {
+		logger.warn("An update is already running", LogFileType.UPDATE_SERVICE);
+		this.sendToRenderer("backend-update-error", {
+			message: sameKind
+				? t("ui.updates.service.already_running.message")
+				: t("ui.common.updates.update_notification.failure_remedy_lock"),
+			phase: "update",
+			authored: "message",
+			logPath: serverUpdateLogPath(),
+		});
+		return false;
+	}
+
+	private async runBackendUpdate(
+		targetVersion: string | undefined,
+		transfer: TransferUpdateOperation,
+	): Promise<boolean> {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 		/*
 		 * THE UPDATE-IN-FLIGHT HOLD COVERS THE WHOLE PRESS, NOT JUST THE RESTART
@@ -10354,12 +10623,9 @@ export class UpdateService {
 		 * deliberate stop is not an "exited unexpectedly" dialog, and recovery does
 		 * not race a restart that is already scheduled (`recoverFromDetachment`).
 		 *
-		 * WHAT THIS DOES NOT DO IS CLEAR A HOLD IT DID NOT TAKE: a second press
-		 * reaches here too - the surfaces that ask for an update hold per-surface
-		 * flags - and it is answered by the install group guard below, so clearing
-		 * unconditionally on its way out would drop the flag under the first press.
-		 * The same reading guards the drain ledger: only the press that opened the
-		 * window may start its ten minutes.
+		 * The process lease prevents a second press from reaching this work, but
+		 * the manager may already own its own hold. Do not clear that hold or
+		 * reset its drain ledger.
 		 */
 		const backend = this.backendService;
 		/*
@@ -10489,6 +10755,7 @@ export class UpdateService {
 							this.backendService,
 							plan,
 							target,
+							transfer,
 						);
 					}
 

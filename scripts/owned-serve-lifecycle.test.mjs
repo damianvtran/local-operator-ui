@@ -1232,15 +1232,13 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 
 test("native update handoff awaits owned cleanup before markers/watchdog/install", async () => {
 	const source = readFileSync("src/main/update-service.ts", "utf8");
-	const start = source.indexOf('ipcMain.handle("quit-and-install",');
-	/*
-	 * End at the NEXT handler registration, not at the next docblock: the
-	 * handler that follows ("move-to-applications") is introduced by a `/*`
-	 * comment, so a `/**` boundary swallowed it and the slice then referenced
-	 * `moveToApplications`, which this context does not (and should not) stub.
-	 */
-	const end = source.indexOf("ipcMain.handle(", start + 1);
-	assert.ok(end > start, "no handler follows quit-and-install");
+	// The IPC lease is exercised through registered handlers in update-robustness;
+	// this slice pins the ordering of effects within the native handoff itself.
+	const start = source.indexOf(
+		'this.registerStandaloneAppOperation("quit-and-install",',
+	);
+	const end = source.indexOf("ipcMain.handle(", start);
+	assert.ok(start !== -1 && end > start, "app install registration not found");
 	const code = (await transform(source.slice(start, end), { loader: "ts" }))
 		.code;
 	for (const failed of [false, true]) {
@@ -1253,7 +1251,10 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 		});
 		let handler;
 		const owner = {
-			installPreflightInFlight: false,
+			registerStandaloneAppOperation: (_, run) => {
+				handler = run;
+			},
+			livePendingInstallMarker: () => null,
 			runInstallPreflight: async () => null,
 			/*
 			 * The app-owned staging is a collaborator of this handler now, and this
@@ -1266,6 +1267,7 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			 */
 			stageInstallerHandoff: async () => ({ kind: "fallback" }),
 			startInstaller: () => null,
+			startNativeFallback: () => actions.push("install"),
 			/*
 			 * The pre-quit phases are announced on the update surface (UX U5), and this
 			 * slice has no renderer: what is asserted here is the ORDER of the owned
@@ -1289,11 +1291,6 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			downloadHelper: () => null,
 		};
 		const context = {
-			ipcMain: {
-				handle: (_, f) => {
-					handler = f;
-				},
-			},
 			logger: { info() {}, error() {} },
 			LogFileType: { UPDATE_SERVICE: "update" },
 			/*
@@ -1321,14 +1318,13 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 				actions.push("marker");
 				return marker;
 			},
-			autoUpdater: { quitAndInstall: () => actions.push("install") },
+			process: { platform: "darwin" },
 		};
 		const run = vm.runInNewContext(`(function(){${code}})`, context);
 		run.call(owner);
-		const result = handler();
+		const result = handler(() => () => {});
 		await new Promise((r) => setImmediate(r));
 		assert.deepEqual(actions, ["stop"]);
-		assert.equal(owner.installPreflightInFlight, true);
 		if (failed) reject(Error("unconfirmed"));
 		else resolve();
 		assert.equal(await result, !failed);
