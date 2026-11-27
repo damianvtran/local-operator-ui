@@ -712,6 +712,14 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			"https://acme.sharepoint.com/[redacted:url]",
 		);
 
+		// Electron provides matchMedia; jsdom does not. The real tab title reads a
+		// snapshot and subscribes to changes, but media changes aren't under test.
+		dom.window.matchMedia = (media) =>
+			Object.assign(new dom.window.EventTarget(), {
+				matches: false,
+				media,
+				onchange: null,
+			});
 		const WorkspaceTabs = await loadWorkspaceTabs(require);
 		const React = require("react");
 		const { createRoot } = require("react-dom/client");
@@ -832,9 +840,13 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		assert.equal(close.textContent, `Close ${privateTitle}`);
 		const unmarked = body.appendChild(nav.cloneNode(true));
 		unmarked.classList.remove("ph-sensitive", "ph-mask");
-		await clickNode(
-			unmarked.querySelector("[data-workspace-tab] button .truncate"),
+		const unmarkedTitle = unmarked.querySelector(
+			"[data-workspace-tab] button .truncate",
 		);
+		// The real title now has its own boundary inside the strip's boundary.
+		// Remove both layers only on the clone to keep the leak control meaningful.
+		unmarkedTitle.classList.remove("ph-sensitive", "ph-mask");
+		await clickNode(unmarkedTitle);
 		assert.equal(
 			queued.at(-1).properties.$el_text,
 			privateTitle,
