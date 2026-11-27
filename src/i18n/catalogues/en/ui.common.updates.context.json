@@ -1,4 +1,64 @@
 {
+	"ui.common.updates.combined.install_all": {
+		"role": "button and update notice heading",
+		"note": "Opens the combined desktop app and Local Operator server release notes. Does not start updating."
+	},
+	"ui.common.updates.combined.install_both": {
+		"role": "confirmation button",
+		"note": "Starts both updates in sequence after the user reads the release notes."
+	},
+	"ui.common.updates.combined.app_version": {
+		"role": "release notes heading",
+		"placeholders": {
+			"version": "Target desktop application version, e.g. 1.2.3; do not translate."
+		}
+	},
+	"ui.common.updates.combined.server_version": {
+		"role": "release notes heading",
+		"placeholders": {
+			"version": "Target Local Operator backend version, e.g. 1.2.3; do not translate."
+		}
+	},
+	"ui.common.updates.combined.description": {
+		"role": "confirmation dialog description",
+		"note": "Server means the backend daemon. Its restart must finish before the desktop app closes to install."
+	},
+	"ui.common.updates.combined.notes_unavailable": {
+		"role": "empty release notes state",
+		"note": "Shown separately when the update feed has not supplied notes. The official release link is still offered."
+	},
+	"ui.common.updates.combined.in_progress": {
+		"role": "progress status",
+		"note": "The operation has started; this is not a completion claim."
+	},
+	"ui.common.updates.combined.restarting_server": {
+		"role": "progress status",
+		"note": "From the owned daemon's restart until the updater proves the exact version running. Not a completion claim."
+	},
+	"ui.common.updates.combined.busy": {
+		"role": "update refusal",
+		"note": "An app or server update already holds exclusive use of the updater."
+	},
+	"ui.common.updates.combined.offer_changed": {
+		"role": "update refusal",
+		"note": "The versions or eligibility changed before the start; each update retains its usual independent path."
+	},
+	"ui.common.updates.combined.app_preparation_failed": {
+		"role": "update error",
+		"note": "Staging or verification of the desktop artifact did not finish; the server was not touched."
+	},
+	"ui.common.updates.combined.server_failed": {
+		"role": "partial update error",
+		"note": "The target version of the running server was not proven; the desktop app did not quit. Does not assert that the on-disk server is unchanged. Close the notice and run the usual Check for updates action to get a fresh version reading."
+	},
+	"ui.common.updates.combined.app_install_failed": {
+		"role": "partial update error",
+		"note": "The target server was verified before handoff, but the desktop update did not start. Do not assert that the server is still reachable after a failed handoff."
+	},
+	"ui.common.updates.combined.request_failed": {
+		"role": "update connection error",
+		"note": "The app did not get an authoritative answer about what happened; do not claim either component was or was not updated."
+	},
 	"ui.common.updates.check_for_updates_button.check_for_updates": {
 		"role": "button",
 		"tone": "Direct action; retain the distinction between checking, downloading, installing and restarting.",

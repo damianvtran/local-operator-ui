@@ -24,6 +24,10 @@ import type {
 	TabActionsMenuSelection,
 } from "../shared/browser-tab-actions-menu";
 import type {
+	CombinedUpdateResult,
+	CombinedUpdateTargets,
+} from "../shared/combined-update";
+import type {
 	DesktopAPI,
 	DirectoryListing,
 	ExternalOpenOutcome,
@@ -718,6 +722,9 @@ declare global {
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
 				quitAndInstall: () => Promise<boolean>;
+				installCombinedUpdate: (
+					targets: CombinedUpdateTargets,
+				) => Promise<CombinedUpdateResult>;
 				/**
 				 * Quit so an install that is already running can finish, rather than
 				 * starting a new one: Squirrel cancels an install while an instance of
@@ -791,6 +798,7 @@ declare global {
 						 * restart the label promises.
 						 */
 						appOwnedEnvironment?: boolean;
+						combinedInstallable?: boolean;
 					}) => void,
 				) => () => void;
 				onBackendUpdateDevMode: (

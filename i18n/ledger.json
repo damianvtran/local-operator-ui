@@ -8207,29 +8207,46 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "f38cf4605434cfefc1d61f0e56381f34210c44b472999501c6ab460bfe9f8f91",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "3ba932d8d7ee555c52044011c724dd30d07ef4c2ccf792a8450a9e88d19d47da",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "c6a7b830880b-update-notice-r2-es",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
+					"result": "clean",
+					"instance": "2f1244ba488a-2119-copy-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-es.json",
-					"receipt_sha256": "a79797e1d1426b340058af4de364059a9b73886b4d760f7e33780278d7a5a025",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-es.json",
+					"receipt_sha256": "f8231fd5eca7c03f0c9f88c5cb4c6d8b3d5983625c72a476b84f1e9209476d5f",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean",
+					"instance": "d63ab547775d-combined-l10n-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-es.json",
+					"receipt_sha256": "fbbfa49b7c3a18f6728b31bda569806380a182b6c3a622ba96d8282471c54360",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -8377,6 +8394,29 @@
 					"target_sha256": "30f823c25a53dd7a917ed15db4cc393f178561fe8d59cbea2e391c6f746fa7ba",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "f38cf4605434cfefc1d61f0e56381f34210c44b472999501c6ab460bfe9f8f91",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "c6a7b830880b-update-notice-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-es.json",
+							"receipt_sha256": "a79797e1d1426b340058af4de364059a9b73886b4d760f7e33780278d7a5a025",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -22997,29 +23037,46 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "dad963a7ee91b5e6b73f7f46b3ecaa489a0d5d38f65c5f9930a7ab0a17d2bc31",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "1c65d92ab17bafeae3ff131e6a11b9f91a929ad096813063465295d78e773548",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-fr",
+					"instance": "2f1244ba488a-2119-copy-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-fr.json",
-					"receipt_sha256": "6db18000ea18e2da75fd2c6330bf278f404415bcd54b2355be0a71ee68d70a52",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-fr.json",
+					"receipt_sha256": "788b272695b557c150b0fb6dcc8ab8976cf11f09aa787808c8ca484b111bcf72",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean",
+					"instance": "d63ab547775d-combined-l10n-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-fr.json",
+					"receipt_sha256": "9dd9c9c39377b5653b11d985f6003da4fe379afb785c430f805167505d994e78",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -23159,6 +23216,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-fr.json",
 							"receipt_sha256": "004d30bc35d39eae125e51be2ec817eeaec277ef91795d219fde89ae53bf48da",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "dad963a7ee91b5e6b73f7f46b3ecaa489a0d5d38f65c5f9930a7ab0a17d2bc31",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-fr.json",
+							"receipt_sha256": "6db18000ea18e2da75fd2c6330bf278f404415bcd54b2355be0a71ee68d70a52",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"
@@ -37894,29 +37974,46 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "53cd5c415e01b497c158c8692741dffae12adae4be078006cbade5e6a59fa24c",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "9efc341f605d4aaae89f4a2782ce703d4ed819b5eb42d4e1465cc204ed24916a",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-hi",
+					"instance": "2f1244ba488a-2119-copy-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-hi.json",
-					"receipt_sha256": "66805918d086c6ac2d7e467e2a5f9212512b90e05cf788b9afcb3af3cec87a80",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-hi.json",
+					"receipt_sha256": "5f6917d34f8cee3c7e7e9cf33e1aee6530d22211bedf48e9c5ab432522ee161a",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "d63ab547775d-combined-l10n-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-hi.json",
+					"receipt_sha256": "9aff7074ab51c44f02f029877126a25eb1dd76e22291da8a2a10880e63b7ac34",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -38056,6 +38153,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-hi.json",
 							"receipt_sha256": "7e04852d1b3c4f9602ddea033876dfa4a806b733f88928ca26aa15a38a93538c",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "53cd5c415e01b497c158c8692741dffae12adae4be078006cbade5e6a59fa24c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-hi.json",
+							"receipt_sha256": "66805918d086c6ac2d7e467e2a5f9212512b90e05cf788b9afcb3af3cec87a80",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"
@@ -52441,29 +52561,46 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "884745b5644c652d19500f80fa745e72e477d32873d7c5eab63969e4249a1df2",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "d8af69aa9fea982afd3ae44f1274d1606d88621a08650a0ee65119a3bb037bfe",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-ru",
+					"instance": "2f1244ba488a-2119-copy-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ru.json",
-					"receipt_sha256": "b2cb7ccb521778369739abe86f98b74b1d936f7872e37b01a5c7aee0ceed6af8",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-ru.json",
+					"receipt_sha256": "32e52d4ae155465a74dd2c6303124c1ab213c18380aefc70f3f21c2519609e3f",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "d63ab547775d-combined-l10n-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-ru.json",
+					"receipt_sha256": "523eb99dee53b1c71db73ac20c78310998dd91ce53a33c0ab09040b68b1e4710",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -52603,6 +52740,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-ru.json",
 							"receipt_sha256": "ddf127792e75f4f4df945192d6b8e4a16a67a894e245458da7a624dd9efd0873",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "884745b5644c652d19500f80fa745e72e477d32873d7c5eab63969e4249a1df2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ru.json",
+							"receipt_sha256": "b2cb7ccb521778369739abe86f98b74b1d936f7872e37b01a5c7aee0ceed6af8",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"
@@ -67127,29 +67287,46 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "9602efb21024e987ee673d8159836d974472985f13fdc54f822a74e4d4120335",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "f67a20cb85b06b8ad17eb5d222baf0ad7e7a377f6b7805af03ea2a2631b5614e",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
-					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-ur",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "2f1244ba488a-2119-copy-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-ur.json",
+					"receipt_sha256": "3a5dbf4c99bd7cabdbbcf758fe55cf29410e388ba98304eef031f4fd95817421",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "d63ab547775d-combined-l10n-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ur.json",
-					"receipt_sha256": "e9f83ae9452896af9e7e278de5f85fe3a3ab8a318f3cb5b4a954b9c5d28b8127",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-ur.json",
+					"receipt_sha256": "382739e51b2c020e8e98ea8cfbcbc66e88ac32a9b1f109d6188f82b8557d0462",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -67314,6 +67491,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-ur.json",
 							"receipt_sha256": "edda4495c111e6d305ca266ec67944bc3b024c621fad3acb9f4caa612051b744",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "9602efb21024e987ee673d8159836d974472985f13fdc54f822a74e4d4120335",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ur.json",
+							"receipt_sha256": "e9f83ae9452896af9e7e278de5f85fe3a3ab8a318f3cb5b4a954b9c5d28b8127",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"
@@ -81761,29 +81961,46 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "65cea5e7a64b57b92d041288cd592d53de9f59dcc803a9af590a12b6f4bcb05e",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "27f0ef57a4af4c96cc5773f5ea7b964f69e20b229ebdd2b2010ef735eaf6f875",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "2f1244ba488a-2119-copy-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-vi.json",
+					"receipt_sha256": "99bd6440ffc05f76643f40c84f42c63e849300c1b3162bd66b991b62fdf0af56",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-vi",
+					"instance": "d63ab547775d-combined-l10n-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-vi.json",
-					"receipt_sha256": "cc6610130f2b8b3aade66ab3bd2c98a90040d691f629576a0fdb7eb879181dff",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-vi.json",
+					"receipt_sha256": "3bd2c5a2f372c642783a885bfa60279364efabc443eeb3ca8197305d71ffe039",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -81923,6 +82140,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-vi.json",
 							"receipt_sha256": "ac063784e111b7fdf758e275f3182a841a0f9f9d46089c97557b9cee3cdd94d9",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "65cea5e7a64b57b92d041288cd592d53de9f59dcc803a9af590a12b6f4bcb05e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-vi.json",
+							"receipt_sha256": "cc6610130f2b8b3aade66ab3bd2c98a90040d691f629576a0fdb7eb879181dff",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"
@@ -97056,30 +97296,46 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.updates",
-			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "89434f178efb47f469728cc5981acb516eb38d3a133c04df60be3621202d018f",
+			"source_sha256": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+			"target_sha256": "520aaff8b35db549a4bb26c54fc9d6f76c7f16a3b7a6a3257a57728715cba24c",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18",
-				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 6 strings, 7 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
+				"agent": "coder",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-25",
+				"note": "PR #2119 copy delta: coder 2e1962ee2ac8; original translation 2e56c7f020cf. Optional UR/VI terminology findings deferred in PR."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-25",
 					"result": "clean",
-					"instance": "c6a7b830880b-update-notice-r2-zh-cn",
+					"instance": "2f1244ba488a-2119-copy-r2-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-zh-cn.json",
-					"receipt_sha256": "c02a56c3de0c7ed7aacfa0d159f645b461d64f8bb89dbd8c5d1e66dccccb6b2a",
-					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+					"receipt": "i18n/receipts/2f1244ba488a-2119-copy-r2-zh-CN.json",
+					"receipt_sha256": "6c102fdc7c59c866385e2825a2b6304766b3cfe9b4046c885c05123fcd2b7e93",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
+				},
+				{
+					"agent": "ux-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-25",
+					"result": "clean-with-findings",
+					"instance": "d63ab547775d-combined-l10n-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/d63ab547775d-combined-l10n-zh-CN.json",
+					"receipt_sha256": "fb616c879a4918e42861819b782f699b89a03bf708f65647099a55a507340dff",
+					"scope": "PR #2119 frozen combined update notice delta plus unchanged adjacent copy and context"
 				}
 			],
 			"status": "audited",
@@ -97243,6 +97499,29 @@
 							"receipt": "i18n/receipts/340352200f28-update-notice-zh-cn.json",
 							"receipt_sha256": "b2b0804f8eac8f0e31bb308e6e6289a4eb84fd6eb794f37b3ba22a1813bc2d68",
 							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "89434f178efb47f469728cc5981acb516eb38d3a133c04df60be3621202d018f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "c6a7b830880b-update-notice-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-zh-cn.json",
+							"receipt_sha256": "c02a56c3de0c7ed7aacfa0d159f645b461d64f8bb89dbd8c5d1e66dccccb6b2a",
+							"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
 						}
 					],
 					"status": "audited"

@@ -7920,6 +7920,165 @@ test("the banner's remedy names the release the last check read", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Combined updater: drive the registered main handler, replacing only the
+// native/network edges. The daemon's boot record and its installed metadata
+// are separate positive controls, not an inference from the backend boolean.
+test("combined update stages first and requires an owned daemon on the exact target before handoff", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "lo-combined-ipc-"));
+	const paths = { home: dir, userData: dir, appData: dir, temp: dir };
+	const originalPaths = globalThis.__loTestPaths;
+	globalThis.__loTestPaths = paths;
+	let service;
+	let serviceDir;
+	try {
+		const fixture = await loadUpdateServiceModule();
+		serviceDir = fixture.serviceDir;
+		const { UpdateService } = fixture.service;
+		const seen = [];
+		const frame = {};
+		const webContents = {
+			mainFrame: frame,
+			isDestroyed: () => false,
+			send: () => {},
+		};
+		const owner = { sender: webContents, senderFrame: frame };
+		let held = false;
+		let external = false;
+		const backend = {
+			isUsingExternalBackend: () => external,
+			checkIsAutoUpdating: () => held,
+			setAutoUpdating: (value) => {
+				held = value;
+			},
+			start: async () => {
+				seen.push("restore");
+				return true;
+			},
+		};
+		service = new UpdateService(
+			{ webContents, isDestroyed: () => false },
+			backend,
+			{ quietReason: "test: no periodic checks" },
+		);
+		service.quietReason = null;
+		service.setupIpcHandlers();
+		const handlers = globalThis.__loIpcHandlers;
+		const install = handlers["install-combined-update"];
+		const targets = { app: "0.71.0", server: "0.69.5" };
+		service.lastUpdateInfo = { version: targets.app };
+		service.combinedAppOfferVersion = targets.app;
+		service.combinedServerOfferVersion = targets.server;
+		let releaseDownload;
+		service.downloadAppUpdate = async () => {
+			seen.push("download");
+			// MacUpdater can resolve an empty array with a valid cached file.
+			return await new Promise((resolve) => {
+				releaseDownload = () => resolve([]);
+			});
+		};
+		let prep = true;
+		service.prepareAppInstall = async () => {
+			seen.push("verify-and-stage");
+			return prep
+				? {
+						targetVersion: targets.app,
+						handoff: { stagingRoot: join(dir, "staged") },
+					}
+				: null;
+		};
+		let backendResult = true;
+		service.runBackendUpdate = async (target, combined) => {
+			seen.push("server-install");
+			assert.equal(target, targets.server);
+			assert.equal(combined, true);
+			return backendResult;
+		};
+		let boot = "0.69.4";
+		let installed = targets.server;
+		let instance = "owned-successor";
+		let rotate = false;
+		service.servingRecordReadings = () => ({
+			bootVersion: boot,
+			instanceId: instance,
+		});
+		service.backendIsAppOwned = () => true;
+		service.readRunningBackend = async () => {
+			seen.push("health");
+			if (rotate) instance = "unrelated-successor";
+			return { version: installed, prefix: dir, installKind: "managed" };
+		};
+		service.readServingInstall = (_health, { exactPackage }) => {
+			assert.equal(exactPackage, true);
+			return { version: installed, appOwned: true };
+		};
+		let commit = false;
+		service.commitAppInstall = async ({ targetVersion }) => {
+			seen.push("handoff");
+			assert.equal(targetVersion, targets.app);
+			return commit;
+		};
+		const expect = async (status, actions) => {
+			seen.length = 0;
+			const pending = install(owner, targets);
+			assert.deepEqual(await install(owner, targets), { status: "busy" });
+			assert.equal(
+				await handlers["update-backend"](owner, targets.server),
+				false,
+			);
+			assert.equal(await handlers["quit-and-install"](owner), false);
+			await assert.rejects(handlers["download-update"](), /Another update/);
+			// A check declined by this lease cannot advance #2124's observation order.
+			const lastObservation = service.backendObservationId;
+			assert.equal(await handlers["check-for-backend-updates"](), null);
+			assert.equal(service.backendObservationId, lastObservation);
+			releaseDownload();
+			assert.deepEqual(await pending, { status });
+			assert.deepEqual(seen, actions);
+			assert.equal(held, status === "handoff");
+		};
+		assert.deepEqual(await install({ ...owner, senderFrame: {} }, targets), {
+			status: "offer_changed",
+		});
+		assert.deepEqual(await install(owner, { ...targets, server: "0.69.6" }), {
+			status: "offer_changed",
+		});
+		external = true;
+		assert.deepEqual(await install(owner, targets), {
+			status: "offer_changed",
+		});
+		external = false;
+		assert.deepEqual(seen, []);
+		prep = false;
+		await expect("app_preparation_failed", ["download", "verify-and-stage"]);
+		prep = true;
+		backendResult = false;
+		const installSteps = ["download", "verify-and-stage", "server-install"];
+		await expect("server_failed", installSteps);
+		backendResult = true;
+		const proofSteps = [...installSteps, "health"];
+		await expect("server_failed", proofSteps); // New metadata, old boot.
+		boot = `${targets.server}rc1`;
+		await expect("server_failed", proofSteps); // Same numeric triple, different boot release.
+		boot = targets.server;
+		installed = `${targets.server}rc1`;
+		await expect("server_failed", proofSteps); // Same numeric triple, different installed release.
+		installed = "0.69.6";
+		await expect("server_failed", proofSteps); // Unreviewed newer release.
+		installed = targets.server;
+		rotate = true;
+		await expect("server_failed", proofSteps); // Two different daemon records.
+		rotate = false;
+		await expect("app_install_failed", [...proofSteps, "handoff", "restore"]);
+		commit = true;
+		await expect("handoff", [...proofSteps, "handoff"]);
+	} finally {
+		service?.dispose();
+		if (serviceDir) rmSync(serviceDir, { recursive: true, force: true });
+		globalThis.__loTestPaths = originalPaths;
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
 // A failed server update has to SAY so, on the channel the renderer listens to
 // ---------------------------------------------------------------------------
 

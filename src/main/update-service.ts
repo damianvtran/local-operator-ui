@@ -30,6 +30,7 @@ import { promisify } from "node:util";
 import {
 	net,
 	type BrowserWindow,
+	type IpcMainInvokeEvent,
 	Notification,
 	app,
 	ipcMain,
@@ -42,6 +43,7 @@ import {
 } from "electron-updater";
 import { t } from "../i18n";
 import { currentLocaleState, isLanguageTag } from "../i18n/locale";
+import type { CombinedUpdateResult } from "../shared/combined-update";
 import {
 	type DriftAbsence,
 	type DriftRestartHold,
@@ -351,6 +353,7 @@ const APP_OWNED_PUBLISH_HEADROOM_BYTES = 450 * 1024 * 1024;
  * out there used to refuse the install for good (review R5).
  */
 const SEAL_PROBE_TIMEOUT_MS = 45_000;
+const DESIGNATED_REQUIREMENT_LINE = /^(?:# )?designated => (.+)$/gm;
 
 /**
  * How long one step of the staged-artifact signature probe may take.
@@ -1346,6 +1349,8 @@ export type BackendUpdateInfo = {
 	updateCommand: string;
 	/** Whether the update can be managed by the update service */
 	canManageUpdate: boolean;
+	/** Main verified an install route it can complete on the serving daemon. */
+	combinedInstallable?: boolean;
 	/**
 	 * Whether the install IS one of the app's own, so the panel may not offer the
 	 * reader a terminal command or imply that anything on screen moves it.
@@ -2326,6 +2331,25 @@ function defaultStartRelaunchWatchdog(
 	});
 }
 
+type PreparedAppInstall = {
+	targetVersion: string;
+	handoff: InstallerHandoff | null;
+};
+
+// Electron's updater is process-wide, but UpdateService is recreated with the
+// window. An old window may still have an install awaiting disk or the daemon;
+// a new window must not start another writer or change the desktop feed under it.
+let updateOperation: "app" | "server" | "combined" | null = null;
+function acquireUpdateOperation(
+	kind: NonNullable<typeof updateOperation>,
+): (() => void) | null {
+	if (updateOperation) return null;
+	updateOperation = kind;
+	return () => {
+		updateOperation = null;
+	};
+}
+
 /**
  * Service to handle application updates using electron-updater
  * and backend updates using pip
@@ -2495,6 +2519,8 @@ export class UpdateService {
 	 * so it is kept rather than fetched again on the click (review U17).
 	 */
 	private lastPublishedBackendVersion: string | null = null;
+	private combinedAppOfferVersion: string | null = null;
+	private combinedServerOfferVersion: string | null = null;
 
 	/**
 	 * The version PyPI most recently NAMED whose files were not yet
@@ -2623,7 +2649,6 @@ export class UpdateService {
 	 * whole point of it is that a second request must not run beside the first (see
 	 * the handler).
 	 */
-	private installPreflightInFlight = false;
 
 	/**
 	 * How long the rebuild install leg may hold back for the fleet, and how often
@@ -3162,15 +3187,14 @@ export class UpdateService {
 	 * The service's name for `runningBundleIdentifier`, which the launch hold needs
 	 * before a service exists; the rule itself lives there.
 	 */
-	private bundleIdentifier(): string | null {
-		// The seam first, and sited here as well as in `runningBundlePath` because
-		// this method has always answered for an UNPACKAGED run too (the dev
-		// Electron is a bundle): a harness that substitutes one has to get both, or
-		// the staging step would take its bundle id from the Electron it is running
-		// under rather than from the bundle it was pointed at.
-		const bundlePath = this.runningBundleProbe
+	private bundleIdentifier(
+		// The default also answers for an UNPACKAGED run (dev Electron is a
+		// bundle). Staging passes its selected target so the ID check and the
+		// signature requirement refer to exactly the same incumbent.
+		bundlePath = this.runningBundleProbe
 			? this.runningBundleProbe()
-			: appBundleFromExecutable(process.execPath);
+			: appBundleFromExecutable(process.execPath),
+	): string | null {
 		if (!bundlePath) return null;
 		const value = readCommandOutput("/usr/bin/defaults", [
 			"read",
@@ -3761,11 +3785,20 @@ export class UpdateService {
 	 */
 	private async readBundleSeal(
 		bundlePath: string,
+		designatedRequirement?: string,
 	): Promise<{ seal: SealVerdict; probe: SealProbe }> {
 		const probeBundle = () =>
 			runCommand(
 				"/usr/bin/codesign",
-				["--verify", "--deep", "--verbose=2", bundlePath],
+				[
+					"--verify",
+					"--deep",
+					"--verbose=2",
+					// `=` forces requirement source, not a filename. runCommand uses
+					// execFile, so this is one argument, never shell syntax.
+					...(designatedRequirement ? [`-R=${designatedRequirement}`] : []),
+					bundlePath,
+				],
 				{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
 			);
 
@@ -3780,6 +3813,31 @@ export class UpdateService {
 			seal = evaluateBundleSeal(probe);
 		}
 		return { seal, probe };
+	}
+
+	/** Read ShipIt's trust requirement from the exact bundle being replaced. */
+	private async readInstalledDesignatedRequirement(
+		bundlePath: string,
+	): Promise<string | null> {
+		const display = await runCommand(
+			"/usr/bin/codesign",
+			["--display", "-r-", bundlePath],
+			{ timeoutMs: SEAL_PROBE_TIMEOUT_MS },
+		);
+		if (!display.ran || display.exitCode !== 0) return null;
+		// codesign prints a synthesized (implicit) designated requirement as a
+		// comment. That is still the requirement Security.framework returns to
+		// ShipIt. Do not substitute the candidate's requirement or a bundle ID.
+		const designated = [
+			...display.stdout.matchAll(DESIGNATED_REQUIREMENT_LINE),
+		];
+		const requirement = designated.length === 1 ? designated[0][1].trim() : "";
+		if (!requirement) return null;
+		// Display alone doesn't validate the signer or even prove a good seal.
+		// The shared pre-flight may proceed without a verdict for standalone;
+		// strict staging requires this incumbent itself to pass the parsed rule.
+		const { seal } = await this.readBundleSeal(bundlePath, requirement);
+		return seal.kind === "sealed" ? requirement : null;
 	}
 
 	/**
@@ -4343,6 +4401,7 @@ export class UpdateService {
 	 */
 	private async stageInstallerHandoff(
 		info: UpdateInfo | null,
+		allowNativeFallback = true,
 	): Promise<StageOutcome> {
 		/*
 		 * Every refusal here falls back to Squirrel's own path, which is the whole
@@ -4352,9 +4411,24 @@ export class UpdateService {
 		 * So each one is logged with the reason rather than thrown, and the caller
 		 * cannot tell a refusal from an absent precondition - which is the intent.
 		 */
+		// A strict attempt never passes an unverified tree to another installer.
+		// Discard only the scratch path this staging call created.
+		let ownedStagingRoot: string | null = null;
+		const discardRefusedStage = () => {
+			if (allowNativeFallback || !ownedStagingRoot) return;
+			try {
+				rmSync(ownedStagingRoot, { recursive: true, force: true });
+			} catch (error) {
+				logger.warn(
+					`Could not discard refused update staging: ${String(error)}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+		};
 		const refuse = (reason: string): StageOutcome => {
+			discardRefusedStage();
 			logger.info(
-				`Not staging the update for the installer: ${reason}. The install will be handed to Squirrel's own path instead, which takes minutes but is the same install.`,
+				`Not staging the update for the installer: ${reason}. ${allowNativeFallback ? "Using Squirrel's own path instead." : "Refusing the combined update before touching the server."}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 			return { kind: "fallback" };
@@ -4369,6 +4443,7 @@ export class UpdateService {
 			message: string,
 			remedy: string,
 		): StageOutcome => {
+			discardRefusedStage();
 			logger.warn(
 				`Refusing to install the staged update: ${detail}`,
 				LogFileType.UPDATE_SERVICE,
@@ -4414,7 +4489,7 @@ export class UpdateService {
 				`${shipItPath ?? "no Squirrel.framework installer"} is not an executable inside the running bundle`,
 			);
 		}
-		const bundleId = this.bundleIdentifier();
+		const bundleId = this.bundleIdentifier(bundlePath);
 		if (!bundleId) {
 			return refuse("the running bundle has no readable CFBundleIdentifier");
 		}
@@ -4447,6 +4522,7 @@ export class UpdateService {
 		}
 		try {
 			mkdirSync(stagingRoot, { recursive: true });
+			ownedStagingRoot = stagingRoot;
 		} catch (error) {
 			return refuse(`the staging root could not be created: ${String(error)}`);
 		}
@@ -4495,11 +4571,33 @@ export class UpdateService {
 		 */
 		let stagedSeal: SealVerdict;
 		try {
-			// `readBundleSeal` is the shipped probe (with its one retry) and it
-			// already reads its own output through `evaluateBundleSeal`, so this is
-			// the installed-bundle check applied to the staged tree rather than a
-			// second implementation of either half.
-			({ seal: stagedSeal } = await this.readBundleSeal(stagedAppPath));
+			// A candidate's own seal answers whether its bytes are intact, not
+			// whether ShipIt trusts it as a replacement. Combined must know both
+			// before changing the backend; standalone keeps its native policy.
+			let requirement: string | undefined;
+			if (!allowNativeFallback) {
+				const incumbent =
+					await this.readInstalledDesignatedRequirement(bundlePath);
+				if (!incumbent) {
+					return refuse(
+						"the running bundle has no verifiable designated requirement",
+					);
+				}
+				requirement = incumbent;
+			}
+			const { seal, probe } = await this.readBundleSeal(
+				stagedAppPath,
+				requirement,
+			);
+			// codesign(1) reserves 3 for valid code that fails the supplied rule.
+			// This is not a damaged download: let the combined IPC return its
+			// preparation refusal without also emitting a standalone install block.
+			if (requirement && seal.kind === "unsealed" && probe.exitCode === 3) {
+				return refuse(
+					`the staged bundle did not satisfy the running bundle's designated requirement (${seal.detail})`,
+				);
+			}
+			stagedSeal = seal;
 		} catch (error) {
 			return refuse(
 				`the staged bundle's seal could not be probed: ${String(error)}`,
@@ -4632,10 +4730,19 @@ export class UpdateService {
 				stdio: "ignore",
 				env: { ...process.env, ...plan.env },
 			});
+			// Node emits spawn failures asynchronously even when pid is already
+			// absent. The caller handles the refusal; don't let it crash the app.
+			child.on("error", (error) => {
+				logger.error(
+					"Direct installer spawn failed",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+			});
 			child.unref();
 			if (child.pid == null) {
 				logger.error(
-					"The installer was spawned but reported no pid; falling back to Squirrel's own install path.",
+					"The direct installer reported no pid.",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return null;
@@ -4667,7 +4774,7 @@ export class UpdateService {
 		try {
 			process.kill(pid, "SIGTERM");
 			logger.warn(
-				`Stopped the installer (pid ${pid}) because this app could not record the install it was started for.`,
+				`Stopped the installer (pid ${pid}) because this app could not complete its installer handoff.`,
 				LogFileType.UPDATE_SERVICE,
 			);
 		} catch (error) {
@@ -4945,6 +5052,7 @@ export class UpdateService {
 		ipcMain.removeHandler("check-for-all-updates");
 		ipcMain.removeHandler("get-last-install-attempt");
 		ipcMain.removeHandler("update-backend");
+		ipcMain.removeHandler("install-combined-update");
 		ipcMain.removeHandler("download-update");
 		ipcMain.removeHandler("quit-and-install");
 		ipcMain.removeHandler("quit-for-update-install");
@@ -4995,6 +5103,8 @@ export class UpdateService {
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
 		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
+		if (updateOperation === "app" || updateOperation === "combined")
+			return null;
 		const epoch = this.appFeedFetchEpoch + 1;
 		this.appFeedFetchEpoch = epoch;
 		const sequence = this.runAppFeedAttempts(fetchFeed, epoch);
@@ -5232,12 +5342,14 @@ export class UpdateService {
 				return;
 			}
 
+			this.combinedAppOfferVersion = info.version;
 			this.sendToRenderer("update-available", info);
 		});
 
 		// When no update is available
 		autoUpdater.on("update-not-available", (info) => {
 			logger.info("No update available:", LogFileType.UPDATE_SERVICE, info);
+			this.combinedAppOfferVersion = null;
 			this.sendToRenderer("update-not-available", info);
 		});
 
@@ -5447,6 +5559,489 @@ export class UpdateService {
 		this.failedVerificationVersions.clear();
 	}
 
+	private isUpdateOwner(event: IpcMainInvokeEvent): boolean {
+		const window = this.mainWindow;
+		return Boolean(
+			window &&
+				!window.isDestroyed() &&
+				event.sender === window.webContents &&
+				event.senderFrame &&
+				event.senderFrame === window.webContents.mainFrame,
+		);
+	}
+
+	/** A combined promise needs both rights: to move the install and to bring
+	 * its serving process onto the target. A standalone offer can lack the second. */
+	private canCombineBackend(
+		startupMode: LocalOperatorStartupMode,
+		serving: ServingInstall,
+		plan: { sourceBuild: boolean },
+	): boolean {
+		const backend = this.backendService;
+		return (
+			!this.quietReason &&
+			backend?.isUsingExternalBackend?.() === false &&
+			startupMode !== LocalOperatorStartupMode.EXISTING_SERVER &&
+			!plan.sourceBuild &&
+			this.backendIsAppOwned() &&
+			// The app-managed publish path takes an explicit version. The stand-alone
+			// global entry point runs `lop update` unpinned; a newer PyPI release
+			// arriving during confirmation must not substitute a different target.
+			serving.appOwned &&
+			this.appOwnsInstall(startupMode, serving)
+		);
+	}
+
+	private async proveCombinedBackend(target: string): Promise<boolean> {
+		// /health's version can come from new on-disk metadata while old code
+		// is still serving. Use it for liveness and the install root; require the
+		// same daemon's own boot version before and after the asynchronous read.
+		const before = this.servingRecordReadings();
+		const health = await this.readRunningBackend();
+		const after = this.servingRecordReadings();
+		const install = this.readServingInstall(health, { exactPackage: true });
+		return Boolean(
+			before.instanceId &&
+				before.instanceId === after.instanceId &&
+				before.bootVersion === after.bootVersion &&
+				after.bootVersion &&
+				health.version &&
+				install.appOwned &&
+				// The ordering comparator intentionally drops release suffixes. A
+				// reviewed target is an identity, not a numeric ordering threshold.
+				install.version === target &&
+				after.bootVersion === target &&
+				this.backendService &&
+				!this.backendService.isUsingExternalBackend() &&
+				this.backendIsAppOwned(),
+		);
+	}
+
+	private async installCombinedUpdate(
+		event: IpcMainInvokeEvent,
+		targets: unknown,
+	): Promise<CombinedUpdateResult> {
+		if (
+			!this.isUpdateOwner(event) ||
+			!app.isPackaged ||
+			this.quietReason ||
+			!targets ||
+			typeof targets !== "object" ||
+			!("app" in targets) ||
+			!("server" in targets) ||
+			typeof targets.app !== "string" ||
+			typeof targets.server !== "string"
+		) {
+			return { status: "offer_changed" };
+		}
+		const { app: appTarget, server: serverTarget } = targets;
+		const backend = this.backendService;
+		if (
+			this.appFeedFetchInFlight !== null ||
+			this.appChecksInFlight > 0 ||
+			this.appFeedAbandonedFetches.size > 0 ||
+			this.serverUpdateInFlight ||
+			backend?.checkIsAutoUpdating() ||
+			this.livePendingInstallMarker()
+		)
+			return { status: "busy" };
+		const info = this.lastUpdateInfo;
+		if (
+			!backend ||
+			!info ||
+			info.version !== appTarget ||
+			this.combinedAppOfferVersion !== appTarget ||
+			this.combinedServerOfferVersion !== serverTarget ||
+			this.failedVerificationVersions.has(info.version) ||
+			backend.isUsingExternalBackend()
+		) {
+			return { status: "offer_changed" };
+		}
+		const release = acquireUpdateOperation("combined");
+		if (!release) return { status: "busy" };
+		let failure: Exclude<
+			CombinedUpdateResult["status"],
+			"handoff" | "busy" | "offer_changed"
+		> = "app_preparation_failed";
+		let prepared: PreparedAppInstall | null = null;
+		let handedOff = false;
+		// The same hold standalone backend updates use prevents drift repair from
+		// restarting between the proof and the app installer's normal cleanup.
+		backend.setAutoUpdating(true);
+		try {
+			// On macOS the updater resolves [] when auto-install-on-quit is off;
+			// the verified artifact read below is the authority, not that array.
+			const downloaded = await this.downloadAppUpdate();
+			if (
+				!Array.isArray(downloaded) ||
+				this.lastUpdateInfo?.version !== appTarget ||
+				this.combinedAppOfferVersion !== appTarget
+			)
+				return { status: failure };
+			prepared = await this.prepareStrictAppInstall(info);
+			if (!prepared) return { status: failure };
+			if (
+				!this.isUpdateOwner(event) ||
+				this.lastUpdateInfo?.version !== appTarget ||
+				this.combinedAppOfferVersion !== appTarget ||
+				this.failedVerificationVersions.has(appTarget) ||
+				this.combinedServerOfferVersion !== serverTarget
+			) {
+				return { status: "offer_changed" };
+			}
+
+			failure = "server_failed";
+			// The existing backend path owns authorization/routing and recovery.
+			// Its boolean also covers publish-without-restart; it is not proof.
+			if (
+				!(await this.runBackendUpdate(serverTarget, true)) ||
+				!(await this.proveCombinedBackend(serverTarget))
+			)
+				return { status: failure };
+
+			failure = "app_install_failed";
+			const stillAuthorized = () =>
+				this.isUpdateOwner(event) &&
+				this.lastUpdateInfo?.version === appTarget &&
+				this.combinedAppOfferVersion === appTarget &&
+				!this.failedVerificationVersions.has(appTarget);
+			if (!stillAuthorized()) return { status: failure };
+			// Keep the stop reversible until the installer handoff succeeds. The
+			// normal quit path marks the backend as closing only on an actual quit.
+			try {
+				handedOff = await this.commitAppInstall(prepared, stillAuthorized);
+			} finally {
+				// If the owner window closed but the app stayed alive, still restore
+				// its backend. start() itself refuses once normal quit has begun.
+				if (!handedOff) await backend.start({ quiet: true });
+			}
+			return { status: handedOff ? "handoff" : failure };
+		} catch (error) {
+			logger.error(
+				`Combined update stopped (${failure})`,
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+			return { status: failure };
+		} finally {
+			if (!handedOff) {
+				this.updateStage = "idle";
+				backend.setAutoUpdating(false);
+				// This fully staged tree belongs to this attempt only. Keep the
+				// verified download for the independent desktop recovery path.
+				if (prepared?.handoff) {
+					try {
+						rmSync(prepared.handoff.stagingRoot, {
+							recursive: true,
+							force: true,
+						});
+					} catch (error) {
+						logger.warn(
+							`Could not remove unused staged update: ${String(error)}`,
+							LogFileType.UPDATE_SERVICE,
+						);
+					}
+				}
+				release();
+			}
+			// A direct child and marker now own the bounded normal quit. Keep
+			// the lease even if Electron is still closing windows, rather than
+			// admitting a different installer to an already-committed attempt.
+		}
+	}
+
+	private async downloadAppUpdate() {
+		logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
+		this.updateStage = "downloading";
+		/*
+		 * A REAL TOKEN, and a watchdog that cancels through it. The updater's
+		 * download has no deadline of its own either, and a connection that
+		 * stalls after the first bytes sits on "Downloading..." for as long as
+		 * the connection does; `downloadUpdate` accepts exactly this token for
+		 * exactly this. Cancelling rejects with the updater's
+		 * `CancellationError` ("cancelled"), which the catch below reports -
+		 * deliberately unfiltered, so the user who asked for the download is
+		 * told it failed rather than answered "no updates available".
+		 */
+		const cancellationToken = new CancellationToken();
+		this.armDownloadStallWatchdog(cancellationToken);
+		try {
+			const downloadedPaths =
+				await autoUpdater.downloadUpdate(cancellationToken);
+			// The paths are the updater's own answer for where the artifact
+			// landed, so the verification that follows does not have to guess.
+			if (Array.isArray(downloadedPaths) && downloadedPaths.length > 0) {
+				this.downloadedArtifactPath = downloadedPaths[0];
+			}
+			return downloadedPaths;
+		} catch (error) {
+			logger.error(
+				"Error downloading update:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+
+			// Apply the same error filtering logic here
+			const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+			if (shouldFilter) {
+				logger.info(
+					"Error filtering result in download-update: Reporting as no updates available",
+					LogFileType.UPDATE_SERVICE,
+				);
+				// Return a "no update available" result instead of throwing the error
+				if (
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
+					this.mainWindow.webContents.send("update-not-available", {
+						version: app.getVersion(),
+					});
+				}
+				// Return a minimal result to avoid breaking the promise chain
+				return {
+					cancellationToken: null,
+				};
+			}
+
+			throw error;
+		} finally {
+			/*
+			 * The watchdog goes with the attempt: its timer must never outlive
+			 * the download it was armed for, and any settle - success, refusal
+			 * or the cancel it just caused - is the end of the window it guards.
+			 */
+			this.clearDownloadStallWatchdog();
+			this.updateStage = "idle";
+		}
+	}
+
+	// A caller that will move the backend needs a verified direct handoff, not
+	// Squirrel's deferred fallback, before performing any version-changing work.
+	private async prepareStrictAppInstall(
+		info: UpdateInfo,
+	): Promise<(PreparedAppInstall & { handoff: InstallerHandoff }) | null> {
+		const prepared = await this.prepareAppInstall(info, false);
+		return prepared?.handoff
+			? { targetVersion: prepared.targetVersion, handoff: prepared.handoff }
+			: null;
+	}
+
+	// Prepare while the app and backend are still serving. This does not stop
+	// either process or start an installer, so a combined update can fail here
+	// before it touches the server.
+	private async prepareAppInstall(
+		info: UpdateInfo | null,
+		allowNativeFallback = true,
+	): Promise<PreparedAppInstall | null> {
+		/*
+		 * An unpackaged instance never starts an install, and stating it here is what
+		 * makes that more than a detail: the marker below goes into the shared
+		 * userData the packaged app reads, so one written here would tell the
+		 * packaged app an install was in flight for a bundle nothing was installing
+		 * (see `recoverPendingInstall`, which is the reader's half of this rule).
+		 */
+		if (!app.isPackaged) {
+			logger.info(
+				"Refusing to start an update install: this instance is unpackaged, so it is not the bundle an install replaces.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+		logger.info(
+			"Preparing to quit and install the update...",
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		this.updateStage = "installing";
+		let block: InstallBlock | null = null;
+		let handoff: InstallerHandoff | null = null;
+		/*
+		 * This is the longest silent wait the person sits through (UX U5): the
+		 * pre-flight runs `codesign` over the ~1 GiB installed bundle and hashes
+		 * the artifact, and the staging below extracts it and probes the result -
+		 * seconds of work whose only feedback used to be a disabled button. Each
+		 * step is reported as it starts, on the update surface that is already on
+		 * screen, so the wait has a name rather than a spinner invented for it.
+		 */
+		this.reportInstallProgress("verifying");
+		try {
+			block = await this.runInstallPreflight(info);
+			/*
+			 * STAGING, then the stop, in that order and both before anything is
+			 * recorded or any process starts: the extraction is ~6 s of `ditto` over
+			 * the update zip plus ~2 s of `codesign`, and doing it while the backend is
+			 * still up costs the user nothing while doing it after a quit is not
+			 * possible. This helper never throws - every refusal returns null and
+			 * leaves the Squirrel path below untouched - so a staging failure cannot
+			 * be mistaken for a cleanup failure here.
+			 */
+			if (!block) {
+				this.reportInstallProgress("staging");
+				const staged = await this.stageInstallerHandoff(
+					info,
+					allowNativeFallback,
+				);
+				if (staged.kind === "staged") handoff = staged.handoff;
+				if (staged.kind === "blocked") block = staged.block;
+			}
+		} catch (error) {
+			this.updateStage = "idle";
+			logger.error(
+				"Update preparation failed",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+			return null;
+		}
+		if (block) {
+			this.updateStage = "idle";
+			this.sendInstallBlock(block, info?.version);
+			return null;
+		}
+		if (!handoff && !allowNativeFallback) return null;
+		return { targetVersion: info?.version ?? app.getVersion(), handoff };
+	}
+
+	private async commitAppInstall(
+		{ targetVersion, handoff }: PreparedAppInstall,
+		stillAuthorized?: () => boolean,
+	): Promise<boolean> {
+		try {
+			// The native updater does not await Electron's async quit listeners.
+			// Cleanup must precede even the watchdog/marker handoff effects.
+			await this.backendService?.stop(stillAuthorized !== undefined);
+			if (stillAuthorized && !stillAuthorized()) return false;
+		} catch (error) {
+			this.updateStage = "idle";
+			logger.error(
+				"Update handoff refused: owned backend cleanup failed",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+			return false;
+		}
+
+		// Written before the quit, because after it there is nothing left of
+		// this process to record that an install was in flight. The target is
+		// decided once: the marker records it and the watchdog's on-disk swap
+		// check compares against it, and two computations of one fact are two
+		// chances to disagree (review R11). The one place the two must differ is
+		// a fallback: the watchdog never gets a target that is already installed,
+		// because such a target reads as "the swap landed" before the install has
+		// started (review R15, see `watchdogSwapTarget`).
+		/*
+		 * WHO STARTS THE INSTALLER, and why it is not `quitAndInstall` any more.
+		 *
+		 * Squirrel's path fetches the zip back from this app, unzips it, writes the
+		 * state plist and SUBMITS ShipIt as a launchd job - and the job's scheduling
+		 * class is what makes Apple's own validation over a 394 MB bundle cost
+		 * minutes instead of seconds (0.25-3.85 s from an ordinary process, 33.3 s
+		 * as a launchd job, 331-777 s under `taskpolicy -b`; a real install spent
+		 * 4 min 26.6 s inside it at 4.3% CPU). When the staging above succeeded,
+		 * the app starts ShipIt itself instead: the same installer, the same
+		 * validation, the same swap, in this process's own scheduling context.
+		 *
+		 * The spawn comes BEFORE the watchdog and the marker, and that order is
+		 * load-bearing in both directions: the watchdog's script has to be told the
+		 * installer's pid (it is the signal that install is visible by, since it has
+		 * no job), and the marker has to record the same pid or recovery would read
+		 * a live install as a failure. `handoff` without a pid is the spawn failing,
+		 * and that falls back exactly like a staging refusal does.
+		 */
+		if (handoff) this.reportInstallProgress("starting");
+		const installerPid = handoff ? this.startInstaller(handoff) : null;
+		// Combined already moved the server by this point. Never accept the
+		// void/deferred native fallback here: the caller restores the serving
+		// backend and releases its hold. No marker or watchdog has been written.
+		if (stillAuthorized && installerPid == null) return false;
+		let watchdogPid: number | null = null;
+		const abortHandoff = () => {
+			if (installerPid != null) this.abortInstaller(installerPid);
+			// This is the watchdog started for this attempt, never an adopted PID.
+			if (watchdogPid != null) {
+				try {
+					process.kill(watchdogPid, "SIGTERM");
+				} catch {
+					/* already gone */
+				}
+			}
+			this.updateStage = "idle";
+		};
+		let marker: PendingInstallMarker;
+		try {
+			watchdogPid = this.launchWatchdog(targetVersion, installerPid);
+			/*
+			 * The locale the NEXT process needs for its pre-window notices. The
+			 * store's own source is the gate: only a tag the BACKEND resolved is
+			 * recorded, never a device guess and never a manual pin - the marker
+			 * must not become a second preference. Absent when the backend has not
+			 * answered yet, which is the honest state and the same shape an older
+			 * version wrote.
+			 */
+			const activeLocale = currentLocaleState();
+			const markerLanguage =
+				activeLocale.source === "backend" && isLanguageTag(activeLocale.locale)
+					? { language: activeLocale.locale }
+					: {};
+			marker = writePendingInstallMarker(this.markerDir(), {
+				targetVersion,
+				artifactPath:
+					this.downloadedArtifactPath ??
+					this.downloadHelper()?.file ??
+					"unknown",
+				startedAt: new Date().toISOString(),
+				watchdogPid,
+				installerPid,
+				...markerLanguage,
+			});
+		} catch (error) {
+			/*
+			 * The one step whose failure undoes the spawn. The marker is the only
+			 * record that an install was attempted and the only thing recovery can
+			 * read afterwards, so a spawner started for a marker that was never
+			 * written would wait for a quit this process is not making, invisibly and
+			 * forever. Killing it leaves this handler exactly as it was before the
+			 * change: the error reaches the renderer and nothing is half-started.
+			 */
+			abortHandoff();
+			throw error;
+		}
+		logger.info(
+			`Pending install marker written for version ${marker.targetVersion} (watchdog pid ${watchdogPid ?? "none"}, ${installerPid != null ? `installer pid ${installerPid}` : "Squirrel's own installer"}).`,
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		this.backendService?.setAutoUpdating(true);
+		if (installerPid != null) {
+			/*
+			 * `app.quit()`, deliberately NOT `quitAndInstall`. Two reasons, and the
+			 * second is the one that would be a bug if it were missed: the installer
+			 * is already running and waiting for THIS process to go, and
+			 * `quitAndInstall` would additionally have Squirrel fetch and unzip the
+			 * same update into its own cache and submit a second, launchd Job - two
+			 * installers for one update, racing over one bundle. Nothing about
+			 * electron-updater holds an `app.quit()` back: `autoInstallOnAppQuit` is
+			 * false (see the constructor), which is the flag MacUpdater checks before
+			 * triggering Squirrel on a quit, so quitting is quitting.
+			 */
+			try {
+				app.quit();
+				return true;
+			} catch (error) {
+				// A synchronous refusal is still ours. Without recovery this marker would
+				// hold the next launch for a spawner that never got a real quit.
+				abortHandoff();
+				clearPendingInstallMarker(this.markerDir());
+				throw error;
+			}
+		}
+		autoUpdater.quitAndInstall(false, true);
+		return true;
+	}
+
 	public setupIpcHandlers(): void {
 		// Check for UI updates
 		ipcMain.handle(
@@ -5629,6 +6224,10 @@ export class UpdateService {
 		// The last failed install, for Settings -> App updates.
 		ipcMain.handle("get-last-install-attempt", () => this.lastInstallAttempt());
 
+		ipcMain.handle("install-combined-update", (event, targets: unknown) =>
+			this.installCombinedUpdate(event, targets),
+		);
+
 		// Update backend
 		ipcMain.handle(
 			"update-backend",
@@ -5649,259 +6248,26 @@ export class UpdateService {
 			},
 		);
 
-		// Download update
 		ipcMain.handle("download-update", async () => {
-			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
-			this.updateStage = "downloading";
-			/*
-			 * A REAL TOKEN, and a watchdog that cancels through it. The updater's
-			 * download has no deadline of its own either, and a connection that
-			 * stalls after the first bytes sits on "Downloading..." for as long as
-			 * the connection does; `downloadUpdate` accepts exactly this token for
-			 * exactly this. Cancelling rejects with the updater's
-			 * `CancellationError` ("cancelled"), which the catch below reports -
-			 * deliberately unfiltered, so the user who asked for the download is
-			 * told it failed rather than answered "no updates available".
-			 */
-			const cancellationToken = new CancellationToken();
-			this.armDownloadStallWatchdog(cancellationToken);
+			const release = acquireUpdateOperation("app");
+			if (!release) throw new Error("Another update operation is in progress");
 			try {
-				const downloadedPaths =
-					await autoUpdater.downloadUpdate(cancellationToken);
-				// The paths are the updater's own answer for where the artifact
-				// landed, so the verification that follows does not have to guess.
-				if (Array.isArray(downloadedPaths) && downloadedPaths.length > 0) {
-					this.downloadedArtifactPath = downloadedPaths[0];
-				}
-				return downloadedPaths;
-			} catch (error) {
-				logger.error(
-					"Error downloading update:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-
-				// Apply the same error filtering logic here
-				const shouldFilter = this.shouldFilterUpdateError(error as Error);
-
-				if (shouldFilter) {
-					logger.info(
-						"Error filtering result in download-update: Reporting as no updates available",
-						LogFileType.UPDATE_SERVICE,
-					);
-					// Return a "no update available" result instead of throwing the error
-					if (
-						this.mainWindow &&
-						!this.mainWindow.isDestroyed() &&
-						this.mainWindow.webContents &&
-						!this.mainWindow.webContents.isDestroyed()
-					) {
-						this.mainWindow.webContents.send("update-not-available", {
-							version: app.getVersion(),
-						});
-					}
-					// Return a minimal result to avoid breaking the promise chain
-					return {
-						cancellationToken: null,
-					};
-				}
-
-				throw error;
+				return await this.downloadAppUpdate();
 			} finally {
-				/*
-				 * The watchdog goes with the attempt: its timer must never outlive
-				 * the download it was armed for, and any settle - success, refusal
-				 * or the cancel it just caused - is the end of the window it guards.
-				 */
-				this.clearDownloadStallWatchdog();
-				this.updateStage = "idle";
+				release();
 			}
 		});
 
-		// Quit and install update
-		//
-		// Async, and deliberately capable of refusing: this is the only place an
-		// install starts, and it starts only after the installed bundle and the
-		// staged artifact have been checked (see runInstallPreflight).
-		//
-		// One install at a time. The pre-flight can run `codesign` over a 1 GiB
-		// bundle and hash a 350 MB artifact, and for those seconds the panel used to
-		// look untouched with its primary button still live - so a second click
-		// re-entered the whole thing, spawned a second watchdog and overwrote the
-		// first marker's pid (review U5). The renderer also shows a pending state;
-		// this is the half that has to hold when something else calls in.
 		ipcMain.handle("quit-and-install", async () => {
-			if (this.installPreflightInFlight) {
-				logger.info(
-					"Ignoring a second install request while the pre-flight is still running.",
-					LogFileType.UPDATE_SERVICE,
-				);
-				return false;
-			}
-
-			/*
-			 * An unpackaged instance never starts an install, and stating it here is what
-			 * makes that more than a detail: the marker below goes into the shared
-			 * userData the packaged app reads, so one written here would tell the
-			 * packaged app an install was in flight for a bundle nothing was installing
-			 * (see `recoverPendingInstall`, which is the reader's half of this rule).
-			 */
-			if (!app.isPackaged) {
-				logger.info(
-					"Refusing to start an update install: this instance is unpackaged, so it is not the bundle an install replaces.",
-					LogFileType.UPDATE_SERVICE,
-				);
-				return false;
-			}
-			logger.info(
-				"Preparing to quit and install the update...",
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			this.installPreflightInFlight = true;
-			this.updateStage = "installing";
-			let block: InstallBlock | null = null;
-			let handoff: InstallerHandoff | null = null;
-			/*
-			 * This is the longest silent wait the person sits through (UX U5): the
-			 * pre-flight runs `codesign` over the ~1 GiB installed bundle and hashes
-			 * the artifact, and the staging below extracts it and probes the result -
-			 * seconds of work whose only feedback used to be a disabled button. Each
-			 * step is reported as it starts, on the update surface that is already on
-			 * screen, so the wait has a name rather than a spinner invented for it.
-			 */
-			this.reportInstallProgress("verifying");
+			if (this.livePendingInstallMarker()) return false;
+			const release = acquireUpdateOperation("app");
+			if (!release) return false;
 			try {
-				block = await this.runInstallPreflight(this.lastUpdateInfo);
-				/*
-				 * STAGING, then the stop, in that order and both before anything is
-				 * recorded or any process starts: the extraction is ~6 s of `ditto` over
-				 * the update zip plus ~2 s of `codesign`, and doing it while the backend is
-				 * still up costs the user nothing while doing it after a quit is not
-				 * possible. This helper never throws - every refusal returns null and
-				 * leaves the Squirrel path below untouched - so a staging failure cannot
-				 * be mistaken for a cleanup failure here.
-				 */
-				if (!block) {
-					this.reportInstallProgress("staging");
-					const staged = await this.stageInstallerHandoff(this.lastUpdateInfo);
-					if (staged.kind === "staged") handoff = staged.handoff;
-					if (staged.kind === "blocked") block = staged.block;
-				}
-				// Native updaters do not await Electron's async quit listeners.
-				// Cleanup must precede even the watchdog/marker handoff effects.
-				if (!block) await this.backendService?.stop(false);
-			} catch (error) {
-				this.updateStage = "idle";
-				logger.error(
-					"Update handoff refused: owned backend cleanup failed",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-				return false;
+				const prepared = await this.prepareAppInstall(this.lastUpdateInfo);
+				return prepared ? await this.commitAppInstall(prepared) : false;
 			} finally {
-				this.installPreflightInFlight = false;
+				release();
 			}
-			if (block) {
-				this.updateStage = "idle";
-				this.sendInstallBlock(block, this.lastUpdateInfo?.version ?? undefined);
-				return false;
-			}
-
-			// Written before the quit, because after it there is nothing left of
-			// this process to record that an install was in flight. The target is
-			// decided once: the marker records it and the watchdog's on-disk swap
-			// check compares against it, and two computations of one fact are two
-			// chances to disagree (review R11). The one place the two must differ is
-			// a fallback: the watchdog never gets a target that is already installed,
-			// because such a target reads as "the swap landed" before the install has
-			// started (review R15, see `watchdogSwapTarget`).
-			const targetVersion = this.lastUpdateInfo?.version ?? app.getVersion();
-			/*
-			 * WHO STARTS THE INSTALLER, and why it is not `quitAndInstall` any more.
-			 *
-			 * Squirrel's path fetches the zip back from this app, unzips it, writes the
-			 * state plist and SUBMITS ShipIt as a launchd job - and the job's scheduling
-			 * class is what makes Apple's own validation over a 394 MB bundle cost
-			 * minutes instead of seconds (0.25-3.85 s from an ordinary process, 33.3 s
-			 * as a launchd job, 331-777 s under `taskpolicy -b`; a real install spent
-			 * 4 min 26.6 s inside it at 4.3% CPU). When the staging above succeeded,
-			 * the app starts ShipIt itself instead: the same installer, the same
-			 * validation, the same swap, in this process's own scheduling context.
-			 *
-			 * The spawn comes BEFORE the watchdog and the marker, and that order is
-			 * load-bearing in both directions: the watchdog's script has to be told the
-			 * installer's pid (it is the signal that install is visible by, since it has
-			 * no job), and the marker has to record the same pid or recovery would read
-			 * a live install as a failure. `handoff` without a pid is the spawn failing,
-			 * and that falls back exactly like a staging refusal does.
-			 */
-			if (handoff) this.reportInstallProgress("starting");
-			const installerPid = handoff ? this.startInstaller(handoff) : null;
-			const watchdogPid = this.launchWatchdog(targetVersion, installerPid);
-			let marker: PendingInstallMarker;
-			try {
-				/*
-				 * The locale the NEXT process needs for its pre-window notices. The
-				 * store's own source is the gate: only a tag the BACKEND resolved is
-				 * recorded, never a device guess and never a manual pin - the marker
-				 * must not become a second preference. Absent when the backend has not
-				 * answered yet, which is the honest state and the same shape an older
-				 * version wrote.
-				 */
-				const activeLocale = currentLocaleState();
-				const markerLanguage =
-					activeLocale.source === "backend" &&
-					isLanguageTag(activeLocale.locale)
-						? { language: activeLocale.locale }
-						: {};
-				marker = writePendingInstallMarker(this.markerDir(), {
-					targetVersion,
-					artifactPath:
-						this.downloadedArtifactPath ??
-						this.downloadHelper()?.file ??
-						"unknown",
-					startedAt: new Date().toISOString(),
-					watchdogPid,
-					installerPid,
-					...markerLanguage,
-				});
-			} catch (error) {
-				/*
-				 * The one step whose failure undoes the spawn. The marker is the only
-				 * record that an install was attempted and the only thing recovery can
-				 * read afterwards, so a spawner started for a marker that was never
-				 * written would wait for a quit this process is not making, invisibly and
-				 * forever. Killing it leaves this handler exactly as it was before the
-				 * change: the error reaches the renderer and nothing is half-started.
-				 */
-				if (installerPid != null) this.abortInstaller(installerPid);
-				this.updateStage = "idle";
-				throw error;
-			}
-			logger.info(
-				`Pending install marker written for version ${marker.targetVersion} (watchdog pid ${watchdogPid ?? "none"}, ${installerPid != null ? `installer pid ${installerPid}` : "Squirrel's own installer"}).`,
-				LogFileType.UPDATE_SERVICE,
-			);
-
-			this.backendService?.setAutoUpdating(true);
-			if (installerPid != null) {
-				/*
-				 * `app.quit()`, deliberately NOT `quitAndInstall`. Two reasons, and the
-				 * second is the one that would be a bug if it were missed: the installer
-				 * is already running and waiting for THIS process to go, and
-				 * `quitAndInstall` would additionally have Squirrel fetch and unzip the
-				 * same update into its own cache and submit a second, launchd Job - two
-				 * installers for one update, racing over one bundle. Nothing about
-				 * electron-updater holds an `app.quit()` back: `autoInstallOnAppQuit` is
-				 * false (see the constructor), which is the flag MacUpdater checks before
-				 * triggering Squirrel on a quit, so quitting is quitting.
-				 */
-				app.quit();
-				return true;
-			}
-			autoUpdater.quitAndInstall(false, true);
-			return true;
 		});
 
 		/*
@@ -5942,6 +6308,7 @@ export class UpdateService {
 		 * instance of the target app is running before it swaps.
 		 */
 		ipcMain.handle("quit-for-update-install", () => {
+			if (updateOperation === "combined") return false;
 			const marker = readPendingInstallMarker(this.markerDir());
 			logger.info(
 				"Quitting so the in-flight update install can finish.",
@@ -6713,7 +7080,10 @@ export class UpdateService {
 	 * as "the serving install could not be identified" rather than falling back to
 	 * an install the app can name - which is the reported defect.
 	 */
-	private readServingInstall(reading: RunningBackendReading): ServingInstall {
+	private readServingInstall(
+		reading: RunningBackendReading,
+		{ exactPackage = false }: { exactPackage?: boolean } = {},
+	): ServingInstall {
 		const prefix = reading.prefix;
 		if (!prefix) {
 			return {
@@ -6754,11 +7124,18 @@ export class UpdateService {
 			 * version is not evidence that the install is behind, and the `Unknown`
 			 * sentinel an older backend answers must not become the subject here.
 			 */
-			version =
-				(markers.editable || markers.sourceRef) &&
-				isReadableVersion(reading.version)
-					? reading.version
-					: markers.version;
+			if (exactPackage && (markers.editable || markers.sourceRef)) {
+				// A combined install needs independent on-disk package evidence. The
+				// general Settings reading may use health for a source checkout; this
+				// transaction must never count that fallback as a second proof.
+				version = null;
+			} else {
+				version =
+					(markers.editable || markers.sourceRef) &&
+					isReadableVersion(reading.version)
+						? reading.version
+						: markers.version;
+			}
 		} catch (error) {
 			logger.warn(
 				`Could not read the install at ${prefix}: ${(error as Error).message}`,
@@ -7226,6 +7603,10 @@ export class UpdateService {
 		 */
 		reportFailure = !silent,
 	): Promise<BackendCheckReport> {
+		// A check declined during the combined install made no observation and
+		// must not displace the attached install's last real reading.
+		if (updateOperation === "combined")
+			return { status: "unavailable", info: null };
 		const observationId = ++this.backendObservationId;
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
@@ -7639,7 +8020,16 @@ export class UpdateService {
 				 */
 				const releaseNotes = await this.readServerReleaseNotes(latestVersion);
 
+				const combinedInstallable = this.canCombineBackend(
+					startupMode,
+					serving,
+					plan,
+				);
+				this.combinedServerOfferVersion = combinedInstallable
+					? latestVersion
+					: null;
 				const updateInfo: BackendUpdateInfo = {
+					combinedInstallable,
 					currentVersion: installedVersion,
 					latestVersion,
 					releaseNotes,
@@ -7727,6 +8117,7 @@ export class UpdateService {
 				return { status: "available", info: updateInfo };
 			}
 
+			this.combinedServerOfferVersion = null;
 			logger.info(
 				`No new backend version available. (installed: ${installedVersion}, latest: ${latestVersion})`,
 				LogFileType.UPDATE_SERVICE,
@@ -10334,7 +10725,33 @@ export class UpdateService {
 		});
 	}
 
+	// Both the shared operation lease and the server-specific guard answer a
+	// second standalone press through the existing actionable error channel.
+	private reportServerUpdateBusy(): false {
+		logger.warn("An update is already running", LogFileType.UPDATE_SERVICE);
+		this.sendToRenderer("backend-update-error", {
+			message: t("ui.updates.service.already_running.message"),
+			phase: "update",
+			authored: "message",
+			logPath: serverUpdateLogPath(),
+		});
+		return false;
+	}
+
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
+		const release = acquireUpdateOperation("server");
+		if (!release) return this.reportServerUpdateBusy();
+		try {
+			return await this.runBackendUpdate(targetVersion);
+		} finally {
+			release();
+		}
+	}
+
+	private async runBackendUpdate(
+		targetVersion?: string,
+		combined = false,
+	): Promise<boolean> {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 		/*
 		 * THE UPDATE-IN-FLIGHT HOLD COVERS THE WHOLE PRESS, NOT JUST THE RESTART
@@ -10370,8 +10787,8 @@ export class UpdateService {
 		 * exactly what the old code assumed - that the flag is ours to take.
 		 */
 		const heldElsewhere = backend?.checkIsAutoUpdating?.() === true;
+		if (combined || !heldElsewhere) this.fleetDrainSpentMs = 0;
 		if (!heldElsewhere) {
-			this.fleetDrainSpentMs = 0;
 			backend?.setAutoUpdating(true);
 		}
 
@@ -10446,6 +10863,8 @@ export class UpdateService {
 						startupMode,
 						serving,
 					);
+					if (combined && !this.canCombineBackend(startupMode, serving, plan))
+						return false;
 					// The caller's target when it named one (the "Update server" button
 					// does), otherwise the published release the last check read: the
 					// compatibility banner calls this with no target at all, and the
@@ -10535,6 +10954,15 @@ export class UpdateService {
 				}
 
 				case LocalOperatorStartupMode.APP_BUNDLED_VENV:
+					if (
+						combined &&
+						!this.canCombineBackend(
+							startupMode,
+							serving,
+							await this.resolveBackendUpdatePlan(startupMode, serving),
+						)
+					)
+						return false;
 					// Continue with update process for this mode
 					break;
 
@@ -10647,19 +11075,7 @@ export class UpdateService {
 	private async updateAppOwnedEnvironment(
 		targetVersion: string | null,
 	): Promise<boolean> {
-		if (this.serverUpdateInFlight) {
-			logger.warn(
-				"A server update is already running; refusing to start a second beside it",
-				LogFileType.UPDATE_SERVICE,
-			);
-			this.sendToRenderer("backend-update-error", {
-				message: t("ui.updates.service.already_running.message"),
-				phase: "update",
-				authored: "message",
-				logPath: serverUpdateLogPath(),
-			});
-			return false;
-		}
+		if (this.serverUpdateInFlight) return this.reportServerUpdateBusy();
 		this.serverUpdateInFlight = true;
 		try {
 			return await this.runAppOwnedUpdateAttempt(targetVersion);

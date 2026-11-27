@@ -2,6 +2,10 @@ import {
 	HealthApi,
 	type HealthCheckResponse,
 } from "@shared/api/local-operator";
+import {
+	CombinedUpdateSummary,
+	CombinedUpdateTrigger,
+} from "@shared/components/common/combined-update-content";
 import { Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { t } from "@shared/i18n";
@@ -352,7 +356,11 @@ export const AppUpdatesSection: FC = () => {
 					)}
 				</InfoGrid>
 
-				<AppUpdates appVersion={appVersion} />
+				<CombinedUpdateSummary />
+				<CombinedUpdateTrigger className="w-full" settings />
+				<div data-combined-update-return="">
+					<AppUpdates appVersion={appVersion} />
+				</div>
 			</div>
 		</SettingsSection>
 	);

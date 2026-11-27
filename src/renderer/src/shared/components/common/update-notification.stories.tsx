@@ -58,6 +58,7 @@ const createEmptyUpdaterMethods = () => {
 			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
+			installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 			quitForUpdateInstall: async () => true,
 			moveToApplications: async () => ({ ok: true as const }),
 			onUpdateDevMode: () => () => {},
@@ -520,6 +521,7 @@ const mockUpdaterApi = () => {
 		},
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
+		installCombinedUpdate: async () => ({ status: "offer_changed" as const }),
 		quitForUpdateInstall: async () => true,
 		// The disk-image panel's action. Stories answer with the conflict arm (the
 		// common real case: an older copy already sits in Applications), so the

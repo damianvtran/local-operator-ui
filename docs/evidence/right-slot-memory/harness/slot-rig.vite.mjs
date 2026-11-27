@@ -167,7 +167,7 @@ window.electron = {
 const updater = {};
 for (const name of [
 	"checkForUpdates", "checkForAllUpdates", "checkForBackendUpdates",
-	"downloadUpdate", "quitAndInstall", "updateBackend",
+	"downloadUpdate", "quitAndInstall", "installCombinedUpdate", "updateBackend",
 	"quitForUpdateInstall",
 	"moveToApplications",
 ]) updater[name] = async () => ({});

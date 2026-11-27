@@ -50,6 +50,10 @@ import type {
 	TabActionsMenuRequest,
 	TabActionsMenuSelection,
 } from "../shared/browser-tab-actions-menu";
+import type {
+	CombinedUpdateResult,
+	CombinedUpdateTargets,
+} from "../shared/combined-update";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -833,6 +837,10 @@ const api = {
 			ipcRenderer.invoke("update-backend", targetVersion),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+		installCombinedUpdate: (
+			targets: CombinedUpdateTargets,
+		): Promise<CombinedUpdateResult> =>
+			ipcRenderer.invoke("install-combined-update", targets),
 		/**
 		 * Quit so an install that is already running can finish.
 		 *

@@ -1,0 +1,96 @@
+{
+  "auditor": "reviewer",
+  "instance": "2f1244ba488a-2119-copy-r2-ru",
+  "model": "openai/gpt-6.2-sol",
+  "status": "passed",
+  "date": "2026-11-25",
+  "locale": "ru",
+  "namespace": "ui.common.updates",
+  "provenance": {
+    "auditor_session": "2f1244ba488a",
+    "auditor_fallback": "none",
+    "translator": {
+      "agent": "coder",
+      "session": "2e1962ee2ac8",
+      "job": "41d7be746d6b",
+      "actual_model": "openai/gpt-6.2-sol",
+      "fallback": "none reported",
+      "source": "Delegating manager verified against author and task metadata."
+    },
+    "independent": true
+  },
+  "base_revision": "14a6856dc393fe401f545629f2a24938983882e1",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/2119",
+  "sha256": {
+    "en": "aaa74f2f56a41756a5c3b5b8e7e956cc6e21b3b7513344239f8c401e6ed07dd0",
+    "ru": "d8af69aa9fea982afd3ae44f1274d1606d88621a08650a0ee65119a3bb037bfe"
+  },
+  "context_sha256": "1d83f19a72d046ea5feda7e4e910a49f31efb926d2887689ce5fcbb409a1f6a3",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.common.updates.json",
+    "context": "src/i18n/catalogues/en/ui.common.updates.context.json",
+    "target": "src/i18n/catalogues/ru/ui.common.updates.json",
+    "glossary": {
+      "repo": "damianvtran/local-operator",
+      "revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "source_style": {
+      "repo": "damianvtran/local-operator",
+      "revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+      "path": "i18n/style-guides/en.md",
+      "sha256": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7"
+    },
+    "target_style": {
+      "repo": "damianvtran/local-operator",
+      "revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "scope": {
+    "audited_keys": [
+      "ui.common.updates.combined.app_install_failed",
+      "ui.common.updates.combined.description",
+      "ui.common.updates.combined.install_all",
+      "ui.common.updates.combined.notes_unavailable",
+      "ui.common.updates.combined.restarting_server",
+      "ui.common.updates.combined.server_failed"
+    ],
+    "target_delta_keys": [
+      "ui.common.updates.combined.app_install_failed",
+      "ui.common.updates.combined.description",
+      "ui.common.updates.combined.install_all",
+      "ui.common.updates.combined.notes_unavailable",
+      "ui.common.updates.combined.restarting_server",
+      "ui.common.updates.combined.server_failed"
+    ],
+    "source_delta_keys": [
+      "ui.common.updates.combined.app_install_failed",
+      "ui.common.updates.combined.description",
+      "ui.common.updates.combined.install_all",
+      "ui.common.updates.combined.notes_unavailable",
+      "ui.common.updates.combined.restarting_server",
+      "ui.common.updates.combined.server_failed"
+    ],
+    "context_delta_keys": [
+      "ui.common.updates.combined.app_install_failed",
+      "ui.common.updates.combined.install_all",
+      "ui.common.updates.combined.notes_unavailable",
+      "ui.common.updates.combined.restarting_server",
+      "ui.common.updates.combined.server_failed"
+    ],
+    "retained": "Unchanged values retained from prior audits; adjacent heading/confirmation/retry/release-note labels checked where applicable."
+  },
+  "checks": {
+    "key_parity": "pass",
+    "icu_argument_parity": "pass",
+    "format": "pass",
+    "pseudo_literal_expansion": "pass (ICU argument preservation; no rendered fit claim)",
+    "manual_bidi_controls": "none in scoped keys",
+    "rendered_fit_and_rtl_layout": "not exercised; source-only locale audit",
+    "semantic": "reviewed action distinction, restart sequence, notes state, progress, and partial outcomes against English/context and core style policy"
+  },
+  "findings": []
+}
