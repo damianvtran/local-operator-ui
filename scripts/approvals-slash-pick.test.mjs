@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import { JSDOM } from "jsdom";
 
 /*
@@ -335,14 +335,38 @@ test("ApprovalsPicker invalidates the approvals mode after a session pick", asyn
 		),
 		"utf8",
 	);
-	const start = src.indexOf("export const ApprovalsPicker");
-	assert.ok(start > 0);
-	const body = src.slice(start, src.indexOf("return (", start));
-	const session = body.slice(body.indexOf('scope === "session"'));
-	const run = session.indexOf('command.run("approvals", value)');
-	const inval = session.indexOf(
-		"invalidateApprovalMode(queryClient, sessionId)",
+	// Let esbuild normalize TSX, quotes, and whitespace. Its indentation scopes
+	// the check to direct statements of onPick's session branch: comments,
+	// nested callbacks, and the default branch cannot satisfy it.
+	const { code } = await transform(src, {
+		loader: "tsx",
+		legalComments: "none",
+	});
+	const picker = code.match(
+		/^export const ApprovalsPicker = [\s\S]*?^};/m,
+	)?.[0];
+	const onPick = picker?.match(
+		/^ {2}const onPick = useCallback\([\s\S]*?^ {2}\);/m,
+	)?.[0];
+	const session = onPick?.match(
+		/^ {6}if \(scope === "session"\) \{\n([\s\S]*?)^ {6}}/m,
+	)?.[1];
+	assert.ok(session, "session pick branch");
+	// Only the first two arguments are the dispatch contract; options may follow.
+	const run = session.search(
+		/^ {8}await command\.run\(\s*"approvals"\s*,\s*value\s*[,)]/m,
 	);
-	assert.ok(run >= 0 && inval > run, "invalidate follows the session run");
-	assert.ok(inval < session.indexOf("return;"), "before the branch returns");
+	const invalidate = session.search(
+		/^ {8}invalidateApprovalMode\(queryClient, sessionId\);$/m,
+	);
+	const returned = session.search(/^ {8}return\b/m);
+	assert.ok(
+		run >= 0,
+		"session branch awaits approvals dispatch with the picked value",
+	);
+	assert.ok(invalidate > run, "invalidate follows the awaited session run");
+	assert.ok(
+		returned > invalidate,
+		"invalidate precedes the session branch return",
+	);
 });
