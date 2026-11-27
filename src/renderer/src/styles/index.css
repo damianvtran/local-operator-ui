@@ -4580,7 +4580,7 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  *   - THE FLOORS ARE RELAXED HERE, AND ONLY HERE: these rows are held to plain
  *     WCAG AA (4.5 / 4.5 / 3.5 for dim), the same floors glass has always used,
  *     instead of the flat roles' 7.0 / 5.5 / 5.0. It is a named exemption
- *     (SIDEBAR_CONVERSATION_ROW in `scripts/contrast-contract.mjs`, operator
+ *     (SIDEBAR_CONVERSATION_ROW_FLOORS in `scripts/contrast-contract.mjs`, operator
  *     decision 2026-11-27) that covers these two tokens and nothing else; the
  *     palette roles themselves keep their flat floors. The contract reads the
  *     percentages below, so a value this file cannot afford fails `check-themes`.
@@ -4591,7 +4591,8 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * `derive()` at 10% needs 0.63 / 0.75 / 0.81 - and the operator chose it over
  * raising the floors, which would cost translucency. It lifts hover +2.6-3.5 L*
  * over main's 5% (+2.57 to +3.48 L* across the 41 palettes and three
- * material tiers; the 9% step off the ground is 5.72-7.94 L*). With hover == current the fill no longer ranks the two; the
+ * material tiers; the 9% step off the ground is 5.72-7.94 L*). With
+ * hover == current the fill no longer ranks the two; the
  * current row's semibold title (`rowCurrent`'s font-medium) and its rest-state
  * fill carry that. The ink overlay is drawn over whatever ground is there, so
  * the step is relative on every backdrop.

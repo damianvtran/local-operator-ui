@@ -783,10 +783,29 @@ test("the inset keeps non-fill current cues for a tab, rail item and temporary c
 		css,
 		/\[data-workspace-shell\][^{}]*\[data-panel-rail-item\][^{}]*::before\s*\{\s*content: none/,
 	);
+	/*
+	 * The temporary row's current state is FILLED now, not transparent. The
+	 * operator asked (2026-11-27, PR #2115) for the selected conversation to
+	 * carry a background highlight like the hover one, so the old
+	 * `background: transparent` pin was retired with that decision; this test
+	 * keeps pinning only the NON-fill cues named above. The fill itself is owned
+	 * by the `--sidebar-conversation-current` rule; what matters here is that
+	 * the rule exists and that no rule aimed at the current temporary row paints
+	 * it back to nothing.
+	 */
 	assert.match(
 		css,
-		/\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*\{\s*background: transparent/,
+		/\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*\{\s*background-color: var\(--sidebar-conversation-current\)/,
 	);
+	const currentTemporaryBlocks = [
+		...css.matchAll(
+			/([^{}]*\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*)\{([^{}]*)\}/g,
+		),
+	].filter(([, selector]) => !/:not\(\[aria-current="page"\]\)/.test(selector));
+	assert.ok(currentTemporaryBlocks.length > 0);
+	for (const [, , body] of currentTemporaryBlocks) {
+		assert.doesNotMatch(body, /background(?:-color)?:\s*transparent/);
+	}
 	const group = read(
 		"src/renderer/src/features/chat/components/sidebar-temporary-group.tsx",
 	);
