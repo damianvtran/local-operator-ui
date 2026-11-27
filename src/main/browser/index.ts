@@ -1809,6 +1809,11 @@ async function initializeBrowserHost(
 		 * per-tab ring buffer until host stop while the ordinary close released all
 		 * three (R5).
 		 */
+		// Assigned once `host` exists (below). `releaseTab` is hoisted above the
+		// host's `const`, so reading `host` from it before that line would be a
+		// temporal-dead-zone throw that skips the rest of the release; before the
+		// host exists there are no links to forget, so the no-op is exact.
+		let forgetPasskeyContinue: (tabId: number) => void = () => {};
 		function releaseTab(tabId: number, webContentsId: number): void {
 			webauthn.cancelForTab(tabId);
 			if (nativePasskeyNotice.clearTab(tabId)) syncPasskeyNotice();
@@ -1816,6 +1821,10 @@ async function initializeBrowserHost(
 			// so a stale notice cannot outlive the tab it described.
 			authRequests.forget(webContentsId);
 			engagement.clear(tabId);
+			// Either end of a passkey-continue link closing ends the link: a copy
+			// closed before its sign-in finished must never refresh the agent tab,
+			// and a closed agent tab has nothing to refresh.
+			forgetPasskeyContinue(tabId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
 			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
@@ -1992,6 +2001,8 @@ async function initializeBrowserHost(
 					}
 				: undefined,
 		});
+		forgetPasskeyContinue = (tabId) =>
+			host.passkeyContinueLinks.forgetTab(tabId);
 		// Main can resolve language after renderer renegotiation. Publish from the
 		// actual locale owner, not from the renderer's earlier request or a timer.
 		const stopLocaleUpdates = observeBrowserLocale(options.window);

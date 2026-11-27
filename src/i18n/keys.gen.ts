@@ -4427,6 +4427,7 @@ export type MessageParams = {
 	"ui.browser.browser_passkey_notice.continue_refused_not_web": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_stale": undefined;
 	"ui.browser.browser_passkey_notice.continue_unavailable": undefined;
+	"ui.browser.browser_passkey_notice.continued_here": undefined;
 	"ui.browser.browser_passkey_notice.dismiss": undefined;
 	"ui.browser.browser_passkey_notice.explanation": undefined;
 	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
