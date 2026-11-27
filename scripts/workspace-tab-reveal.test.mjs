@@ -353,7 +353,8 @@ test("keyed conversation and draft switches keep both lane offsets before reveal
 	);
 	frame();
 	expectVisible(nextRegular.lane, nextRegular.rows[3]);
-	assert.deepEqual(nextRegular.moves, [{ left: 215, behavior: "smooth" }]);
+	// Wholly past the edge and a 113 px trip in a 100 px lane: a jump (D1/U1).
+	assert.deepEqual(nextRegular.moves, [{ left: 215, behavior: "instant" }]);
 	assert.equal(nextPinned.lane.scrollLeft, 30);
 	assert.deepEqual(nextPinned.moves, []);
 });
@@ -476,8 +477,8 @@ test("draft insertion and promotion use the current row, not a queued inactive o
 	render("draft", { tabs });
 	const rows = syncRows();
 	frame();
-	assert.deepEqual(moves, [{ left: 104, behavior: "smooth" }]);
-	await end();
+	// The appended draft starts beyond the lane and is >= one lane width away.
+	assert.deepEqual(moves, [{ left: 104, behavior: "instant" }]);
 	expectVisible(lane, rows[2]);
 
 	const promoted = { ...draft, target: { kind: "session", id: "admitted" } };
@@ -492,6 +493,141 @@ test("draft insertion and promotion use the current row, not a queued inactive o
 	await end();
 	expectVisible(lane, rows[2]);
 	assert.deepEqual(moves[1], { left: 115, behavior: "smooth" });
+});
+
+// D1/U1: a smooth pan only helps when the destination is in or near view.
+// New chat appends a tab wholly past the lane; panning ~758 px across
+// unrelated tabs left them moving under the pointer for over 425 ms.
+const farTabs = [tab("a"), tab("b"), tab("c")];
+const farDraft = { ...tab("far"), target: { kind: "draft", id: "draft:far" } };
+const farBounds = () => [
+	[0, 60],
+	[64, 122],
+	[126, 190],
+	[194, 258],
+];
+
+test("a new draft wholly past the lane and >= one lane width away jumps once", (t) => {
+	const { host, render } = fixture(t, farTabs);
+	const bounds = farBounds();
+	const { lane, moves, syncRows } = laneLayout(host, "regular", bounds, {
+		defer: true,
+	});
+	render("a");
+	frame();
+	assert.deepEqual(moves, []);
+	render("far", { tabs: [...farTabs, farDraft] });
+	const rows = syncRows();
+	frame();
+	assert.deepEqual(moves, [{ left: 158, behavior: "instant" }]);
+	expectVisible(lane, rows[3]);
+	resize(rows[3], lane);
+	frame();
+	assert.equal(moves.length, 1);
+});
+
+test("an instant jump leaves no motion lock: title growth still follows smoothly", async (t) => {
+	const { host, render } = fixture(t, farTabs);
+	const bounds = farBounds();
+	const { lane, moves, syncRows, end } = laneLayout(host, "regular", bounds, {
+		defer: true,
+	});
+	render("a");
+	render("far", { tabs: [...farTabs, farDraft] });
+	const rows = syncRows();
+	frame();
+	assert.deepEqual(moves, [{ left: 158, behavior: "instant" }]);
+	// Rename growth of the now-visible row: partly visible, so smooth, and
+	// requested without any settlement of the jump (it never took the lock).
+	bounds[3][1] = 270;
+	resize(rows[3]);
+	frame();
+	assert.deepEqual(moves[1], { left: 170, behavior: "smooth" });
+	// Growth during that pan coalesces until it settles, then follows once.
+	bounds[3][1] = 280;
+	resize(rows[3]);
+	frame();
+	assert.equal(moves.length, 2);
+	await end();
+	frame();
+	assert.deepEqual(moves[2], { left: 180, behavior: "smooth" });
+	await end();
+	expectVisible(lane, rows[3]);
+});
+
+test("a hidden row less than one lane width away still pans smoothly", (t) => {
+	const { host, render } = fixture(t, [tab("a"), tab("near")]);
+	const { lane, rows, moves } = laneLayout(host, "regular", [
+		[0, 60],
+		[104, 160],
+	]);
+	render("near");
+	frame();
+	assert.deepEqual(moves, [{ left: 60, behavior: "smooth" }]);
+	expectVisible(lane, rows[1]);
+});
+
+test("a partly visible row pans smoothly even when the move exceeds a lane width", (t) => {
+	// Oversized row: its controls end lies 160 px away, but its start is in view.
+	const { host, render } = fixture(t, [tab("a"), tab("wide")]);
+	const { moves } = laneLayout(host, "regular", [
+		[0, 40],
+		[50, 260],
+	]);
+	render("wide");
+	frame();
+	assert.deepEqual(moves, [{ left: 160, behavior: "smooth" }]);
+});
+
+test("RTL: a new draft wholly past the logical end jumps with a negative offset", (t) => {
+	const { host, render } = fixture(t, farTabs);
+	const bounds = farBounds().map(([start, end]) => [-end, -start]);
+	const { lane, moves, syncRows } = laneLayout(host, "regular", bounds, {
+		rtl: true,
+		defer: true,
+	});
+	render("a");
+	frame();
+	assert.deepEqual(moves, []);
+	render("far", { tabs: [...farTabs, farDraft] });
+	const rows = syncRows();
+	frame();
+	assert.deepEqual(moves, [{ left: -158, behavior: "instant" }]);
+	expectVisible(lane, rows[3]);
+});
+
+test("RTL: a hidden row less than one lane width away still pans smoothly", (t) => {
+	const { host, render } = fixture(t, [tab("a"), tab("near")]);
+	const { moves } = laneLayout(
+		host,
+		"regular",
+		[
+			[-60, 0],
+			[-160, -104],
+		],
+		{ rtl: true },
+	);
+	render("near");
+	frame();
+	assert.deepEqual(moves, [{ left: -60, behavior: "smooth" }]);
+});
+
+test("reduced motion stays instant for near and far reveals alike", (t) => {
+	reducedMotion = true;
+	const { host, render } = fixture(t, [tab("a"), tab("near"), tab("far")]);
+	const { moves } = laneLayout(host, "regular", [
+		[0, 60],
+		[104, 160],
+		[194, 258],
+	]);
+	render("near");
+	frame();
+	render("far");
+	frame();
+	assert.deepEqual(moves, [
+		{ left: 60, behavior: "instant" },
+		{ left: 158, behavior: "instant" },
+	]);
 });
 
 const pointer = (node, type) => {
@@ -627,10 +763,12 @@ test("pointer hold cancels stale motion; the ensuing click reveals only the new 
 		tab("second"),
 		tab("third"),
 	]);
+	// The third row starts partly visible so its reveal is a smooth pan that
+	// the pointer hold can interrupt (a far, hidden row would jump instead).
 	const bounds = [
 		[0, 52],
 		[56, 125],
-		[129, 208],
+		[99, 178],
 	];
 	const { lane, rows, moves, end } = laneLayout(host, "regular", bounds, {
 		defer: true,
@@ -643,12 +781,12 @@ test("pointer hold cancels stale motion; the ensuing click reveals only the new 
 	rows[2].querySelector("button").focus();
 	pointer(button, "pointerdown");
 	button.focus(); // Element blur after pointerdown is not a window blur.
-	bounds[2][1] = 228;
+	bounds[2][1] = 198;
 	resize(rows[2]);
 	frame();
 	expectVisible(lane, rows[1]);
 	assert.deepEqual(moves, [
-		{ left: 108, behavior: "smooth" },
+		{ left: 78, behavior: "smooth" },
 		{ left: 25, behavior: "instant" },
 	]);
 	pointer(window, "pointerup");

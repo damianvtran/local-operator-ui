@@ -53,6 +53,25 @@ function nearestOffset({ lane, start, end, width, max, rtl }: Layout) {
 	return Math.max(rtl ? -max : 0, Math.min(rtl ? 0 : max, wanted));
 }
 
+// Smooth motion exists so a person can follow the strip to the tab they chose
+// (the operator asked for reveals that are smooth yet never jitter under a
+// click). That only helps when the destination is already partly in view or
+// close by. Native QA of New chat (PR #2138 D1/U1) appended a tab wholly past
+// the lane's right edge: the smooth pan swept ~758 px across six unrelated
+// tabs and was still 21.68 px short at 425 ms, a long window in which those
+// passing tabs move under the pointer. So the rule is: when the row lies
+// completely outside the visible range AND the move is at least one lane
+// width, jump instantly; otherwise stay smooth. A partly visible row (e.g. the
+// active title growing during a rename) and a hidden row less than a lane
+// width away keep the smooth pan. Both tests use the same content coordinates
+// as nearestOffset, so RTL's negative offsets need no separate case.
+function isFarJump({ lane, start, end, width }: Layout, left: number) {
+	const offset = lane.scrollLeft;
+	const hidden =
+		end <= offset + EDGE_TOLERANCE || start >= offset + width - EDGE_TOLERANCE;
+	return hidden && Math.abs(left - offset) >= width - EDGE_TOLERANCE;
+}
+
 // Read Radix's current trigger state so an opener unmounted by a menu action
 // cannot leave behind a lock waiting for an onOpenChange that never arrives.
 const OPEN_MENU =
@@ -117,7 +136,10 @@ export function createWorkspaceTabReveal(strip: HTMLElement) {
 				"(prefers-reduced-motion: reduce)",
 			).matches;
 			// Unlike scrollIntoView this cannot move the transcript, page or other lane.
-			if (reduce) {
+			// An instant move settles synchronously, so it takes no motion lock:
+			// the next layout change (e.g. the new tab's title arriving) is
+			// measured from the landed offset like any other request.
+			if (reduce || isFarJump(layout, left)) {
 				lane.scrollTo({ left, behavior: "instant" });
 				return;
 			}
