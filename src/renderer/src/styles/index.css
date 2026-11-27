@@ -3584,6 +3584,182 @@ html[data-glass]:has([data-glass-region="mini-ground"])
 	}
 }
 
+/*
+ * THE CREDENTIAL CHIP'S SURFACE (operator, 2026-11-27: "remove the border, maybe
+ * have it have the same subtle gradient fill with sheen that the composer has, but
+ * subtler sheen so it's not overdone, subtle drop shadow").
+ *
+ * The composer's own material, at about half strength, on a fill this class owns
+ * (the live role, `CREDENTIAL_CHIP_ROLE` in `credential-chip.tsx`, carries no
+ * `bg-*` of its own so this one is the fill):
+ *
+ *   - THE FILL STEPS THE WAY THE COMPOSER DOES, PER SCHEME (design round 1, D1).
+ *     Dark: `ink` 6% over `elevated`, so the chip is LIGHTER than the bubble or the
+ *     composer it sits on (a raised, lit object like the composer itself; 41/41
+ *     dark palettes, >= 1.118:1 off `elevated`, >= 1.147:1 off `message-surface`,
+ *     ΔE00 >= 2.58 / 3.06). The first pass used `sunken` in both schemes, which in
+ *     dark is a DARKER hole in the ground (1.18:1 below the bubble) - the opposite
+ *     of the composer's lit surface the operator asked for. Light: `sunken`, which
+ *     already steps off every ground there (the sheen reads on it as a soft tag).
+ *     Both terms are opaque, so the fill still HIDES the marker characters the
+ *     textarea paints under a composer chip. The 6% is pinned against the contrast
+ *     contract's `MIXED_FILLS` rows ("credential chip (dark fill)") by
+ *     `scripts/credential-chip-surface.test.mjs`.
+ *   - THE SHEEN is `.composer-dock-editor`'s vertical wash (dark: 4% white fading
+ *     to nothing) at 2%, and its top gleam (a 1px highlight over the middle of the
+ *     top edge) at 30% and 8.5% instead of 60% and 17%. `light-dark()` follows the
+ *     palette's colour scheme, exactly as the composer's and the dialog's finish
+ *     do. On the raised dark fill the 2% wash is a 1.06:1 top-to-bottom lift
+ *     (1.059-1.064 over the 41 dark palettes, derived from the palettes), which is
+ *     half the composer's own 1.12:1 - "about half strength" as measured, not as
+ *     asserted. LIGHT PALETTES DEPART FROM THE COMPOSER IN DIRECTION: the composer
+ *     tints its top DARKER there (a 6% ink wash), which on the chip's `sunken`
+ *     fill took the `accent` key below the 4.5:1 text floor in 9 palettes (4.30:1
+ *     at worst, `catppuccinLatte`; `scripts/credential-chip-surface.test.mjs` S-3
+ *     caught it), so the light sheen is a 20% WHITE lift instead, which can only
+ *     raise ink contrast on a dark-on-light fill. THAT LIFT IS DELIBERATELY
+ *     ~1.046:1 top to bottom - effectively just the 1px gleam (design round 1,
+ *     D3). Do not "fix" it toward the composer's strength: a stronger light wash
+ *     is exactly what trips S-3's ink floors.
+ *   - THE SHADOW is one contact layer, `0 1px 2px`, in `--lo-shadow-contact` (the
+ *     palette `scrim`, derived at 45%: alpha ~0.16-0.29), the same colour the one
+ *     `--shadow-overlay` is built from and nothing new. In dark it is the scrim at
+ *     70% instead (design round 1, D2). Re-measured AFTER the fill was raised: the
+ *     first row below the chip is 1.09:1 off the dark bubble with the contact
+ *     colour (the composer's own shadow is ~1.13:1, and a step under ~1.12:1 does
+ *     not read on a dark ground), 1.14:1 with the 70% scrim, 1.28:1 on the
+ *     composer's lighter ground. A darker colour on the SAME single layer and
+ *     geometry is what makes it read there. Still one layer, no halo. (A chip on
+ *     the LAST line of a transcript message is clipped at the collapsed-message
+ *     container's `overflow-hidden` content box, so its shadow shows only on the
+ *     lines above; that container is not this change's.)
+ *
+ * A RECORDED EXCEPTION to "the ground provides separation; a shadow is for things
+ * that leave the flow" (`docs/branding.md`, Floating panels). The rule's reason is
+ * that an in-flow card can take the next ground instead. A chip that sits ON a run
+ * of text cannot: it has no edge any more (the operator removed it) and no free
+ * ground to step to, so a contact shadow of this size is the smallest thing that
+ * lifts it off the line. It is a single low layer, never an ambient halo, and it is
+ * recorded in branding.md beside the rule it excepts.
+ *
+ * WHY BOTH ARE SAFE OVER THE COMPOSER'S TEXT. The chip is painted over a measured
+ * run, in a layer that clips to the field (`overflow-clip`). A box-shadow and a
+ * background-image are painted outside the layout box, so neither moves the box the
+ * chip must cover exactly (the reason it never had a border); the shadow reaches 3px
+ * below and 2px to each side, which is inside the line's own leading and the space
+ * beside the run, and is clipped, not scrolled, at the field's edge.
+ *
+ * In `components`, so a caller's utility wins: the composer's mirror switches the
+ * whole surface off under a run that has a chip (`bg-transparent bg-none
+ * shadow-none`). The not-stored chip does not wear this class: flat is one of the
+ * two non-colour channels that separate it from a live chip (`credential-chip.tsx`).
+ *
+ * FORCED COLOURS drops the sheen and the shadow, and gives the chip the one edge
+ * the system palette can still show, an outline (which, like the shadow, is outside
+ * the layout box).
+ */
+@layer components {
+	.lo-chip-surface {
+		background-color: light-dark(
+			var(--lo-sunken),
+			color-mix(in oklab, var(--lo-ink) 6%, var(--lo-elevated))
+		);
+		background-image: linear-gradient(
+				90deg,
+				transparent,
+				light-dark(rgb(255 255 255 / 30%), rgb(255 255 255 / 8.5%)) 36% 60%,
+				transparent
+			),
+			linear-gradient(
+				180deg,
+				light-dark(rgb(255 255 255 / 20%), rgb(255 255 255 / 2%)),
+				transparent
+			);
+		background-position: 9% top, center top;
+		background-size: 61% 1px, 100% 100%;
+		background-repeat: no-repeat;
+		box-shadow: 0 1px 2px
+			light-dark(
+				var(--lo-shadow-contact),
+				color-mix(in srgb, var(--lo-scrim) 70%, transparent)
+			);
+	}
+}
+
+@media (forced-colors: active) {
+	.lo-chip-surface {
+		background-image: none;
+		box-shadow: none;
+		outline: 1px solid CanvasText;
+	}
+
+	/* The mirror's wash under a run that has a chip: the chip draws the edge. */
+	.lo-chip-surface[data-credential-chipped] {
+		outline: none;
+	}
+}
+
+/*
+ * THE COMPOSER'S CREDENTIAL CHIPS FOLLOW THE FIELD'S SCROLL ON THE COMPOSITOR
+ * (operator report 2026-11-27: the chip "is a frame behind when scrolling").
+ *
+ * WHY IT IS CSS AND NOT A LISTENER. A wheel or trackpad scroll of the `<textarea>`
+ * is performed by the compositor, so the field's glyphs move in the frame the
+ * gesture lands in and the main thread hears of it a frame later through the
+ * `scroll` event. Anything that answers that event - a `scroll` listener writing
+ * a transform included - is by construction one presented frame late, and
+ * `credential-chip-layer.tsx` measured exactly that (a wheel gesture over CDP,
+ * real screencast frames: a median 3px behind the text at 240px/s and 10px at
+ * 480px/s). A scroll-driven animation is evaluated from the same scroll offset the
+ * glyphs use, on the compositor, so the two cannot disagree.
+ *
+ * THE WIRING, three pieces:
+ *   - the textarea DECLARES a named scroll timeline (`scroll-timeline`), because
+ *     `scroll()` can only name an ancestor scroller and the chips' plane is the
+ *     field's SIBLING, not its descendant;
+ *   - `.composer-dock-field`, the wrapper both live in, takes `timeline-scope` so
+ *     the sibling may reference that name;
+ *   - the plane (`[data-credential-chips]`) animates `translate` from 0 to minus
+ *     the field's scrollable distance, which the chip layer writes into
+ *     `--lo-credential-scroll-range` (it changes with the text and the box, never
+ *     while scrolling). Linear progress times that distance is exactly `scrollTop`.
+ *
+ * LONGHANDS ONLY, as the transcript's and the sidebar's scroll-driven rules above
+ * do and for their recorded reason: the `animation` shorthand resets
+ * `animation-timeline`. No `prefers-reduced-motion` branch: this is not motion,
+ * it is the chip staying on the words it covers.
+ *
+ * WITHOUT SCROLL TIMELINES the whole block is skipped and the chip layer writes the
+ * same `translate` inline from its `scroll` listener - the one-frame trail it has
+ * always had, never worse.
+ */
+@supports (animation-timeline: scroll()) {
+	.composer-dock-field {
+		timeline-scope: --lo-composer-field-scroll;
+	}
+
+	.composer-dock-field .composer-dock-textarea {
+		scroll-timeline: --lo-composer-field-scroll block;
+	}
+
+	.composer-dock-field [data-credential-chips] {
+		animation-name: lo-credential-chips-scroll;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: --lo-composer-field-scroll;
+	}
+
+	@keyframes lo-credential-chips-scroll {
+		from {
+			translate: 0 0;
+		}
+
+		to {
+			translate: 0 calc(var(--lo-credential-scroll-range, 0px) * -1);
+		}
+	}
+}
+
 @media (forced-colors: active) {
 	.composer-dock::before,
 	.composer-dock::after {

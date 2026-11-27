@@ -1170,6 +1170,10 @@ export const evaluatePalette = (run, entry) => {
 		 * here or is not covered.
 		 */
 		for (const m of MIXED_FILLS) {
+			/* A row may be scheme-scoped: a fill the stylesheet mixes only under
+			 * `light-dark()`'s dark arm is not drawn in a light palette, and asserting
+			 * the pair there would be a green row about something never on screen. */
+			if (m.mode && p.mode !== m.mode) continue;
 			const a = p[m.mix[0]];
 			const b = p[m.mix[1]];
 			const fg = p[m.ink];

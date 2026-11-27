@@ -54,24 +54,60 @@ import { CredentialChip } from "./credential-chip";
  *    chip except the `x` must let the pointer through to the textarea underneath,
  *    so that clicking the marker still places the caret where the operator
  *    clicked. That is also why the chip carries no handler of its own.
- *  - THE MEASUREMENT FOLLOWS THE SCROLL, with the same subscription the mirror
- *    uses. The mirror's sync runs first on both mount and scroll — it is a
- *    sibling earlier in the DOM, so React runs its layout effect first and the
- *    browser runs its listener first — and this layer therefore reads a mirror
- *    that has already caught up with the field.
+ *  - THE MEASUREMENT FOLLOWS THE FIELD, and what MOVES the chips is not the
+ *    measurement. Which runs get a chip is re-decided on the field's `scroll`
+ *    event, with the same subscription the mirror uses (the mirror's sync runs
+ *    first on both mount and scroll — it is a sibling earlier in the DOM, so React
+ *    runs its layout effect first and the browser runs its listener first — and
+ *    this layer therefore reads a mirror that has already caught up with the
+ *    field). WHERE a chip is drawn while the field scrolls is a different
+ *    mechanism, set out in the next paragraph, because a main-thread listener is
+ *    the wrong tool for it.
  *
- * WHY THE RECTS NEED NO SCROLL ADDED TO THEM (UX round 1, U1, the round's
- * BLOCKER). `getClientRects()` is VIEWPORT-relative, and this layer is
- * `absolute inset-0` inside the same wrapper the field sits in, so subtracting
- * the layer's own frame turns a rect into this layer's coordinates directly: the
- * subtree around a scrolling box is not scrolled, and a rect read out of it is
- * already in that box's own space. This measured contribution used to add the
- * mirror's own `scrollLeft`/`scrollTop` on top, which re-applied the scroll the
- * rect had already accounted for — so in any message long enough to scroll, the
- * chip sat exactly `fieldScrollTop` px from its marker (measured `deltaTop` 0 /
- * 60 / 117 for `scrollTop` 0 / 60 / 117, which is the whole of the bug), an
- * opaque ground over unrelated prose with a live `x` on it. The subscription
- * above is what makes the rects track the scroll; the offset was cancelling it.
+ * WHY THE CHIPS RIDE A PLANE THE BROWSER SCROLLS FOR US (operator report
+ * 2026-11-27: "it doesn't entirely sync with the text when scrolling ... it seems
+ * to just be hovering over some token and is a frame behind"). A wheel or
+ * trackpad scroll of a `<textarea>` is performed by the COMPOSITOR: the field's
+ * glyphs move in the frame the gesture lands in, and the main thread hears about
+ * it a frame later, through the `scroll` event. This layer used to answer that
+ * event by re-measuring and re-positioning every chip from React state, so each
+ * chip landed one presented frame behind the text it covers. Measured in a real
+ * frame stream (a wheel gesture over CDP, `Page.startScreencast`, the field's
+ * glyphs painted red and the chip's edge green) it trailed by a median 3px at
+ * 240px/s and 10px at 480px/s: a frame's worth of scroll, which is why it grows
+ * with speed. No main-thread update can close that, because the update IS the
+ * thing that is late (and a `getBoundingClientRect` probe cannot even see it: the
+ * main thread's own view of both boxes agrees, 0px, while the frame on screen
+ * does not).
+ *
+ * So the chips stop being positioned from the scroll at all. They are placed in
+ * the field's CONTENT coordinates, which do not change while it scrolls, on a
+ * plane that is `translate`d by `-scrollTop`, and that translation is a scroll-
+ * driven animation on the field's own scroll timeline (`styles/index.css`, the
+ * `lo-credential-chips-scroll` block). A scroll-driven transform runs on the
+ * compositor, off the same scroll offset as the glyphs, so the two move in the
+ * same frame by construction rather than by racing. Where the engine has no scroll
+ * timeline the `scroll` listener writes the same `translate` inline — the old
+ * one-frame trail, never worse — which is also what keeps the rect arithmetic
+ * below testable in a host with no animation engine.
+ *
+ * WHY THE RECTS GET THE SCROLL ADDED BACK EXACTLY ONCE (UX round 1, U1, the
+ * round's BLOCKER, and the reason this is spelled out). `getClientRects()` is
+ * VIEWPORT-relative, and this layer is `absolute inset-0` inside the same wrapper
+ * the field sits in, so subtracting the layer's own frame turns a rect into the
+ * VISIBLE position directly: the rect already has the mirror's scroll applied to
+ * it. The first version of this measurement added the mirror's `scrollLeft`/
+ * `scrollTop` on top of that, which applied the scroll TWICE — in any message
+ * long enough to scroll, the chip sat exactly `fieldScrollTop` px from its marker
+ * (measured `deltaTop` 0 / 60 / 117 for `scrollTop` 0 / 60 / 117, which is the
+ * whole of the bug), an opaque ground over unrelated prose with a live `x` on it.
+ * The plane changes the bookkeeping without changing that rule: a chip's `left`/
+ * `top` are now CONTENT coordinates (the visible position plus the scroll the
+ * mirror has applied), and the plane's `translate` takes exactly that scroll back
+ * out. The scroll is applied once and removed once, and the sum a reader sees
+ * (`chip.top + plane translate`) is the rect's own visible position, which is the
+ * pair `credential-composer.test.mjs` pins. Adding the scroll WITHOUT the plane
+ * (or the plane without the addition) re-creates the double application.
  *
  * WHAT THIS INHERITS FROM THE MIRROR, named rather than discovered: the mirror
  * re-syncs on a text or rung change and on the field's own scroll events, which
@@ -112,11 +148,52 @@ const CHIP_MIN_VISIBLE_STRIP_PX = 6;
 type ChipBox = {
 	/** The position of the run in the plan `paintPlan` produced. */
 	planIndex: number;
+	/**
+	 * CONTENT coordinates: the run's visible position PLUS the scroll the mirror has
+	 * applied, so the value does not change while the field scrolls. The plane these
+	 * are placed on takes that scroll back out (see the header), which is the whole
+	 * reason a scroll no longer needs a re-render to move a chip.
+	 */
 	left: number;
 	top: number;
 	width: number;
 	height: number;
 };
+
+/**
+ * The custom property that carries the field's scrollable distance to the
+ * stylesheet's scroll-driven animation (`lo-credential-chips-scroll`).
+ *
+ * A scroll timeline reports PROGRESS (0..1 of the scrollable distance), and the
+ * plane has to move by PIXELS (`scrollTop`), so the keyframe needs the distance
+ * to turn one into the other: `translateY = -progress * (scrollHeight -
+ * clientHeight)` is exactly `-scrollTop`. It changes when the text or the box
+ * does, never while scrolling, so it is written beside the measurement rather
+ * than from the scroll path.
+ */
+const SCROLL_RANGE_VAR = "--lo-credential-scroll-range";
+
+/**
+ * Set on a mirror run while a chip covers it; `credential-overlay.tsx` styles the
+ * attribute so the wash steps aside. Named once here so the writer and the
+ * stylesheet's selector cannot drift apart.
+ */
+export const CHIPPED_ATTR = "data-credential-chipped";
+
+/** Same boxes, same order: a re-measure that found nothing new renders nothing. */
+const sameBoxes = (a: readonly ChipBox[], b: readonly ChipBox[]): boolean =>
+	a.length === b.length &&
+	a.every((box, i) => {
+		const other = b[i];
+		return (
+			other !== undefined &&
+			box.planIndex === other.planIndex &&
+			box.left === other.left &&
+			box.top === other.top &&
+			box.width === other.width &&
+			box.height === other.height
+		);
+	});
 
 export type CredentialChipLayerProps = {
 	/** The live buffer, which is the same string the textarea is painting. */
@@ -170,6 +247,16 @@ export const CredentialChipLayer = ({
 }: CredentialChipLayerProps) => {
 	const plan = paintPlan(text, payloads.values(), capture);
 	const [boxes, setBoxes] = useState<ChipBox[]>([]);
+	/**
+	 * The plane the chips sit on, which the field's scroll translates.
+	 *
+	 * Written imperatively rather than through props because the fallback path moves
+	 * it from a `scroll` listener, and a render per scroll event is the cost this
+	 * design exists to stop paying.
+	 */
+	const planeRef = useRef<HTMLDivElement | null>(null);
+	/** The measure effect's `syncPlane`, so the commit that mounts the plane can prime it. */
+	const syncPlaneRef = useRef<(() => void) | null>(null);
 	/**
 	 * The chip control that held focus when the boxes were last measured.
 	 *
@@ -280,21 +367,62 @@ export const CredentialChipLayer = ({
 					continue;
 				next.push({
 					planIndex: Number(run.dataset.credentialRun),
-					// VIEWPORT-RELATIVE IN, LAYER-LOCAL OUT, and nothing else added: see this
-					// file's header for the blocker that the mirror's own scroll offset used
-					// to cause here. The mirror's own `offsetLeft`/`offsetTop` stay, so this
-					// remains correct if the layer's frame and the mirror's box stop
-					// coinciding.
-					left: mirror.offsetLeft + rect.left - frame.left,
-					top: mirror.offsetTop + rect.top - frame.top,
+					// VIEWPORT-RELATIVE IN, CONTENT COORDINATES OUT: the rect is where the run
+					// is on screen NOW, so the mirror's own scroll is added back to give the
+					// place it sits in the text, and the plane's translation takes it out
+					// again - once each, see this file's header for the blocker that applying
+					// it twice caused. Taking the scroll from the MIRROR rather than the field
+					// is deliberate: the rect was read from the mirror, so the mirror's own
+					// offset is the one that belongs to it even if the two ever disagree for
+					// a frame. The mirror's `offsetLeft`/`offsetTop` stay, so this remains
+					// correct if the layer's frame and the mirror's box stop coinciding.
+					left: mirror.offsetLeft + rect.left - frame.left + mirror.scrollLeft,
+					top: mirror.offsetTop + rect.top - frame.top + mirror.scrollTop,
 					width: rect.width,
 					height: rect.height,
 				});
 			}
-			setBoxes(next);
+			// A scroll that moved no chip into or out of view leaves the content
+			// coordinates untouched, so there is nothing to render: the compositor has
+			// already moved the plane.
+			setBoxes((prev) => (sameBoxes(prev, next) ? prev : next));
 		};
+		/*
+		 * THE FALLBACK AND THE RANGE. `syncPlane` writes the scrollable distance the
+		 * stylesheet's animation maps onto (it changes with the text and the box, so
+		 * it is refreshed on every measure) and an inline `translate` for an engine
+		 * without a scroll timeline. Where the timeline exists the animation's value
+		 * wins over this inline one, so the two never fight: the inline value only
+		 * ever shows when nothing else is moving the plane.
+		 */
+		const syncPlane = () => {
+			const plane = planeRef.current;
+			if (!plane) return;
+			plane.style.setProperty(
+				SCROLL_RANGE_VAR,
+				`${Math.max(0, field.scrollHeight - field.clientHeight)}px`,
+			);
+			plane.style.translate = `${-field.scrollLeft}px ${-field.scrollTop}px`;
+		};
+		const onScroll = () => {
+			syncPlane();
+			measure();
+		};
+		syncPlaneRef.current = syncPlane;
 		measure();
-		field.addEventListener("scroll", measure);
+		/*
+		 * THE RANGE IS REFRESHED ON EVERY MEASURE, not only on a scroll or a chip move
+		 * (code review round 1, R1-1). This effect re-runs when the text, the payloads
+		 * or the capture change, and an edit BELOW a visible chip while the field is
+		 * scrolled changes `scrollHeight` and nothing else: the run keeps its rect, the
+		 * field keeps its `scrollTop`, so no scroll event fires, no chip box changes and
+		 * the prime effect below (keyed on `boxes`) never runs. Without this call the
+		 * animation would keep mapping progress onto the OLD range and park the plane
+		 * `scrollTop * (1 - oldRange / newRange)` px off the glyphs until the next scroll.
+		 * A no-op where there is no plane yet; the prime effect covers that mount.
+		 */
+		syncPlane();
+		field.addEventListener("scroll", onScroll);
 		/*
 		 * AND ON A RESIZE (code review round 1, R1-3), which the scroll listener
 		 * cannot see: a window or pane resize re-wraps the `w-full` textarea with no
@@ -305,27 +433,76 @@ export const CredentialChipLayer = ({
 		 * reason; both halves of the treatment are then re-derived from the new
 		 * wrapping rather than from the old one.
 		 */
-		const observer = new ResizeObserver(measure);
+		const observer = new ResizeObserver(onScroll);
 		observer.observe(field);
 		return () => {
-			field.removeEventListener("scroll", measure);
+			field.removeEventListener("scroll", onScroll);
 			observer.disconnect();
+			syncPlaneRef.current = null;
 		};
 	}, [fieldRef, mirrorRef, text, capture, payloads]);
+
+	/*
+	 * PRIME THE PLANE ON THE COMMIT THAT MOUNTS IT. The plane only exists while a
+	 * chip does, so the measure that decided to draw one ran BEFORE there was a plane
+	 * to write the scroll range and the starting translation onto. The first chip of a
+	 * scrolled composer would otherwise sit at its content coordinates with no
+	 * translation until the next scroll event - a chip a whole `scrollTop` off its
+	 * marker, which is the U1 blocker again by a different road.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `boxes` is the trigger - this runs after the commit that mounts or replaces the plane - and the body reads only the ref the measure effect fills.
+	useLayoutEffect(() => {
+		syncPlaneRef.current?.();
+	}, [boxes]);
+
+	/*
+	 * THE MIRROR STOPS PAINTING THE WASH UNDER A RUN THAT HAS A CHIP. The chip is
+	 * opaque and covers its run exactly, so the wash under it adds nothing - except
+	 * during a scroll, where the mirror (scrolled from a main-thread listener, like
+	 * every layer in the composer) still trails the compositor by a frame while the
+	 * chip no longer does: the wash would peek out past the chip's edge as a ghost
+	 * of the same fill, trailing it. A run with no chip (wrapped, or clipped out of
+	 * the field) keeps its wash, which is the documented fallback and the only job
+	 * the wash has left on a chipped marker.
+	 *
+	 * It is an attribute written onto the mirror's spans rather than state in the
+	 * overlay because the decision lives here (the same rect measurement that places
+	 * the chip decides it), and it is written in a layout effect on the commit that
+	 * draws the chip, so the wash never goes away a frame before the chip arrives.
+	 * Every render re-applies it, because React replaces a span when the plan's kind
+	 * at that position changes and a replaced span has no attribute.
+	 */
+	useLayoutEffect(() => {
+		const mirror = mirrorRef.current;
+		if (!mirror) return;
+		const chipped = new Set(boxes.map((box) => box.planIndex));
+		for (const run of mirror.querySelectorAll<HTMLElement>(
+			"[data-credential-run]",
+		)) {
+			if (chipped.has(Number(run.dataset.credentialRun))) {
+				run.setAttribute(CHIPPED_ATTR, "");
+			} else {
+				run.removeAttribute(CHIPPED_ATTR);
+			}
+		}
+	});
+	useLayoutEffect(
+		() => () => {
+			for (const run of mirrorRef.current?.querySelectorAll(
+				`[${CHIPPED_ATTR}]`,
+			) ?? []) {
+				run.removeAttribute(CHIPPED_ATTR);
+			}
+		},
+		[mirrorRef],
+	);
 
 	if (boxes.length === 0) return null;
 
 	return (
 		<div
 			/*
-			 * The handle `scripts/credential-chip-geometry.mjs` measures through, and the
-			 * ONLY reason it exists: the chip's box is a measurement, so the claim that it
-			 * covers the run's box exactly is a pair of rects rather than a description,
-			 * and a rig needs a stable way to ask the page for them. Nothing in the app
-			 * reads it.
-			 */
-			data-credential-chips=""
-			/*
+			 * THE CLIP, AND THE ONLY THING IN THIS LAYER THAT IS NOT MOVED BY THE SCROLL.
 			 * `overflow-clip` AND NOT `overflow-hidden` (UX round 2, U6 - a BLOCKER). The
 			 * two look interchangeable and are not: `hidden` makes this layer a SCROLL
 			 * CONTAINER, so when the control takes focus the browser scrolls its nearest
@@ -335,87 +512,112 @@ export const CredentialChipLayer = ({
 			 * 112px box, `deltaTop -219`), and pressing Enter there destroyed a credential
 			 * the operator could not see. `clip` clips exactly the same way and creates no
 			 * scroll container, so focus cannot move it; the same `Tab` then leaves
-			 * `layer.scrollTop` at 0 and the chip on its run. The story that owns this is
+			 * `scrollTop` at 0 and the chip on its run. The story that owns this is
 			 * `credential-pill-scrolled`, whose play presses `Tab` and asserts the three
-			 * numbers the reviewer measured.
+			 * numbers the reviewer measured against THIS element. The plane inside it is
+			 * not a scroll container either - it is moved by `translate`, never by scroll.
 			 */
+			data-credential-chip-clip=""
 			className="pointer-events-none absolute inset-0 overflow-clip"
 		>
-			{boxes.map((box) => {
-				const segment = plan[box.planIndex];
-				if (!segment) return null;
-				const chip = markerChip(segment.text);
-				// A run the marker grammar does not parse cannot be labelled, and a chip
-				// with the wrong label is worse than the wash it replaces: it is skipped,
-				// which is the same fallback a wrapped run takes.
-				if (chip === null) return null;
-				const unbacked = segment.kind === "unbacked";
-				return (
-					<CredentialChip
-						key={box.planIndex}
-						// The composer's chip names the reference the way the buffer does:
-						// `#N` is the composer-local label the citation is built from, and the
-						// count is the operator's own integrity check (§4).
-						label={chip.label}
-						chars={chip.chars}
-						tone={unbacked ? "warning" : "live"}
-						// Only a run a payload backs has a value to throw away. An unbacked
-						// marker is a citation of a value this composer cannot reach any more,
-						// so there is nothing behind its control to clear and it gets none —
-						// and neither does a chip on a composer that is refusing input, where
-						// `onClear` is null: the same rule, stated once, that a control whose
-						// verb cannot run is not drawn.
-						onClear={
-							unbacked || onClear === null ? null : () => onClear(chip.index)
-						}
-						clearLabel={
-							unbacked || onClear === null
-								? undefined
-								: clearControlLabel(chip.index)
-						}
-						// The composer's chip explains itself on hover (UX round 1, U3): `#1`
-						// is composer-local and means nothing to a reader who has looked away,
-						// where the transcript's chip is self-describing (`LOP_SECRET_…`). The
-						// sentence is the marker's own, from the copy authority in
-						// `credential-capture.ts`, and it is also what the chip puts in the
-						// accessibility tree.
-						title={markerChipTitle(chip.index, chip.chars)}
-						small={small}
-						className="absolute"
-						style={{
-							left: box.left,
-							top: box.top,
-							width: box.width,
-							// THE BOX IS THE MARKER'S RECT; `min-content` IS A FLOOR UNDER IT, NOT A
-							// LICENCE TO GROW (S18b design rounds 1 and 2, D1/D5/D7).
-							// `width` is the raw marker's rect, which is minted in English and never
-							// translates, while the chip's contents do: an unabbreviated fr/es/ru
-							// count token (`shrink-0`) measured ~95.2px (ru ~92.6) against 62.25 in
-							// en at the 19-char marker, and the label (`min-w-0 truncate`) absorbs
-							// the whole deficit - it collapsed to 0px, so the pill lost its `#1`,
-							// its only identifier in the composer. `min-width: min-content` keeps
-							// the label from being the item that pays.
-							//
-							// THE FLOOR MUST NEVER BITE IN SHIPPED COPY. A chip whose face fits the
-							// marker keeps the marker's width EXACTLY (English stays 157.33px at
-							// 1024; its face is 143.28), but a face wider than the marker would
-							// overhang it, and the chip's ground is OPAQUE: the overhang would paint
-							// over the operator's own text beside the run. Design round 2 measured
-							// that at 16.25-18.88px (19.30-21.77 compact) for the long fr/es/ru
-							// words and rejected it (D5), the same trade `credentialMarker`'s record
-							// rejects at 34px (`credential-capture.ts`, "THE LABEL IS THE INDEX
-							// ALONE"). So the cure is in the copy, not here: the fr/es/ru count is
-							// abbreviated (`car.`, `симв.`) so the translated face fits the English
-							// marker box, and `scripts/i18n/approval-paydown-copy.test.mjs` pins
-							// the length. A future locale whose count outgrows the marker would
-							// still get a readable label rather than a collapsed one, at the cost
-							// of that overhang; shorten its copy rather than relying on this.
-							minWidth: "min-content",
-							height: box.height,
-						}}
-					/>
-				);
-			})}
+			<div
+				ref={planeRef}
+				/*
+				 * The handle `scripts/credential-chip-geometry.mjs` measures through, and the
+				 * ONLY reason it exists: the chip's box is a measurement, so the claim that it
+				 * covers the run's box exactly is a pair of rects rather than a description,
+				 * and a rig needs a stable way to ask the page for them. The stylesheet's
+				 * scroll-driven animation also selects on it (`index.css`). It is the chips'
+				 * parent, so `layer.children` is still the chips.
+				 */
+				data-credential-chips=""
+				/*
+				 * `will-change: translate` because this is the property the scroll timeline
+				 * animates: the plane is promoted before the first scroll, so the first frame
+				 * of a gesture does not pay for the layer.
+				 */
+				className="pointer-events-none absolute inset-0 will-change-[translate]"
+			>
+				{boxes.map((box) => {
+					const segment = plan[box.planIndex];
+					if (!segment) return null;
+					const chip = markerChip(segment.text);
+					// A run the marker grammar does not parse cannot be labelled, and a chip
+					// with the wrong label is worse than the wash it replaces: it is skipped,
+					// which is the same fallback a wrapped run takes.
+					if (chip === null) return null;
+					const unbacked = segment.kind === "unbacked";
+					return (
+						<CredentialChip
+							key={box.planIndex}
+							// The composer's chip names the reference the way the buffer does:
+							// `#N` is the composer-local label the citation is built from, and the
+							// count is the operator's own integrity check (§4).
+							label={chip.label}
+							chars={chip.chars}
+							tone={unbacked ? "warning" : "live"}
+							// `#N` is an identifier in both registers (R1-4): the not-stored chip
+							// here is labelled by the same ordinal, unlike the transcript's
+							// sentence.
+							identifier
+							// Only a run a payload backs has a value to throw away. An unbacked
+							// marker is a citation of a value this composer cannot reach any more,
+							// so there is nothing behind its control to clear and it gets none —
+							// and neither does a chip on a composer that is refusing input, where
+							// `onClear` is null: the same rule, stated once, that a control whose
+							// verb cannot run is not drawn.
+							onClear={
+								unbacked || onClear === null ? null : () => onClear(chip.index)
+							}
+							clearLabel={
+								unbacked || onClear === null
+									? undefined
+									: clearControlLabel(chip.index)
+							}
+							// The composer's chip explains itself on hover (UX round 1, U3): `#1`
+							// is composer-local and means nothing to a reader who has looked away,
+							// where the transcript's chip is self-describing (`LOP_SECRET_…`). The
+							// sentence is the marker's own, from the copy authority in
+							// `credential-capture.ts`, and it is also what the chip puts in the
+							// accessibility tree.
+							title={markerChipTitle(chip.index, chip.chars)}
+							small={small}
+							className="absolute"
+							style={{
+								left: box.left,
+								top: box.top,
+								width: box.width,
+								// THE BOX IS THE MARKER'S RECT; `min-content` IS A FLOOR UNDER IT, NOT A
+								// LICENCE TO GROW (S18b design rounds 1 and 2, D1/D5/D7).
+								// `width` is the raw marker's rect, which is minted in English and never
+								// translates, while the chip's contents do: an unabbreviated fr/es/ru
+								// count token (`shrink-0`) measured ~95.2px (ru ~92.6) against 62.25 in
+								// en at the 19-char marker, and the label (`min-w-0 truncate`) absorbs
+								// the whole deficit - it collapsed to 0px, so the pill lost its `#1`,
+								// its only identifier in the composer. `min-width: min-content` keeps
+								// the label from being the item that pays.
+								//
+								// THE FLOOR MUST NEVER BITE IN SHIPPED COPY. A chip whose face fits the
+								// marker keeps the marker's width EXACTLY (English stays 157.33px at
+								// 1024; its face is 143.28), but a face wider than the marker would
+								// overhang it, and the chip's ground is OPAQUE: the overhang would paint
+								// over the operator's own text beside the run. Design round 2 measured
+								// that at 16.25-18.88px (19.30-21.77 compact) for the long fr/es/ru
+								// words and rejected it (D5), the same trade `credentialMarker`'s record
+								// rejects at 34px (`credential-capture.ts`, "THE LABEL IS THE INDEX
+								// ALONE"). So the cure is in the copy, not here: the fr/es/ru count is
+								// abbreviated (`car.`, `симв.`) so the translated face fits the English
+								// marker box, and `scripts/i18n/approval-paydown-copy.test.mjs` pins
+								// the length. A future locale whose count outgrows the marker would
+								// still get a readable label rather than a collapsed one, at the cost
+								// of that overhang; shorten its copy rather than relying on this.
+								minWidth: "min-content",
+								height: box.height,
+							}}
+						/>
+					);
+				})}
+			</div>
 		</div>
 	);
 };

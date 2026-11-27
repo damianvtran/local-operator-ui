@@ -1922,7 +1922,9 @@ export const CredentialPillScrolled: Story = {
 		 */
 		await userEvent.tab();
 		await settle();
-		const layer = canvasElement.querySelector("[data-credential-chips]");
+		// The CLIP is the element focus could scroll; the plane inside it is moved by
+		// `translate` and is never a scroll container.
+		const layer = canvasElement.querySelector("[data-credential-chip-clip]");
 		if (!layer) throw new Error("the chip layer is gone after the Tab");
 		if (layer.scrollTop !== 0) {
 			throw new Error(

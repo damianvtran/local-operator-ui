@@ -2631,7 +2631,7 @@ const painted = () => {
 	if (!overlay) return [];
 	return [...overlay.children].map((span) => ({
 		text: span.textContent,
-		pill: span.className.includes("bg-info-wash"),
+		pill: span.className.includes("lo-chip-surface"),
 		/*
 		 * ROUND 3 (UX U13) SPLIT THE WARNING ROLE IN TWO, so the background no
 		 * longer identifies a span on its own: the armed TOKEN is the wash alone
@@ -2642,19 +2642,20 @@ const painted = () => {
 		 */
 		unbacked:
 			span.className.includes("bg-warning-wash") &&
-			span.className.includes("outline-warning-border"),
+			span.className.includes("rounded-[3px]"),
 		/*
-		 * THE EDGE'S STYLE, which round 4 made the not-stored chip's second
-		 * distinction (design round 4, D2; code review round 4, MINOR 2; UX round 4,
-		 * U17). Hue alone does not separate the chip from a live pill: measured over
-		 * the generated palettes the two washes sit at 1.00-1.63 fill contrast and a
-		 * greyscale reading of 34 vs 35 of 255. A dashed edge costs no token and
-		 * survives monochrome.
+		 * THE NOT-STORED CHIP IS FLAT, which replaced the dashed edge as its second
+		 * non-hue distinction (operator, 2026-11-27: no edge on either register; the
+		 * round-4 doctrine - design D2, code review MINOR 2, UX U17 - that a state must
+		 * not rest on colour alone is unchanged). The live chip wears the raised
+		 * surface (sheen and contact shadow) and this one does not, and the triangle
+		 * glyph is the other channel. `raised` is the flag a refolded role would trip.
 		 */
-		dashed: span.className.includes("outline-dashed"),
+		raised: span.className.includes("lo-chip-surface"),
+		edged: /\boutline-|\bborder\b/.test(span.className),
 		armed:
 			span.className.includes("bg-warning-wash") &&
-			!span.className.includes("outline-warning-border"),
+			!span.className.includes("rounded-[3px]"),
 	}));
 };
 
@@ -2712,19 +2713,21 @@ test("a marker whose payload did not survive is painted, and sent as the not-sto
 		"the unbacked marker is NOT painted with the live pill's treatment",
 	);
 	/*
-	 * AND THE CHIP'S EDGE IS DASHED, which is the second distinction and the one
-	 * that does not need colour to be seen (design round 4, D2; code review round
-	 * 4, MINOR 2; UX round 4, U17). The warning pair against the info pair is a
-	 * HUE difference and almost nothing else - the two washes sit at 1.00-1.63
-	 * fill contrast across the generated palettes, and a greyscale reading of
-	 * them is 34 vs 35 of 255 - so a reader who cannot separate a warm brown from
-	 * a cool blue had no cue at all before pressing Enter. This assertion fails
-	 * if the edge goes back to `outline-solid`.
+	 * AND THE CHIP IS FLAT AND EDGELESS, which is the second distinction and the one
+	 * that does not need colour to be seen (design round 4, D2; code review round 4,
+	 * MINOR 2; UX round 4, U17, restated 2026-11-27 when the dashed edge went). The
+	 * warning wash and the live `sunken` fill are separated by HUE and little else
+	 * (ΔE00 0.7-1.4 in the closest palettes), so a reader who cannot separate a warm
+	 * brown from a neutral well relies on the material (this one is not raised) and on
+	 * the triangle glyph. This assertion fails if the not-stored chip is given the
+	 * raised surface, or an edge, back.
 	 */
-	assert.equal(
-		painted().filter((s) => s.dashed).length,
-		1,
-		"the not-stored chip's edge is dashed, so its meaning survives its hue",
+	assert.deepEqual(
+		painted()
+			.filter((s) => s.unbacked)
+			.map((s) => [s.raised, s.edged]),
+		[[false, false]],
+		"the not-stored chip is flat and edgeless, so its meaning survives its hue",
 	);
 
 	await clickSend(reloaded);
@@ -4432,13 +4435,15 @@ test("the composer chip's box never drops below its own content, so a translated
 	layerRoot.unmount();
 	host.remove();
 
-	// The row's arithmetic at the 1024 rung, from the design review's measurements (px):
-	// padding 24 less the control's -4 bearing, key 12 + control 16 + three 6px gaps, label `#1`
-	// 15.01 and the locale's count token.
-	const FIXED = 24 - 4 + 12 + 16 + 18;
-	const LABEL = 15.01;
+	// The row's arithmetic at the 1024 rung, re-measured 2026-11-27 for the neutral chip (px, from
+	// the rendered face on the same flex row): padding 24 less the control's -4 bearing, key 14
+	// (was 12) + control 16 + three 6px gaps, the monospace label `#1` 16.11 and the locale's count
+	// token, which tabular figures widened by 2.23 (en 62.25 -> 64.48; the non-English figures are
+	// the unabbreviated worst cases plus the same 2.23).
+	const FIXED = 24 - 4 + 14 + 16 + 18;
+	const LABEL = 16.11;
 	const MARKER = 157.33;
-	const COUNT = { en: 62.25, fr: 95.2, es: 95.2, ru: 92.57 };
+	const COUNT = { en: 64.48, fr: 97.43, es: 97.43, ru: 94.8 };
 	const box = (count, minContent) =>
 		minContent ? Math.max(MARKER, FIXED + LABEL + count) : MARKER;
 	const labelWidth = (count, boxWidth) =>
@@ -5764,5 +5769,245 @@ test("ordinary prose opens no confirm, even while a queued secret ask waits", as
 		window.document.getElementById("composer-secret-confirm"),
 		null,
 		"ordinary prose opens no confirm",
+	);
+});
+
+/*
+ * THE CHIPS RIDE A PLANE THE FIELD'S SCROLL TRANSLATES (operator report 2026-11-27: the chip
+ * "is a frame behind when scrolling"). The invariant this row holds is the pair that makes the
+ * arithmetic correct, and it is the U1 blocker's own sum seen from the other side: a chip's
+ * `top` is in CONTENT coordinates (the rect's visible position PLUS the mirror's scroll) and
+ * the plane's `translate` removes exactly that scroll, so `chip.top + translate` equals the
+ * visible rect position at every scroll offset. Adding the scroll without the translation (or
+ * the reverse) is the double application that put chips `fieldScrollTop` px off their run.
+ *
+ * WHAT IT CANNOT SEE: whether the compositor moves the plane in the same frame as the glyphs.
+ * jsdom has no animation engine and no compositor; that is measured in a real frame stream (the
+ * PR's lag table), and this row pins the one thing the stylesheet's animation depends on - the
+ * plane's content coordinates and the scroll range it maps onto.
+ */
+test("a chip's box is in content coordinates and the plane's translate takes the scroll back out", async () => {
+	const host = window.document.createElement("div");
+	window.document.body.appendChild(host);
+	const mirror = window.document.createElement("div");
+	const field = window.document.createElement("textarea");
+	const run = window.document.createElement("span");
+	run.setAttribute("data-credential-run", "1");
+	run.textContent = "[Credential #1, 19 chars]";
+	mirror.appendChild(run);
+	host.append(mirror, field);
+	stubRect(mirror, { left: 0, top: 0, width: 400, height: 112 });
+	stubRect(field, { left: 0, top: 0, width: 400, height: 112 });
+	// `configurable` so the stale-range row below can grow the text under the chip.
+	Object.defineProperty(field, "scrollHeight", {
+		value: 331,
+		configurable: true,
+	});
+	Object.defineProperty(field, "clientHeight", { value: 112 });
+	// The field is scrolled to 60: the run sits at content y 100, which is y 40 on screen.
+	mirror.scrollTop = 60;
+	field.scrollTop = 60;
+	stubRect(run, { left: 10, top: 40, width: 120, height: 17 });
+
+	const layerRoot = createRoot(host);
+	const payloads = new Map([
+		[
+			1,
+			{
+				index: 1,
+				key: "LOP_SECRET_4CE3Y48G",
+				value: "v",
+				marker: "[Credential #1, 19 chars]",
+			},
+		],
+	]);
+	const layerFor = (text) =>
+		h(CredentialChipLayer, {
+			text,
+			payloads,
+			mirrorRef: { current: mirror },
+			fieldRef: { current: field },
+			onClear: () => {},
+			onControlUnmounted: () => {},
+		});
+	await act(async () => {
+		layerRoot.render(layerFor("deploy with [Credential #1, 19 chars]"));
+	});
+	const plane = host.querySelector("[data-credential-chips]");
+	assert.ok(plane, "the layer draws the plane");
+	assert.ok(
+		plane.parentElement?.hasAttribute("data-credential-chip-clip"),
+		"the clip is the plane's parent: the plane moves, the clip never does",
+	);
+	const chip = plane.firstElementChild;
+	assert.equal(
+		chip.style.top,
+		"100px",
+		"content coordinates: visible 40 + scroll 60",
+	);
+	assert.equal(
+		plane.style.translate,
+		"0px -60px",
+		"and the plane takes exactly that scroll back out",
+	);
+	assert.equal(
+		plane.style.getPropertyValue("--lo-credential-scroll-range"),
+		"219px",
+		"the stylesheet's animation maps progress onto scrollHeight - clientHeight (331 - 112)",
+	);
+	assert.equal(
+		Number.parseFloat(chip.style.top) - 60,
+		40,
+		"chip.top + translate is the rect's own visible position: the scroll applied once, removed once",
+	);
+	assert.equal(
+		run.hasAttribute("data-credential-chipped"),
+		true,
+		"the run under a chip tells the mirror its wash can step aside",
+	);
+
+	// A scroll that keeps the run in view moves the PLANE and renders no new chip.
+	const chipBefore = chip;
+	mirror.scrollTop = 80;
+	field.scrollTop = 80;
+	stubRect(run, { left: 10, top: 20, width: 120, height: 17 });
+	await act(async () => {
+		field.dispatchEvent(new window.Event("scroll"));
+	});
+	assert.equal(
+		plane.style.translate,
+		"0px -80px",
+		"the fallback follows the scroll",
+	);
+	assert.equal(
+		plane.firstElementChild,
+		chipBefore,
+		"the same chip element: a scroll is not a re-render",
+	);
+	assert.equal(
+		plane.firstElementChild.style.top,
+		"100px",
+		"its content position did not move",
+	);
+
+	/*
+	 * THE RANGE IS REFRESHED BY AN EDIT THAT MOVES NO CHIP (code review round 1, R1-1). Text
+	 * typed, pasted or undone BELOW a visible chip while the field is scrolled changes
+	 * `scrollHeight` and nothing else: the run keeps its rect and the field's `scrollTop` is
+	 * unchanged, so no scroll event fires, no resize fires and `sameBoxes` keeps the old
+	 * boxes. The range the compositor's animation maps progress onto must still be the new
+	 * `scrollHeight - clientHeight`, or the plane lands `scrollTop * (1 - old/new)` px off the
+	 * glyphs until the next scroll (12.9px at these numbers). Two more lines after the
+	 * marker: 331 -> 391 tall, so 219px must become 279px on the SAME plane element.
+	 */
+	Object.defineProperty(field, "scrollHeight", {
+		value: 391,
+		configurable: true,
+	});
+	await act(async () => {
+		layerRoot.render(
+			layerFor("deploy with [Credential #1, 19 chars]\nand\nmore"),
+		);
+	});
+	assert.equal(
+		host.querySelector("[data-credential-chips]"),
+		plane,
+		"the same plane: nothing about the chips changed, so nothing re-primed it",
+	);
+	assert.equal(
+		plane.style.getPropertyValue("--lo-credential-scroll-range"),
+		"279px",
+		"an edit that moves no chip still refreshes the scroll range (391 - 112)",
+	);
+
+	// The run leaves the frame: no chip, so the wash is the run's again.
+	stubRect(run, { left: 10, top: 400, width: 120, height: 17 });
+	await act(async () => {
+		field.dispatchEvent(new window.Event("scroll"));
+	});
+	assert.equal(host.querySelector("[data-credential-chips]"), null);
+	assert.equal(
+		run.hasAttribute("data-credential-chipped"),
+		false,
+		"a run with no chip gets its wash back",
+	);
+	layerRoot.unmount();
+	host.remove();
+});
+
+/*
+ * THE STYLESHEET, THE LAYER AND THE OVERLAY SHARE THREE NAMES THAT NOTHING ELSE TIES TOGETHER:
+ * the timeline name the textarea declares and the plane consumes, the custom property the layer
+ * writes and the keyframe reads, and the attribute the layer sets and the overlay's class
+ * selects. Each is a string in a different language (CSS, TSX, a Tailwind class), so a rename in
+ * one place compiles, passes every other row, and silently puts the chip back one frame behind
+ * the text (or leaves a wash ghost). Read as text, because the stylesheet is not importable.
+ */
+test("the chip plane's scroll timeline, range variable and chipped attribute are spelled the same everywhere", async () => {
+	const css = await readFile("src/renderer/src/styles/index.css", "utf8");
+	const layer = await readFile(
+		"src/renderer/src/features/chat/components/credential-chip-layer.tsx",
+		"utf8",
+	);
+	const overlay = await readFile(
+		"src/renderer/src/features/chat/components/credential-overlay.tsx",
+		"utf8",
+	);
+	const timeline = /scroll-timeline: (--[\w-]+) block;/.exec(css)?.[1];
+	assert.ok(timeline, "the textarea declares a named scroll timeline");
+	assert.match(
+		css,
+		new RegExp(`timeline-scope: ${timeline};`),
+		"the wrapper scopes it so the sibling plane can use it",
+	);
+	assert.match(
+		css,
+		new RegExp(`animation-timeline: ${timeline};`),
+		"and the plane animates on it",
+	);
+	const range = /const SCROLL_RANGE_VAR = "(--[\w-]+)";/.exec(layer)?.[1];
+	assert.ok(range, "the layer names the range variable");
+	assert.ok(
+		css.includes(`var(${range}, 0px)`),
+		"the keyframe reads the variable the layer writes",
+	);
+	const attr = /export const CHIPPED_ATTR = "([\w-]+)";/.exec(layer)?.[1];
+	assert.ok(attr, "the layer names the chipped attribute");
+	assert.ok(
+		overlay.includes(`data-[${attr.replace(/^data-/, "")}]:bg-transparent`),
+		"the overlay's wash steps aside on that attribute",
+	);
+	assert.doesNotMatch(
+		css,
+		/\.composer-dock-field \[data-credential-chips\] \{[^}]*animation:/,
+		"longhands only: the `animation` shorthand resets animation-timeline",
+	);
+});
+
+/*
+ * THE LIVE CHIP IS NEUTRAL (operator report 2026-11-27: the `info` blue box read as "really ugly
+ * and out of theme"). The fill, edge and material roles are pinned in
+ * `credential-chip-surface.test.mjs`; what is pinned here is the chip's ink, which lives in the
+ * component's own markup: no status hue on a reference, the accent only on the key glyph, the
+ * count muted so the name leads.
+ */
+test("the chip carries no status hue, the key takes the accent and the count is muted", async () => {
+	const chip = await readFile(
+		"src/renderer/src/features/chat/components/credential-chip.tsx",
+		"utf8",
+	);
+	const live =
+		/export const CREDENTIAL_CHIP_ROLE = cn\(([\s\S]*?)\n\);/.exec(chip)?.[1] ??
+		"";
+	assert.doesNotMatch(
+		live.replace(/\/\/.*$/gm, ""),
+		/info/,
+		"no status hue on a reference",
+	);
+	assert.match(chip, /text-accent/, "the key glyph carries the accent");
+	assert.match(
+		chip,
+		/text-ink-muted tabular-nums/,
+		"the count is muted so the name leads",
 	);
 });

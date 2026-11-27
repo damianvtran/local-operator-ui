@@ -37,15 +37,15 @@ import {
  *    treatment they had (`CREDENTIAL_ARMED_ROLE` below, and the mask's use of the
  *    chip's own fill).
  *
- * WHY THE EDGE IS AN OUTLINE AND NOT A BORDER, which is the same pixel reason the
- * chip carries it: this element's text must sit at EXACTLY the offsets the
- * textarea's text does, or the run walks out of step with the characters it is
- * under. A 1px border adds 2px to every line box after it and the mirror's run
- * walks out of step with the real one; an outline is painted without
- * participating in layout, which is the same property the branding contract
- * relies on for focus rings (and why it forbids box-shadow rings in this app).
- * `outline-solid` is required: `outline-width` alone leaves `outline-style: none`
- * and paints nothing — the trap the composer's own focus ring documents.
+ * WHY THE WASH DRAWS NO BORDER, which is the same pixel reason the chip carries
+ * none: this element's text must sit at EXACTLY the offsets the textarea's text
+ * does, or the run walks out of step with the characters it is under. A 1px
+ * border adds 2px to every line box after it and the mirror's run walks out of
+ * step with the real one. The wash is a fill and a contact shadow, both painted
+ * without participating in layout (the chip used to draw an `outline` for the same
+ * reason and no longer draws any edge: operator, 2026-11-27), which is the same
+ * property the branding contract relies on for focus rings (and why it forbids
+ * box-shadow rings in this app: a shadow here is a soft contact, never a stroke).
  *
  * WHY THE MIRROR'S TEXT IS TRANSPARENT. The layout has to match, so the text has
  * to be there; the ink has to come from the textarea, so the text has to be
@@ -53,12 +53,21 @@ import {
  * failure here is cosmetic rather than a blank composer.
  *
  * THE WASH IS NOW OPAQUE AND THAT IS A REQUIREMENT, not a property of the role.
- * `infoWash` and `warningWash` are flat palette values with no alpha, which is
- * what lets the chip layer hide the marker's glyphs completely: a translucent
- * wash would leave the marker text showing THROUGH the chip. A palette change
- * that gave a wash an alpha channel would break the chip rather than tint it,
- * which is why both washes are asserted against a ground in the contrast
+ * `sunken` (the live chip's fill) and `warningWash` are flat palette values with no
+ * alpha, which is what lets the chip layer hide the marker's glyphs completely: a
+ * translucent fill would leave the marker text showing THROUGH the chip. A palette
+ * change that gave one of them an alpha channel would break the chip rather than
+ * tint it, which is why the fills are asserted against a ground in the contrast
  * contract rather than against each other.
+ *
+ * AND THE WASH STEPS ASIDE UNDER A RUN THAT HAS A CHIP (`data-credential-chipped`,
+ * written by `credential-chip-layer.tsx`). This mirror is scrolled from a
+ * main-thread listener, so during a wheel scroll it trails the field by a frame;
+ * the chip no longer does (it rides a compositor-driven plane), and a wash that
+ * still shows past the chip's edge would read as a ghost of the chip trailing it.
+ * The chip is opaque and exact, so under it the wash has nothing left to say; a run
+ * with no chip (wrapped, or clipped out of the field) keeps the wash, which is its
+ * documented fallback.
  */
 
 /**
@@ -73,10 +82,11 @@ import {
  * latched to takes the wash — the same technique the chip's own ground uses, on
  * the same element, at no layout cost.
  *
- * No edge, deliberately, where the chip has one. The chip's outline is the
- * boundary of a thing the operator is being handed (a reference, with a count
- * and a control); the armed token is the ordinary word they just typed, marked.
- * Adding a second outlined box beside the chip would read as a second credential.
+ * No glyph, no sheen and no shadow, deliberately, where the chip has them. The
+ * chip is a thing the operator is being handed (a reference, with a count and a
+ * control, raised off the line); the armed token is the ordinary word they just
+ * typed, marked. A second raised box beside the chip would read as a second
+ * credential.
  *
  * IT IS ALSO NEVER CHIPPED: the chip layer paints only the two marker runs
  * (`pill` and `unbacked`), so an armed token and a masked span keep the wash as
@@ -126,6 +136,19 @@ type CredentialOverlayProps = {
 	isSmallView: boolean;
 };
 
+/**
+ * The wash (fill, sheen and contact shadow), switched off while the chip layer has a chip on the run.
+ *
+ * The selector's attribute is `CHIPPED_ATTR` in `credential-chip-layer.tsx` and
+ * has to be spelled out here because Tailwind reads class names as literal text;
+ * `credential-composer.test.mjs` pins the two together. Only the `unbacked` and
+ * `pill` kinds ever carry the attribute (they are the only runs with a
+ * `data-credential-run`), so the held MASK, which is never chipped, is untouched
+ * by it.
+ */
+const CHIPPED_WASH_OFF =
+	"data-[credential-chipped]:bg-transparent data-[credential-chipped]:bg-none data-[credential-chipped]:shadow-none";
+
 const pillClassName = (kind: PaintSegment["kind"], held: boolean) => {
 	if (kind === "plain") return "text-transparent";
 	if (kind === "armed") return cn("text-transparent", CREDENTIAL_ARMED_ROLE);
@@ -138,8 +161,8 @@ const pillClassName = (kind: PaintSegment["kind"], held: boolean) => {
 	 * the existing role carries the meaning and no new token is introduced.
 	 */
 	if (kind === "unbacked" || (kind === "mask" && held))
-		return cn("text-transparent", CREDENTIAL_NOT_STORED_ROLE);
-	return cn("text-transparent", CREDENTIAL_CHIP_ROLE);
+		return cn("text-transparent", CREDENTIAL_NOT_STORED_ROLE, CHIPPED_WASH_OFF);
+	return cn("text-transparent", CREDENTIAL_CHIP_ROLE, CHIPPED_WASH_OFF);
 };
 
 export const CredentialOverlay = ({
