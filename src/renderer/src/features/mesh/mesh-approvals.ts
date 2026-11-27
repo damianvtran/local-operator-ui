@@ -64,6 +64,11 @@ import {
 	type DesktopRequest,
 } from "../../../../shared/desktop-contract";
 import {
+	GUARD_CONSENT_OPERATION,
+	type GuardTypedApproval,
+	guardTypedApproval,
+} from "../../../../shared/guard-consent";
+import {
 	PROFILE_SAVE_OPERATION,
 	type ProfileTypedApproval,
 	profileTypedApproval,
@@ -183,7 +188,7 @@ export type MeshApprovalRow = {
 	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
 	state: string;
 	/** Which where-block this row carries — the record's own kind is the difference. */
-	kind: "device" | "machine" | "credential" | "profile" | "unknown";
+	kind: "device" | "machine" | "credential" | "profile" | "guard" | "unknown";
 	/** Authored by the backend from the signed request, never reconstructed here. */
 	summary?: string;
 	details?: string[];
@@ -205,6 +210,15 @@ export type MeshApprovalRow = {
 	 * gate's arms would offer a signature the profile route cannot carry.
 	 */
 	profile?: ProfileTypedApproval;
+	/**
+	 * The typed GUARD-CONSENT block (`guard_consent`), when the backend served one.
+	 *
+	 * A guard row is NOT a mesh fact: it is the member's own privacy decision about
+	 * this computer. It rides this read only because the host files it on the one
+	 * desktop approvals plane; `useMeshApprovals` drops it from every Mesh surface
+	 * and `features/guard` is the sole reader.
+	 */
+	guard?: GuardTypedApproval;
 };
 
 /* ------------------------------------------------------------ the states */
@@ -414,6 +428,15 @@ export function approvalDecisionRequest(
 ): DesktopRequest | null {
 	const approvalId = row.approvalId;
 	if (decision === "deny") return { op: "approvals.deny", approvalId };
+	/*
+	 * A GUARD CONSENT IS NEVER ANSWERED BY THIS GENERIC FLOW (RFC §5.9). Its
+	 * accept is the typed, digest-bound request `guardAcceptRequest` builds from
+	 * the Guard dialog's own button, so no list control, auto-approval mode or
+	 * "approve all" can send it - the host refuses the bodiless route for this
+	 * kind (`guard_consent_typed_approval_required`) and this mirrors that refusal
+	 * client-side so the request is never sent at all.
+	 */
+	if (row.kind === "guard") return null;
 	if (row.kind === "profile") {
 		const allowed =
 			decision === "approve"
@@ -665,6 +688,13 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		 * opaque rather than pretending it is an onboarding.
 		 */
 		const profile = profileTypedApproval(raw.typed_approval);
+		/*
+		 * A GUARD ROW IS RECOGNISED BY ITS RECORD KIND OR ITS TYPED OPERATION, and
+		 * both are checked for the profile row's reason: a `guard_consent` record
+		 * served without a parseable block must still never fall through to the
+		 * generic signing path, so it keeps the kind and loses the block.
+		 */
+		const guard = guardTypedApproval(raw.typed_approval);
 		const credential =
 			(isRecord(raw.what) &&
 				(Object.prototype.hasOwnProperty.call(
@@ -680,16 +710,18 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 			? text(raw.kind)
 			: undefined;
 		const kind: MeshApprovalRow["kind"] =
-			profile !== null || explicitKind === PROFILE_SAVE_OPERATION
-				? "profile"
-				: credential || explicitKind === "credential_inheritance"
-					? "credential"
-					: explicitKind !== undefined &&
-							!["device_onboard", "local_authority"].includes(explicitKind)
-						? "unknown"
-						: !isRecord(raw.device) && isRecord(raw.machine)
-							? "machine"
-							: "device";
+			guard !== null || explicitKind === GUARD_CONSENT_OPERATION
+				? "guard"
+				: profile !== null || explicitKind === PROFILE_SAVE_OPERATION
+					? "profile"
+					: credential || explicitKind === "credential_inheritance"
+						? "credential"
+						: explicitKind !== undefined &&
+								!["device_onboard", "local_authority"].includes(explicitKind)
+							? "unknown"
+							: !isRecord(raw.device) && isRecord(raw.machine)
+								? "machine"
+								: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
@@ -720,6 +752,7 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 			expiresAt: time(raw.expires_at),
 			...(typed && kind === "credential" ? { typed } : {}),
 			...(profile && kind === "profile" ? { profile } : {}),
+			...(guard && kind === "guard" ? { guard } : {}),
 		});
 	}
 	return rows;
@@ -1303,6 +1336,11 @@ export function credentialVisibleConsequences(row: MeshApprovalRow): string {
 
 /* ---------------------------------------------------------------- hooks */
 
+/** The one read of `GET /v1/desktop/approvals`, shared with `features/guard`. */
+export async function readApprovalRows(): Promise<MeshApprovalRow[]> {
+	return approvalRows(await desktopResult<unknown>({ op: "approvals.list" }));
+}
+
 /**
  * `GET /v1/desktop/approvals`, normalised.
  *
@@ -1325,8 +1363,7 @@ export function useMeshApprovals(
 			meshRowsWithoutProfileProposals(rows, proposalsEnabled),
 		queryKey: meshApprovalKeys.approvals,
 		enabled,
-		queryFn: async () =>
-			approvalRows(await desktopResult<unknown>({ op: "approvals.list" })),
+		queryFn: readApprovalRows,
 		retry: false,
 		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
 		refetchInterval: enabled && poll ? MESH_APPROVAL_POLL_MS : false,
@@ -1555,5 +1592,7 @@ export function meshRowsWithoutProfileProposals(
 	rows: MeshApprovalRow[],
 	enabled: boolean,
 ): MeshApprovalRow[] {
-	return enabled ? rows.filter((row) => row.kind !== "profile") : rows;
+	return rows.filter(
+		(row) => row.kind !== "guard" && !(enabled && row.kind === "profile"),
+	);
 }

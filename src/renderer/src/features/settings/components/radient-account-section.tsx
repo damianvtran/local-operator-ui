@@ -8,6 +8,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import { GuardSettingsSection } from "@features/guard/guard-settings-section";
 import { PhonePairingSettings } from "@features/phone-pairing/paired-phones-section";
 import { PhoneAccessBlock } from "@features/providers/phone-access-block";
 import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
@@ -190,6 +191,18 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 * element, no spacing, no request) unless the backend advertises it.
 				 */}
 				<PhonePairingSettings className="mt-6" />
+
+				{/*
+				 * RADIENT GUARD (Team-plan guardrail analytics): the member's own consent
+				 * prompt, status, Stop sharing and the non-Team card. It is the desktop's
+				 * `/guard` screen and draws nothing on a backend that predates
+				 * `features.guard` unless a consent card is waiting. Placed with the
+				 * account's other "what does this computer do for others" blocks, above the
+				 * plan line and sign-out, because it is account state, not a sign-in action.
+				 */}
+				<div className="mt-8">
+					<GuardSettingsSection />
+				</div>
 
 				{/*
 				 * THE ONE PLACE THE TEAM PLAN IS DESCRIBED OUTSIDE A GATE (onboarding

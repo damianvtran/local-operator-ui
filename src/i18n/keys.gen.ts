@@ -134,6 +134,7 @@ import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiCommunity from "./catalogues/en/ui.community.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiGuard from "./catalogues/en/ui.guard.json";
 import enUiHubAdoption from "./catalogues/en/ui.hub.adoption.json";
 import enUiHubCard from "./catalogues/en/ui.hub.card.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
@@ -324,6 +325,7 @@ import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiCommunity from "./catalogues/es/ui.community.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiGuard from "./catalogues/es/ui.guard.json";
 import esUiHubAdoption from "./catalogues/es/ui.hub.adoption.json";
 import esUiHubCard from "./catalogues/es/ui.hub.card.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
@@ -514,6 +516,7 @@ import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiCommunity from "./catalogues/fr/ui.community.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiGuard from "./catalogues/fr/ui.guard.json";
 import frUiHubAdoption from "./catalogues/fr/ui.hub.adoption.json";
 import frUiHubCard from "./catalogues/fr/ui.hub.card.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
@@ -704,6 +707,7 @@ import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiCommunity from "./catalogues/hi/ui.community.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiGuard from "./catalogues/hi/ui.guard.json";
 import hiUiHubAdoption from "./catalogues/hi/ui.hub.adoption.json";
 import hiUiHubCard from "./catalogues/hi/ui.hub.card.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
@@ -894,6 +898,7 @@ import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiCommunity from "./catalogues/ru/ui.community.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiGuard from "./catalogues/ru/ui.guard.json";
 import ruUiHubAdoption from "./catalogues/ru/ui.hub.adoption.json";
 import ruUiHubCard from "./catalogues/ru/ui.hub.card.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
@@ -1084,6 +1089,7 @@ import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiCommunity from "./catalogues/ur/ui.community.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiGuard from "./catalogues/ur/ui.guard.json";
 import urUiHubAdoption from "./catalogues/ur/ui.hub.adoption.json";
 import urUiHubCard from "./catalogues/ur/ui.hub.card.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
@@ -1274,6 +1280,7 @@ import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiCommunity from "./catalogues/vi/ui.community.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiGuard from "./catalogues/vi/ui.guard.json";
 import viUiHubAdoption from "./catalogues/vi/ui.hub.adoption.json";
 import viUiHubCard from "./catalogues/vi/ui.hub.card.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
@@ -1464,6 +1471,7 @@ import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiCommunity from "./catalogues/zh-CN/ui.community.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiGuard from "./catalogues/zh-CN/ui.guard.json";
 import zhCNUiHubAdoption from "./catalogues/zh-CN/ui.hub.adoption.json";
 import zhCNUiHubCard from "./catalogues/zh-CN/ui.hub.card.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
@@ -1657,6 +1665,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommunity,
 	...enUiConsoleErrors,
 	...enUiConsole,
+	...enUiGuard,
 	...enUiHubAdoption,
 	...enUiHubCard,
 	...enUiHubComments,
@@ -1855,6 +1864,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommunity,
 		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiGuard,
 		...esUiHubAdoption,
 		...esUiHubCard,
 		...esUiHubComments,
@@ -2047,6 +2057,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommunity,
 		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiGuard,
 		...frUiHubAdoption,
 		...frUiHubCard,
 		...frUiHubComments,
@@ -2239,6 +2250,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommunity,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiGuard,
 		...hiUiHubAdoption,
 		...hiUiHubCard,
 		...hiUiHubComments,
@@ -2431,6 +2443,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommunity,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiGuard,
 		...ruUiHubAdoption,
 		...ruUiHubCard,
 		...ruUiHubComments,
@@ -2623,6 +2636,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommunity,
 		...urUiConsoleErrors,
 		...urUiConsole,
+		...urUiGuard,
 		...urUiHubAdoption,
 		...urUiHubCard,
 		...urUiHubComments,
@@ -2815,6 +2829,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommunity,
 		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiGuard,
 		...viUiHubAdoption,
 		...viUiHubCard,
 		...viUiHubComments,
@@ -3007,6 +3022,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommunity,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiGuard,
 		...zhCNUiHubAdoption,
 		...zhCNUiHubCard,
 		...zhCNUiHubComments,
@@ -9876,6 +9892,83 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.guard.answered_on": { surface: string };
+	"ui.guard.badge_waiting_aria": { count: number };
+	"ui.guard.button_decide_later": undefined;
+	"ui.guard.button_dont_share": undefined;
+	"ui.guard.button_keep_current": undefined;
+	"ui.guard.button_keep_sharing": undefined;
+	"ui.guard.button_share": undefined;
+	"ui.guard.button_share_again": undefined;
+	"ui.guard.button_share_new": undefined;
+	"ui.guard.button_stop_sharing": undefined;
+	"ui.guard.card_ask_owner": undefined;
+	"ui.guard.card_body": undefined;
+	"ui.guard.card_cta_loading": undefined;
+	"ui.guard.card_cta_see": undefined;
+	"ui.guard.card_cta_trial": { trial_days: string };
+	"ui.guard.card_footer": { org: string };
+	"ui.guard.card_title": undefined;
+	"ui.guard.entry_review": undefined;
+	"ui.guard.indicator_not_sharing": { org: string };
+	"ui.guard.indicator_paused": { reason: string };
+	"ui.guard.indicator_paused_plain": undefined;
+	"ui.guard.indicator_sharing": { org: string };
+	"ui.guard.indicator_sharing_pending": { org: string };
+	"ui.guard.indicator_waiting": { org: string };
+	"ui.guard.indicator_will_ask": { org: string };
+	"ui.guard.prompt_background": undefined;
+	"ui.guard.prompt_never_sent": undefined;
+	"ui.guard.prompt_reason_new_device": undefined;
+	"ui.guard.prompt_reason_new_org": { org: string };
+	"ui.guard.prompt_reason_plan_gap": { org: string };
+	"ui.guard.prompt_reason_reactivated": { org: string };
+	"ui.guard.prompt_reason_rejoined": { org: string };
+	"ui.guard.prompt_reason_widened": { org: string; scopes: string };
+	"ui.guard.prompt_title": { org: string };
+	"ui.guard.prompt_visibility": undefined;
+	"ui.guard.prompt_visibility_admin_share": undefined;
+	"ui.guard.prompt_visibility_admin_share_posture": undefined;
+	"ui.guard.prompt_visibility_posture": undefined;
+	"ui.guard.prompt_would_send": undefined;
+	"ui.guard.reason_console_revoked": { date: string };
+	"ui.guard.reason_entitlement_lapsed": undefined;
+	"ui.guard.reason_membership_ended": { org: string };
+	"ui.guard.reason_org_off": { org: string };
+	"ui.guard.reason_revoke_pending": undefined;
+	"ui.guard.reason_scope_revoked": undefined;
+	"ui.guard.revoke_body": undefined;
+	"ui.guard.revoke_body_trace": { backup_days: string };
+	"ui.guard.revoke_retained": undefined;
+	"ui.guard.revoke_title": { org: string };
+	"ui.guard.revoke_totals": undefined;
+	"ui.guard.scope_admin_share": { org: string };
+	"ui.guard.scope_decisions": undefined;
+	"ui.guard.scope_label_admin_share": undefined;
+	"ui.guard.scope_label_decisions": undefined;
+	"ui.guard.scope_label_posture": undefined;
+	"ui.guard.scope_label_reports": undefined;
+	"ui.guard.scope_label_review_cycles": undefined;
+	"ui.guard.scope_label_task_time": undefined;
+	"ui.guard.scope_label_trace_detail": undefined;
+	"ui.guard.scope_posture": undefined;
+	"ui.guard.scope_reports": { org: string };
+	"ui.guard.scope_review_cycles": undefined;
+	"ui.guard.scope_task_time": undefined;
+	"ui.guard.scope_trace_detail": undefined;
+	"ui.guard.screen_close": undefined;
+	"ui.guard.screen_declined": { org: string };
+	"ui.guard.screen_failed": undefined;
+	"ui.guard.screen_none": undefined;
+	"ui.guard.screen_prompt_changed": { org: string };
+	"ui.guard.screen_revoked": { org: string };
+	"ui.guard.screen_shared": { org: string };
+	"ui.guard.screen_title": undefined;
+	"ui.guard.screen_unavailable": undefined;
+	"ui.guard.screen_working": undefined;
+	"ui.guard.surface_desktop": undefined;
+	"ui.guard.surface_mobile": undefined;
+	"ui.guard.surface_tui": undefined;
 	"ui.hub.adoption.applied": undefined;
 	"ui.hub.adoption.cancel": undefined;
 	"ui.hub.adoption.confirm": undefined;

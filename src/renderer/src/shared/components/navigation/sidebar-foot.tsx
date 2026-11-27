@@ -1,7 +1,9 @@
+import { useGuardWaitingCount } from "@features/guard/guard-hooks";
 import { PhoneAccessOffer } from "@features/providers/phone-access-offer";
 import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { BrowserSafeTooltip } from "@shared/components/ui/browser-safe-tooltip";
 import {
 	isSettingsPath,
@@ -58,6 +60,14 @@ export const SettingsGear: FC = () => {
 	 * translation ledger.
 	 */
 	const isOpen = isSettingsPath(pathname);
+	/*
+	 * A WAITING GUARD CONSENT MARKS THE GEAR, QUIETLY (RFC §5.2.3: the desktop entry
+	 * "never takes focus"). The prompt itself lives in Settings → Radient account;
+	 * this is only the count, drawn in the corner with the shared badge. It is a
+	 * mark and not an interruption: no dialog, no toast, no focus move, and it is
+	 * `aria-hidden` with the same fact stated in words beside it for a screen reader.
+	 */
+	const guardWaiting = useGuardWaitingCount();
 	return (
 		<BrowserSafeTooltip
 			content={
@@ -78,10 +88,26 @@ export const SettingsGear: FC = () => {
 					"flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
 					"transition-colors duration-fast ease-out-quart",
 					"hover:bg-row-hover hover:text-ink",
+					"relative",
 					isOpen && "text-ink",
 				)}
 			>
 				<Settings size={16} aria-hidden="true" />
+				{guardWaiting > 0 ? (
+					<>
+						<span className="pointer-events-none absolute -top-1 -end-1.5 flex">
+							<AttentionBadge
+								count={guardWaiting}
+								placement="corner"
+								aria-hidden="true"
+								data-testid="guard-gear-mark"
+							/>
+						</span>
+						<span className="sr-only">
+							{t("ui.guard.badge_waiting_aria", { count: guardWaiting })}
+						</span>
+					</>
+				) : null}
 				{/*
 				 * The direction, for a screen reader: "Settings, current page,
 				 * button" over an action that leaves the page reads as a
