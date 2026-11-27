@@ -74,6 +74,6 @@
 	"ui.guard.screen_unavailable": "Guard не может прочитать свои настройки на этом компьютере. С этого экрана ничего не передано и не отправлено.",
 	"ui.guard.screen_prompt_changed": "В {org} изменили этот запрос. Посмотрите новый ниже.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# вопрос Guard ждёт вашего ответа} few {# вопроса Guard ждут вашего ответа} many {# вопросов Guard ждут вашего ответа} other {# вопроса Guard ждут вашего ответа}}",
-	"ui.guard.card_ask_owner": "Попросите владельца перейти на платный тариф",
+	"ui.guard.card_ask_owner": "Попросите владельца организации перейти на тариф Radient Team",
 	"ui.guard.entry_review": "Посмотреть"
 }

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "locale": "zh-CN",
+  "audit_id": "563c806ab66e-ui-guard-zh-cn",
+  "instance": "563c806ab66e-ui-guard-zh-cn",
+  "auditor": "copy-reviewer",
+  "session": "563c806ab66e",
+  "model": "openai/gpt-6.2-sol",
+  "model_provenance": "Runtime model declaration; no provider fallback observed.",
+  "date": "2026-11-27",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "independence": "First independent desktop i18n audit. The auditor did not produce the incoming translation; the listed corrective edits are disclosed and must be checked by an independent second auditor.",
+  "reviewed_head": "0c4971390c690d62813020fe9efd2f4dc5918071",
+  "source_path": "src/i18n/catalogues/en/ui.guard.json",
+  "source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+  "context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+  "context_sha256": "b78bdedca210b719a2f587d8aee35221120b21c106fd071cd3a9480019b2d4e2",
+  "target_path": "src/i18n/catalogues/zh-CN/ui.guard.json",
+  "target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
+  "translation_input": {
+    "locale": "zh-CN",
+    "namespace": "ui.guard",
+    "source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+    "target_sha256": "fa7087aea9a00a3ebba6d735814b97bb799d0b292b45da5b3c094411a9ef0509",
+    "translator": {
+      "agent": "coder",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-11-27"
+    },
+    "auditors": [],
+    "status": "translated"
+  },
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "minor",
+      "key": "ui.guard.card_ask_owner",
+      "current": "请让所有者升级",
+      "replacement": "请联系组织所有者升级到Radient Team",
+      "why": "Specify the organization owner and Radient Team; not the reader’s personal owner or an unspecified paid tier.",
+      "disposition": "fixed in this receipt’s target bytes"
+    }
+  ],
+  "scope": "All 77 messages against English and context: 5 desktop-authored; 72 raw JSON value tokens match core.",
+  "core_revision": "498066e8c8270ad5c02bbb053186252ed6981212",
+  "core_checks": {
+    "identical_raw_value_tokens": 72,
+    "desktop_values": [
+      "badge_waiting_aria",
+      "card_ask_owner",
+      "entry_review",
+      "indicator_waiting",
+      "prompt_background"
+    ],
+    "core_target_sha256": "04253a9fa0d65932f21003410a16aba1b077a68d587d943a11c136940bfc0b53",
+    "core_latest_auditor": {
+      "agent": "radientdev ux-reviewer (acting as second independent i18n auditor)",
+      "session": "e6ab8547b6b5",
+      "model": "openai/gpt-6.2-sol",
+      "actual_model_source": "Developer runtime declaration in this session",
+      "date": "2026-11-27",
+      "fallback_used": false,
+      "fallback_note": "No provider fallback observed.",
+      "independent_from_translator_session": "5bd246fcf195",
+      "independent_from_first_auditor_session": "d3661c1e5338",
+      "result": "passed",
+      "findings": 0,
+      "findings_fixed": 3,
+      "unresolved_blocker_major": 0
+    },
+    "target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
+    "badge_icu_examples": {
+      "other": {
+        "count": 0,
+        "output": "有 0 个 Guard 问题等你回答"
+      }
+    },
+    "backup_placeholder_example": "Guard将立即停止从你所有电脑发送数据，并删除你的逐步耗时。备份中的副本将在7天内清除。"
+  },
+  "semantic_checks": [
+    "Never-sent list complete; consent-widening and renewed-consent boundaries intact.",
+    "Aggregate visibility minimum 5; setup estimate minimum 20; reports grouped only for at least 5 contributors of that type that day.",
+    "Separate admin timing scope and lack of step contents preserved; timing retention 14 days, stats 90, reports 180; backup_days remains dynamic.",
+    "Desktop Settings and Console terminology matches actual navigation; product names and merge token retained."
+  ],
+  "mechanical_checks": "77/77 keys and ordered ICU argument/type signatures; exact CLDR categories formatted via IntlMessageFormat; NFC, no manual bidi controls; all numerical and kept technical tokens checked.",
+  "rendered_evidence": "ICU text output only; actual Electron layout, RTL shaping/mirroring and pseudo-localization not claimed. Second independent desktop audit required by docs/i18n.md:239."
+}

@@ -3,7 +3,7 @@
 	"ui.guard.indicator_sharing": "Guard : partage avec {org}",
 	"ui.guard.indicator_sharing_pending": "Guard : partage avec {org} · nouveaux éléments en attente de votre choix",
 	"ui.guard.indicator_paused": "Guard : en pause, {reason}",
-	"ui.guard.indicator_waiting": "Guard : {org} attend votre choix",
+	"ui.guard.indicator_waiting": "Guard : {org} attend votre choix",
 	"ui.guard.indicator_not_sharing": "Guard : pas de partage avec {org}",
 	"ui.guard.indicator_will_ask": "Guard : {org} vous redemandera bientôt",
 	"ui.guard.reason_entitlement_lapsed": "offre Team inactive",
@@ -74,6 +74,6 @@
 	"ui.guard.screen_unavailable": "Guard ne peut pas lire ses paramètres sur cet ordinateur. Rien n’a été partagé ni envoyé depuis cet écran.",
 	"ui.guard.screen_prompt_changed": "{org} a modifié cette demande. Consultez la nouvelle ci-dessous.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# question de Guard attend votre réponse} many {# questions de Guard attendent votre réponse} other {# questions de Guard attendent votre réponse}}",
-	"ui.guard.card_ask_owner": "Demandez à votre propriétaire de passer à l’offre supérieure",
+	"ui.guard.card_ask_owner": "Demandez au propriétaire de l’organisation de passer à l’offre Radient Team",
 	"ui.guard.entry_review": "Examiner"
 }

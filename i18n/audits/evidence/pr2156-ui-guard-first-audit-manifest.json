@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "scope": "First independent desktop audit: 77 values per locale, 72 byte-identical to audited core (raw JSON value tokens).",
+  "reviewed_head": "0c4971390c690d62813020fe9efd2f4dc5918071",
+  "auditor": "copy-reviewer",
+  "session": "563c806ab66e",
+  "actual_model": "openai/gpt-6.2-sol",
+  "date": "2026-11-27",
+  "canonical_evidence_root": "i18n/audits/evidence/",
+  "equivalent_evidence_root": "i18n/receipts/",
+  "remaining_requirement": "Second independent audit of final desktop bytes; first audit does not certify rendered pseudo-localization, Electron layout, or Urdu mirroring.",
+  "records": [
+    {
+      "locale": "es",
+      "canonical_record": "i18n/audits/evidence/es/ui.guard/563c806ab66e-ui-guard-es/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-es.json",
+      "sha256": "5e1b424c23e11bde763d1175092e9b4e4ebb32a20a8205cc74bf145f1e523b50",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "fr",
+      "canonical_record": "i18n/audits/evidence/fr/ui.guard/563c806ab66e-ui-guard-fr/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-fr.json",
+      "sha256": "48146038137991e8322df9545b89a4363242e038864c47a5542b960d38ba2240",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "hi",
+      "canonical_record": "i18n/audits/evidence/hi/ui.guard/563c806ab66e-ui-guard-hi/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-hi.json",
+      "sha256": "92c75e0a07ad23b1a3899d0b119b8c175aa7326bf3fab335195dd8fa6aa56d1a",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "ru",
+      "canonical_record": "i18n/audits/evidence/ru/ui.guard/563c806ab66e-ui-guard-ru/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-ru.json",
+      "sha256": "9d42212b0879178dbe7118a452da8160279043cc6295e3f5a35ba2e26bd1bf97",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "ur",
+      "canonical_record": "i18n/audits/evidence/ur/ui.guard/563c806ab66e-ui-guard-ur/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-ur.json",
+      "sha256": "cad0af61581facfbdada11936045edf1634a3fcb6efe6233ddbb91ab1ca7eefd",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "vi",
+      "canonical_record": "i18n/audits/evidence/vi/ui.guard/563c806ab66e-ui-guard-vi/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-vi.json",
+      "sha256": "534bc6a07e826ae7326fc9b121c3a57a92a572e2df144030efca610fafc54b60",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "zh-CN",
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.guard/563c806ab66e-ui-guard-zh-cn/record.json",
+      "receipt": "i18n/receipts/563c806ab66e-ui-guard-zh-cn.json",
+      "sha256": "ab435e78b2cf5e93dde2e2fcec31941ff16b8093375f3a554a74b3d8f8724e46",
+      "result": "clean-with-findings"
+    }
+  ]
+}

@@ -135566,92 +135566,274 @@
 			"locale": "es",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "211c2a243210342e41b761451aec7a3a30f88f2fd5790c4856268645e5b31b0e",
+			"target_sha256": "317175c1ddf5566c88eff481bb0111861ea215021fbbcc7fae8239a73df69796",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-es.json",
+					"receipt_sha256": "5e1b424c23e11bde763d1175092e9b4e4ebb32a20a8205cc74bf145f1e523b50",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "211c2a243210342e41b761451aec7a3a30f88f2fd5790c4856268645e5b31b0e",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "cae8ca05d328cf6e884c8e53e29c30273f57a4fbbdb902d4a1af47002679eaa5",
+			"target_sha256": "a1d0297518accd991acd515500f85a589f5534a4dd3fd3350c076331c3cf9161",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-fr.json",
+					"receipt_sha256": "48146038137991e8322df9545b89a4363242e038864c47a5542b960d38ba2240",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "cae8ca05d328cf6e884c8e53e29c30273f57a4fbbdb902d4a1af47002679eaa5",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "df760fe4ad4e5cbfc1eabd12935bc7b1d33e2a01429b8577cfd96ca7ed29808e",
+			"target_sha256": "def5047072f8f5074130847a4b130e514c24753ccf1d3d00e7133ce6eca2141b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-hi.json",
+					"receipt_sha256": "92c75e0a07ad23b1a3899d0b119b8c175aa7326bf3fab335195dd8fa6aa56d1a",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "df760fe4ad4e5cbfc1eabd12935bc7b1d33e2a01429b8577cfd96ca7ed29808e",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "94f6e61886385a2137dda953da11ebbb48fa22f909c74bbf5bd6fa0ecb55c2a2",
+			"target_sha256": "cd3002a220e76167f8c3d13e3c25776d54d0ab4e9f99142880a9ccda44932f6a",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-ru.json",
+					"receipt_sha256": "9d42212b0879178dbe7118a452da8160279043cc6295e3f5a35ba2e26bd1bf97",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "94f6e61886385a2137dda953da11ebbb48fa22f909c74bbf5bd6fa0ecb55c2a2",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "46e16253d12366f522cd0330be617cd021f692809233e9842551f041ee759cd3",
+			"target_sha256": "e2bcaeca200b20b29cd076dd7cae5b677c2e2e2000cba13d50614bfadb6b58c9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-ur.json",
+					"receipt_sha256": "cad0af61581facfbdada11936045edf1634a3fcb6efe6233ddbb91ab1ca7eefd",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "46e16253d12366f522cd0330be617cd021f692809233e9842551f041ee759cd3",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "0661f8794f8380d90f7f0a1c776db7479b0ac5add18532f39fabd002e3b12df6",
+			"target_sha256": "83ae1f86624f2d36be6b451adfaf7c48209603acda5f32f10ba63e7cbed916f1",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-vi.json",
+					"receipt_sha256": "534bc6a07e826ae7326fc9b121c3a57a92a572e2df144030efca610fafc54b60",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "0661f8794f8380d90f7f0a1c776db7479b0ac5add18532f39fabd002e3b12df6",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.guard",
 			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "fa7087aea9a00a3ebba6d735814b97bb799d0b292b45da5b3c094411a9ef0509",
+			"target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "563c806ab66e-ui-guard-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/563c806ab66e-ui-guard-zh-cn.json",
+					"receipt_sha256": "ab435e78b2cf5e93dde2e2fcec31941ff16b8093375f3a554a74b3d8f8724e46",
+					"scope": "First independent desktop audit, 77 keys",
+					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "fa7087aea9a00a3ebba6d735814b97bb799d0b292b45da5b3c094411a9ef0509",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		}
 	]
 }

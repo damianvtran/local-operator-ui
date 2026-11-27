@@ -74,6 +74,6 @@
 	"ui.guard.screen_unavailable": "Guard không đọc được cài đặt của mình trên máy tính này. Màn hình này chưa chia sẻ hay gửi gì.",
 	"ui.guard.screen_prompt_changed": "{org} đã thay đổi yêu cầu này. Hãy xem yêu cầu mới bên dưới.",
 	"ui.guard.badge_waiting_aria": "{count, plural, other {# câu hỏi của Guard đang chờ bạn trả lời}}",
-	"ui.guard.card_ask_owner": "Hãy nhờ chủ sở hữu nâng cấp",
-	"ui.guard.entry_review": "Xem lại"
+	"ui.guard.card_ask_owner": "Nhờ chủ sở hữu của tổ chức nâng cấp lên Radient Team",
+	"ui.guard.entry_review": "Xem"
 }

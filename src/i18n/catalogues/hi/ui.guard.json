@@ -74,6 +74,6 @@
 	"ui.guard.screen_unavailable": "Guard इस कंप्यूटर पर अपनी सेटिंग्स नहीं पढ़ सकता। इस स्क्रीन से न कुछ शेयर हुआ, न भेजा गया।",
 	"ui.guard.screen_prompt_changed": "{org} ने यह अनुरोध बदल दिया है। नीचे नया अनुरोध देखें।",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {Guard का # प्रश्न आपके जवाब की प्रतीक्षा में है} other {Guard के # प्रश्न आपके जवाब की प्रतीक्षा में हैं}}",
-	"ui.guard.card_ask_owner": "अपने ओनर से अपग्रेड करने के लिए कहें",
+	"ui.guard.card_ask_owner": "संगठन के स्वामी से Radient Team पर अपग्रेड करने को कहें",
 	"ui.guard.entry_review": "देखें"
 }

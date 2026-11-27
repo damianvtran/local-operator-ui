@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "locale": "hi",
+  "audit_id": "563c806ab66e-ui-guard-hi",
+  "instance": "563c806ab66e-ui-guard-hi",
+  "auditor": "copy-reviewer",
+  "session": "563c806ab66e",
+  "model": "openai/gpt-6.2-sol",
+  "model_provenance": "Runtime model declaration; no provider fallback observed.",
+  "date": "2026-11-27",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "independence": "First independent desktop i18n audit. The auditor did not produce the incoming translation; the listed corrective edits are disclosed and must be checked by an independent second auditor.",
+  "reviewed_head": "0c4971390c690d62813020fe9efd2f4dc5918071",
+  "source_path": "src/i18n/catalogues/en/ui.guard.json",
+  "source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+  "context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+  "context_sha256": "b78bdedca210b719a2f587d8aee35221120b21c106fd071cd3a9480019b2d4e2",
+  "target_path": "src/i18n/catalogues/hi/ui.guard.json",
+  "target_sha256": "def5047072f8f5074130847a4b130e514c24753ccf1d3d00e7133ce6eca2141b",
+  "translation_input": {
+    "locale": "hi",
+    "namespace": "ui.guard",
+    "source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+    "target_sha256": "df760fe4ad4e5cbfc1eabd12935bc7b1d33e2a01429b8577cfd96ca7ed29808e",
+    "translator": {
+      "agent": "coder",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-11-27"
+    },
+    "auditors": [],
+    "status": "translated"
+  },
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "minor",
+      "key": "ui.guard.card_ask_owner",
+      "current": "अपने ओनर से अपग्रेड करने के लिए कहें",
+      "replacement": "संगठन के स्वामी से Radient Team पर अपग्रेड करने को कहें",
+      "why": "Specify the organization owner and Radient Team; not the reader’s personal owner or an unspecified paid tier.",
+      "disposition": "fixed in this receipt’s target bytes"
+    }
+  ],
+  "scope": "All 77 messages against English and context: 5 desktop-authored; 72 raw JSON value tokens match core.",
+  "core_revision": "498066e8c8270ad5c02bbb053186252ed6981212",
+  "core_checks": {
+    "identical_raw_value_tokens": 72,
+    "desktop_values": [
+      "badge_waiting_aria",
+      "card_ask_owner",
+      "entry_review",
+      "indicator_waiting",
+      "prompt_background"
+    ],
+    "core_target_sha256": "d0062cbc898cb665d8c54b714e2172647e726b0ac2869c7f5857c094a89b31cb",
+    "core_latest_auditor": {
+      "agent": "radientdev ux-reviewer (acting as second independent i18n auditor)",
+      "session": "e6ab8547b6b5",
+      "model": "openai/gpt-6.2-sol",
+      "actual_model_source": "Developer runtime declaration in this session",
+      "date": "2026-11-27",
+      "fallback_used": false,
+      "fallback_note": "No provider fallback observed.",
+      "independent_from_translator_session": "5bd246fcf195",
+      "independent_from_first_auditor_session": "d3661c1e5338",
+      "result": "passed",
+      "findings": 0,
+      "findings_fixed": 4,
+      "unresolved_blocker_major": 0
+    },
+    "target_sha256": "def5047072f8f5074130847a4b130e514c24753ccf1d3d00e7133ce6eca2141b",
+    "badge_icu_examples": {
+      "one": {
+        "count": 0,
+        "output": "Guard का 0 प्रश्न आपके जवाब की प्रतीक्षा में है"
+      },
+      "other": {
+        "count": 2,
+        "output": "Guard के 2 प्रश्न आपके जवाब की प्रतीक्षा में हैं"
+      }
+    },
+    "backup_placeholder_example": "Guard अभी आपके सभी कंप्यूटरों से भेजना बंद कर देता है और आपका चरण-दर-चरण समय हटा देता है। बैकअप में मौजूद कॉपियाँ 7 दिनों के भीतर मिट जाती हैं।"
+  },
+  "semantic_checks": [
+    "Never-sent list complete; consent-widening and renewed-consent boundaries intact.",
+    "Aggregate visibility minimum 5; setup estimate minimum 20; reports grouped only for at least 5 contributors of that type that day.",
+    "Separate admin timing scope and lack of step contents preserved; timing retention 14 days, stats 90, reports 180; backup_days remains dynamic.",
+    "Desktop Settings and Console terminology matches actual navigation; product names and merge token retained."
+  ],
+  "mechanical_checks": "77/77 keys and ordered ICU argument/type signatures; exact CLDR categories formatted via IntlMessageFormat; NFC, no manual bidi controls; all numerical and kept technical tokens checked.",
+  "rendered_evidence": "ICU text output only; actual Electron layout, RTL shaping/mirroring and pseudo-localization not claimed. Second independent desktop audit required by docs/i18n.md:239."
+}

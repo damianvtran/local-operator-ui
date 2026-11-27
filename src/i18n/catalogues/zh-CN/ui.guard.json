@@ -74,6 +74,6 @@
 	"ui.guard.screen_unavailable": "Guard无法读取这台电脑上的设置。此界面未共享或发送任何内容。",
 	"ui.guard.screen_prompt_changed": "{org}更改了此请求。请查看下方的新请求。",
 	"ui.guard.badge_waiting_aria": "{count, plural, other {有 # 个 Guard 问题等你回答}}",
-	"ui.guard.card_ask_owner": "请让所有者升级",
+	"ui.guard.card_ask_owner": "请联系组织所有者升级到Radient Team",
 	"ui.guard.entry_review": "查看"
 }
