@@ -4762,6 +4762,70 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 [data-workspace-pinned]:has(+ [data-workspace-regular]) {
 	max-width: 50%;
 }
+
+@property --lo-workspace-tab-fade-start {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+@property --lo-workspace-tab-fade-end {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+@supports (animation-timeline: scroll(self inline)) {
+	/* Each lane follows its own logical inline offset; the strip chevron is a
+	 * sibling and stays clear. Mask alpha lets native glass show through without
+	 * adding a painted strip. When a lane fits, its timeline is inactive and the
+	 * zero-length stops leave it fully opaque. The 24px ramps can extend past
+	 * the timeline, so short overflow only softens by the actual hidden distance.
+	 * Round down to whole CSS pixels: Chromium can sample a fractional remainder
+	 * even at a clamped endpoint. Cap each gradient at a quarter of its lane to
+	 * leave a legible center. Like the transcript fade, this has no timed motion. */
+	:is([data-workspace-pinned], [data-workspace-regular]) {
+		--workspace-tab-mask-direction: to right;
+		mask-image: linear-gradient(
+			var(--workspace-tab-mask-direction),
+			transparent,
+			black min(round(down, var(--lo-workspace-tab-fade-start), 1px), 25%),
+			black
+				calc(
+					100% -
+					min(round(down, var(--lo-workspace-tab-fade-end), 1px), 25%)
+				),
+			transparent
+		);
+		animation-name: workspace-tab-fade-start, workspace-tab-fade-end;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: scroll(self inline), scroll(self inline);
+		animation-range: 0px 24px, calc(100% - 24px) 100%;
+	}
+	:is([data-workspace-pinned], [data-workspace-regular]):dir(rtl) {
+		--workspace-tab-mask-direction: to left;
+	}
+	/* Don't attenuate a keyboard focus ring at the edge of its lane. */
+	:is([data-workspace-pinned], [data-workspace-regular]):has(:focus-visible) {
+		mask-image: none;
+	}
+	@keyframes workspace-tab-fade-start {
+		from {
+			--lo-workspace-tab-fade-start: 0px;
+		}
+		to {
+			--lo-workspace-tab-fade-start: 24px;
+		}
+	}
+	@keyframes workspace-tab-fade-end {
+		from {
+			--lo-workspace-tab-fade-end: 24px;
+		}
+		to {
+			--lo-workspace-tab-fade-end: 0px;
+		}
+	}
+}
+
 /*
  * THE ACTIVE TAB READS AS ACTIVE (operator, 2026-11-24, PR #2091: "Strengthen
  * the selected-tab treatment so it clearly reads as active against its
