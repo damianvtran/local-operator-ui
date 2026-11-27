@@ -2170,8 +2170,8 @@ export const UpdateNotification = ({
 		try {
 			const started = await window.api.updater.quitAndInstall();
 			if (!started) {
-				// Refused or already in flight: the refusal panel is the messenger, and
-				// the app is still here to show it.
+				// Ordinary refusals keep their own UI. Lease contention rejects instead
+				// so this action's catch is the only messenger.
 				setInstalling(false);
 			}
 		} catch (err) {

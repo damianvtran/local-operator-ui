@@ -1267,6 +1267,7 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			 */
 			stageInstallerHandoff: async () => ({ kind: "fallback" }),
 			startInstaller: () => null,
+			startNativeFallback: () => actions.push("install"),
 			/*
 			 * The pre-quit phases are announced on the update surface (UX U5), and this
 			 * slice has no renderer: what is asserted here is the ORDER of the owned
@@ -1317,11 +1318,11 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 				actions.push("marker");
 				return marker;
 			},
-			autoUpdater: { quitAndInstall: () => actions.push("install") },
+			process: { platform: "darwin" },
 		};
 		const run = vm.runInNewContext(`(function(){${code}})`, context);
 		run.call(owner);
-		const result = handler();
+		const result = handler(() => () => {});
 		await new Promise((r) => setImmediate(r));
 		assert.deepEqual(actions, ["stop"]);
 		if (failed) reject(Error("unconfirmed"));

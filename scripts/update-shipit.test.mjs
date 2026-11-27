@@ -1444,7 +1444,15 @@ async function loadUpdateServiceModule() {
 					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
 						if (args.path === "electron") {
 							return fixture(`
+								import { EventEmitter } from "node:events";
 								const paths = globalThis.__loTestPaths;
+								const appEvents = new EventEmitter();
+								export const autoUpdater = new EventEmitter();
+								autoUpdater.getFeedURL = () => "http://127.0.0.1:1";
+								autoUpdater.checkForUpdates = () => {
+									autoUpdater.emit("update-downloaded");
+									appEvents.emit("quit");
+								};
 								export const app = {
 									get isPackaged() { return globalThis.__loTestAppIsPackaged ?? true; },
 									getPath: (name) => paths[name] ?? paths.userData,
@@ -1453,7 +1461,8 @@ async function loadUpdateServiceModule() {
 									getAppPath: () => process.cwd(),
 									whenReady: async () => {},
 									on: () => app,
-									once: () => app,
+									once: (...args) => appEvents.once(...args),
+									removeListener: (...args) => appEvents.removeListener(...args),
 									quit: () => { (globalThis.__loQuits ??= []).push("quit"); },
 									relaunch: () => {},
 									exit: () => { (globalThis.__loQuits ??= []).push("exit"); },
@@ -1498,6 +1507,10 @@ async function loadUpdateServiceModule() {
 								export const autoUpdater = {
 									on: (event, handler) => register(event, handler),
 									once: (event, handler) => register(event, handler),
+									removeListener: (event, handler) => {
+										listeners.set(event, (listeners.get(event) ?? []).filter((fn) => fn !== handler));
+										return autoUpdater;
+									},
 									removeAllListeners: (event) => {
 										if (event === undefined) listeners.clear();
 										else listeners.delete(event);
