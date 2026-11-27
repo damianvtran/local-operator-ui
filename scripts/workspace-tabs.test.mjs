@@ -734,7 +734,7 @@ test("restored tabs draw a fixed-width loading placeholder and persist their tit
 		[strip.replace("state.head.at > 0 || state.error !== null", "false"), hook],
 		[strip.replace('className="h-2.5 w-20"', 'className="h-2.5"'), hook],
 		[strip.replace('aria-busy="true"', ""), hook],
-		[strip.replace('{titleSlot(tab, "truncate")}', "{title(tab)}"), hook],
+		[strip.replace('{titleSlot(tab, "strip")}', "{title(tab)}"), hook],
 		[strip, hook.replace("}, [tabs, sessions, seenRevision]);", "}, [tabs]);")],
 		[
 			strip.replace(

@@ -92,7 +92,10 @@ const requestFrame = (run) => {
 const cancelFrame = (id) => frames.delete(id);
 window.requestAnimationFrame = globalThis.requestAnimationFrame = requestFrame;
 window.cancelAnimationFrame = globalThis.cancelAnimationFrame = cancelFrame;
-window.matchMedia = () => ({ matches: reducedMotion });
+// The reveal reads a snapshot; the title also subscribes to the media query.
+// jsdom lacks matchMedia, so supply its EventTarget surface as well as matches.
+window.matchMedia = () =>
+	Object.assign(new window.EventTarget(), { matches: reducedMotion });
 window.ResizeObserver = globalThis.ResizeObserver = class {
 	constructor(run) {
 		this.run = run;
