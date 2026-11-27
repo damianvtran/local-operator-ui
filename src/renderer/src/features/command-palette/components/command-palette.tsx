@@ -143,7 +143,9 @@ const QUERY_WRITE_BACK_MS = 200;
  * ship at — putting the cap a step UP at `ink-muted` made the legend outrank the
  * labels it annotates, 6.76-6.83:1 against 4.55:1 and 3.87:1, measured in the
  * committed pairs as design round 1's D2), and the cap carries no ground of its
- * own, so the footer's `elevated` shows through instead of a `sunken` box.
+ * own, so the footer's own ground shows through instead of a `sunken` box -
+ * the neutral paper the panel paints, not the raw `elevated` plate it used to
+ * (design round 1, D2).
  */
 /**
  * The command palette.
@@ -1218,10 +1220,22 @@ export const CommandPalette: FC = () => {
 					 */}
 					{hasResults ? (
 						<div className="relative">
+							{/*
+							 * The fade ramps to the PANEL'S ground, not to a palette role: the
+							 * panel paints `--lo-neutral-paper` (a chroma-scaled `elevated`), so a
+							 * fade to `elevated` left the last rows under a ~24px band of a
+							 * different, bluer ground than the footer below it - invisible to a
+							 * contrast assertion, because the difference is hue, not luminance
+							 * (design round 1, D1). The variable is the one the panel's own rule
+							 * declares (`[data-lo-neutral-paper]` in `styles/index.css`), on an
+							 * ancestor of this overlay, so the two grounds cannot drift; on a
+							 * light theme it resolves to `elevated` and this is unchanged.
+							 * `scripts/palette-contract.test.mjs` pins the pairing.
+							 */}
 							{listOverflows && (
 								<div
 									aria-hidden="true"
-									className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-elevated to-transparent"
+									className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-[var(--lo-neutral-paper)] to-transparent"
 								/>
 							)}
 							<div
