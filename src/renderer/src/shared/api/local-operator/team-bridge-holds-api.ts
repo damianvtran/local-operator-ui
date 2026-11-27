@@ -39,7 +39,7 @@ const holdItem = z.object({
 			word: str,
 			decided_at: str,
 			outcome: z.string(),
-			key_id: str,
+			key_id: str.optional().transform((value) => value ?? null),
 		})
 		.nullable(),
 	unscreened: z.boolean().optional(),
@@ -78,12 +78,15 @@ const holdsPage = z.object({
 	enabled: z.boolean(),
 	key_protection: str.optional().transform((value) => value ?? null),
 	items: z.array(holdItem),
+	history: z.array(holdItem).optional(),
 });
 
 const receipt = z.object({
 	message_id: str,
 	state: z.string(),
 	decided_at: str,
+	outcome: z.string().optional(),
+	key_id: str.optional(),
 });
 
 /** The list parse, exported so the wire test runs the shipped schema. */

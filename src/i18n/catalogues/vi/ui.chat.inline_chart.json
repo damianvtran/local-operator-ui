@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "Ngoài ra:",
+	"ui.chat.inline_chart.data_toggle": "Dữ liệu biểu đồ",
+	"ui.chat.inline_chart.more": "+{count, number} mục khác",
+	"ui.chat.inline_chart.no_data": "Không có dữ liệu",
+	"ui.chat.inline_chart.other": "Khác ({count, number})",
+	"ui.chat.inline_chart.pair": "{label}: {value}",
+	"ui.chat.inline_chart.position": "{index, number} trên {count, number}",
+	"ui.chat.inline_chart.right_axis": "{label} · trục phải",
+	"ui.chat.inline_chart.role": "biểu đồ",
+	"ui.chat.inline_chart.share_of_total": "{share} trên tổng",
+	"ui.chat.inline_chart.total": "Tổng"
+}

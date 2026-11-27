@@ -1,0 +1,105 @@
+{
+	"auditor": {
+		"agent": "task",
+		"session": "feb5caeb96bf",
+		"instance": "feb5caeb96bf-askpanel-urgent-es",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-sonnet-5-5'; no fallback observed"
+	},
+	"instance": "feb5caeb96bf-askpanel-urgent-es",
+	"model": "anthropic/claude-sonnet-5-5",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"locale": "es",
+	"independence": "Independent i18n auditor (lopdev task session feb5caeb96bf); not the translator of record, not the lane's coding agent that removed the key, and not the earlier askpanel auditor (task session ec772324f103). Read the committed bytes of the worktree; no catalogue edit was needed.",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "feat/desktop-ask-panel-cleanup",
+	"head": "07365da1c7",
+	"references": {
+		"glossary": "damianvtran/local-operator@2b7cba4b0 i18n/glossary.md (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+		"style_guide": "damianvtran/local-operator@2b7cba4b0 i18n/style-guides/es.md (sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6)"
+	},
+	"scope": "ui.chat.asks: whole-namespace re-audit after the removal of ui.chat.asks.urgent (delta audit: no added or changed copy; urgent_label context note edited)",
+	"observations": [
+		"INFO: Scope is the whole ui.chat.asks namespace (48 keys after the removal of ui.chat.asks.urgent): the tool marks the row stale because the English file's bytes moved (one key removed), so every key was re-read in this locale against the English source and the edited context entries, not only the changed one.",
+		"INFO: git diff 88733ce734..07365da1c7 over src/i18n shows the removal of ui.chat.asks.urgent as the only catalogue change in every locale (plus its context entry, the keys.gen.ts line and the context note of ui.chat.asks.urgent_label): no copy was added or changed. Every remaining key is byte-identical to the previously audited bytes; this audit applied no edit to this locale.",
+		"INFO: ui.chat.asks.urgent_label: copy unchanged; the context note no longer cites the removed key and now reads as the sole urgency word: 'The visible word for urgency: the ask's time window is short. The badge and the icon's warning colour carry the state together, never colour alone.' Re-read against that note: a one-word sentence-case badge with no final stop that names a short time window, as required.",
+		"INFO: Mechanical sweep with @formatjs/icu-messageformat-parser and intl-messageformat (the engine src/i18n/messages.ts uses): every message parses; the argument names, ICU argument types and number skeletons match English; every plural arm is a CLDR category of the locale with an 'other' arm; select arms match English; rendered for count 0,1,2,3,5,11,21,22,1234,1000000 with no raw ICU, no '#', no brace, no error. No stray Latin words (other than the ID token and placeholders) in non-Latin-script locales, no foreign-script characters, no double or edge spaces, all strings NFC, no bidi control characters.",
+		"INFO: Style references fetched from damianvtran/local-operator@origin/main (2b7cba4b0) i18n/glossary.md and i18n/style-guides/es.md; their sha256 are identical to those cited by the earlier ec772324f103 audit, so no style change since. Register tú, infinitive actions, sentence case, feminine participles agreeing with 'consultas' (Respondidas, Atendidas, Modificada); plural arms one/many/other per the es guide ('0' is other).",
+		"INFO: Translator of record is unchanged on the row (this audit does not use --update-translator)."
+	],
+	"namespaces": {
+		"ui.chat.asks": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": [
+				"ui.chat.asks.answer_options",
+				"ui.chat.asks.context.messages_since",
+				"ui.chat.asks.dismiss.answered_in_chat.note",
+				"ui.chat.asks.dismiss.answered_in_chat.title",
+				"ui.chat.asks.dismiss.cancel",
+				"ui.chat.asks.dismiss.heading",
+				"ui.chat.asks.dismiss.in_flight",
+				"ui.chat.asks.dismiss.moot.note",
+				"ui.chat.asks.dismiss.moot.title",
+				"ui.chat.asks.dismiss.receipt.answered_in_chat",
+				"ui.chat.asks.dismiss.receipt.moot",
+				"ui.chat.asks.dismiss.refused",
+				"ui.chat.asks.dismiss.trigger",
+				"ui.chat.asks.other_label",
+				"ui.chat.asks.recommended",
+				"ui.chat.asks.no_answer",
+				"ui.chat.asks.changed_handoff",
+				"ui.chat.asks.send_answer",
+				"ui.chat.asks.decline",
+				"ui.chat.asks.update_answer",
+				"ui.chat.asks.cancel",
+				"ui.chat.asks.change_answer",
+				"ui.chat.asks.filter_label",
+				"ui.chat.asks.settled_heading",
+				"ui.chat.asks.close_asks",
+				"ui.chat.asks.all_asks",
+				"ui.chat.asks.conversation_asks",
+				"ui.chat.asks.status.withdrawn",
+				"ui.chat.asks.status.withdrawn_label",
+				"ui.chat.asks.outstanding_count",
+				"ui.chat.asks.outstanding_aria",
+				"ui.chat.asks.answer_aria",
+				"ui.chat.asks.scope.session",
+				"ui.chat.asks.scope.fleet",
+				"ui.chat.asks.scope_line",
+				"ui.chat.asks.clause.settled",
+				"ui.chat.asks.clause.outstanding",
+				"ui.chat.asks.clause.waiting",
+				"ui.chat.asks.clause.delivering",
+				"ui.chat.asks.clause.timed_out",
+				"ui.chat.asks.bounds.body_label",
+				"ui.chat.asks.proposal.summary",
+				"ui.chat.asks.proposal.field_lines",
+				"ui.chat.asks.proposal.field_changed",
+				"ui.chat.asks.proposal.review",
+				"ui.chat.asks.progress",
+				"ui.chat.asks.urgent_label",
+				"ui.chat.asks.copy_id"
+			],
+			"keys_removed": [
+				"ui.chat.asks.urgent"
+			],
+			"sha256": {
+				"en": "8e3995e1a3d17c4eeb151511c23f8eb4eba7f097f0960acdcc4af38ccb4f172f",
+				"es": "517c71cd1de8674e2319052b465e71ce1cb3aaed99af52bde94b91b0f7cde91f"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.chat.asks.json",
+			"es_path": "src/i18n/catalogues/es/ui.chat.asks.json",
+			"context_sha256": "af3ee59f4dfeebf05d96d990e47a77f9b3b1ced7ececda1bc5a8853d56ab47b7",
+			"findings": []
+		}
+	},
+	"verdict": "pass",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 0
+	}
+}

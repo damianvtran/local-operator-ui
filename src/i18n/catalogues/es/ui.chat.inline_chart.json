@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "También:",
+	"ui.chat.inline_chart.data_toggle": "Datos del gráfico",
+	"ui.chat.inline_chart.more": "+{count, number} más",
+	"ui.chat.inline_chart.no_data": "Sin datos",
+	"ui.chat.inline_chart.other": "Otros ({count, number})",
+	"ui.chat.inline_chart.pair": "{label}: {value}",
+	"ui.chat.inline_chart.position": "{index, number} de {count, number}",
+	"ui.chat.inline_chart.right_axis": "{label} · eje derecho",
+	"ui.chat.inline_chart.role": "gráfico",
+	"ui.chat.inline_chart.share_of_total": "{share} del total",
+	"ui.chat.inline_chart.total": "Total"
+}

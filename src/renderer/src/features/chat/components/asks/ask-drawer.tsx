@@ -122,6 +122,7 @@ import {
 	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askAttentionCount,
+	askDrawerCountClause,
 	askDrawerUnavailableLine,
 	askDrawerUnreadLine,
 	askQueueView,
@@ -133,6 +134,7 @@ import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
 import { useAskActionsHeight } from "./ask-bounds";
 import { AskPanel, type AskPanelProps } from "./ask-panel";
+import { AsksScopeIcon } from "./asks-scope-icon";
 
 /**
  * What "the drawer's first control" means when focus enters it.
@@ -450,6 +452,13 @@ export const AskDrawer = ({
 	 * chord, because this box answers none of its own.
 	 */
 	const waiting = askAttentionCount(view);
+	/*
+	 * THE BAR'S COUNT HALF, as its own value (design spec S4). `askScopeLine` joined
+	 * the subject and the clause into one string, which cannot yield at a narrow
+	 * drawer without cutting a word - so the bar composes the two here, and the
+	 * subject is what leaves first (see the bar's own note).
+	 */
+	const scopeClause = askDrawerCountClause(view);
 	const regionName =
 		waiting > 0
 			? t("ui.shell.rail.ask.aria_count", {
@@ -1213,7 +1222,9 @@ export const AskDrawer = ({
 			data-glass-region={ground === "glass" ? "pane" : undefined}
 			data-ask-drawer={scope}
 			tabIndex={-1}
-			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
+			className={cn(
+				"panel-top-pad flex h-full flex-col bg-elevated @container/asks",
+			)}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
@@ -1254,16 +1265,49 @@ export const AskDrawer = ({
 				)}
 			>
 				<span
-					className="truncate text-ink-muted text-xs"
+					className="flex min-w-0 flex-1 items-center gap-1.5 text-ink-muted text-meta"
 					/*
 					 * The scope line is the surface's own name, so a reader who arrives by
 					 * keyboard hears which queue this is rather than only "Asks". It is the
 					 * BAR's reading and not the list region's name (see the region's own note);
 					 * the two say the same scope and count different things on purpose.
+					 *
+					 * TWO REGISTERS, ONE LINE (design spec S4). At 520px of drawer and up the bar
+					 * carries the locale-owned whole (`askScopeLine`, one keyed phrase so a
+					 * language can order the two halves its own way) and truncates it as a unit;
+					 * below that the subject would eat the count, which is the half that changes
+					 * with the queue, so only the clause is drawn and the SCOPE GLYPH carries the
+					 * subject (agent review round 1, m2): the bar used to read `3 outstanding`
+					 * for both scopes, and 496px is the common width at a 1280 window. The glyph
+					 * is the app's own mark for this pair (`AsksScopeIcon`, the rail door's) and
+					 * a compact marker rather than copy, so no new key was needed.
 					 */
 					data-ask-scope=""
 				>
-					{askScopeLine(scope, view)}
+					{scopeClause === "" ? (
+						<span className="truncate">{askScopeSubject(scope)}</span>
+					) : (
+						<>
+							<AsksScopeIcon
+								scope={scope}
+								aria-hidden="true"
+								size={14}
+								className="shrink-0 @min-[520px]/asks:hidden"
+							/>
+							<span
+								data-ask-scope-line=""
+								className="hidden min-w-0 truncate @min-[520px]/asks:inline"
+							>
+								{askScopeLine(scope, view)}
+							</span>
+							<span
+								data-ask-scope-clause=""
+								className="min-w-0 truncate @min-[520px]/asks:hidden"
+							>
+								{scopeClause}
+							</span>
+						</>
+					)}
 				</span>
 				{tabs?.action}
 				<Tooltip content={t("ui.chat.asks.close_asks")}>

@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "حوالہ {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "صرف یہ پیغام ({reference}) پڑھے بغیر مسترد کریں؟ یہ آپ کے ایجنٹ تک نہیں پہنچے گا۔ مسترد کرنا اس ڈیوائس پر درج ہوتا ہے اور واپس نہیں ہو سکتا۔",
 	"ui.teamBridge.holds.discard_unread_label": "پیغام {reference} پڑھے بغیر مسترد کریں",
-	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس ڈیوائس پر درج ہو گیا ہے۔ سرور سے کوئی تصدیق موصول نہیں ہوئی۔"
+	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس ڈیوائس پر درج ہو گیا ہے۔ سرور سے کوئی تصدیق موصول نہیں ہوئی۔",
+	"ui.teamBridge.holds.state.confirmed_delivered": "پہنچا دیا گیا",
+	"ui.teamBridge.holds.state.confirmed_discarded": "مسترد کر دیا گیا",
+	"ui.teamBridge.holds.state.confirmation_pending": "تصدیق کا انتظار ہے"
 }

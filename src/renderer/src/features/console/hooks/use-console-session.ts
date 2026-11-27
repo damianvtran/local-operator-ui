@@ -127,8 +127,21 @@ const createdSurfaceId = (reply: unknown): string | null => {
 	return typeof id === "string" && id ? id : null;
 };
 
+/**
+ * The pane's read of ONE OWNER's console, and every control it has over one.
+ *
+ * `owner` is a conversation's session id, or the pending local draft's owner
+ * (`DRAFT_CONSOLE_OWNER`, which the pane passes on a draft) — the hook does not
+ * care which, because every call it makes is addressed by that id and main's
+ * registry keys surfaces by it. `createCwd` is the directory a NEW surface starts
+ * in, for the one owner that has no session to resolve one from: the pane hands
+ * the draft's staged directory, and leaves it undefined everywhere else so main's
+ * own default stands (a session's surfaces have always started where the host
+ * says, and that is not this hook's opinion to change).
+ */
 export const useConsoleSession = (
-	sessionId: string | null,
+	owner: string | null,
+	createCwd?: string,
 ): ConsoleSessionApi => {
 	const [snapshot, setSnapshot] = useState<ConsoleSnapshot>(EMPTY_SNAPSHOT);
 	const [loading, setLoading] = useState(true);
@@ -168,7 +181,7 @@ export const useConsoleSession = (
 			return { ...EMPTY_SNAPSHOT };
 		}
 		try {
-			const state = await api.state(sessionId ?? undefined);
+			const state = await api.state(owner ?? undefined);
 			if (!alive.current) return { ...EMPTY_SNAPSHOT };
 			const listing = readConsoleSnapshot(state);
 			setSnapshot(listing);
@@ -184,7 +197,7 @@ export const useConsoleSession = (
 		} finally {
 			if (alive.current) setLoading(false);
 		}
-	}, [sessionId]);
+	}, [owner]);
 
 	const schedule = useCallback(() => {
 		if (timer.current) return;
@@ -258,7 +271,7 @@ export const useConsoleSession = (
 
 	const createSurface = useCallback((): Promise<string | null> => {
 		const api = window.api?.console;
-		if (!api || sessionId === null) return Promise.resolve(null);
+		if (!api || !owner) return Promise.resolve(null);
 		// Main owns the defaults (the login shell, the session's own cwd, the 100x30
 		// grid, `reveal: "none"`): the pane asks for a surface and does not describe
 		// one, which is what keeps a user's surface and an agent's the same object
@@ -269,7 +282,13 @@ export const useConsoleSession = (
 		// again.
 		setCreateError(null);
 		return api
-			.createSurface({ sessionId })
+			.createSurface({
+				sessionId: owner,
+				// The draft's directory, when there is one to name. A conversation never
+				// sends it: main resolves a session's own directory, and a second opinion
+				// here is how a user's shell ends up somewhere they did not choose.
+				...(createCwd ? { cwd: createCwd } : {}),
+			})
 			.then((reply) =>
 				// AWAITED, not fired and forgotten (agent review round 1, F-3): the create
 				// has answered but the new surface is not in this pane's listing until the
@@ -295,7 +314,7 @@ export const useConsoleSession = (
 					);
 				return null;
 			});
-	}, [sessionId, read]);
+	}, [owner, createCwd, read]);
 
 	const closeSurface = useCallback(
 		(surface: string, options: { kill?: boolean; retain?: boolean } = {}) => {
@@ -321,9 +340,9 @@ export const useConsoleSession = (
 
 	const cleanupOwner = useCallback(async () => {
 		const cleanup = window.api?.console?.cleanupOwner;
-		if (!sessionId || !cleanup) return;
+		if (!owner || !cleanup) return;
 		try {
-			const result = (await cleanup(sessionId)) as {
+			const result = (await cleanup(owner)) as {
 				released?: number;
 				protected?: number;
 			} | null;
@@ -340,7 +359,7 @@ export const useConsoleSession = (
 			if (alive.current)
 				setError(failure instanceof Error ? failure.message : String(failure));
 		}
-	}, [sessionId, read]);
+	}, [owner, read]);
 
 	const setSecure = useCallback(
 		(surface: string, on: boolean) => {

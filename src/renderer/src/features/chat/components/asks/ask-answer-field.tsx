@@ -204,15 +204,20 @@ export const AskAnswerField = ({
 				 * under the reader. Where the property is unsupported the box simply stays
 				 * two lines and scrolls, which is a worse field and never a broken one.
 				 *
-				 * The box (`rounded-md`, `px-2 py-1.5`, `text-sm`) is the card's own input
+				 * The box (`rounded-md`, `px-2 py-1.5`, `text-body`) is the card's own input
 				 * box, the one its masked secret field wears, so the two read as siblings.
 				 */
+				/*
+				 * The app's type scale, not Tailwind's (design spec, D6): one 12px step
+				 * (`text-meta`) for every metadata line in the card, and the field itself
+				 * on `text-body` so it matches the question it answers.
+				 */
 				className={cn(
-					"field-sizing-content max-h-40 min-h-14 rounded-md px-2 py-1.5 text-sm",
+					"field-sizing-content max-h-40 min-h-14 rounded-md px-2 py-1.5 text-body",
 				)}
 			/>
 			{!refused && value.length < ASK_ANSWER_MAX_CHARS ? null : (
-				<output className="block text-ink-muted text-xs">
+				<output className="block text-ink-muted text-meta">
 					{refused
 						? t("ui.chat.ask_panel.answer.attachment_refusal")
 						: t("ui.chat.ask_panel.answer.limit_notice", {

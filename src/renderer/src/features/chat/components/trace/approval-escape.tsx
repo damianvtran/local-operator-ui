@@ -91,9 +91,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 import {
+	approvalDefaultKey,
 	invalidateApprovalMode,
 	useApprovalMode,
-} from "../../session-status/approval-mode-chip";
+} from "../../session-status/approval-mode";
 
 /** Which gate the press loosens: the live one, or the saved default. */
 /**
@@ -222,12 +223,14 @@ const NO_GATE_NOTICE = "exec uses its original headless approval gate";
  * tightening direction (`ask`) reads its receipt by the same rule: a notice is
  * the mode change, anything else is a refusal whose text is the detail.
  */
-async function setLiveGate(
-	ports: ApprovalEscapePorts,
-	mode: "auto" | "ask" = "auto",
-): Promise<{ ok: true } | { ok: false; detail: string }> {
+export async function setLiveApprovalMode(
+	runCommand: ApprovalEscapePorts["runCommand"],
+	mode: "auto" | "ask",
+): Promise<
+	{ ok: true; notSavedForResume?: string } | { ok: false; detail: string }
+> {
 	try {
-		const run = await ports.runCommand("approvals", mode);
+		const run = await runCommand("approvals", mode);
 		const reported =
 			run.outcome && "text" in run.outcome ? run.outcome.text : run.result.text;
 		const text = reported.trim() || run.result.text;
@@ -244,14 +247,18 @@ async function setLiveGate(
 		 * anything the owner chose to report without changing the mode; both are
 		 * refusals for the same reason.
 		 */
-		const receiptOk =
-			run.outcome && "data" in run.outcome ? run.outcome.data?.ok : undefined;
+		const receipt =
+			run.outcome && "data" in run.outcome ? run.outcome.data : undefined;
 		if (
 			run.outcome?.kind === "notice" &&
-			receiptOk !== false &&
+			receipt?.ok !== false &&
 			!text.startsWith(NO_GATE_NOTICE)
 		) {
-			return { ok: true };
+			// Core states both halves in the receipt text. A missing field on an
+			// older runtime is not evidence that saving for resume failed.
+			return receipt?.approval_saved_for_resume === false
+				? { ok: true, notSavedForResume: text }
+				: { ok: true };
 		}
 		return { ok: false, detail: dropOurFailurePrefix(text) };
 	} catch (error) {
@@ -276,7 +283,11 @@ export async function runApprovalEscape(
 	ports: ApprovalEscapePorts,
 ): Promise<ApprovalEscapeOutcome> {
 	if (target === "session" || target === "ask") {
-		const live = await setLiveGate(ports, target === "ask" ? "ask" : "auto");
+		// The pending card still reports the live gate's result, as before.
+		const live = await setLiveApprovalMode(
+			ports.runCommand,
+			target === "ask" ? "ask" : "auto",
+		);
 		return live.ok
 			? { kind: "saved" }
 			: { kind: "unchanged", detail: live.detail };
@@ -285,9 +296,9 @@ export async function runApprovalEscape(
 		const saved = await ports.editDefault("auto");
 		/*
 		 * NEVER CLAIM A SAVE THE BACKEND DID NOT REPORT. The route resolves with
-		 * the stored row; a value other than `auto` is the fact that this press
-		 * did not take, and painting it as saved would be the one lie this
-		 * component exists to avoid.
+		 * the stored row; a value other than the one asked for is the fact that
+		 * this press did not take, and painting it as saved would be the one lie
+		 * this component exists to avoid.
 		 */
 		if (saved.value !== "auto") {
 			return { kind: "unchanged", detail: String(saved.value) };
@@ -295,7 +306,7 @@ export async function runApprovalEscape(
 	} catch (error) {
 		return { kind: "unchanged", detail: errorText(error) };
 	}
-	const live = await setLiveGate(ports, "auto");
+	const live = await setLiveApprovalMode(ports.runCommand, "auto");
 	return live.ok
 		? { kind: "saved" }
 		: { kind: "default-only", detail: live.detail };
@@ -370,12 +381,11 @@ const dropOurFailurePrefix = (text: string): string => {
  *
  * Either flag counts, and neither is derived from the title or the detail:
  * `bridge_latched` is the host's stamp that the conversation holds Team Bridge
- * (teammate-agent) content, and `approval_suspended: "bridge"` says a session
- * auto granted BEFORE that content arrived stopped covering calls. In both the
- * backend refuses `approvals auto` from this surface (`approval_reason:
- * "bridge_latched"`; the desktop command carries no `bridge_ack`), so a handle
- * that offers it can only fail. Absent or false flags - an older backend, an
- * unlatched conversation - read as not latched, which is today's behaviour.
+ * (teammate-agent) content, and `approval_suspended: "bridge"` marks a card
+ * from an earlier Auto grant that was suspended. A parked card is an Allow/Deny surface,
+ * not a place to grant Auto; its escapes never carry `bridge_ack`. The separate
+ * composer and slash-command pickers can acknowledge an explicit session Auto
+ * selection without answering the card. Absent or false flags read as not latched.
  */
 export const approvalGateIsBridgeLatched = (gate: {
 	bridge_latched?: boolean;
@@ -844,8 +854,11 @@ export const ApprovalEscape = ({
 							: { kind: "refused", detail: outcome.detail },
 				);
 			} finally {
-				// The composer's approval chip repaints from the backend, not the press.
+				// The composer repaints from the backend, not the press. The card's
+				// combined action can save the default even if the live call refuses.
 				invalidateApprovalMode(client, sessionId);
+				if (which === "all")
+					void client.invalidateQueries({ queryKey: approvalDefaultKey });
 				inFlight.current = false;
 				setTarget(null);
 			}

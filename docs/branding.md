@@ -416,10 +416,10 @@ bare.) The rule that follows, and it applies to every leave-flow surface:
   run's evidence.
 - **Give floating panels a quiet, palette-driven finish.** Use a low-contrast
   tone-on-tone gradient on the panel ground. Where the material calls for an
-  opaque neutral ground, take its lightness from `elevated`: the [anchored Model
-  and Effort pickers](https://github.com/damianvtran/local-operator-ui/pull/2112)
-  are the solid-paper reference. They borrow the finish from the
-  [Nested dock](#composer-the-nested-dock) without copying its in-flow treatment.
+  opaque ground, use `elevated`: the anchored Model and Effort pickers are
+  the solid-paper reference. They keep the palette's hue and share the
+  short finish of the composer's @ and / panels, without copying the
+  [Nested dock](#composer-the-nested-dock)'s in-flow treatment.
   An optional shallow top gleam fades out before the corners and never traces
   the perimeter. Use the shared primitives, palette roles
   and semantic state treatments, not per-panel hex values or bespoke shadows.
@@ -866,6 +866,15 @@ route inventory and body boundary.
   to Team/Agent/Device selectors or icon buttons. These
   workspace chrome buttons rest transparent and borderless. Keep focus-visible
   outlines, a non-colour selected cue and the existing hit areas.
+- **Mark the selected tab by brightening alone.** Give it a ground of
+  `row-selected` with 4% `ink` mixed in, full `ink` and weight 500, and no
+  bottom rail, underline or accent indicator (operator, 2026-11-25: the rail
+  "looks super dated"). The ink mix keeps it distinct from a hovered
+  neighbour's `row-hover` now the rail is gone (about 1.17:1 dark, 1.13:1
+  light, against 1.04:1 for bare `row-selected`). Scope it to the tab rule; do
+  not change a theme token for it.
+  [`scripts/workspace-tabs.test.mjs`](../scripts/workspace-tabs.test.mjs) fails
+  if a rail returns or the ground reverts to bare `row-selected`.
 - **Use the actual OS titlebar band where integrated chrome is available.**
   Fit the tabs between the existing native exclusion zones and leave empty
   space draggable. Respect the physical caption controls in RTL. Use the shell's

@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "हटाएँ…",
 	"ui.chat.asks.other_label": "अन्य",
 	"ui.chat.asks.recommended": "सुझाया गया",
-	"ui.chat.asks.urgent": "ज़रूरी।",
 	"ui.chat.asks.no_answer": "कोई जवाब नहीं दिया गया",
 	"ui.chat.asks.changed_handoff": "बदला गया — एजेंट को अभी यह नहीं सौंपा गया।",
 	"ui.chat.asks.send_answer": "जवाब भेजें",
@@ -44,5 +43,8 @@
 	"ui.chat.asks.proposal.summary": "{kind, select, agent {एजेंट} team {टीम} skill {कौशल} other {प्रोफ़ाइल}} {name} में प्रस्तावित बदलाव",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} पंक्तियाँ",
 	"ui.chat.asks.proposal.field_changed": "{label}: बदला गया",
-	"ui.chat.asks.proposal.review": "बदलाव देखें"
+	"ui.chat.asks.proposal.review": "बदलाव देखें",
+	"ui.chat.asks.progress": "{total, number, ::group-off} में से {answered, number, ::group-off} के जवाब दिए गए",
+	"ui.chat.asks.urgent_label": "ज़रूरी",
+	"ui.chat.asks.copy_id": "सवाल ID {id} कॉपी करें"
 }

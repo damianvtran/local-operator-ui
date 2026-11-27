@@ -364,9 +364,31 @@
 }
 
 /* Inline figures inherit the conversation's ground. The Markdown flow owns
-   their spacing; authored tables keep their separate formatting policy. */
+   their spacing; authored tables keep their separate formatting policy. A
+   chart block takes 24px above and below (inline chart spec section 1): it
+   carries no card, border or fill of its own, so the space is what sets it
+   apart from the prose around it, and window glass shows straight through. */
 .lo-markdown > [data-lo-inline-ui] {
-	margin-block: 1rem;
+	margin-block: 1.5rem;
+}
+
+/* Chart marks fade in ONCE, when the figure mounts: 180ms, opacity only - no
+   growing bars, line draw-on or slice sweep. A re-render, resize or theme
+   change keeps the same element, so it never re-runs; reduced motion skips it. */
+@keyframes lo-chart-enter {
+	from {
+		opacity: 0;
+	}
+}
+
+.lo-chart-enter {
+	animation: lo-chart-enter 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lo-chart-enter {
+		animation: none;
+	}
 }
 
 .lo-markdown > [data-lo-inline-ui]:first-child {

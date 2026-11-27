@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "Descartar…",
 	"ui.chat.asks.other_label": "Otro",
 	"ui.chat.asks.recommended": "Recomendada",
-	"ui.chat.asks.urgent": "Urgente.",
 	"ui.chat.asks.no_answer": "Sin respuesta",
 	"ui.chat.asks.changed_handoff": "Modificada — aún no se ha entregado al agente.",
 	"ui.chat.asks.send_answer": "Enviar respuesta",
@@ -44,5 +43,8 @@
 	"ui.chat.asks.proposal.summary": "Cambio propuesto para {kind, select, agent {el agente} team {el equipo} skill {la habilidad} other {el perfil}} {name}",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} líneas",
 	"ui.chat.asks.proposal.field_changed": "{label}: modificado",
-	"ui.chat.asks.proposal.review": "Revisar cambios"
+	"ui.chat.asks.proposal.review": "Revisar cambios",
+	"ui.chat.asks.progress": "Respondidas: {answered, number, ::group-off} de {total, number, ::group-off}",
+	"ui.chat.asks.urgent_label": "Urgente",
+	"ui.chat.asks.copy_id": "Copiar el ID de la consulta {id}"
 }

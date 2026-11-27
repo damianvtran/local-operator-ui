@@ -1,22 +1,14 @@
-/* A NEUTRAL backdrop, never a capture of the user's desktop and never the
- * palette being judged. The stops are the measured material tier each scheme's
- * alphas were solved against, emitted per scheme by `previewBackdropVars`, so
- * the ground cannot move with the accent under review. What is true of the
- * travel is that it goes only AWAY from the ink's side, so it can only gain
- * contrast against the floors' single material tone - not that it stays inside
- * that tone (it deliberately leaves it).
- * The sample consumes production-derived inks over that backdrop only where a
- * glass role is composited; `[data-preview-chrome]` below keeps the two text
- * rows off the raw ramp. The local `--lo-*` palette must stay the view's own:
- * html's global glass rules and its last committed palette must not override an
- * uncommitted contrast draft. */
+/* The synthetic backdrop follows the scoped canvas tint, not the accent or
+ * desktop. Interpolating in sRGB keeps each channel within the contrast-safe
+ * bound from `previewBackdropVars` at every point along the ramp.
+ * `[data-preview-chrome]` keeps text off the uncomposited ramp. */
 .appearance-preview {
 	background: var(--lo-canvas);
 }
 
 .appearance-preview:not([data-preview-glass=""]) {
 	background: linear-gradient(
-		125deg,
+		125deg in srgb,
 		var(--lo-preview-backdrop-a) 0%,
 		var(--lo-preview-backdrop-b) 50%,
 		var(--lo-preview-backdrop-c) 100%

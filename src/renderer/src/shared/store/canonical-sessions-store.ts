@@ -105,6 +105,124 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+
+/**
+ * WHETHER THIS ACCEPTED SEND IS THE ONE THAT HANDS A DRAFT'S CONSOLE OVER.
+ *
+ * The pending local console belongs to a `draft:` row and is adopted by the
+ * conversation that row's first accepted message created
+ * (`adoptPendingConsole`). EVERY other accepted send must leave the pending
+ * shells alone, and the ways one could look like a handoff are exactly what this
+ * predicate excludes (agent review round 1, R1 and R3):
+ *
+ *  - a send INTO an existing conversation is a `send:<id>` row — the pane's
+ *    fallback identity for a session (`paneDraftKey`) — and its key is not a
+ *    staged draft's. Adopting on it moved every surface a New chat pane had
+ *    opened onto whatever conversation the user happened to type in, which is
+ *    the “steal” the requirement forbids;
+ *  - a draft whose conversation was placed on a PEER (`draft.peer`) has no
+ *    surfaces on this device's host: main would move nothing and the shells the
+ *    user opened here would be stranded under the pending owner with a
+ *    conversation on another machine claiming them in the UI. The placement fact
+ *    is checked too, because a late reconcile can arrive after the catalogue has
+ *    learned the conversation is remote;
+ *  - the row must still EXIST and point at the id the message landed on. That
+ *    is what makes a retry after a refused send adopt — the create succeeded,
+ *    the row carries its id, and the row has not retired because no message was
+ *    ever accepted under it — while a second successful send from an already
+ *    retired draft (or from any later pane) finds no row and adopts nothing.
+ *
+ * A DRAFT'S FIRST SEND IS THE ONLY SOURCE, so the claim cannot be consumed
+ * twice: the first acceptance retires the row (`finishDraft`) and every later
+ * reconciliation for that conversation sees no draft to claim with.
+ */
+export function draftConsoleHandoffTarget(
+	state: Pick<CanonicalSessionsState, "sessions" | "placementFacts" | "drafts">,
+	draftKey: string | null | undefined,
+	sessionId: string | null | undefined,
+): boolean {
+	if (!draftKey || !sessionId) return false;
+	if (!draftKey.startsWith("draft:")) return false;
+	const draft = state.drafts[draftKey];
+	if (!draft || draft.sessionId !== sessionId) return false;
+	if (draft.peer) return false;
+	return !remoteOwnedId(state.sessions, state.placementFacts, sessionId);
+}
+
+/**
+ * Conversations whose pending console this window has already handed over.
+ *
+ * ONE SHOT, because two paths can reach the same acceptance: the send's own
+ * success arm and the pane's late-reconcile effect, which runs on the frame the
+ * message is already visible. The durable predicate above already excludes a
+ * second claim once the row retires, but the two can interleave on the row's last
+ * frame — and a second move would hand a LATER draft's shells to this
+ * conversation. In-memory is enough for that: it is a guard against one window
+ * calling twice, not a fact the next launch needs (after a reload the predicate
+ * alone decides, and the pending surfaces are still main's own records).
+ */
+const handedOverConsoles = new Set<string>();
+
+/**
+ * ATTACH THE PENDING LOCAL CONSOLE TO THE CONVERSATION THIS SEND CREATED.
+ *
+ * A New Conversation's console pane runs its shells under
+ * `DRAFT_CONSOLE_OWNER` (`src/shared/console-owner.ts`), because a draft has no
+ * session id yet. The moment a message is ACCEPTED the conversation exists, and
+ * the surfaces should belong to it: main moves them without touching the pty, so
+ * the pane of the conversation the user lands in is showing the terminal they were
+ * typing into.
+ *
+ * CALLED AT THE MOMENT THE DRAFT RETIRES (`finishDraft`), from the acknowledged
+ * arm, the late-delivered arm and the pane's reconciliation — all three are the
+ * store's own answer to "did the send succeed", and no failure path reaches
+ * them. The draft key is the caller's because the ROW is the claim
+ * (`draftConsoleHandoffTarget`); a call with a session but no live draft row is a
+ * no-op rather than a move.
+ *
+ * NEVER THROWS. It runs inside a send that has just succeeded, and a console that
+ * failed to move must not turn a delivered message into a reported failure or a
+ * reported rejection; the surfaces then stay pending — visible and usable on the
+ * next New chat press — which is the honest outcome rather than a lie about the
+ * send.
+ */
+export async function adoptPendingConsole(
+	draftKey: string | null | undefined,
+	sessionId: string | null | undefined,
+): Promise<void> {
+	if (!sessionId) return;
+	if (
+		!draftConsoleHandoffTarget(
+			useCanonicalSessionsStore.getState(),
+			draftKey,
+			sessionId,
+		)
+	)
+		return;
+	if (handedOverConsoles.has(sessionId)) return;
+	/*
+	 * `typeof window` rather than the optional chain alone: this store is bundled by
+	 * Node suites with no DOM (the send path's own suites among them), and a bare
+	 * `window.api?` there is a ReferenceError — thrown from inside a send that has
+	 * already succeeded, which would report a delivered message as a failure. Absent
+	 * renderer, nothing to adopt.
+	 */
+	if (typeof window === "undefined") return;
+	const adopt = window.api?.console?.adoptPending;
+	if (!adopt) return;
+	handedOverConsoles.add(sessionId);
+	try {
+		await adopt(sessionId);
+	} catch {
+		/*
+		 * The shells remain under the pending owner; nothing else is lost. The claim
+		 * is released so a retry (the row is still live, the message still unsent on
+		 * the wire) can hand them over — one attempt's failure is not a verdict about
+		 * the conversation.
+		 */
+		handedOverConsoles.delete(sessionId);
+	}
+}
 /** Canonical sessions are the only conversation identities. Profile names stage
  * drafts; the legacy agent mapping is retained only to resolve old deep links.
  *
@@ -3472,6 +3590,16 @@ export async function admitChatDraft(
 			inputMode,
 			inputPath,
 		});
+		/*
+		 * THE DRAFT'S CONSOLE, HANDED OVER BEFORE THE ROW RETIRES.
+		 *
+		 * Order matters: `finishDraft` is what moves the UI to the conversation, and
+		 * the pane that mounts there reads the listing immediately. Adopting first
+		 * means that read already finds the surfaces; the other order would paint the
+		 * new conversation's empty console for the round trip and offer a `+` beside
+		 * a shell that exists. The call cannot fail the send (see its own note).
+		 */
+		await adoptPendingConsole(key, id);
 		store.finishDraft(key, id);
 		// A send that landed retires every message about the send that did not.
 		// `createSession` records its failure page-level and only `fetchSessions`/
@@ -3616,6 +3744,12 @@ export async function admitChatDraft(
 				// press touched (`settleSendComposerRecords`), so the extra settle
 				// this arm used to perform on the post-flip identity alone is gone
 				// with it.
+				//
+				// AND THE DRAFT'S CONSOLE MOVES WITH IT, before the retire for the
+				// reason the other arm states: the pane of the conversation this send
+				// created must find its terminals on the first read, not one round trip
+				// later.
+				await adoptPendingConsole(key, id);
 				store.finishDraft(key, id);
 				return id;
 			}

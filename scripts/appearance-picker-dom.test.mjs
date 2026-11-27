@@ -20,6 +20,7 @@ const GROUND_ALPHA =
 const GROUND_DECLARATION = /^background-color: (.+);$/;
 const GLASS_STATE_SELECTOR = /:not\(\[[a-z-]+=""\]\)/;
 const TRANSPARENT = / transparent/;
+const SRGB_PREVIEW_RAMP = /linear-gradient\(\s*125deg in srgb,/;
 const dom = new JSDOM(
 	"<!doctype html><html><head></head><body></body></html>",
 	{ url: "http://localhost/" },
@@ -245,7 +246,7 @@ const withPaintedRoles = async (currentPalette, body) => {
 	const real = globalThis.getComputedStyle;
 	globalThis.getComputedStyle = (element, pseudo) => {
 		const style = real(element, pseudo);
-		const palette = currentPalette();
+		const palette = currentPalette(style);
 		const vars = {
 			"--lo-canvas": palette.canvas,
 			"--lo-surface": palette.surface,
@@ -392,19 +393,121 @@ test("the sample re-derives its glass when the palette under it is committed", a
 	assert.notEqual(result.after, result.before);
 });
 
-test("the backdrop is a neutral material ramp, never the palette's accent", () => {
-	// design D2 / code R2: the ground must not travel with the accent being judged.
-	assert.deepEqual(previewBackdropVars("dark"), {
-		"--lo-preview-backdrop-a": "#515151",
-		"--lo-preview-backdrop-b": "#414141",
-		"--lo-preview-backdrop-c": "#313131",
-	});
-	assert.deepEqual(previewBackdropVars("light"), {
-		"--lo-preview-backdrop-a": "#c7c7c7",
-		"--lo-preview-backdrop-b": "#d7d7d7",
-		"--lo-preview-backdrop-c": "#e7e7e7",
-	});
+const backdropStops = (style) =>
+	["a", "b", "c"].map((stop) =>
+		style.getPropertyValue(`--lo-preview-backdrop-${stop}`),
+	);
+
+const rgbChannels = (hex) =>
+	[1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+
+const assertBackdropHue = (stops, dominant, secondary, label) => {
+	for (const stop of stops) {
+		const channels = rgbChannels(stop);
+		assert.ok(
+			channels[dominant] > channels[secondary],
+			`${label} backdrop ${stop} should follow the painted canvas hue`,
+		);
+	}
+};
+
+const readStripBackdrops = () =>
+	[...document.querySelectorAll("[data-appearance-preview]")].map((strip) =>
+		backdropStops(strip.style),
+	);
+
+test("both glass previews follow the painted canvas hue, not the accent", async () => {
+	await withPaintedRoles(
+		() => resolveAppearance(store.getState()).palette,
+		async () => {
+			await mount("tokyoNight", 0, activeGlass);
+			await frame();
+			const tokyo = readStripBackdrops();
+			assert.equal(tokyo.length, 2);
+			for (const stops of tokyo) assertBackdropHue(stops, 2, 0, "Tokyo Night");
+
+			const originalAccent = resolveAppearance(store.getState()).palette.accent;
+			await act(async () => {
+				store.setState(({ accent }) => ({
+					accent: { ...accent, dark: { kind: "custom", hex: "#FF782B" } },
+				}));
+			});
+			await frame();
+			assert.notEqual(
+				resolveAppearance(store.getState()).palette.accent,
+				originalAccent,
+			);
+			assert.deepEqual(
+				readStripBackdrops(),
+				tokyo,
+				"accent alone must not tint glass",
+			);
+
+			await act(async () => {
+				store.setState({ themeName: "rosewood" });
+			});
+			await frame();
+			for (const stops of readStripBackdrops())
+				assertBackdropHue(stops, 0, 2, "Rosewood");
+		},
+	);
 });
+
+test("both backdrops follow successive drafts under the same scoped id", async () => {
+	const palette = paletteOf("tokyoNight");
+	await withPaintedRoles(
+		// jsdom resolves the canvas on the local preview selector but not the
+		// inherited tokens the real browser reads from the document palette.
+		(style) => ({
+			...palette,
+			canvas: style.getPropertyValue("--lo-canvas").trim() || palette.canvas,
+		}),
+		async () => {
+			await mount("tokyoNight", 0, activeGlass);
+			const initial = readStripBackdrops();
+			const slider = document.querySelector("[data-contrast-slider]");
+			await fire(
+				slider,
+				new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+			);
+			try {
+				for (const [value, firstStop] of [
+					["-80", "#494951"],
+					["100", "#474651"],
+				]) {
+					await input(slider, value);
+					await frame();
+					assert.equal(store.getState().contrast.dark, 0, "still a draft");
+					assert.deepEqual(
+						readStripBackdrops().map((stops) => stops[0]),
+						[firstStop, firstStop],
+					);
+				}
+				assert.notDeepEqual(readStripBackdrops(), initial);
+			} finally {
+				await fire(window, new MouseEvent("pointerup", { bubbles: true }));
+				await frame();
+				await frame();
+			}
+		},
+	);
+});
+
+test("an extreme canvas tint fits at all stops without flattening the ramp", () => {
+	// Synthetic extreme exercises the shared gamut bound without depending on
+	// which saturated custom seeds the palette solver currently accepts.
+	assert.deepEqual(Object.values(previewBackdropVars("dark", "#FF8000")), [
+		"#513920",
+		"#412910",
+		"#311900",
+	]);
+	assert.deepEqual(Object.values(previewBackdropVars("light", "#FF8000")), [
+		"#dfd3c7",
+		"#efe3d7",
+		"#fff3e7",
+	]);
+});
+
 test("restart-pending preview matches the production hook's unapplied ON and cleared OFF", () => {
 	const palette = resolveAppearance(store.getState()).palette;
 	const read = { roles: rolesOf(palette), scheme: palette.mode };
@@ -888,14 +991,20 @@ test("the sample's text rows are grounded by the canvas composite in every glass
 	);
 });
 
-test("the published ramp floor is the sweep's own, on all 59 palettes", () => {
-	// code C2: the digits in `appearance-preview-glass.ts` claimed 4.70 / 4.64 and
-	// the PR table published 4.74 / 4.64 while the model's own floor was lower, so
-	// they are computed here instead of quoted. A 101-point sweep of the 125deg
-	// ramp (linear in sRGB between the emitted stops), both composited roles, all
-	// three body inks, at the shipped default and at the transparent end.
+test("the tinted sRGB ramp preserves the neutral ramp's composited contrast", async (t) => {
+	const css = await readFile(
+		"src/renderer/src/features/settings/components/appearance-preview-strip.css",
+		"utf8",
+	);
+	assert.match(css, SRGB_PREVIEW_RAMP);
+	// Sweep both composited roles and all three body inks at the shipped default
+	// and the transparent end. These are the old stops, not the tint helper's
+	// own output: the test must catch a change that moves toward the ink.
+	const neutral = {
+		dark: ["#515151", "#414141", "#313131"],
+		light: ["#c7c7c7", "#d7d7d7", "#e7e7e7"],
+	};
 	const ids = Object.keys(themes);
-	assert.equal(ids.length, 59, "the published table's population");
 	const interpolate = (stops, t) => {
 		const [lo, hi, f] =
 			t <= 0.5
@@ -922,7 +1031,6 @@ test("the published ramp floor is the sweep's own, on all 59 palettes", () => {
 			read: { roles: rolesOf(palette), scheme: palette.mode },
 		};
 	});
-	const floored = [];
 	for (const intensity of [80, 100]) {
 		let worst = { ratio: Number.POSITIVE_INFINITY };
 		for (const { themeName, palette, read } of resolved) {
@@ -932,46 +1040,42 @@ test("the published ramp floor is the sweep's own, on all 59 palettes", () => {
 				palette.mode,
 			);
 			assert.equal(state.kind, "glass");
-			const vars = previewBackdropVars(palette.mode);
-			const stops = ["a", "b", "c"].map(
-				(k) => vars[`--lo-preview-backdrop-${k}`],
-			);
+			const stops = backdropStops({
+				getPropertyValue: (key) => state.backdropVars[key],
+			});
+			const baseline = neutral[palette.mode];
 			for (let step = 0; step <= 100; step++) {
 				const ground = interpolate(stops, step / 100);
+				const neutralGround = interpolate(baseline, step / 100);
+				const grey = rgbChannels(neutralGround)[0];
+				const channels = rgbChannels(ground);
+				const dark = palette.mode === "dark";
+				assert.equal(
+					dark ? Math.max(...channels) : Math.min(...channels),
+					grey,
+					`${themeName} ramp at ${step}% must stay on the safe side of ${neutralGround}`,
+				);
 				for (const [role, alpha] of [
 					["canvas", "--lo-glass-a-canvas"],
 					["surface", "--lo-glass-a-surface"],
 				]) {
-					const painted = composite(
-						palette[role],
-						Number(state.paint.vars[alpha]),
-						ground,
-					);
+					const opacity = Number(state.paint.vars[alpha]);
+					const painted = composite(palette[role], opacity, ground);
+					const previous = composite(palette[role], opacity, neutralGround);
 					for (const ink of ["ink", "inkMuted", "inkDim"]) {
 						const measured = ratio(palette[ink], painted);
+						assert.ok(
+							measured >= ratio(palette[ink], previous),
+							`${themeName} ${ink} lost contrast on ${role} at ${step}% / intensity ${intensity}`,
+						);
 						if (measured < worst.ratio)
-							worst = { ratio: measured, themeName, ink, role, intensity };
+							worst = { ratio: measured, themeName, ink, role };
 					}
 				}
 			}
 		}
-		floored.push(worst);
+		const description = `${worst.ratio.toFixed(2)}:1 minimum on ${ids.length} palettes at intensity ${intensity} (${worst.themeName} ${worst.ink} on ${worst.role})`;
+		assert.ok(worst.ratio >= 4.5, description);
+		t.diagnostic(description);
 	}
-	for (const worst of floored)
-		assert.ok(
-			worst.ratio >= 4.5,
-			`${worst.themeName} ${worst.ink} on ${worst.role} at ${worst.intensity} is ${worst.ratio.toFixed(2)}:1`,
-		);
-	// THE PUBLISHED DIGITS, asserted as numbers: change the model and this fails.
-	assert.deepEqual(
-		floored.map(({ ratio: r, themeName, ink }) => [
-			r.toFixed(2),
-			themeName,
-			ink,
-		]),
-		[
-			["4.65", "rosePineDawn", "inkDim"],
-			["4.51", "catppuccinLatte", "inkDim"],
-		],
-	);
 });

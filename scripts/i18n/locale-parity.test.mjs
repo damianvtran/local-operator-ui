@@ -2198,6 +2198,23 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.chat.ask_attest.sheet.typed_value",
 		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-zh-cn.json). Scoped to this locale/key only.",
 	],
+	[
+		"ui.chat.inline_chart.pair",
+		// `{label}: {value}`: the scatter readout's axis-name/value pair, two
+		// ICU arguments and a colon, no words. es, hi, ru, ur and vi use the
+		// same ASCII colon; zh-CN uses its fullwidth colon and fr its spaced one,
+		// so those differ. Audited in local-operator-ui #2137 (receipts
+		// i18n/receipts/4294254e545e-inlinechart-*.json).
+		"language-neutral format string: two ICU arguments joined by a colon, no words",
+	],
+	[
+		"es:ui.chat.inline_chart.total",
+		"Spanish noun « Total » is spelled the same as English: the stacked tooltip's sum row and the donut's centre caption; audited in local-operator-ui #2137 (i18n/receipts/4294254e545e-inlinechart-es.json). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.inline_chart.total",
+		"French noun « Total » is spelled the same as English: the stacked tooltip's sum row and the donut's centre caption; audited in local-operator-ui #2137 (i18n/receipts/4294254e545e-inlinechart-fr.json). Scoped to this locale/key only.",
+	],
 ]);
 
 /*

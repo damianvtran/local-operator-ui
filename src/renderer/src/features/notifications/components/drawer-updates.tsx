@@ -75,6 +75,25 @@ export const defaultDrawerTab = (
 	liveAsks: number,
 ): DrawerTab => (scope === "fleet" ? "all" : liveAsks > 0 ? "asks" : "updates");
 
+/**
+ * THE STOP THE KEYBOARD MOVES TO (design § 18; agent review round 2, m-a).
+ *
+ * `tab` can sit outside `stops`: the drawer opens on `all` in fleet scope, and that
+ * door is the bar's, not a stop. A miss therefore enters from the near end - forward
+ * the first stop, backward the last. No stops at all is a sessionless strip, which
+ * draws nothing; indexing the empty list would throw, so the step is `undefined`.
+ */
+export const drawerTabStep = (
+	stops: readonly DrawerTab[],
+	tab: DrawerTab,
+	step: number,
+): DrawerTab | undefined => {
+	if (stops.length === 0) return undefined;
+	const found = stops.indexOf(tab);
+	const index = found === -1 ? (step > 0 ? -1 : 0) : found;
+	return stops[(index + step + stops.length) % stops.length];
+};
+
 export const DrawerTabs: FC<{
 	tab: DrawerTab;
 	onTab: (tab: DrawerTab) => void;
@@ -94,6 +113,18 @@ export const DrawerTabs: FC<{
 		{ id: "all", label: t("ui.notifications.drawer.tab.all"), count: 0 },
 	];
 	const shown = sessionless ? tabs.filter((entry) => entry.id === "all") : tabs;
+	/*
+	 * THE CYCLE VISITS ONLY THE TABS THAT ARE DRAWN (agent review round 1, m5). The
+	 * strip stopped painting `All conversations` when that door moved into the bar
+	 * (S4), but `shown` still carried it, so ArrowRight from Updates walked onto a
+	 * stop with no control to land on: `onTab("all")` opened the fleet drawer and the
+	 * focus hand-off below queried an element that no longer existed. The quiet link
+	 * in the bar is the door to that scope now, so the keyboard must not invent a
+	 * second one - the cycle drops it rather than the strip keeping a hidden stop.
+	 */
+	const cycle = shown.filter((entry) => entry.id !== "all");
+	/* The step reads its index from the cycle, not from `shown` (round 2, m-a). */
+	const stops = cycle.map((entry) => entry.id);
 	/* Ctrl+Tab / Ctrl+Shift+Tab and the arrows cycle (design § 18). */
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 		const step =
@@ -105,86 +136,105 @@ export const DrawerTabs: FC<{
 					? -1
 					: 0;
 		if (step === 0) return;
+		const next = drawerTabStep(stops, tab, step);
+		if (!next) return;
 		event.preventDefault();
-		const index = shown.findIndex((entry) => entry.id === tab);
-		const next = shown[(index + step + shown.length) % shown.length];
-		onTab(next.id);
+		onTab(next);
 		(
 			event.currentTarget.querySelector(
-				`[data-drawer-tab="${next.id}"]`,
+				`[data-drawer-tab="${next}"]`,
 			) as HTMLElement | null
 		)?.focus();
 	};
+	/*
+	 * THE STRIP IS THE TABS, AND ONLY THE TABS (design spec S4).
+	 *
+	 * The strip's first row used to be a full-width `All conversations` control.
+	 * That destination is a quiet link in the drawer's own bar now, so the chrome
+	 * above the list drops from four rows to three. A sessionless mount has no
+	 * conversation to switch away from, so it draws no strip at all rather than two
+	 * tabs whose scopes do not exist.
+	 *
+	 * COUNTS ARE ONE STYLE: a plain tabular numeral in `ink-muted`, never the boxed
+	 * `Badge` that made the same number read as a second kind of object beside the
+	 * filter's own count (D2).
+	 */
+	if (sessionless) return null;
 	return (
 		<div
-			className="flex shrink-0 flex-col gap-1 border-hairline border-b px-2 pb-1"
+			className="flex shrink-0 flex-col border-hairline border-b px-2"
 			onKeyDown={onKeyDown}
 		>
-			{/* Scope is its own full-width control: long translations cannot
-			    squeeze three unrelated labels into one 360px line (D1/U1). */}
-			<button
-				type="button"
-				aria-pressed={tab === "all"}
-				data-drawer-tab="all"
-				onClick={() => onTab("all")}
-				className={cn(
-					"min-h-8 w-full whitespace-normal rounded-sm px-2 py-1 text-start text-body-sm",
-					tab === "all"
-						? "bg-row-selected text-ink"
-						: "text-ink-muted hover:bg-row-hover",
-				)}
+			<div
+				role="tablist"
+				aria-label={t("ui.notifications.drawer.tabs_label")}
+				className="flex min-w-0 gap-1"
 			>
-				{t("ui.notifications.drawer.tab.all")}
-			</button>
-			{!sessionless && (
-				<div
-					role="tablist"
-					aria-label={t("ui.notifications.drawer.tabs_label")}
-					className="flex min-w-0 gap-1"
-				>
-					{tabs
-						.filter((entry) => entry.id !== "all")
-						.map((entry) => (
-							<button
-								key={entry.id}
-								type="button"
-								role="tab"
-								aria-selected={tab === entry.id}
-								tabIndex={
-									tab === entry.id || (tab === "all" && entry.id === "asks")
-										? 0
-										: -1
-								}
-								data-drawer-tab={entry.id}
-								onClick={() => onTab(entry.id)}
-								className={cn(
-									"flex min-h-8 min-w-0 flex-1 flex-wrap items-center justify-center gap-1 border-b-2 px-2 py-1 text-body-sm",
-									tab === entry.id
-										? "border-accent text-ink"
-										: "border-transparent text-ink-muted hover:text-ink",
-								)}
-							>
-								<span className="min-w-0 whitespace-normal break-words">
-									{entry.label}
-								</span>
+				{tabs
+					.filter((entry) => entry.id !== "all")
+					.map((entry) => (
+						<button
+							key={entry.id}
+							type="button"
+							role="tab"
+							aria-selected={tab === entry.id}
+							tabIndex={
+								tab === entry.id || (tab === "all" && entry.id === "asks")
+									? 0
+									: -1
+							}
+							data-drawer-tab={entry.id}
+							onClick={() => onTab(entry.id)}
+							className={cn(
+								"flex min-h-8 min-w-0 flex-1 flex-wrap items-center justify-center gap-1 border-b-2 px-2 py-1 text-body-sm",
+								tab === entry.id
+									? "border-accent text-ink"
+									: "border-transparent text-ink-muted hover:text-ink",
+							)}
+						>
+							<span className="min-w-0 whitespace-normal break-words">
+								{entry.label}
 								{entry.count > 0 && (
-									<Badge
-										variant="neutral"
-										size="count"
-										className="h-auto max-w-full whitespace-normal break-words text-center"
-									>
-										{entry.id === "updates"
-											? t("ui.notifications.drawer.unread_count", {
-													count: formatNumber(entry.count),
-												})
-											: formatNumber(entry.count)}
-									</Badge>
+									<>
+										{" "}
+										<span className="tabular-nums text-ink-muted">
+											{entry.id === "updates"
+												? t("ui.notifications.drawer.unread_count", {
+														count: formatNumber(entry.count),
+													})
+												: formatNumber(entry.count)}
+										</span>
+									</>
 								)}
-							</button>
-						))}
-				</div>
-			)}
+							</span>
+						</button>
+					))}
+			</div>
 		</div>
+	);
+};
+
+/**
+ * THE QUIET DOOR FROM ONE CONVERSATION'S QUEUE TO EVERY CONVERSATION'S (design spec
+ * S4).
+ *
+ * It lives in the chrome bar, not the strip: the strip's first row was a full-width
+ * `28px` control, and moving it up costs the list nothing because the bar is a fixed
+ * 40px that already had the room. Muted ink with the underline only on hover is a
+ * link's register, not a button's - nothing else in this bar wears an edge.
+ */
+export const DrawerAllConversations: FC<{ onSelect: () => void }> = ({
+	onSelect,
+}) => {
+	useI18nLocale();
+	return (
+		<button
+			type="button"
+			onClick={onSelect}
+			className="shrink-0 rounded-sm px-1 py-0.5 text-ink-muted text-meta underline decoration-transparent [text-underline-offset:3px] hover:text-ink hover:decoration-current"
+		>
+			{t("ui.notifications.drawer.tab.all")}
+		</button>
 	);
 };
 

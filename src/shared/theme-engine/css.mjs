@@ -19,6 +19,8 @@
  * `red; } body { display: none` becomes a stylesheet rule.
  */
 
+import { chartPaletteLines } from "./chart-palette.mjs";
+
 /** camelCase role -> kebab-case custom property suffix. */
 export const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
@@ -30,6 +32,11 @@ export const paletteBlock = (id, palette) => {
 	const lines = Object.entries(palette)
 		.filter(([role]) => role !== "mode")
 		.map(([role, value]) => `\t--lo-${kebab(role)}: ${value};`)
+		/* The derived categorical chart slots ride the same block, so a built-in
+		   (static CSS) and a composed palette (runtime <style>, after contrast and
+		   a custom accent are applied) both get `--lo-chart-1..7` from one
+		   emitter. They are derived, never authored: see chart-palette.mjs. */
+		.concat(chartPaletteLines(palette))
 		.join("\n");
 	/* `color-scheme` makes the platform paint native scrollbars, form controls
 	   and the caret to match the palette. Without it a dark theme keeps a white

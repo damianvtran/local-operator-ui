@@ -1389,13 +1389,8 @@ test("the model pick's notice is COMPOSED onto whichever confirmation wins (roun
 	);
 	assert.match(
 		picker,
-		/text: pickResultText\(\{/,
-		"one composition for both branches, not a ternary at the call site",
-	);
-	assert.match(
-		picker,
-		/notice: reading\.notice\?\.\(resolved\) \?\? null,/,
-		"the caller's notice is an input to that composition",
+		/const notice = reading\.notice\?\.\(resolved\) \?\? null;\s*(?:\/\/[^\n]*\n\s*)*const text = pickResultText\(\{[^}]*\bnotice,\s*\}\);\s*setResult\(\{ tone: "success", text \}\);/,
+		"the successful strip uses the shared composition with the caller's notice",
 	);
 	/*
 	 * ONE EXPRESSION, MATCHED WHOLE (code review round 3, minor 1). The dial read
@@ -2458,7 +2453,7 @@ test("M1: the carry question is the DIALOG's live selection, not the snapshot it
 	 */
 	const callSite = pickerSource.slice(
 		pickerSource.indexOf("const carried ="),
-		pickerSource.indexOf("await draftPick.pick("),
+		pickerSource.indexOf("const carriedFast ="),
 	);
 	assert.ok(callSite.length > 0, "the pick's carry question is still a local");
 	const question = new Function(

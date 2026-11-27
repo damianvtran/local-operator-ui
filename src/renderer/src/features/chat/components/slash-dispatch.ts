@@ -126,7 +126,7 @@ import {
 	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
-import { invalidateApprovalMode } from "../session-status/approval-mode-chip";
+import { invalidateApprovalMode } from "../session-status/approval-mode";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
 import {
@@ -1932,7 +1932,7 @@ export function useSlashDispatch({
 				closePicker();
 				return;
 			}
-			presentationGeneration.current += 1;
+			const openedAt = ++presentationGeneration.current;
 			invoker.current =
 				anchor ??
 				(document.activeElement instanceof HTMLElement
@@ -1960,6 +1960,14 @@ export function useSlashDispatch({
 				draft: draftPicker,
 				quickPickerAnchor: anchor,
 				onCloseOutside: closePickerFromOutside,
+				onDraftModelCommitted: (receipt) => {
+					// The preview can land after dismissal, a replacement picker, or a
+					// pane change. It must not take that slot's focus or show stale copy.
+					if (openedAt !== presentationGeneration.current) return;
+					closePicker();
+					// Keep effort/fast details without adding a message to an empty draft.
+					if (receipt) showInfoToast(receipt);
+				},
 			});
 		},
 		[

@@ -684,7 +684,6 @@ test("Back goes through history only when this window has an entry before this o
 });
 
 /* The source pins, at module scope (biome `useTopLevelRegex`). */
-const BACK_CHORD = /^(⌘|Ctrl\+)\[$/;
 const PIN_1 = /data-glass-region/;
 const PIN_2 = /bg-surface|panel-top-pad|w-72/;
 const PIN_3 =
@@ -697,7 +696,7 @@ const PIN_7 =
 	/if \(eligibility\)\s*return \(\s*<>\s*\{earlyColumn\}\s*<TeamBridgeEligibilityPanel/;
 const PIN_8 = /const earlyColumn = <TeamBridgeEarlyColumn \/>;/;
 const PIN_9 = /useTextDirection\(\) === "rtl" \? ArrowRight : ArrowLeft/;
-const PIN_10 = /aria-keyshortcuts=\{chord\}/;
+const PIN_10 = /<ShortcutText\s+text=\{`[^`]*\$\{isolateLtr\(chord\)\}/;
 const PIN_11 = /navigationShortcutLabel\(\s*"back"/;
 const PIN_12 = /teamBridgeLeaveTarget\(window\.history\.state\)/;
 const PIN_13 = /<AttentionBadge\s+count=\{attention\}/;
@@ -765,11 +764,15 @@ test("the app swaps on the bridge route only, keeps the feed alive, and docks th
  * the app's own gesture hook, and the shipped Back row - so `history.state.idx`
  * is written by React Router itself, not by a fixture.
  */
-const mountApp = async (url) => {
+const mountApp = async (url, platform) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url,
 	});
+	if (platform)
+		Object.defineProperty(dom.window.navigator, "platform", {
+			value: platform,
+		});
 	const saved = {
 		window: globalThis.window,
 		document: globalThis.document,
@@ -948,17 +951,22 @@ test("Back on a deep link (the window opened on the route) goes to /chat, and so
 	}
 });
 
-test("the Back row names the action, carries the chord, and uses the leave keys", async () => {
-	const app = await mountApp("http://localhost/#/team-bridge");
-	try {
-		const button = backButton(app);
-		const name = button.getAttribute("aria-label");
-		assert.equal(name, "Back, leave Team Bridge");
-		// WCAG 2.5.3 Label in Name: the name starts with what is on screen.
-		assert.ok(name.startsWith(button.textContent.trim()));
-		assert.match(button.getAttribute("aria-keyshortcuts"), BACK_CHORD);
-		assert.equal(button.textContent.trim(), "Back");
-	} finally {
-		await app.teardown();
+test("the Back row names the action and exposes the platform chord as ARIA keys", async () => {
+	for (const [platform, keys] of [
+		["MacIntel", "Meta+["],
+		["Win32", "Control+["],
+	]) {
+		const app = await mountApp("http://localhost/#/team-bridge", platform);
+		try {
+			const button = backButton(app);
+			const name = button.getAttribute("aria-label");
+			assert.equal(name, "Back, leave Team Bridge");
+			// WCAG 2.5.3 Label in Name: the name starts with what is on screen.
+			assert.ok(name.startsWith(button.textContent.trim()));
+			assert.equal(button.getAttribute("aria-keyshortcuts"), keys, platform);
+			assert.equal(button.textContent.trim(), "Back");
+		} finally {
+			await app.teardown();
+		}
 	}
 });

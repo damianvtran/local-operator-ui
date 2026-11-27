@@ -5252,7 +5252,10 @@ export function ChatSidebar({
 		const rowButton = (
 			<button
 				type="button"
+				/* When the box has no hover fill this button paints it. Keep that
+				   scope separate from launcher buttons, which also use data-chat-row. */
 				data-chat-row
+				data-session-row-button
 				/* Named for the driver, which has to OPEN a conversation before the chat
 				   header - and so the right slot's three triggers - exists at all
 				   (`renderer-driver.mjs`'s `browser-pane` scene). A tour tag rather than a
@@ -10804,8 +10807,11 @@ export function ChatSidebar({
 								 * there exactly as it does at 600 - only a window tall enough that the
 								 * available space clears the content never scrolls.
 								 */
-								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
+								/* Both finish layers follow the leading padding: a fixed wash
+								 * would lower muted-text contrast under the top scroll clip. */
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto bg-local p-2"
 								data-sidebar-view-panel
+								data-lo-floating-finish=""
 							>
 								<ChatSidebarViewMenu
 									view={view}

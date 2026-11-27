@@ -67,5 +67,8 @@
 	"ui.teamBridge.holds.reference": "Referencia {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "¿Descartar solo este mensaje ({reference}) sin leerlo? No llegará a tu agente. El descarte queda registrado en este dispositivo y no se puede deshacer.",
 	"ui.teamBridge.holds.discard_unread_label": "Descartar el mensaje {reference} sin leerlo",
-	"ui.teamBridge.holds.state.discard_recorded": "Descarte registrado en este dispositivo. No se ha recibido confirmación del servidor."
+	"ui.teamBridge.holds.state.discard_recorded": "Descarte registrado en este dispositivo. No se ha recibido confirmación del servidor.",
+	"ui.teamBridge.holds.state.confirmed_delivered": "Entregado",
+	"ui.teamBridge.holds.state.confirmed_discarded": "Descartado",
+	"ui.teamBridge.holds.state.confirmation_pending": "Pendiente de confirmación"
 }

@@ -5477,6 +5477,7 @@ app
 			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
 			}
+			activeUpdateService?.observeAttachedPromotion();
 		});
 
 		// Check if backend manager is disabled via environment variable

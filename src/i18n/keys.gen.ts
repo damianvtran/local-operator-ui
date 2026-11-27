@@ -80,6 +80,7 @@ import enUiChatDraftTarget from "./catalogues/en/ui.chat.draft_target.json";
 import enUiChatFastMode from "./catalogues/en/ui.chat.fast_mode.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChatHeaderMenu from "./catalogues/en/ui.chat.header_menu.json";
+import enUiChatInlineChart from "./catalogues/en/ui.chat.inline_chart.json";
 import enUiChatInterrupt from "./catalogues/en/ui.chat.interrupt.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
@@ -269,6 +270,7 @@ import esUiChatDraftTarget from "./catalogues/es/ui.chat.draft_target.json";
 import esUiChatFastMode from "./catalogues/es/ui.chat.fast_mode.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChatHeaderMenu from "./catalogues/es/ui.chat.header_menu.json";
+import esUiChatInlineChart from "./catalogues/es/ui.chat.inline_chart.json";
 import esUiChatInterrupt from "./catalogues/es/ui.chat.interrupt.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
@@ -458,6 +460,7 @@ import frUiChatDraftTarget from "./catalogues/fr/ui.chat.draft_target.json";
 import frUiChatFastMode from "./catalogues/fr/ui.chat.fast_mode.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChatHeaderMenu from "./catalogues/fr/ui.chat.header_menu.json";
+import frUiChatInlineChart from "./catalogues/fr/ui.chat.inline_chart.json";
 import frUiChatInterrupt from "./catalogues/fr/ui.chat.interrupt.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
@@ -647,6 +650,7 @@ import hiUiChatDraftTarget from "./catalogues/hi/ui.chat.draft_target.json";
 import hiUiChatFastMode from "./catalogues/hi/ui.chat.fast_mode.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChatHeaderMenu from "./catalogues/hi/ui.chat.header_menu.json";
+import hiUiChatInlineChart from "./catalogues/hi/ui.chat.inline_chart.json";
 import hiUiChatInterrupt from "./catalogues/hi/ui.chat.interrupt.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
@@ -836,6 +840,7 @@ import ruUiChatDraftTarget from "./catalogues/ru/ui.chat.draft_target.json";
 import ruUiChatFastMode from "./catalogues/ru/ui.chat.fast_mode.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChatHeaderMenu from "./catalogues/ru/ui.chat.header_menu.json";
+import ruUiChatInlineChart from "./catalogues/ru/ui.chat.inline_chart.json";
 import ruUiChatInterrupt from "./catalogues/ru/ui.chat.interrupt.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
@@ -1025,6 +1030,7 @@ import urUiChatDraftTarget from "./catalogues/ur/ui.chat.draft_target.json";
 import urUiChatFastMode from "./catalogues/ur/ui.chat.fast_mode.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChatHeaderMenu from "./catalogues/ur/ui.chat.header_menu.json";
+import urUiChatInlineChart from "./catalogues/ur/ui.chat.inline_chart.json";
 import urUiChatInterrupt from "./catalogues/ur/ui.chat.interrupt.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
@@ -1214,6 +1220,7 @@ import viUiChatDraftTarget from "./catalogues/vi/ui.chat.draft_target.json";
 import viUiChatFastMode from "./catalogues/vi/ui.chat.fast_mode.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChatHeaderMenu from "./catalogues/vi/ui.chat.header_menu.json";
+import viUiChatInlineChart from "./catalogues/vi/ui.chat.inline_chart.json";
 import viUiChatInterrupt from "./catalogues/vi/ui.chat.interrupt.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
@@ -1403,6 +1410,7 @@ import zhCNUiChatDraftTarget from "./catalogues/zh-CN/ui.chat.draft_target.json"
 import zhCNUiChatFastMode from "./catalogues/zh-CN/ui.chat.fast_mode.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChatHeaderMenu from "./catalogues/zh-CN/ui.chat.header_menu.json";
+import zhCNUiChatInlineChart from "./catalogues/zh-CN/ui.chat.inline_chart.json";
 import zhCNUiChatInterrupt from "./catalogues/zh-CN/ui.chat.interrupt.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
@@ -1595,6 +1603,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatFastMode,
 	...enUiChatHeader,
 	...enUiChatHeaderMenu,
+	...enUiChatInlineChart,
 	...enUiChatInterrupt,
 	...enUiChat,
 	...enUiChatLiveUpdates,
@@ -1792,6 +1801,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatFastMode,
 		...esUiChatHeader,
 		...esUiChatHeaderMenu,
+		...esUiChatInlineChart,
 		...esUiChatInterrupt,
 		...esUiChat,
 		...esUiChatLiveUpdates,
@@ -1983,6 +1993,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatFastMode,
 		...frUiChatHeader,
 		...frUiChatHeaderMenu,
+		...frUiChatInlineChart,
 		...frUiChatInterrupt,
 		...frUiChat,
 		...frUiChatLiveUpdates,
@@ -2174,6 +2185,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatFastMode,
 		...hiUiChatHeader,
 		...hiUiChatHeaderMenu,
+		...hiUiChatInlineChart,
 		...hiUiChatInterrupt,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
@@ -2365,6 +2377,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatFastMode,
 		...ruUiChatHeader,
 		...ruUiChatHeaderMenu,
+		...ruUiChatInlineChart,
 		...ruUiChatInterrupt,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
@@ -2556,6 +2569,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatFastMode,
 		...urUiChatHeader,
 		...urUiChatHeaderMenu,
+		...urUiChatInlineChart,
 		...urUiChatInterrupt,
 		...urUiChat,
 		...urUiChatLiveUpdates,
@@ -2747,6 +2761,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatFastMode,
 		...viUiChatHeader,
 		...viUiChatHeaderMenu,
+		...viUiChatInlineChart,
 		...viUiChatInterrupt,
 		...viUiChat,
 		...viUiChatLiveUpdates,
@@ -2938,6 +2953,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatFastMode,
 		...zhCNUiChatHeader,
 		...zhCNUiChatHeaderMenu,
+		...zhCNUiChatInlineChart,
 		...zhCNUiChatInterrupt,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
@@ -4411,6 +4427,7 @@ export type MessageParams = {
 	"ui.browser.browser_passkey_notice.continue_refused_not_web": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_stale": undefined;
 	"ui.browser.browser_passkey_notice.continue_unavailable": undefined;
+	"ui.browser.browser_passkey_notice.continued_here": undefined;
 	"ui.browser.browser_passkey_notice.dismiss": undefined;
 	"ui.browser.browser_passkey_notice.explanation": undefined;
 	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
@@ -5122,7 +5139,6 @@ export type MessageParams = {
 	"ui.chat.ask_panel.empty.none_pending": undefined;
 	"ui.chat.ask_panel.empty.none_settled": undefined;
 	"ui.chat.ask_panel.filter.all": undefined;
-	"ui.chat.ask_panel.filter.chip": { label: string; count: number };
 	"ui.chat.ask_panel.filter.pending": undefined;
 	"ui.chat.ask_panel.filter.settled": undefined;
 	"ui.chat.ask_panel.landing.many": { count: number };
@@ -5209,6 +5225,7 @@ export type MessageParams = {
 	"ui.chat.asks.close_asks": undefined;
 	"ui.chat.asks.context.messages_since": { count: number; time: string };
 	"ui.chat.asks.conversation_asks": undefined;
+	"ui.chat.asks.copy_id": { id: string };
 	"ui.chat.asks.decline": undefined;
 	"ui.chat.asks.dismiss.answered_in_chat.note": undefined;
 	"ui.chat.asks.dismiss.answered_in_chat.title": undefined;
@@ -5226,6 +5243,7 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
 	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
+	"ui.chat.asks.progress": { answered: number; total: number };
 	"ui.chat.asks.proposal.field_changed": { label: string };
 	"ui.chat.asks.proposal.field_lines": {
 		label: string;
@@ -5243,7 +5261,7 @@ export type MessageParams = {
 	"ui.chat.asks.status.withdrawn": undefined;
 	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
-	"ui.chat.asks.urgent": undefined;
+	"ui.chat.asks.urgent_label": undefined;
 	"ui.chat.attachment_refusal.cannot_upload": undefined;
 	"ui.chat.attachment_refusal.clause.read": { name: string };
 	"ui.chat.attachment_refusal.clause.remote": { name: string };
@@ -6298,6 +6316,17 @@ export type MessageParams = {
 	"ui.chat.header_menu.open_console": undefined;
 	"ui.chat.header_menu.open_linked_projects": undefined;
 	"ui.chat.header_menu.rename_failed": undefined;
+	"ui.chat.inline_chart.also": undefined;
+	"ui.chat.inline_chart.data_toggle": undefined;
+	"ui.chat.inline_chart.more": { count: number };
+	"ui.chat.inline_chart.no_data": undefined;
+	"ui.chat.inline_chart.other": { count: number };
+	"ui.chat.inline_chart.pair": { label: string; value: string };
+	"ui.chat.inline_chart.position": { index: number; count: number };
+	"ui.chat.inline_chart.right_axis": { label: string };
+	"ui.chat.inline_chart.role": undefined;
+	"ui.chat.inline_chart.share_of_total": { share: string };
+	"ui.chat.inline_chart.total": undefined;
 	"ui.chat.interrupt.idle": undefined;
 	"ui.chat.interrupt.idle_disputed": undefined;
 	"ui.chat.interrupt.stopped_both": { children: number; jobs: number };
@@ -14725,6 +14754,9 @@ export type MessageParams = {
 	"ui.teamBridge.holds.show_less": undefined;
 	"ui.teamBridge.holds.state.chose_deliver": undefined;
 	"ui.teamBridge.holds.state.chose_discard": undefined;
+	"ui.teamBridge.holds.state.confirmation_pending": undefined;
+	"ui.teamBridge.holds.state.confirmed_delivered": undefined;
+	"ui.teamBridge.holds.state.confirmed_discarded": undefined;
 	"ui.teamBridge.holds.state.deliver_expired": undefined;
 	"ui.teamBridge.holds.state.discard_recorded": undefined;
 	"ui.teamBridge.holds.state.not_applied": undefined;

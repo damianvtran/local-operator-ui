@@ -20,6 +20,7 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
+	BackendUpdateStatus,
 } from "../main/update-service";
 import {
 	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
@@ -899,26 +900,7 @@ const api = {
 			};
 		},
 		onBackendUpdateNotAvailable: (
-			callback: (info: {
-				version: string;
-				runningVersion?: string | null;
-				restartable?: boolean;
-				/**
-				 * False when the check that sent this pair never READ the published release, so
-				 * the notice may state the two readings without calling the install current.
-				 * Absent means the release was read. Only the network-unavailable pass sends
-				 * false (QA round 3, Q3-1).
-				 */
-				releaseRead?: boolean;
-				/**
-				 * Whether the INSTALL this check read is the app's own environment.
-				 *
-				 * The second ownership reading, and the one the skew panel's control needs:
-				 * `restartable` is true on a global install too, where the press behind that
-				 * control runs the install's own updater rather than a restart (design D5).
-				 */
-				appOwnedEnvironment?: boolean;
-			}) => void,
+			callback: (info: BackendUpdateStatus) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("backend-update-not-available", handler);
@@ -1426,6 +1408,9 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
+		/** Dismiss the strip a passkey-continue copy shows. Tab id only. */
+		dismissPasskeyContinued: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-continued-dismiss", tabId),
 		/** A sidebar notification row's click: bring the tab an agent is waiting
 		 * on the user in forward, with its held popups (`user-attention.ts`). The
 		 * ONLY path that does; `false` when the tab is gone. */
@@ -1569,6 +1554,11 @@ const api = {
 		/** Completed agent surfaces only; retained history stays on disk. */
 		cleanupOwner: (sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-cleanup-owner", sessionId),
+		/** Attach the pending local draft's console surfaces to the conversation a
+		 * successful first send created (same handle, same pty, same history). A no-op
+		 * when the draft never opened one. */
+		adoptPending: (sessionId: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-adopt-pending", { sessionId }),
 		/** Create a surface the USER asked for. Main sets the origin to `user`; the
 		 * renderer cannot name it, because provenance is not a renderer's to claim. */
 		createSurface: (request: {

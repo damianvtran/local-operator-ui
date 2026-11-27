@@ -4325,3 +4325,139 @@ export const BlockingSecretGate: Story = {
 		</Frame>
 	),
 };
+
+/*
+ * THE APPROVALS PICKER IN THE REAL COMPOSER ROW (operator request 2026-11-25):
+ * right of the model and effort selectors, in their style. A wire-shaped
+ * session id is what mounts it (`entitySessionId`). The story installs a
+ * scripted desktop bridge for the picker's four ops (the pattern
+ * `language-door.stories.tsx` uses) ONLY while it is mounted, restoring the
+ * previous bridge on unmount, so the rest of this file keeps its own. The
+ * knobs put the real connected picker in each state: `mode` is the live mode
+ * the backend reports (`unknown` = null, a cold session), `latencyMs` holds
+ * every press in flight, `refuse` makes the owner refuse, and `partial` applies
+ * the mode live but does not save it for resume. Width is the chat pane width,
+ * so the real dock's computed container width determines its breakpoints.
+ */
+const APPROVALS_STORY_SESSION = "a1b2c3d4e5f6";
+type ApprovalsStoryArgs = {
+	mode: string;
+	latencyMs: number;
+	refuse: string;
+	partial: boolean;
+	width: number;
+	running: boolean;
+};
+const ApprovalsPickerHarness = ({
+	mode,
+	latencyMs,
+	refuse,
+	partial,
+	width,
+	running,
+}: ApprovalsStoryArgs) => {
+	// Installed in a state initializer, not an effect, so the bridge exists
+	// before the picker's first read is issued during the first commit.
+	const [restore] = useState(() => {
+		const world = {
+			mode: mode === "unknown" ? null : mode,
+			defaultMode: "ask",
+		};
+		const ok = (result: unknown) => ({
+			status: 200,
+			body: { status: 200, message: "ok", result },
+		});
+		const wait = () =>
+			new Promise((resolve) => setTimeout(resolve, Math.max(0, latencyMs)));
+		const page = window as unknown as {
+			api?: { desktop?: { request: (r: Record<string, unknown>) => unknown } };
+		};
+		const previous = page.api?.desktop;
+		page.api = page.api ?? {};
+		page.api.desktop = {
+			...(previous ?? {}),
+			request: async (request: Record<string, unknown>) => {
+				switch (request.op) {
+					case "commands.entities":
+						return ok({
+							command: request.command,
+							entities: [{ value: "auto" }, { value: "ask" }],
+							current: request.command === "approvals" ? world.mode : null,
+						});
+					case "settings.list":
+						return ok({
+							settings: [
+								{ key: "tool_approval_mode", value: world.defaultMode },
+							],
+						});
+					case "settings.edit":
+						await wait();
+						world.defaultMode = String(request.value);
+						return ok({ key: request.key, value: request.value });
+					case "sessions.command":
+						await wait();
+						if (refuse)
+							return ok({
+								command: request.command,
+								result: { kind: "block", text: refuse },
+							});
+						world.mode = String(request.args);
+						return ok({
+							command: request.command,
+							result: {
+								kind: "notice",
+								text: `tool approvals: ${request.args}${partial ? " — applied for this session but NOT saved for resume (PermissionError)" : ""}`,
+								data: { ok: true, approval_saved_for_resume: !partial },
+							},
+						});
+					default:
+						return previous
+							? previous.request(request)
+							: { status: 503, body: { detail: "not stubbed" } };
+				}
+			},
+		};
+		return () => {
+			if (page.api) page.api.desktop = previous;
+		};
+	});
+	useEffect(() => restore, [restore]);
+	return (
+		<div className="relative flex h-screen flex-col justify-end gap-3 bg-canvas p-6">
+			<div
+				className="@container/chatcol"
+				style={{ width: width || undefined, maxWidth: "100%" }}
+			>
+				<MessageInput
+					isLoading={false}
+					isSmallView={width > 0 && width < 550}
+					messages={NONEMPTY}
+					conversationId={APPROVALS_STORY_SESSION}
+					cwd="~"
+					// `onCommand` makes the model/effort readings openable, so they render
+					// as the icon-and-chevron selectors the picker sits beside in the app.
+					sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+					paneHasSession
+					onSendMessage={async () => true}
+					canonicalStop={
+						running ? { active: true, onStop: () => {} } : undefined
+					}
+				/>
+			</div>
+		</div>
+	);
+};
+
+export const ApprovalsPicker: Story = {
+	args: {
+		mode: "auto",
+		latencyMs: 0,
+		refuse: "",
+		partial: false,
+		width: 0,
+		running: false,
+	},
+	render: (args) => (
+		<ApprovalsPickerHarness {...(args as ApprovalsStoryArgs)} />
+	),
+};

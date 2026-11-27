@@ -459,21 +459,12 @@
  * deliberately does not enable WCO (it would add no pixels, and it would hand the
  * renderer a geometry main already reproduces from its own full-screen events).
  *
- * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
- * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
- * window capture reads the drawn circles at centre 16.00. The derivation and the
- * instrument note are on `src/main/titlebar-options.ts`, beside the
- * `trafficLightPosition` decision they explain.
- *
- * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
- * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
- * BESIDE the lights; this shell puts the lane above every column instead, so no
- * column's first row is beside them and the inset's only consumer left is a banner,
- * which is a first child of the shell and therefore paints under the lights.
+ * The app controls and traffic lights share a 40px centerline. Keep an
+ * exclusion beyond the native left hit boxes regardless of text direction.
  */
 [data-chrome-mode="integrated"][data-chrome-platform="mac"] {
-	--chrome-strip-h: 32px;
-	--chrome-inset-start: 80px;
+	--chrome-strip-h: 40px;
+	--chrome-inset-start: 88px;
 	--chrome-inset-end: 0px;
 	--chrome-inset-end-h: 0px;
 }
@@ -605,6 +596,80 @@
 	[data-titlebar-lane] {
 	display: block;
 	height: var(--chrome-strip-h);
+}
+
+/* One transparent overlay: keep the columns' grounds reaching y0, with
+ * Browser's own tab/address controls below this independent app history. */
+[data-desktop-navigation-shell] {
+	--app-navigation-row-h: max(
+		40px,
+		var(--chrome-strip-h),
+		var(--chrome-inset-end-h)
+	);
+	--panel-top-pad: var(--app-navigation-row-h);
+	--app-navigation-button: 28px;
+	--app-navigation-gap: 4px;
+	--app-navigation-margin: 8px;
+	--app-navigation-width: calc(
+		4 *
+		var(--app-navigation-button) +
+		3 *
+		var(--app-navigation-gap)
+	);
+	--app-navigation-left: calc(
+		var(--chrome-inset-start) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-right: auto;
+	--app-navigation-exclusion-left: calc(
+		var(--app-navigation-left) +
+		var(--app-navigation-width)
+	);
+	--app-navigation-exclusion-right: var(--chrome-inset-end);
+}
+/* Mirror the group except beside physical left-side OS controls. On the
+ * right, stop before the native caption hit targets rather than mirroring them. */
+:root:not([data-chrome-platform="mac"], [data-chrome-leading="true"])
+	[data-desktop-navigation-shell]:dir(rtl),
+[data-chrome-fullscreen="true"] [data-desktop-navigation-shell]:dir(rtl) {
+	--app-navigation-left: auto;
+	--app-navigation-right: calc(
+		var(--chrome-inset-end) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-exclusion-left: var(--chrome-inset-start);
+	--app-navigation-exclusion-right: calc(
+		var(--app-navigation-right) +
+		var(--app-navigation-width)
+	);
+}
+[data-desktop-navigation] {
+	position: absolute;
+	z-index: 34;
+	inset-block-start: 0;
+	left: var(--app-navigation-left);
+	right: var(--app-navigation-right);
+	display: flex;
+	align-items: center;
+	gap: var(--app-navigation-gap);
+	height: var(--app-navigation-row-h);
+}
+[data-desktop-navigation] > button {
+	width: var(--app-navigation-button);
+	height: var(--app-navigation-button);
+}
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-desktop-navigation-shell]
+	> [data-titlebar-lane] {
+	display: block;
+	height: var(--app-navigation-row-h);
+}
+/* The app shell now owns trailing caption clearance, too. */
+:root
+	[data-desktop-navigation-shell]
+	main[data-workspace-outlet]
+	> [data-chrome-route-band] {
+	display: none;
 }
 
 /* An ordinary route body starts after platform clearance. Full-height split
@@ -1557,6 +1622,19 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 	   which is a step on the button's ramp and promises nothing about the ground
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */
 	--color-chart-bar-hover: var(--lo-chart-bar-hover);
+	/* Categorical chart slots (series 1-4, pie slices 1-6). DERIVED from the
+	   composed palette by `src/shared/theme-engine/chart-palette.mjs` and emitted
+	   by `paletteBlock`, so every built-in, contrast preset and custom accent has
+	   them; slot 1 is the accent. Distinct hues at >= 3.05:1 on every ground, never
+	   shades of the accent (inline chart spec section 4). The accent fallback only
+	   covers a partial capture palette that carries no canvas/accent pair. */
+	--color-chart-1: var(--lo-chart-1, var(--lo-accent));
+	--color-chart-2: var(--lo-chart-2, var(--lo-accent));
+	--color-chart-3: var(--lo-chart-3, var(--lo-accent));
+	--color-chart-4: var(--lo-chart-4, var(--lo-accent));
+	--color-chart-5: var(--lo-chart-5, var(--lo-accent));
+	--color-chart-6: var(--lo-chart-6, var(--lo-accent));
+	--color-chart-7: var(--lo-chart-7, var(--lo-accent));
 
 	/* The composer's structured-token ink, for the leading `/word` a user typed:
 	   its own role because `info` is the accent's twin in three palettes and the
@@ -3153,89 +3231,79 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 
 /* Textareas can match :focus-visible on click or autofocus. Use the ink
  * caret in ordinary themes so getting ready to type never boxes the draft. */
-/* The anchored Model/Effort paper borrows the elevated role's relative
- * luminance, not its hue (some themes have strongly colored grounds). Equal
- * linear-sRGB channels make the paper neutral without filtering its accents.
- * Keep the brightest stop at that role and lower the resting tone slightly.
- * As on the composer, the short 1px gleam doesn't draw a perimeter. */
+/* Keep the popover's elevated role, including its hue. The composer and
+ * every portalled picker then respond to the same live palette. Tint the
+ * row states from that ground instead of painting either with an accent. */
 [data-quick-picker][data-picker-placement="anchored"] {
-	--picker-wash: color(
-		from var(--lo-elevated) srgb-linear
-			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
-			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
-			calc(0.2126 * r + 0.7152 * g + 0.0722 * b)
-	);
-	--picker-paper: light-dark(
-		color-mix(in srgb, var(--picker-wash), black 3%),
-		color-mix(in srgb, var(--picker-wash), black 12%)
-	);
-	/* Near-white paper has no headroom to brighten perceptibly. Reverse the
-	 * hover step there rather than drawing an outline to make it visible. */
+	--picker-paper: var(--lo-elevated);
+	/* Reverse the steps on light ground rather than drawing row outlines.
+	 * Keep the keyboard step stronger so it still owns Enter beside hover. */
 	--picker-pointer: light-dark(
 		color-mix(in srgb, var(--picker-paper), black 10%),
-		color-mix(in srgb, var(--picker-paper), white 9%)
+		color-mix(in srgb, var(--picker-paper), white 7%)
 	);
 	--picker-active: light-dark(
-		color-mix(in srgb, var(--picker-paper), black 13%),
+		color-mix(in srgb, var(--picker-paper), black 16%),
 		color-mix(in srgb, var(--picker-paper), white 12%)
 	);
-	--picker-well: light-dark(
-		color-mix(in srgb, var(--picker-paper), black 4%),
-		color-mix(in srgb, var(--picker-paper), black 22%)
+}
+
+/* Share the finish, not the ground. The translucent panel keeps its own fill,
+ * blur and shadow. Near-white paper has no room for a visible brightening:
+ * leave its top edge neutral and grade the paper immediately below it. Dark
+ * paper takes the same palette tint as a lift. Fade within one spacing unit
+ * so the wash stops before a compact header's pt-1 line box (Team/Agent have
+ * the panel's p-1 as well). A long ink wash spent the last bit of muted-text
+ * contrast on clear glass. Only opt in a panel with that text/icon clearance. */
+[data-lo-floating-finish] {
+	--lo-floating-panel-wash: color-mix(in srgb, var(--lo-ink) 3%, transparent);
+	--lo-floating-panel-gradient: linear-gradient(
+		180deg in srgb,
+		light-dark(transparent, var(--lo-floating-panel-wash)) 0.0625rem,
+		var(--lo-floating-panel-wash) 0.125rem,
+		transparent 0.25rem
 	);
-	/* Equal linear channels are luminance. Solve (lighter + .05) /
-	 * (darker + .05) = 3.15 against the well in light themes and the paper
-	 * in dark themes, so the single inset stroke clears 3:1 on both sides. */
-	--picker-focus: light-dark(
-		color(
-			from var(--picker-well) srgb-linear calc((r + 0.05) / 3.15 - 0.05)
-				calc((g + 0.05) / 3.15 - 0.05) calc((b + 0.05) / 3.15 - 0.05)
-		),
-		color(
-			from var(--picker-paper) srgb-linear calc(3.15 * (r + 0.05) - 0.05)
-				calc(3.15 * (g + 0.05) - 0.05) calc(3.15 * (b + 0.05) - 0.05)
-		)
-	);
-	background-color: var(--picker-paper);
+}
+
+[data-lo-floating-finish] {
 	background-image: linear-gradient(
 			90deg,
 			transparent,
 			light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 17%)) 36% 60%,
 			transparent
-		), linear-gradient(180deg, var(--picker-wash), transparent 38px);
+		),
+		var(
+			--lo-floating-panel-gradient,
+			linear-gradient(180deg, var(--lo-floating-panel-wash), transparent 38px)
+		);
 	background-position: 9% top, center top;
 	background-size: 61% 1px, 100% 100%;
 	background-repeat: no-repeat;
 }
 
-/* A lead mark names the keyboard target, the existing check names the
- * current value, and the spinner names the pending operation. None needs a
- * perimeter. Keep the real focus outline on the combobox or Effort list. */
+/* The stronger fill names the keyboard target; the existing check names the
+ * current value, and the spinner names the pending operation. Keep actual
+ * focus on the combobox or Effort list, not on the active descendant. */
 [data-quick-picker][data-picker-placement="anchored"]
 	[role="option"]:is([aria-selected="true"], [data-picked="true"]) {
 	background-color: var(--picker-active);
 }
 
+/* Muted Model metadata clears the paper and hover floors, but can fall below
+ * 4.5:1 on the brighter active/pending fill at softer contrast presets. Lift
+ * just those enabled text roles; refusal copy and the Current check stay dim. */
 [data-quick-picker][data-picker-placement="anchored"]
-	[role="option"][aria-selected="true"] {
-	position: relative;
-}
-
-[data-quick-picker][data-picker-placement="anchored"]
-	[role="option"][aria-selected="true"]::before {
-	content: "";
-	position: absolute;
-	inset-inline-start: 2px;
-	inset-block: 0;
-	margin-block: auto;
-	block-size: 0.875rem;
-	border-inline-start: 2px solid var(--color-ink-muted);
-	border-radius: 999px;
-	pointer-events: none;
+	[role="option"]:is([aria-selected="true"], [data-picked="true"])
+	[class~="text-ink-muted"] {
+	color: var(--lo-ink);
 }
 
 [data-quick-picker="model"][data-picker-placement="anchored"] [data-lo-input] {
-	background-color: var(--picker-well);
+	background-color: color-mix(
+		in srgb,
+		var(--picker-paper),
+		var(--lo-sunken) 55%
+	);
 }
 
 [data-quick-picker="model"][data-picker-placement="anchored"]
@@ -3243,7 +3311,50 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 [data-quick-picker="effort"][data-picker-placement="anchored"]
 	[role="listbox"]:focus-visible {
 	outline-width: 1px;
-	outline-color: var(--picker-focus);
+	outline-color: var(--lo-ink-muted);
+}
+
+/* The model's two options share a column on every anchored width. Let each
+ * associated label provide a full-height target without scaling the glyph. */
+[data-quick-picker="model"][data-picker-placement="anchored"]
+	[data-model-picker-checks] {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.125rem;
+
+	[data-picker-check] > [role="checkbox"] {
+		margin-block-start: 0.1875rem;
+	}
+
+	[data-picker-check] > label {
+		display: block;
+		flex: 1;
+		min-inline-size: 0;
+		min-block-size: 1.5rem;
+		padding-block: 0.0625rem;
+		overflow-wrap: anywhere;
+	}
+
+	[data-picker-label-lines] {
+		min-block-size: 0;
+	}
+
+	[data-picker-label-reserve] {
+		display: block;
+	}
+
+	/* Clamp inside the grid cell without adding a second sentence to the label. */
+	[data-picker-label-reserve]::before {
+		content: attr(data-picker-label-reserve);
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
+
+	[data-picker-label-lines="2"] [data-picker-label-reserve]::before {
+		-webkit-line-clamp: 2;
+	}
 }
 
 /* The Effort ring sits in the paper gutter, not over the brighter row fill. */
@@ -3266,8 +3377,16 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 }
 
 @media (forced-colors: active) {
-	[data-quick-picker][data-picker-placement="anchored"] {
+	[data-lo-floating-finish] {
 		background-image: none;
+	}
+
+	/* System colors flatten the row fills. Indicate the keyboard target
+	 * without restoring the leading tick in either color mode. */
+	[data-quick-picker][data-picker-placement="anchored"]
+		[role="option"][aria-selected="true"] {
+		outline: 1px solid Highlight;
+		outline-offset: -1px;
 	}
 }
 
@@ -3283,7 +3402,7 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	gap: var(--spacing);
 }
 
-.composer-dock-pickers:empty {
+.composer-dock-pickers:has(> .composer-dock-picker-host:empty:only-child) {
 	display: none;
 }
 
@@ -3338,12 +3457,13 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 		column-gap: 0;
 	}
 
-	.composer-dock-pickers > :is([data-composer-picker], .composer-dock-effort) {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> :is([data-composer-picker], .composer-dock-effort) {
 		min-inline-size: 0;
 		flex-shrink: 1;
 	}
 
-	.composer-dock-pickers
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
 		> :is([data-composer-picker], .composer-dock-effort)
 		> span {
 		min-inline-size: 0;
@@ -3356,20 +3476,25 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 /* At the pane floor the model can still be identified by its accessible
  * name and tooltip. Keep distinct buttons alongside the recording trio. */
 @container composer-dock (width <= 180px) {
-	.composer-dock-pickers > [data-composer-picker] {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker] {
 		flex: 0 1 auto;
 		padding-inline: var(--spacing);
 	}
 
-	.composer-dock-pickers > [data-composer-picker] > svg:first-child {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker]
+		> :is(svg, .approval-mode-trigger-spinner):first-child {
 		display: block;
 	}
 
-	.composer-dock-pickers > [data-composer-picker] > :not(svg:first-child) {
+	:is(.composer-dock-pickers, .composer-dock-picker-host)
+		> [data-composer-picker]
+		> :not(:is(svg, .approval-mode-trigger-spinner):first-child) {
 		display: none;
 	}
 
-	.composer-dock-pickers > :not(button) {
+	.composer-dock-picker-host > :not(button) {
 		overflow: hidden;
 		white-space: nowrap;
 	}
@@ -4335,15 +4460,10 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	display: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] {
-	/* END ONLY. The start edge belongs to the row's `ps-6` utility in
-	 * chat-header.tsx: the title leads the row, and the operator asked for it
-	 * to sit on the column's left inset (`CHAT_COLUMN_INSET`, 24px), not 4px
-	 * off the frame (PR #2099, 2026-11-25: "too tight to the left"). This rule
-	 * is unlayered, so any start padding here silently beats the utility -
-	 * which is how the first fix measured 4px. `scripts/lane-leading.test.mjs`
-	 * fails if a start padding comes back here. The trailing 12px is
-	 * unchanged from #2043's header alignment (fc4021f) and still wins over
-	 * the row's `pe-4` inside the framed workspace. */
+	/* END ONLY. The row in chat-header.tsx owns the title and rename's
+	 * shared start edge. This rule is unlayered, so setting start padding
+	 * here would override the row utility (as the old 4px rule did).
+	 * Keep the framed workspace's trailing actions aligned at 12px. */
 	padding-inline-end: 12px;
 }
 [data-workspace-inset] {
@@ -4381,8 +4501,8 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * THE SIDEBAR'S ROWS ARE KEYED OFF THE SIDEBAR, NOT THE CHAT ROUTE (design
  * round 7, D1). These sidebar selectors used to sit under
  * `[data-workspace-shell]:has([data-chat-workspace])`, so the same sidebar drew
- * filled current rows and pill buttons everywhere but Chat. They now apply in
- * the shell on every route; only the panel rail - which only Chat mounts - keeps
+ * different row fills and pill buttons outside Chat. They now apply in the
+ * shell on every route; only the panel rail - which only Chat mounts - keeps
  * the Chat gate. `scripts/chat-sidebar-route-invariant.test.mjs` holds this.
  *
  * THE RESETS TAKE THE RESTING PAINT, NEVER THE POINTER'S (v0.63.0 regression,
@@ -4391,20 +4511,19 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
  * beats every `@layer utilities` one whatever its specificity - so while they
  * matched a row at all times, the rows' own `hover:bg-row-hover` (and a current
  * row's `hover:bg-row-selected`) could never paint: pinned, chat, Agents and
- * Teams rows all went dead under the pointer. What the inset removes is the
- * pill chrome on icon buttons and the filled CURRENT row at rest; the pointer's
- * ground is the component's to draw. So:
+ * Teams rows all went dead under the pointer. Strip the pill chrome on icon
+ * buttons, not the hover or the current conversation's ground. So:
  *   - a `[data-chat-row]` button (the row itself, on entity/launcher/temporary
  *     rows) and a `[data-sidebar-row-button]` (a full-width text row that is not
  *     a chat: "Create team", "Show N more", QA round 1 Q1-1) are released from
  *     the reset while hovered; icon buttons inside a row (new chat, history,
  *     pin, more) keep it - no pills. A data attribute rather than a class match,
  *     so a respelled utility cannot silently re-break it (review R3);
- *   - a row's BOX is reset only at rest (`:not(:hover)`), and the menu's held
- *     ground (`bg-row-hover` while the row's menu is open) is never reset;
+ *   - a row's BOX is reset only at rest (`:not(:hover)`), except that current
+ *     conversations and menu-held rows also need their ground at rest;
  *   - where the box paints, its row button stays transparent even while hovered
- *     (a session box carrying `hover:bg-row-hover`, any current box, a staged
- *     entity wrapper), so translucent glass grounds never stack two ink layers;
+ *     (a session box carrying `hover:bg-row-hover` or `bg-row-hover`, a current
+ *     box, a staged entity wrapper), so translucent glass never stacks ink;
  *   - a dragged row is still never reset (`rowDragging` owns its ground).
  * Keyboard focus is the accent outline below, which these resets never touched.
  * `scripts/sidebar-row-hover.test.mjs` holds this.
@@ -4430,11 +4549,10 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 [data-workspace-shell]
 	:is(
 		[data-session-row]:not([data-dragging]):not(:hover):not(
-				[class~="bg-row-hover"]
-			),
+				[data-workspace-current]
+			):not([class~="bg-row-hover"]),
 		[data-session-row][class~="hover:bg-row-hover"] > [data-chat-row],
-		[data-temporary-row] > [data-chat-row][aria-current="page"]:not(:hover),
-		[data-workspace-current]:not([data-dragging]):not(:hover),
+		[data-session-row][class~="bg-row-hover"] > [data-chat-row],
 		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
 		[data-workspace-launcher] [data-entity] > div:first-child:not(:hover),
 		[data-entity] > [data-entity-staged] > [data-chat-row]
@@ -4442,22 +4560,105 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	background: transparent;
 }
 /*
- * THE CURRENT ROW HOVERS LIKE EVERY OTHER ROW (design round 1, D5). The inset
- * resets a current row's fill at rest (above), which left `rowCurrent`'s
- * `hover:bg-row-selected` as the only ground it ever painted: the selected fill
- * appeared under the pointer alone, a stronger step than any other row's hover.
- * Here the hovered current box takes `row-hover`, the same ground as its
- * neighbours. It is ONE layer: the box paints, and the rule above keeps its row
- * button transparent (a temporary row has no box, so its button is the layer).
- * A dragged row is excluded - `rowDragging` owns that ground.
- * `scripts/sidebar-row-hover.test.mjs` holds this.
+ * THE SIDEBAR'S CONVERSATION FILLS (design round 1, D1-D3; operator 2026-11-27:
+ * "the brightness of the hover highlight on dark mode is too dim, I can barely
+ * see it", then, deciding the contrast trade-off: "Brighter hover, same as
+ * selected when translucent"). Two roles, resolved on the sidebar where glass
+ * remaps the palette roles to ink alpha. Light keeps the authored row fills in
+ * both materials; only dark lifts them.
+ *
+ * TRANSLUCENCY OFF (opaque, dark): the palette's own row fill plus an ink mix -
+ * hover 10%, current 14% (main shipped neither: the bare palette fills).
+ *   - 14% is the highest current mix at which the sidebar's three inks clear the
+ *     rows' floors on all 41 dark palettes: ink >= 5.78, inkMuted >= 4.58 and
+ *     inkDim >= 3.59 (dune) against 4.5 / 4.5 / 3.5. 15% drops inkDim to 3.48.
+ *   - 10% is the highest hover mix that still leaves the selection a clearly
+ *     separate mark: current - hover >= 3.74 L* on every palette (tokyoNightStorm
+ *     is the tightest; 12% would leave 2.11), hover sits >= 9.45 L* above the
+ *     surface (catppuccinMacchiato; main's bare rowHover sat 1.56-3.84 L* above
+ *     it) and current >= 13.35 L* above it. inkDim on the hover fill is 4.26 (dune).
+ *   - THE FLOORS ARE RELAXED HERE, AND ONLY HERE: these rows are held to plain
+ *     WCAG AA (4.5 / 4.5 / 3.5 for dim), the same floors glass has always used,
+ *     instead of the flat roles' 7.0 / 5.5 / 5.0. It is a named exemption
+ *     (SIDEBAR_CONVERSATION_ROW_FLOORS in `scripts/contrast-contract.mjs`, operator
+ *     decision 2026-11-27) that covers these two tokens and nothing else; the
+ *     palette roles themselves keep their flat floors. The contract reads the
+ *     percentages below, so a value this file cannot afford fails `check-themes`.
+ *
+ * TRANSLUCENCY ON (glass, dark): hover AND current are the SAME 9% ink over the
+ * glass. 9% is the highest alpha the committed sidebar floors (0.59 / 0.72 /
+ * 0.78 on `surface`) still pass for every row fill on all 41 dark palettes -
+ * `derive()` at 10% needs 0.63 / 0.75 / 0.81 - and the operator chose it over
+ * raising the floors, which would cost translucency. It lifts hover +2.6-3.5 L*
+ * over main's 5% (+2.57 to +3.48 L* across the 41 palettes and three
+ * material tiers; the 9% step off the ground is 5.72-7.94 L*). With
+ * hover == current the fill no longer ranks the two; the
+ * current row's semibold title (`rowCurrent`'s font-medium) and its rest-state
+ * fill carry that. The ink overlay is drawn over whatever ground is there, so
+ * the step is relative on every backdrop.
  */
+[data-workspace-shell] [data-chat-region="sidebar"] {
+	--sidebar-conversation-hover: light-dark(
+		var(--color-row-hover),
+		color-mix(in srgb, var(--color-row-hover), var(--lo-ink) 10%)
+	);
+	--sidebar-conversation-current: light-dark(
+		var(--color-row-selected),
+		color-mix(in srgb, var(--color-row-selected), var(--lo-ink) 14%)
+	);
+}
+html[data-glass~="sidebar"]
+	[data-workspace-shell]
+	[data-chat-region="sidebar"][data-glass-region="sidebar"] {
+	--sidebar-conversation-hover: light-dark(
+		var(--color-row-hover),
+		color-mix(in srgb, var(--lo-ink) 9%, transparent)
+	);
+	--sidebar-conversation-current: light-dark(
+		var(--color-row-selected),
+		color-mix(in srgb, var(--lo-ink) 9%, transparent)
+	);
+}
+/* The current conversation keeps its fill even under the pointer. The box
+ * paints for saved conversations; the temporary row has no painted wrapper.
+ * Dragged rows keep the component's own held ground. */
 [data-workspace-shell]
 	:is(
-		[data-workspace-current]:not([data-dragging]):hover,
-		[data-temporary-row] > [data-chat-row][aria-current="page"]:hover,
-		[data-workspace-launcher] [data-entity] > [data-entity-staged]:hover
+		[data-workspace-current]:not([data-dragging]),
+		[data-temporary-row] > [data-chat-row][aria-current="page"]
 	) {
+	background-color: var(--sidebar-conversation-current);
+}
+/* The menu holds its box fill for touch and keyboard input too. */
+[data-workspace-shell]
+	[data-session-row]:not([data-workspace-current]):not(
+		[data-dragging]
+	)[class~="bg-row-hover"] {
+	background-color: var(--sidebar-conversation-hover);
+}
+/* Match Tailwind's hover capability gate: a tap can leave :hover latched on
+ * a touch-first device. Keep a single paint owner: the box covers the action
+ * hit areas when it owns the fill; otherwise the button paints. */
+@media (hover: hover) {
+	[data-workspace-shell]
+		:is(
+			[data-session-row]:not([data-workspace-current]):not(
+					[data-dragging]
+				)[class~="hover:bg-row-hover"]:hover,
+			[data-session-row-button]:not([aria-current="page"]):not(
+					[data-session-row][class~="hover:bg-row-hover"] > *,
+					[data-session-row][class~="bg-row-hover"] > *,
+					[data-session-row][data-dragging] > *
+				):hover,
+			[data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover
+		) {
+		background-color: var(--sidebar-conversation-hover);
+	}
+}
+[data-workspace-shell]
+	[data-workspace-launcher]
+	[data-entity]
+	> [data-entity-staged]:hover {
 	background-color: var(--color-row-hover);
 }
 [data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
@@ -4471,7 +4672,7 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 [data-workspace-tabs] {
 	display: flex;
 	align-items: center;
-	min-height: 32px;
+	min-height: 36px;
 	gap: 4px;
 	padding-inline: 8px;
 }
@@ -4513,6 +4714,36 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	--workspace-left-column: var(--panel-rail-w, 0px);
 	--workspace-right-column: var(--workspace-sidebar-w, 0px);
 }
+/* Share the overlay with the app controls even in a collapsed layout. The
+ * sidebar and rail widths are the physical distances already spent. */
+:root [data-desktop-navigation-shell] [data-workspace-tabs] {
+	--workspace-left-column: var(--workspace-sidebar-w, 0px);
+	--workspace-right-column: var(--panel-rail-w, 0px);
+	position: relative;
+	z-index: 31;
+	margin-block-start: calc(-1 * var(--app-navigation-row-h));
+	min-height: var(--app-navigation-row-h);
+	padding-left: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-left) +
+			8px -
+			var(--workspace-left-column)
+		)
+	);
+	padding-right: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-right) +
+			8px -
+			var(--workspace-right-column)
+		)
+	);
+}
+:root [data-desktop-navigation-shell] [data-workspace-tabs]:dir(rtl) {
+	--workspace-left-column: var(--panel-rail-w, 0px);
+	--workspace-right-column: var(--workspace-sidebar-w, 0px);
+}
 [data-workspace-tab-spacer] {
 	align-self: stretch;
 	flex: 1 0 32px;
@@ -4540,9 +4771,23 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
  * blended into the strip. So the contrast is now made by ABSENCE as much as by
  * fill: an inactive tab paints nothing at rest (muted ink) and takes the
  * sidebar's `row-hover` only under the pointer; the active tab alone carries an
- * opaque `row-selected` ground, full ink at weight 500, and a 2px accent rule
- * along its bottom edge. Tokens only, no border or pill outline (design
- * direction). `scripts/workspace-tabs.test.mjs` holds this.
+ * opaque `row-selected` ground and full ink at weight 500. Tokens only, no
+ * border or pill outline (design direction).
+ *
+ * SELECTED = BRIGHTENING, NO RAIL (operator, 2026-11-25: "I hate the bottom
+ * border rail style of highlight on the tab, please remove that and we'll just
+ * leave the brightening but no rail, that looks super dated"). The 2px accent
+ * `::after` mark that sat along the active tab's bottom edge is gone; the ground
+ * and ink above are the whole treatment. `scripts/workspace-tabs.test.mjs`
+ * holds this and fails if a rail returns as an `::after` or a box-shadow.
+ *
+ * BRIGHTER SELECTED GROUND (operator approved design D1 on PR #2109: "Brighten
+ * the selected tab a little"). With the rail gone, plain `row-selected` sat
+ * only ~1.04:1 from the `row-hover` a neighbour takes under the pointer, so
+ * selected and hovered tabs read alike. Mixing 4% `ink` into `row-selected`
+ * lifts that to ~1.17:1 in dark and ~1.13:1 in light. It is scoped to this
+ * rule on purpose: hover keeps `row-hover`, and no theme token moves, so every
+ * other `row-selected` consumer is unchanged.
  */
 [data-workspace-tab] {
 	--workspace-tab-fill: transparent;
@@ -4555,9 +4800,8 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	flex: 0 0 auto;
 	color: var(--color-ink-muted);
 }
-/* In the 32px lane, a 28px tab already leaves 2px outside its hit box.
- * Inset only the paint by another 2px per edge for 4px of visible air,
- * without growing the no-drag scrollports or touching the button targets. */
+/* Inset the paint inside the larger hit box, keeping the tab row airy
+ * without reducing its pointer target. */
 [data-workspace-tab]::before {
 	content: "";
 	position: absolute;
@@ -4572,20 +4816,12 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	--workspace-tab-fill: var(--color-row-hover);
 }
 [data-workspace-tab][data-active] {
-	--workspace-tab-fill: var(--color-row-selected);
+	--workspace-tab-fill: color-mix(
+		in srgb,
+		var(--color-row-selected) 96%,
+		var(--color-ink)
+	);
 	color: var(--color-ink);
-}
-/* The indicator sits inside the paint's 2px inset, inset 8px from each end so
- * it reads as a mark on the tab, not a strip-wide underline. */
-[data-workspace-tab][data-active]::after {
-	content: "";
-	position: absolute;
-	inset-block-end: 2px;
-	inset-inline: 8px;
-	height: 2px;
-	border-radius: 1px;
-	background: var(--color-accent);
-	pointer-events: none;
 }
 [data-workspace-tab][data-active] > button[aria-current] {
 	font-weight: 500;

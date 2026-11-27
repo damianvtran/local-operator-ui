@@ -953,6 +953,14 @@ export class TabRegistry {
 		}
 	}
 
+	/** Whether a command holds this tab's lane right now. A read for callers
+	 * that must not act on a tab an agent is driving (the passkey-continue
+	 * refresh, `passkey-continue-link.ts`) and that would rather skip than queue
+	 * or be refused mid-way. */
+	isBusy(tabId: number): boolean {
+		return this.busy.has(tabId);
+	}
+
 	// ---- layout, visibility, activation --------------------------------------
 
 	/** The renderer owns presentation geometry, not whether a background renderer

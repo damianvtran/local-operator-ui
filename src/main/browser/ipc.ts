@@ -253,6 +253,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
 	"browser-passkey-notice-continue",
+	"browser-passkey-continued-dismiss",
 	"browser-open-user-attention",
 	"browser-media-permission-decide",
 	"browser-media-permission-open-settings",
@@ -737,6 +738,16 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				numberOrThrow(at, "at"),
 			);
 		},
+	);
+
+	/*
+	 * Dismiss on the strip a passkey-continue copy shows ("Finish signing in
+	 * here. Keep the agent's tab open…", `passkey-continue-link.ts`). Takes a tab
+	 * id only and can only hide that strip: the link and its one refresh are
+	 * untouched, so nothing a renderer sends here moves authority.
+	 */
+	ipcMain.handle("browser-passkey-continued-dismiss", (event, tabId: unknown) =>
+		authorize(event).dismissPasskeyContinued(tabIdOrThrow(tabId, "tabId")),
 	);
 
 	// A sidebar notification row's click: see `userAttention` above.

@@ -850,11 +850,7 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
 	].find((b) => (b.textContent ?? "").startsWith("Settled"));
 	if (!chip) throw new Error("the zero-count chip is not rendered");
-	assert.equal(
-		chip.textContent,
-		"Settled · 0",
-		"the chip counts the empty half",
-	);
+	assert.equal(chip.textContent, "Settled 0", "the chip counts the empty half");
 	await act(async () => {
 		chip.click();
 	});
@@ -870,7 +866,7 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 	);
 	assert.ok(
 		[...view.container.querySelectorAll("[data-lo-ask-filter] button")].some(
-			(b) => b.textContent === "Pending · 1",
+			(b) => b.textContent === "Pending 1",
 		),
 		"the half is named `Pending`, the opposite of `Settled` (design round 1 on #1116, D1)",
 	);
@@ -958,8 +954,18 @@ test("the bar counts the Pending half, and a timed-out-only drawer is settled (d
 		}),
 	);
 	const scope = view.container.querySelector("[data-ask-scope]");
+	/*
+	 * THE WIDE REGISTER, not the bar's whole text: below its 520px breakpoint the bar
+	 * draws the clause alone, so both registers are in the DOM at once and only the
+	 * marked one can be read as the sentence. `[data-ask-scope-clause]` is the narrow
+	 * half (see the bar's own note).
+	 */
+	assert.ok(
+		scope?.querySelector("svg"),
+		"below the 520px register the scope glyph is what names the queue",
+	);
 	assert.equal(
-		scope?.textContent,
+		scope?.querySelector("[data-ask-scope-line]")?.textContent,
 		"This conversation · 1 question waiting",
 		"the timed-out ask is a settled row, and settled rows are not in the title",
 	);
@@ -968,7 +974,7 @@ test("the bar counts the Pending half, and a timed-out-only drawer is settled (d
 		h(AskDrawer, { frontend: frontend([movedOn]), scope: "session" }),
 	);
 	assert.equal(
-		lapsedOnly.container.querySelector("[data-ask-scope]")?.textContent,
+		lapsedOnly.container.querySelector("[data-ask-scope-line]")?.textContent,
 		"This conversation · All asks settled",
 	);
 	const pendingChip = [
@@ -1244,7 +1250,7 @@ test("a filter press releases every hold, and a lapse under Pending leaves only 
 		true,
 		"Pending is not empty, so no sentence is inserted above a-2",
 	);
-	assert.equal(chip(view, "Pending").textContent, "Pending · 1");
+	assert.equal(chip(view, "Pending").textContent, "Pending 1");
 	/* The last pending ask lapses too: Pending is truly 0, so the sentence is owed. */
 	await view.rerender(
 		h(AskDrawer, {
@@ -2027,6 +2033,110 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 	assert.equal(production?.getAttribute("aria-checked"), "false");
 });
 
+/*
+ * THE ID IS VISIBLE, AND ITS COPY CONTROL IS A REAL BUTTON (design spec D13/S2).
+ *
+ * The card used to draw the id as a blank span whose only content was a hover
+ * `title` - unreadable to touch and to the keyboard, uncopyable, and invisible in
+ * a screenshot - so the one string a user quotes back at the agent was the one
+ * thing on the card nobody could read. This pins the replacement: text on the
+ * card, a labelled control, and the id verbatim on the clipboard.
+ */
+test("the ask id is visible on the card and its copy control copies it", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onDraftChange: () => undefined,
+		}),
+	);
+	const row = view.container.querySelector('[data-lo-ask-row="a-7f3c"]');
+	assert.ok(row?.textContent.includes("a-7f3c"), "the id is visible text");
+	assert.equal(
+		row?.querySelector('[title="a-7f3c"]'),
+		null,
+		"no blank span carries the id only in a title",
+	);
+	const copy = row?.querySelector('button[aria-label="Copy ask id a-7f3c"]');
+	assert.ok(copy, "the id carries a labelled copy control");
+
+	const writes = [];
+	/*
+	 * `navigator` in the bundle is Node's global, not the JSDOM window's: the
+	 * component (like the shared `CopyButton`) reads the bare global, so this
+	 * stubs the global and puts the original back afterwards.
+	 */
+	const navigatorDescriptor = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"navigator",
+	);
+	Object.defineProperty(globalThis, "navigator", {
+		configurable: true,
+		value: {
+			clipboard: {
+				writeText: async (value) => {
+					writes.push(value);
+				},
+			},
+		},
+	});
+	try {
+		await act(async () => copy.click());
+		assert.deepEqual(writes, ["a-7f3c"], "the id is copied verbatim");
+		assert.ok(
+			row.textContent.includes("Copied"),
+			"the control confirms the press",
+		);
+	} finally {
+		if (navigatorDescriptor === undefined) {
+			Reflect.deleteProperty(globalThis, "navigator");
+		} else {
+			Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+		}
+	}
+});
+
+/*
+ * THE SETTLED ROW'S ID MOVES TO THE FRAME'S FOOT WHEN IT OPENS (design spec S3).
+ * The collapsed row carries the id at its end - so a Withdrawn ask leaves a trace
+ * outside the chat message that mentioned it - and the expanded frame carries the
+ * copyable one. Drawing both would print the same token twice, 20px apart.
+ */
+test("a settled row shows the id, and the expanded frame owns its copy control", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([settled("declined", "a-declined")]),
+			scope: "session",
+		}),
+	);
+	const row = view.container.querySelector("[data-lo-ask-settled]");
+	const trigger = row?.querySelector("button[aria-expanded]");
+	assert.ok(row?.textContent.includes("a-declined"), "the id is on the row");
+	assert.ok(
+		trigger?.getAttribute("aria-label")?.endsWith(", a-declined"),
+		"the trigger's name carries the id",
+	);
+	assert.equal(
+		row?.querySelector('button[aria-label="Copy ask id a-declined"]'),
+		null,
+		"the collapsed row shows the id quietly, with no copy control",
+	);
+
+	await act(async () => trigger.click());
+	assert.equal(trigger.getAttribute("aria-expanded"), "true", "the row opened");
+	assert.equal(
+		row?.querySelector("[data-lo-ask-id]"),
+		null,
+		"the row's own id steps aside while the frame is open",
+	);
+	assert.ok(
+		row?.querySelector('button[aria-label="Copy ask id a-declined"]'),
+		"the expanded frame's foot owns the copy control",
+	);
+});
+
 test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
 	// The recommendation is a mark of its OWN, and the selection is the draft's
 	// ground plus its drawn radio. The two must be readable at once, and the
@@ -2072,16 +2182,23 @@ test("the recommendation survives the selection moving (operator ask, 2026-10-04
 		stagingText.includes("Recommended"),
 		"the advice is still on the row after the selection moved",
 	);
-	// Not colour alone: the glyph is what survives a colour-blind reader, a
-	// greyscale screenshot and the terminal's own badge.
-	assert.ok(stagingText.includes("▸"), "the mark carries its glyph");
-	// The label is bolded where it is recommended - the half of the signal that
-	// survives a reader who skims past the badge.
+	/*
+	 * THE PILL IS THE MARK, AND THE LABEL KEEPS ITS WEIGHT (design spec, D5).
+	 * The drawer's rows used to bold the recommended label; a list where only some
+	 * labels carry a weight step reads as two kinds of row, so the badge is now an
+	 * object beside the label and no row changes weight.
+	 */
+	const recommendedMark = Array.from(
+		staging?.querySelectorAll("span") ?? [],
+	).find((element) => element.textContent === "Recommended");
 	assert.ok(
-		(staging?.querySelector(".font-semibold")?.textContent ?? "").includes(
-			"staging",
-		),
-		"the recommended option's label is emphasised",
+		recommendedMark?.className.includes("rounded-full"),
+		"the mark is drawn as a pill",
+	);
+	assert.equal(
+		staging?.querySelector(".font-semibold"),
+		null,
+		"the recommended label is not bolded (D5)",
 	);
 	assert.equal(
 		production?.querySelector(".font-semibold"),
@@ -2164,10 +2281,11 @@ test("the drawer badges nothing for an index that is not a real row", async () =
 	}
 
 	// And a REAL index that is not 0 still marks exactly the row it names - which
-	// is what rules out a "truthiness" read resolving it to index 0.
+	// is what rules out a "truthiness" read resolving it to index 0. No row is
+	// bolded for it: the D5 mark is the pill, applied by the rendering itself.
 	const real = await marked(2);
 	assert.deepEqual(real.badged, ["sandbox"]);
-	assert.deepEqual(real.bolded, ["sandbox"]);
+	assert.deepEqual(real.bolded, []);
 });
 
 /*
@@ -2218,20 +2336,20 @@ test("a multi-select ask marks every recommended row and ticks none", async () =
 		return result;
 	};
 
-	// A set of two: both rows carry the bold label and the badge.
+	// A set of two: both rows carry the badge, and neither is bolded (D5).
 	const two = await probe({
 		multi: true,
 		recommended: 0,
 		recommended_all: [0, 1],
 	});
 	assert.deepEqual(two.badged, ["staging", "production"]);
-	assert.deepEqual(two.bolded, ["staging", "production"]);
+	assert.deepEqual(two.bolded, []);
 	assert.deepEqual(two.checked, [], "the recommendation never pre-ticks a row");
 
 	// An old backend: `recommended` alone still marks exactly one row.
 	const old = await probe({ multi: true, recommended: 0 });
 	assert.deepEqual(old.badged, ["staging"]);
-	assert.deepEqual(old.bolded, ["staging"]);
+	assert.deepEqual(old.bolded, []);
 	assert.deepEqual(old.checked, []);
 
 	// A null set is the same as an absent one.
@@ -2254,7 +2372,7 @@ test("a multi-select ask marks every recommended row and ticks none", async () =
 		recommended_all: [0, 99, -1, 1.5, "1", Number.NaN],
 	});
 	assert.deepEqual(partial.badged, ["staging"]);
-	assert.deepEqual(partial.bolded, ["staging"]);
+	assert.deepEqual(partial.bolded, []);
 
 	// A set with no usable entry falls back to `recommended`, the first member.
 	const unusable = await probe({
@@ -2324,5 +2442,83 @@ test("a door-opened drawer lands on the answer, not on the suggested command's C
 		{ tag: withCommand.tag, text: withCommand.text },
 		{ tag: plain.tag, text: plain.text },
 		"and lands where it lands on the same ask without a command",
+	);
+});
+
+/*
+ * THE SETTLED ROW'S IDENTITY IS THE ASK, NOT ITS POSITION (agent review round 1, M1).
+ *
+ * `SettledRow` owns its row's `open` state and the settled half is newest-first, so an
+ * insertion above an expanded row is an ordinary event (another ask settles) - and an
+ * unkeyed list reconciles that by POSITION, which moves the expansion onto its
+ * neighbour. The `Disclosure` used to carry `key={ask_id}`; this pins that the wrapper
+ * carries it now, with the row's own state as the witness rather than the markup.
+ */
+test("an expanded settled row stays open when a newer ask is inserted above it (agent review round 1, M1)", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([settled("declined", "a-old")]),
+			scope: "session",
+		}),
+	);
+	const triggerOf = (id) =>
+		[
+			...view.container.querySelectorAll(
+				"[data-lo-ask-settled] button[aria-expanded]",
+			),
+		].find((button) => button.getAttribute("aria-label")?.endsWith(`, ${id}`));
+	const opened = triggerOf("a-old");
+	assert.ok(opened, "the settled row is drawn");
+	await act(async () => {
+		opened.click();
+	});
+	assert.equal(
+		triggerOf("a-old")?.getAttribute("aria-expanded"),
+		"true",
+		"the row opened",
+	);
+
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([
+				{
+					...settled("answered", "a-new"),
+					delivered: true,
+					created_at: TS + 10 * 60_000,
+				},
+				settled("declined", "a-old"),
+			]),
+			scope: "session",
+		}),
+	);
+	/*
+	 * THE SAME NODE, WHICH IS THE MECHANISM RATHER THAN A SYMPTOM. React's own key
+	 * warning is a poor witness here: it is emitted once per component in a dev run, so
+	 * by the time this test renders, another test in this file has usually spent it -
+	 * measured, the warning printed from the unkeyed control run and this assertion
+	 * still read empty. A keyed child is REUSED for its ask when another is inserted
+	 * above it; an unkeyed one is reused for its POSITION, which mounts a fresh,
+	 * collapsed row for `a-old` and leaves the expansion on `a-new`.
+	 */
+	/*
+	 * IDENTITY, COMPARED AS A BOOLEAN (QA round 2, m1): `assert.equal` on two jsdom nodes
+	 * serialises the DOM into the failure message when it mismatches, and the mutated run
+	 * was killed by the machine's memory guard before it could print. `===` keeps the
+	 * witness - and the message - small.
+	 */
+	assert.ok(
+		triggerOf("a-old") === opened,
+		"the expanded settled row must be the same DOM node after an ask is inserted above it",
+	);
+	assert.equal(
+		triggerOf("a-old")?.getAttribute("aria-expanded"),
+		"true",
+		"the open row is the ask that was opened, whatever arrived above it",
+	);
+	assert.equal(
+		triggerOf("a-new")?.getAttribute("aria-expanded"),
+		"false",
+		"the newcomer takes its own state, not the position's",
 	);
 });

@@ -7,6 +7,11 @@ export type SnapshotReceipt = {
 	streamId: string;
 	sessionId: string;
 	chars: number;
+	// First-paint requests only. These observations use one monotonic clock
+	// mapped to epoch for joining; they do not measure any server phase.
+	mainFetchStartEpochMs?: number;
+	mainHeadersEpochMs?: number;
+	mainFirstDataEpochMs?: number;
 	mainRecordEpochMs: number;
 	mainFoldMs: number;
 	mainObserverMs: number;
@@ -66,6 +71,13 @@ export function formatSnapshotReceipt(
 		`streamId=${STREAM_ID.test(r.streamId) ? r.streamId : "?"}`,
 		"kind=snapshot", // i18n: ignore -- Technical record kind
 		`chars=${r.chars}`,
+		...(r.mainFetchStartEpochMs === undefined
+			? []
+			: [
+					`mainFetchStartEpochMs=${ms(r.mainFetchStartEpochMs)}`,
+					`mainHeadersEpochMs=${ms(r.mainHeadersEpochMs)}`,
+					`mainFirstDataEpochMs=${ms(r.mainFirstDataEpochMs)}`,
+				]),
 		`mainRecordEpochMs=${ms(r.mainRecordEpochMs)}`,
 		`mainFoldMs=${ms(r.mainFoldMs)}`,
 		`mainObserverMs=${ms(r.mainObserverMs)}`,

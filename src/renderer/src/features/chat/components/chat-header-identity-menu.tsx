@@ -532,6 +532,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				sideOffset={6}
 				collisionPadding={8}
 				className={cn("flex w-80 flex-col gap-0.5 p-1")}
+				data-lo-floating-finish=""
 				data-header-identity-menu={kind}
 				data-header-identity-closed=""
 				/*
@@ -590,6 +591,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				IDENTITY_MENU_MAX_HEIGHT_CLASS,
 				"overflow-hidden",
 			)}
+			data-lo-floating-finish=""
 			data-header-identity-menu={kind}
 			/*
 			 * The popup is a CONTAINER, and Radix's own `role="dialog"` would be a lie

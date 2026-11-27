@@ -84,6 +84,7 @@ import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { Spinner } from "@shared/components/common/spinner";
 import { UpdateNotification } from "@shared/components/common/update-notification";
+import { desktopHistoryKeepsFocus } from "@shared/components/navigation/desktop-navigation-focus";
 import {
 	SidebarNavigation,
 	StripFeedKeeper,
@@ -665,7 +666,7 @@ const App: FC = () => {
 					setConsoleActiveSurface(surface);
 					setConsolePaneOpen(true);
 				}
-				navigate("/chat");
+				navigate(sessionId === null ? "/chat" : `/chat/${sessionId}`);
 			},
 		);
 		return () => unsubscribe?.();
@@ -731,6 +732,7 @@ const App: FC = () => {
 				)
 					return;
 				setActiveSession(payload.session_id);
+				navigate(`/chat/${payload.session_id}`);
 			}
 			setConsoleActiveSurface(payload.surface);
 			setConsolePaneOpen(true);
@@ -739,6 +741,7 @@ const App: FC = () => {
 	}, [
 		displayedSessionId,
 		isCommandPaletteOpen,
+		navigate,
 		setActiveSession,
 		setConsolePaneOpen,
 		setConsoleActiveSurface,
@@ -796,7 +799,7 @@ const App: FC = () => {
 			}
 			setActiveSession(target.sessionId);
 			setBrowserPaneOpen(true);
-			navigate("/chat");
+			navigate(`/chat/${target.sessionId}`);
 		});
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
@@ -849,6 +852,15 @@ const App: FC = () => {
 			}
 			if (!shouldStartNewChat(event)) return;
 			event.preventDefault();
+			// New Chat is an explicit handoff to the draft composer, not a
+			// continuation of Back/Forward. Release the persistent control before
+			// staging, including when the draft opens at the same /chat address.
+			const previousFocus = document.activeElement;
+			if (
+				previousFocus instanceof HTMLElement &&
+				desktopHistoryKeepsFocus(previousFocus)
+			)
+				previousFocus.blur();
 			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
 			navigate("/chat");
 		};
@@ -1177,6 +1189,7 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						insetRouteBody
+						showDesktopNavigation
 						showChatRail={placement === "chat"}
 						/*
 						 * `StripFeedKeeper` replaces the navigation's catalogue feed while it is

@@ -203,3 +203,57 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 		</output>
 	);
 };
+
+export interface BrowserPasskeyContinuedStripProps {
+	/** Main's `passkeyContinued` for the active tab, or null/absent. */
+	view: { tabId: number } | null | undefined;
+	onDismiss: (tabId: number) => void;
+}
+
+/**
+ * The band the user's NEW tab shows after "Continue in your own tab" succeeded:
+ * finish signing in here, keep the agent's tab, and what to do if that tab
+ * still shows the sign-in page.
+ *
+ * WHY A BAND AND NOT A TOAST (review Q1/D1). The notice that explained the
+ * hand-off unmounts with the switch to this tab, which is the moment the user
+ * starts acting, and the incident (a-7942) was the agent's tab going away. A
+ * toast was tried first and was never seen: on the Browser route the app's
+ * toaster corner lies inside the page's `WebContentsView`, which is painted
+ * above the app's DOM (`browser-view-policy.ts`). The chrome band above the
+ * page is never occluded, so the strip lives where the passkey notice does and
+ * is built like it. No timer: it stays until dismissed or the tab closes,
+ * because its fallback sentence matters most after the agent's tab reloaded.
+ *
+ * WHAT IT MAY CLAIM. Only what main does: the agent's tab is reloaded once, in
+ * the background, when the sign-in here visibly finishes, and not at all when
+ * that cannot be established. So the reload is stated with its condition and a
+ * fallback the user can act on, never as a promise that sign-in succeeds.
+ */
+export const BrowserPasskeyContinuedStrip: FC<
+	BrowserPasskeyContinuedStripProps
+> = ({ view, onDismiss }) => {
+	useI18nLocale();
+	if (!view) return null;
+	return (
+		<output
+			aria-live="polite"
+			data-tour-tag="browser-passkey-continued"
+			className="flex items-center gap-x-3 border-control border-b bg-surface px-3 py-1.5"
+		>
+			<KeyRound aria-hidden className="size-4 shrink-0 text-ink-muted" />
+			<p className="min-w-0 grow text-body-sm text-ink">
+				{t("ui.browser.browser_passkey_notice.continued_here")}
+			</p>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				className="shrink-0"
+				aria-label={t("ui.browser.browser_passkey_notice.dismiss")}
+				onClick={() => onDismiss(view.tabId)}
+			>
+				<X aria-hidden className="size-3.5" />
+			</Button>
+		</output>
+	);
+};

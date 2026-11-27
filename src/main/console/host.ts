@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { homedir, constants as osConstants } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
+import {
+	DRAFT_CONSOLE_OWNER,
+	isDraftConsoleOwner,
+} from "../../shared/console-owner";
 import { defaultShell } from "../shell-path";
 import { ByteLog, type ByteLogSlice } from "./byte-log";
 import { hasTerminalContent } from "./capture";
@@ -845,11 +849,28 @@ export class ConsoleHost {
 		}
 	}
 
-	/** Keep RPC ownership validation at the host boundary without exposing the
-	 * registry or its foreign runtimes. The caller decides whether an owner was
-	 * supplied, preserving older nonce-capability clients that omit it. */
-	assertOwned(surface: string, owner: string): void {
-		this.registry.requireOwned(surface, owner);
+	/**
+	 * Keep RPC ownership validation at the host boundary without exposing the
+	 * registry or its foreign runtimes.
+	 *
+	 * THE CALLER MAY OMIT THE OWNER, and that is the capability-compatible legacy
+	 * form the wire still accepts — but a surface held by the PENDING LOCAL CONSOLE is
+	 * refused whether or not an owner was supplied. The fence is read off the RECORD
+	 * rather than off the parameter, which is what makes "name the handle and say
+	 * nothing else" no way to reach a draft's terminal: a person's in-progress shell
+	 * is not a session's until its first message is accepted
+	 * (`adoptPendingConsole`), so no caller on the agent wire may touch it.
+	 */
+	assertOwned(surface: string, owner: string | undefined): void {
+		const entry = this.registry.require(surface);
+		if (isDraftConsoleOwner(entry.record.sessionId)) {
+			throw new ConsoleError(
+				"surface_not_owned",
+				"this surface belongs to a local draft's console and no conversation yet",
+				{ surface: redactSurface(surface) },
+			);
+		}
+		if (owner !== undefined) this.registry.requireOwned(surface, owner);
 	}
 
 	/** Every surface, optionally one session's, as the wire reports it. */
@@ -1481,6 +1502,51 @@ export class ConsoleHost {
 					null,
 			})),
 		};
+	}
+
+	/**
+	 * ATTACH THE PENDING LOCAL CONSOLE TO THE CONVERSATION ITS DRAFT'S FIRST SEND MADE.
+	 *
+	 * A New Conversation's pane creates real shells under `DRAFT_CONSOLE_OWNER`
+	 * (`src/shared/console-owner.ts` states why one identifier serves every draft).
+	 * The first message the owner accepts tells this host the conversation's id, and
+	 * this is the move: every pending surface becomes that conversation's — same
+	 * handle, same pty, same log, same emulator — so the pane of the conversation the
+	 * user is now in is showing the terminal they were typing into, not a fresh one.
+	 *
+	 * THE HISTORY MOVES FIRST (see `ConsoleHistory.adoptSession`), and only then the
+	 * records: a failure between the two leaves the surfaces pending, which the user
+	 * can still see and use, rather than a record claiming an owner whose files are
+	 * somewhere else. `onChanged` after both is what lets every open pane re-read the
+	 * listing without a poll.
+	 *
+	 * NOTHING IS ADOPTED FOR A SEND THAT FAILED, by construction rather than by a
+	 * check here: the renderer calls this only from `finishDraft`, which runs on an
+	 * accepted message.
+	 *
+	 * A target that names the pending owner itself is refused: the move exists to give
+	 * the surfaces a real conversation, and adopting the constant onto itself would be
+	 * a request with no conversation in it.
+	 */
+	adoptPendingConsole(sessionId: string): { adopted: string[] } {
+		if (isDraftConsoleOwner(sessionId)) {
+			throw new ConsoleError(
+				"surface_not_owned",
+				`${DRAFT_CONSOLE_OWNER} is not a conversation; it cannot own adopted surfaces`,
+				{},
+			);
+		}
+		const pending = this.registry.list(DRAFT_CONSOLE_OWNER);
+		if (pending.length === 0) return { adopted: [] };
+		const surfaces = pending.map((entry) => entry.record.surface);
+		this.options.history?.adoptSession(
+			DRAFT_CONSOLE_OWNER,
+			sessionId,
+			surfaces,
+		);
+		const adopted = this.registry.adopt(DRAFT_CONSOLE_OWNER, sessionId);
+		if (adopted.length > 0) this.options.onChanged?.();
+		return { adopted };
 	}
 
 	/** Producer of the surface's own output: the pty's data, in order. This is the

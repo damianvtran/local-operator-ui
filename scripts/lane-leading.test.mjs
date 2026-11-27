@@ -53,6 +53,8 @@ const ROUTE_CHROME_WRAPPER =
 const STRIP_CHROME_ROLE = /data-glass-region="chrome"/;
 const NESTED_CHROME_TRANSPARENT =
 	/html\[data-glass~="pane"\]\s*\[data-browser-route-chrome\]\s*\[data-glass-region="chrome"\]\s*\{\s*background-color: transparent;\s*\}/;
+const CONSOLE_PANE =
+	"src/renderer/src/features/console/components/console-pane.tsx";
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
@@ -86,7 +88,14 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
 		classes: [
-			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
+			/*
+			 * The WHOLE `className={cn(...)}` expression, as biome lays it out, and not
+			 * the bare class string: a bare string is found anywhere in the file, so a
+			 * dead or disabled copy of it would satisfy the entry while the root wore
+			 * something else. `@container/asks` trails the ground (the container class
+			 * is not part of the panel contract).
+			 */
+			'className={cn(\n\t\t\t\t"panel-top-pad flex h-full flex-col bg-elevated @container/asks",\n\t\t\t)}',
 		],
 	},
 	{
@@ -115,11 +124,21 @@ const PANEL_COLUMNS = [
 		],
 	},
 	{
-		path: "src/renderer/src/features/console/components/console-pane.tsx",
-		classes: [
-			'className={cn("panel-top-pad flex h-full flex-col bg-elevated")}',
-			'"panel-top-pad relative flex h-full flex-col bg-elevated @container/consolepane"',
-		],
+		/*
+		 * ONE root, read as tokens. Base kept TWO `panel-top-pad` roots in this file
+		 * - the draft notice's column and the console's own - and this entry listed
+		 * both literals, so it kept asking for a notice this PR deletes along with
+		 * the pad the console really wears. `relative` and `@container/consolepane`
+		 * sit between the pad and the ground, so a literal would also make an
+		 * unrelated utility's position part of the contract; the facts this entry
+		 * exists for (the shared pad, a full-height column, the ground it paints)
+		 * stay independently required instead.
+		 */
+		path: CONSOLE_PANE,
+		root: {
+			marker: 'data-tour-tag="console-pane"',
+			required: ["panel-top-pad", "flex", "h-full", "flex-col", "bg-elevated"],
+		},
 	},
 	{
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
@@ -144,8 +163,48 @@ const PANEL_COLUMNS = [
 	},
 ];
 
+/**
+ * One utility, as a whole token: `bg-elevated` must not be satisfied by
+ * `hover:bg-elevated`, nor `panel-top-pad` by a longer name that merely
+ * contains it.
+ */
+const utility = (token) => new RegExp(`(?<![\\w:./-])${token}(?![\\w/-])`);
+
+/**
+ * Read ONE root element's own class expression, located by the marker attribute
+ * the element carries, and require each utility in it independently.
+ *
+ * Ordered adjacency is deliberately NOT part of the contract: a root grows
+ * utilities between its pad and its ground (`relative`, `@container/*`), and a
+ * literal that pins their order fails on a change that altered nothing about the
+ * strip. What the entry is for survives - drop `panel-top-pad` and the panel's
+ * first row starts under the traffic lights; swap the ground and the strip shows
+ * the wrong tone - because each token is read on its own.
+ */
+function assertRootTokens(path, source, { marker, required }) {
+	const at = source.indexOf(marker);
+	assert.notEqual(
+		at,
+		-1,
+		`${path}: no element carries ${marker}, so this file cannot say which root it is asserting about. A root that lost its marker has to be re-read before this entry can claim anything`,
+	);
+	const open = source.lastIndexOf("className=", at);
+	assert.ok(
+		open !== -1 && at - open < 2000,
+		`${path}: the element carrying ${marker} has no class expression of its own before it - the root is asserted from the element's own class string, so this file must be re-read`,
+	);
+	const expression = source.slice(open, source.indexOf("}", open) + 1);
+	for (const token of required) {
+		assert.match(
+			expression,
+			utility(token),
+			`${path}: the root carrying ${marker} lost \`${token}\`. A panel that does not wear panel-top-pad starts its first row under the traffic lights, and one that paints from y32 leaves the wrong ground in the strip - the seam the operator reported three times`,
+		);
+	}
+}
+
 test("every full-height panel owns the strip and pads its own first row", () => {
-	for (const { path, classes } of PANEL_COLUMNS) {
+	for (const { path, classes = [], root } of PANEL_COLUMNS) {
 		const source = readSource(path);
 		for (const literal of classes) {
 			assert.ok(
@@ -153,6 +212,7 @@ test("every full-height panel owns the strip and pads its own first row", () => 
 				`${path} lost a migrated panel: expected ${literal}. A panel that does not wear panel-top-pad starts its first row under the traffic lights, and one that paints from y32 leaves the wrong ground in the strip - the seam the operator reported three times`,
 			);
 		}
+		if (root) assertRootTokens(path, source, root);
 	}
 });
 
@@ -446,7 +506,7 @@ test("the lane is one transparent overlay, and no route opts out", () => {
 	);
 	assert.match(
 		layout,
-		/"--panel-top-pad": "var\(--chrome-strip-h\)"/,
+		/"--panel-top-pad":\s*"var\(--app-navigation-row-h, var\(--chrome-strip-h\)\)"/,
 		"the content column must publish the strip's height to every route, unconditionally",
 	);
 });
@@ -536,23 +596,16 @@ test("no route column draws a right rule any more", () => {
 	);
 });
 
-test("the chat header's title starts on the content column's inset (operator, 2026-11-25)", () => {
+test("the chat header's title uses a 16px logical start inset", () => {
 	/*
-	 * "There needs to be more left padding on the title ... it's too tight to
-	 * the left". The title leads the header row, so the row's start padding IS
-	 * the title's left edge, and it must equal the column's left inset
-	 * (`CHAT_COLUMN_INSET`, 24px = the transcript's p-4 + its 8px scrollbar
-	 * gutter; the text's own edge only below `CHAT_MEASURE`). The EFFECTIVE
-	 * value is what counts: an unlayered `[data-chat-region="header"]` rule in
-	 * index.css beats the utility, which is how QA round 3 measured 4px with
-	 * `ps-6` in the source. The padding lives on the ROW, not the h2, so the rename input
-	 * shares the edge; the h2 and the input must carry no start inset of their
-	 * own or the edit would jump.
+	 * The 24px transcript gutter looked too wide beside the whitespace above
+	 * the title. The row uses ps-4 instead, so the title and its rename input
+	 * share the same 16px start edge without changing the toolbar height.
+	 * The effective value counts: an unlayered header rule in index.css once
+	 * beat the row utility, leaving only 4px.
 	 */
 	const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
-	const measure = readSource("src/renderer/src/features/chat/chat-measure.ts");
-	const inset = measure.match(/export const CHAT_COLUMN_INSET = "px-(\d+)";/);
-	assert.ok(inset, "CHAT_COLUMN_INSET must stay a px-<n> token");
+	const TITLE_START = "4";
 	const ROW =
 		/"@container\/chathdr flex min-h-10 shrink-0 items-center gap-3 ([^"]*)"/;
 	const leadingOf = (source) => {
@@ -564,8 +617,8 @@ test("the chat header's title starts on the content column's inset (operator, 20
 	const header = readSource(HEADER);
 	assert.equal(
 		leadingOf(header),
-		inset[1],
-		"the header row's logical start padding must equal the content column inset",
+		TITLE_START,
+		"the header row's logical start padding must be 16px (ps-4)",
 	);
 	assert.doesNotMatch(
 		header,
@@ -585,11 +638,9 @@ test("the chat header's title starts on the content column's inset (operator, 20
 
 	/*
 	 * The stylesheet must not take the start edge back. Any rule whose selector
-	 * names the header region and sets a start padding (logical, physical left,
-	 * or a shorthand) either equals the inset or does not exist; only the
-	 * utility should own it, so we require none.
+	 * names the header region must leave start padding (logical, physical left,
+	 * or a shorthand) to the row utility, even in the framed workspace.
 	 */
-	const insetPx = Number(inset[1]) * 4;
 	const startPaddingRules = (css) => {
 		const found = [];
 		for (const [, selector, body] of css
@@ -609,9 +660,9 @@ test("the chat header's title starts on the content column's inset (operator, 20
 	assert.deepEqual(
 		startPaddingRules(css),
 		[],
-		`no stylesheet rule may set the chat header's start padding; the row's ps-${inset[1]} (${insetPx}px) owns it`,
+		"no stylesheet rule may set the chat header's start padding; the row's ps-4 owns it",
 	);
-	// Negative control: the round-3 rule that overrode ps-6 with 4px.
+	// Negative control: the round-3 rule that overrode the row with 4px.
 	const regressed = css.replace(
 		/(\[data-workspace-inset\] > \[data-chat-region="header"\] \{)/,
 		"$1\n\tpadding-inline-start: 4px;",
@@ -622,14 +673,13 @@ test("the chat header's title starts on the content column's inset (operator, 20
 		1,
 		"the guard must catch the old 4px start padding",
 	);
-	// Negative control: the pre-fix `px-4` row has no matching start inset.
-	const before = header.replace(
-		ROW,
-		'"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 px-4"',
-	);
+	// Negative control: the prior row reused the transcript's 24px inset.
+	const before = header.replace(ROW, (row) => row.replace("ps-4", "ps-6"));
+	assert.notEqual(before, header, "control mutation applied");
+	assert.equal(leadingOf(before), "6", "control restores the old 24px inset");
 	assert.notEqual(
 		leadingOf(before),
-		inset[1],
-		"the guard must reject the old px-4 row",
+		TITLE_START,
+		"the guard must reject the old ps-6 row",
 	);
 });

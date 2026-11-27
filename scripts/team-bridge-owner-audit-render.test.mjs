@@ -155,6 +155,7 @@ const bundle = await build({
  export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
+			export { MemoryRouter, useLocation } from "react-router-dom";
  export { useOwnerAuditStartupScene } from "./src/renderer/src/dev-driver/owner-audit-startup";
  export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
 			export { radientUserKeys, beginRadientAuthoritySignOut } from "./src/renderer/src/shared/hooks/radient-account-authority";
@@ -492,8 +493,23 @@ async function renderView(element) {
 	const client = new m.QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
+	function RouteProbe() {
+		const { pathname, search } = m.useLocation();
+		return h("output", { "data-current-route": pathname + search });
+	}
 	await act(async () =>
-		root.render(h(m.QueryClientProvider, { client }, element)),
+		root.render(
+			h(
+				m.QueryClientProvider,
+				{ client },
+				h(
+					m.MemoryRouter,
+					{ future: { v7_startTransition: true, v7_relativeSplatPath: true } },
+					element,
+					h(RouteProbe),
+				),
+			),
+		),
 	);
 	return {
 		host,
@@ -924,6 +940,15 @@ for (const [state, expectedButtons] of [
 			);
 			context.diagnostic(`${state}: buttons=${JSON.stringify(buttons)}`);
 			assert.deepEqual(buttons, expectedButtons);
+			if (state === "auth") {
+				const signIn = view.host.querySelector("a");
+				assert.equal(signIn?.getAttribute("href"), "/settings?section=radient");
+				await act(async () => signIn.click());
+				assert.equal(
+					view.host.querySelector("output").dataset.currentRoute,
+					"/settings?section=radient",
+				);
+			}
 		} finally {
 			await view.close();
 		}

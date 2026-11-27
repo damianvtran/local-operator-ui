@@ -80,16 +80,6 @@
 		"role": "filter chip in the asks panel showing every ask",
 		"tone": "one word"
 	},
-	"ui.chat.ask_panel.filter.chip": {
-		"length": "",
-		"note": "Keep the middle dot and the order.",
-		"placeholders": {
-			"label": "the already-localized group name (All, Pending or Settled)",
-			"count": "how many asks are in the group"
-		},
-		"role": "filter chip text joining the group name and how many asks it holds",
-		"tone": "name, middle dot, number"
-	},
 	"ui.chat.ask_panel.filter.pending": {
 		"length": "",
 		"note": "The opposite of Settled. Followed by a middle dot and a count.",

@@ -10,6 +10,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
+import { DesktopNavigationRouter } from "./shared/components/navigation/desktop-navigation-router";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import {
@@ -235,7 +236,9 @@ document.addEventListener("DOMContentLoaded", () => {
 								 * direction (see the provider's own note).
 								 */}
 								<LocaleDirectionProvider>
-									<App />
+									<DesktopNavigationRouter>
+										<App />
+									</DesktopNavigationRouter>
 								</LocaleDirectionProvider>
 							</HashRouter>
 						</ErrorBoundary>

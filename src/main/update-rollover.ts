@@ -183,6 +183,11 @@ export type UpdateReport = {
 	ok?: boolean;
 	/** The structured cause of a failed run, when the updater named one. */
 	failure?: UpdateReportFailure;
+	/** Only rows for which the updater actually scheduled another serve move. */
+	serveRetries?: {
+		generation: string;
+		serving: { instanceId: string; bootVersion: string; prefix: string }[];
+	};
 };
 
 const DAEMON_STATUSES: ReadonlySet<string> = new Set([
@@ -299,7 +304,70 @@ function reportFromPayload(payload: unknown): UpdateReport | null {
 	if (typeof raw.ok === "boolean") report.ok = raw.ok;
 	const failure = failureFromPayload(raw.failure);
 	if (failure) report.failure = failure;
+	const retries = serveRetriesFromReceipt(raw.rolling, installVersion);
+	if (retries) report.serveRetries = retries;
 	return report;
+}
+
+/**
+ * An old serving row marked pending is NOT a promise to retry (it can also be an
+ * unproved or incompatible handoff). In core v0.113.9 services.py emits that
+ * reason on the separate named status row only if it actually scheduled a retry.
+ * Join it to the measured serve row by PID; consumers then match the boot record.
+ */
+function serveRetriesFromReceipt(
+	value: unknown,
+	version: string,
+): UpdateReport["serveRetries"] {
+	if (
+		!isRecord(value) ||
+		value.contract !== "rolling-no-kill-v1" ||
+		value.core_installed !== true ||
+		value.serving_measured !== true ||
+		!isRecord(value.promoted) ||
+		!isRecord(value.now_current) ||
+		!Array.isArray(value.services)
+	)
+		return;
+	const { generation } = value.promoted;
+	if (
+		typeof generation !== "string" ||
+		!generation ||
+		value.now_current.generation !== generation ||
+		value.promoted.version !== version ||
+		value.now_current.version !== version
+	)
+		return;
+	const rows = value.services.filter(isRecord);
+	const queued = new Set(
+		rows
+			.filter(
+				(row) =>
+					row.state === "pending" &&
+					row.reason === "move pending, retrying in the background",
+			)
+			.map((row) => row.name),
+	);
+	const serving = rows.flatMap((row) =>
+		row.state === "pending" &&
+		typeof row.pid === "number" &&
+		queued.has(`serve pid ${row.pid}`) &&
+		typeof row.instance === "string" &&
+		row.instance &&
+		typeof row.serving_version === "string" &&
+		row.serving_version &&
+		typeof row.loaded_root === "string" &&
+		row.loaded_root
+			? [
+					{
+						instanceId: row.instance,
+						bootVersion: row.serving_version,
+						prefix: row.loaded_root,
+					},
+				]
+			: [],
+	);
+	return serving.length > 0 ? { generation, serving } : undefined;
 }
 
 /**

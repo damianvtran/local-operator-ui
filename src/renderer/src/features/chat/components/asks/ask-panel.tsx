@@ -49,11 +49,18 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
+	ChevronDown,
 	Clock,
 	HelpCircle,
 	Loader2,
@@ -61,6 +68,7 @@ import {
 	X,
 } from "lucide-react";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -69,6 +77,7 @@ import {
 	useState,
 } from "react";
 import { isolateValue } from "../../../../../../i18n/bidi";
+import { formatNumber } from "../../../../../../i18n/format";
 import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
@@ -116,6 +125,7 @@ import {
 	ProposalReviewNotice,
 } from "./ask-bounds";
 import { AskCommandRow, AskCommandRunDialog } from "./ask-command";
+import { AskId } from "./ask-id";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -320,7 +330,13 @@ const askStatusMark = (
 		case "withdrawn":
 			return { Icon: X, className: "text-ink-muted" };
 		default:
-			return { Icon: HelpCircle, className: "text-accent" };
+			/*
+			 * THE QUEUED ICON IS MUTED (design spec, D3): `accent` made a normal queued
+			 * ask read like an alarm, and the glyph is a fact about the row rather than
+			 * a call to action. Urgency spends `warning` (see `urgent` below), and a
+			 * settled row keeps its own arm above.
+			 */
+			return { Icon: HelpCircle, className: "text-ink-muted" };
 	}
 };
 
@@ -348,14 +364,18 @@ const AskMark = ({ chosen, multi }: { chosen: boolean; multi: boolean }) => (
 	<span
 		aria-hidden="true"
 		className={cn(
-			"mt-1 h-3 w-3 shrink-0 border",
+			/*
+			 * 14px, on the label's first line (design spec, D8): the 12px box was
+			 * measured as too faint to read as a control beside a 13px label, and
+			 * the mark now shares the row's first-line top with the `Check` that
+			 * confirms a chosen row (`mt-[3px]`, the prototype's own offset).
+			 */
+			"mt-[3px] h-3.5 w-3.5 shrink-0 border",
 			/*
 			 * `rounded-[2px]`, NOT `rounded-sm`: the token is 6px
-			 * (`styles/index.css`), which on a 12px box is a
-			 * perfect circle - so the class the design round
-			 * measured as "identical to the single-select mark"
-			 * really was identical, and the claim that it
-			 * differed was wrong (design round 1, D1).
+			 * (`styles/index.css`), which on a 14px box still rounds the square
+			 * toward a second circle - so the class the design round measured as
+			 * "identical to the single-select mark" keeps the shapes apart.
 			 */
 			multi ? "rounded-[2px]" : "rounded-full",
 			chosen ? "border-accent bg-accent" : "border-control",
@@ -599,7 +619,12 @@ const AskQuestionField = ({
 			 * notifications pane the fit is taken from them and never from the options.
 			 */}
 			<AskScrollBody containOverscroll={false}>
-				<p className="whitespace-pre-wrap text-ink text-sm">
+				{/*
+				 * THE QUESTION IS THE CARD'S HEADING (design spec, D4): one `text-body`
+				 * step above its options, at `font-medium`, so a four-question card
+				 * reads as four questions rather than one wall of text.
+				 */}
+				<p className="whitespace-pre-wrap text-body font-medium text-ink">
 					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
 				{proposal ? (
@@ -651,7 +676,7 @@ const AskQuestionField = ({
 					 * rule is stated, and the browser default measured 2.81:1 on Linen against
 					 * `ink-dim`'s 5.0:1 floor (design round 1, D2).
 					 */
-					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-body text-ink placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
@@ -727,10 +752,23 @@ const AskQuestionField = ({
 										);
 									}}
 									className={cn(
-										"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
+										/*
+										 * THE START EDGE IS THE ROW'S SHAPE (design spec, D8/D14): a 2px
+										 * hairline at rest, `accent` when chosen, and the rest + hover grounds
+										 * are the app's row roles rather than a card-local tint. Every row wears
+										 * the same padding and edge, so an option's label, its description and
+										 * the `Other` field share ONE left edge per row (the card's 12px plus
+										 * this edge's 2px, the row's 8px, and the label column's mark + gap).
+										 *
+										 * `text-body-sm` belongs to the ROW: the question is the card's only
+										 * `text-body` line (D4), and the recommended label no longer takes a
+										 * weight step of its own (D5) - the pill beside it carries the mark,
+										 * so alternating weights can never read as alternating kinds of row.
+										 */
+										"flex w-full items-start gap-2 rounded-sm border-s-2 px-2 py-1.5 text-start text-body-sm",
 										// Rows, not controls with edges of their own: this list sits
 										// inside the panel's card, so its boundary is its selection
-										// ground and its focus outline (the same idiom as `AskOptions`).
+										// ground, its start edge and its focus outline.
 										/*
 										 * A CHOSEN ROW KEEPS ITS ROLE FILL ON GLASS (review round 2, minor 3).
 										 * It is a selected SURFACE, and the model's answer for a selected
@@ -749,7 +787,9 @@ const AskQuestionField = ({
 										 * fill is suppressed on glass (styles/index.css), so their hover is
 										 * cursor-only.
 										 */
-										chosen ? "bg-sunken" : "hover:bg-sunken",
+										chosen
+											? "border-accent bg-row-selected"
+											: "border-hairline hover:bg-row-hover",
 										disabled ? "text-ink-dim" : "text-ink",
 									)}
 								>
@@ -779,19 +819,16 @@ const AskQuestionField = ({
 										 * can therefore never become a line of its own above the
 										 * description.
 										 *
-										 * The label is BOLDED where it is recommended - the half of
-										 * the signal that survives a reader who skims past the badge.
+										 * The label keeps its own weight and takes the badge from the SHARED
+										 * mark as a pill (design spec, D5): a row whose label was bolded
+										 * just for being recommended alternated weights down the list,
+										 * and the pill is what survives a reader who skims past it.
 										 */}
 										<span className="flex items-baseline gap-x-2">
-											<span
-												className={cn(
-													"min-w-0",
-													recommended && "font-semibold",
-												)}
-											>
-												{option.label}
-											</span>
-											{recommended ? <AskRecommendedBadge /> : null}
+											<span className="min-w-0">{option.label}</span>
+											{recommended ? (
+												<AskRecommendedBadge variant="badge" />
+											) : null}
 										</span>
 										{/*
 										 * `ink-muted` RESTORED (design round 2, D12). Round 1's
@@ -804,11 +841,23 @@ const AskQuestionField = ({
 										 * two-line option row, which is the thing the row reads by.
 										 */}
 										{option.description ? (
-											<span className="block text-ink-muted text-xs">
+											<span className="block text-ink-muted text-meta">
 												{option.description}
 											</span>
 										) : null}
 									</span>
+									{/*
+									 * THE SECOND SELECTION CHANNEL (design spec, D8/S1): the filled mark
+									 * and the ground already say "chosen", and the `Check` says it
+									 * without colour - so selection survives a greyscale frame or a
+									 * palette where `accent` and `row-selected` sit close.
+									 */}
+									{chosen ? (
+										<Check
+											aria-hidden="true"
+											className="mt-[3px] size-3.5 shrink-0 text-accent"
+										/>
+									) : null}
 								</button>
 							);
 						})}
@@ -859,34 +908,48 @@ const AskQuestionField = ({
 							else writeOther({ ...other, open: true });
 						}}
 						className={cn(
-							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
-							// Same selected-surface exemption as `AskOptions` above: one role
-							// fill, no selected ink on top of the veil. The label is at `ink`,
-							// so this row's hover is cursor-only on glass.
-							other.open ? "bg-sunken" : "hover:bg-sunken",
+							/*
+							 * THE SAME SHAPE AS EVERY OPTION ROW (design spec, D7/D14): edge, padding,
+							 * mark and label column are shared, and the hint drops to its own line in
+							 * the label column rather than sitting inline beside the word "Other".
+							 */
+							"flex w-full items-start gap-2 rounded-sm border-s-2 px-2 py-1.5 text-start text-body-sm",
+							// Same selected-surface exemption as the option rows: one role
+							// fill, no selected ink on top of the veil.
+							other.open
+								? "border-accent bg-row-selected"
+								: "border-hairline hover:bg-row-hover",
 							disabled ? "text-ink-dim" : "text-ink",
 						)}
 					>
 						<AskMark chosen={other.open} multi={multi} />
 						<span className="min-w-0 flex-1">
-							<span>{t("ui.chat.asks.other_label")}</span>
+							<span className="block">{t("ui.chat.asks.other_label")}</span>
 							{/*
-							 * A REAL SPACE between the label and the hint, not just the `ms-1.5`
-							 * margin: a margin is invisible to the accessible-name computation,
-							 * which concatenated the two spans into one announced word -
-							 * `OtherType your answer` - as measured in Chrome's own AX tree
-							 * (round 2, design D8 / UX U6). The space is what puts the boundary
-							 * in the name; the margin stays for the visual gap, which the stills
-							 * judge.
+							 * THE HINT IS THE ROW'S DESCRIPTION (design spec, D7), on its own line
+							 * like every option's description, so the Other row is not shaped
+							 * differently from its siblings.
+							 *
+							 * A REAL SPACE between the label and the hint, not just a margin: a margin
+							 * is invisible to the accessible-name computation, which concatenated the
+							 * two spans into one announced word - `OtherType your answer` - as measured
+							 * in Chrome's own AX tree (round 2, design D8 / UX U6). The space is what
+							 * puts the boundary in the name; it collapses visually between two blocks.
 							 */} {other.open ? null : (
-								<span className="ms-1.5 text-ink-muted text-xs">
+								<span className="block text-ink-muted text-meta">
 									{otherPrompt()}
 								</span>
 							)}
 						</span>
+						{other.open ? (
+							<Check
+								aria-hidden="true"
+								className="mt-[3px] size-3.5 shrink-0 text-accent"
+							/>
+						) : null}
 					</button>
 					{other.open ? (
-						<div className="pt-1 pe-1 pb-1 ps-7">
+						<div className="pt-1 pe-1 pb-1 ps-8">
 							<AskAnswerField
 								questionId={question.id}
 								fieldRef={otherField}
@@ -1336,6 +1399,15 @@ const AskRow = ({
 	 * SAME closure rather than two copies that could drift: Enter in a field "does what
 	 * `Send answer` does" because it calls this, with the same gate.
 	 */
+	/*
+	 * Whether `More actions` has anything to hold: Confirm and send… where main
+	 * offers its sheet, Decline where the ask can be declined, Dismiss… where the
+	 * backend advertises it. The same three gates the buttons carried.
+	 */
+	const hasMoreActions =
+		onConfirm !== undefined ||
+		canDecline ||
+		(onDismiss !== undefined && canAnswer);
 	const sendAnswer = () => {
 		const answers = askAnswerMap(ask, draft, secrets);
 		// A confirm press the page handler dropped (send lock held) never made the
@@ -1463,6 +1535,19 @@ const AskRow = ({
 					.join(" ")
 			: null;
 
+	/*
+	 * THE CARD'S FOOT, ONE SPELLING (agent review round 1, m1). Two states draw it: a
+	 * settled frame, and a live card whose dismiss chooser has taken the action row's
+	 * place. The foot is where a live card names the string a user quotes back at the
+	 * agent, so opening the chooser must not take it off screen - the band that held
+	 * it is not drawn while the chooser is up (`dismissOpen` gates the band itself).
+	 */
+	const foot = (
+		<div data-lo-ask-foot="" className="flex min-h-6 items-center justify-end">
+			<AskId id={ask.ask_id} />
+		</div>
+	);
+
 	return (
 		<div
 			ref={rowRef}
@@ -1511,31 +1596,53 @@ const AskRow = ({
 					{conversation}
 				</span>
 			)}
-			<div className="flex items-center gap-2">
-				<StatusIcon
-					aria-hidden="true"
-					className={cn("shrink-0", urgent ? "text-warning" : mark.className)}
-					size={16}
-				/>
-				<span className="min-w-0 flex-1 text-ink text-xs">
+			<div className="flex flex-col gap-1.5">
+				<div className="flex items-center gap-2">
+					<StatusIcon
+						aria-hidden="true"
+						className={cn("shrink-0", urgent ? "text-warning" : mark.className)}
+						size={14}
+					/>
+					{/*
+					 * THE STATUS IS A QUIET FACT, NOT A HEADING (design spec, D3): `text-meta`
+					 * in `ink-muted` sits below the question it describes and never shares the
+					 * question's ink. Urgency is a WORD (the badge below) plus the icon's
+					 * colour, never colour alone, and the old sr-only "Urgent." prefix is gone
+					 * with it - the visible badge is what a reader sees and hears.
+					 */}
+					<span className="min-w-0 flex-1 text-ink-muted text-meta">
+						{statusDismissReason === null
+							? askStatusText(ask, nowMs)
+							: dismissReceipt(statusDismissReason)}
+					</span>
 					{urgent ? (
-						<span className="sr-only">{t("ui.chat.asks.urgent")} </span>
+						<Badge variant="warning" shape="pill" className="shrink-0">
+							{t("ui.chat.asks.urgent_label")}
+						</Badge>
 					) : null}
-					{statusDismissReason === null
-						? askStatusText(ask, nowMs)
-						: dismissReceipt(statusDismissReason)}
-				</span>
+				</div>
 				{/*
-				 * THE ID MOVED INTO A TITLE (design round 1, D6). It is the string a
-				 * user quotes in a report, so it stays reachable - but on a row whose job
-				 * is "answer the question" it was the only text meaningless to the
-				 * reader, and it took the most prominent empty corner on every card. The
-				 * TUI spends the id only as a fallback for a missing headline; a tooltip
-				 * keeps the support value without spending attention on every row.
+				 * THE CONTEXT LINE sits DIRECTLY UNDER THE STATUS LINE (design spec S2/D11):
+				 * it is about the conversation's movement since the ask was queued, so it
+				 * belongs with the queue state rather than after the last option, where it
+				 * read as another option's description. It renders ONLY for an ask the
+				 * agent is still waiting on: on a settled row it would describe a wait that
+				 * is over.
+				 *
+				 * THE COUNT AND THE STAMP ARE ONE FACT, so the line needs both: a count
+				 * without a time is a shape the queue does not publish, and an older runtime
+				 * publishes neither. `Intl.DateTimeFormat` with `timeStyle: "short"` is the
+				 * locale's own clock, so `19:36` does not become `7:36 PM` in a locale that
+				 * writes it the other way.
 				 */}
-				<span className="shrink-0 text-ink text-xs" title={ask.ask_id}>
-					{"\u00a0"}
-				</span>
+				{messagesSince > 0 && lastUserMessageTime !== null && waiting ? (
+					<p data-lo-ask-context="" className="text-ink-muted text-meta">
+						{t("ui.chat.asks.context.messages_since", {
+							count: messagesSince,
+							time: lastUserMessageTime,
+						})}
+					</p>
+				) : null}
 			</div>
 			{/*
 			 * A SETTLED ask draws the ANSWER FRAME, not a disabled form: what the
@@ -1597,7 +1704,7 @@ const AskRow = ({
 									 * inside the host's scroller, which owns the scroll.
 									 */
 									<AskScrollBody containOverscroll={false}>
-										<span className="whitespace-pre-wrap text-ink-muted text-xs">
+										<span className="whitespace-pre-wrap text-ink-muted text-meta">
 											{isolateValue(entry.question, dir)}
 										</span>
 									</AskScrollBody>
@@ -1606,7 +1713,7 @@ const AskRow = ({
 									entry.answers.map((value, index) => (
 										<span
 											key={`${index}:${value}`}
-											className="whitespace-pre-wrap break-words text-ink text-sm"
+											className="whitespace-pre-wrap break-words text-ink text-body-sm"
 										>
 											{value}
 											{tags && !offered.includes(value) ? (
@@ -1619,7 +1726,7 @@ const AskRow = ({
 												 * is hidden from assistive tech; the spaces inside it carry the gap
 												 * (the parent keeps whitespace, `whitespace-pre-wrap`).
 												 */
-												<span className="text-ink-muted text-xs">
+												<span className="text-ink-muted text-meta">
 													<span aria-hidden="true">{" \u00b7 "}</span>
 													{t("ui.chat.asks.other_label")}
 												</span>
@@ -1627,7 +1734,7 @@ const AskRow = ({
 										</span>
 									))
 								) : (
-									<span className="text-ink text-sm">
+									<span className="text-ink text-body-sm">
 										{t("ui.chat.asks.no_answer")}
 									</span>
 								)}
@@ -1636,83 +1743,92 @@ const AskRow = ({
 					})}
 				</div>
 			) : null}
-			{canAnswer || changingNow
-				? ask.questions.map((question) => (
-						<AskQuestionField
+			{canAnswer || changingNow ? (
+				<div className="flex flex-col">
+					{ask.questions.map((question, index) => (
+						/*
+						 * A HAIRLINE BETWEEN QUESTIONS (design spec, D4/D14). Four questions 8px
+						 * apart read as one wall of text; each question after the first starts
+						 * with a rule and the same 8px of air above it that the card's own `gap-2`
+						 * puts below the previous one (design review round 1, D4: 12px above and
+						 * 8px below put the rule nearer the question it separated). The rule is
+						 * decoration (`border-hairline`), never a control boundary.
+						 */
+						<div
 							key={question.id}
-							question={question}
-							selected={draftFor(editDraft, question.id)}
-							secret={secrets[question.id] ?? ""}
-							secretPlaceholder={askSecretPlaceholder(
-								ask,
-								question,
-								editRecorded,
-							)}
-							disabled={fieldDisabled}
-							onCell={(cell) => {
-								setEditRevision((revision) => revision + 1);
-								writeDraft((current) => ({ ...current, [question.id]: cell }));
-							}}
-							onSecret={(value) => {
-								setEditRevision((revision) => revision + 1);
-								setSecrets((current) => ({ ...current, [question.id]: value }));
-							}}
-							onAdvance={advanceFrom}
-							focusOtherRef={focusOtherRef}
-							command={(() => {
-								/*
-								 * ONLY WHILE ANSWERABLE, and only for a command that passes
-								 * the core's rule again here (`askCommandOf`): the change
-								 * form over a recorded answer is not a request the agent is
-								 * still waiting on, and a forged or malformed value draws
-								 * nothing at all.
-								 */
-								if (!canAnswer) return undefined;
-								const hint = askCommandOf(question);
-								if (hint === null) return undefined;
-								return {
-									hint,
-									placement,
-									onInsert:
-										onCommand === undefined
-											? undefined
-											: () => {
-													onCommand({
-														ask,
-														questionId: question.id,
-														command: hint.command,
-														submit: false,
-													});
-												},
-									onRun:
-										onCommand === undefined || onRunRequest === undefined
-											? undefined
-											: () => onRunRequest(ask, question.id, hint.command),
-								};
-							})()}
-						/>
-					))
-				: null}
-			{/*
-			 * THE CONTEXT LINE (SA-D7's manager override; harness PR #2833). It sits
-			 * under the question because it is about the conversation's movement since
-			 * the question was asked, and it renders ONLY for an ask the agent is still
-			 * waiting on: on a settled row it would describe a wait that is over.
-			 *
-			 * THE COUNT AND THE STAMP ARE ONE FACT, so the line needs both: a count
-			 * without a time is a shape the queue does not publish, and an older runtime
-			 * publishes neither. `Intl.DateTimeFormat` with `timeStyle: "short"` is the
-			 * locale's own clock, so `19:36` does not become `7:36 PM` in a locale that
-			 * writes it the other way.
-			 */}
-			{messagesSince > 0 && lastUserMessageTime !== null && waiting ? (
-				<p data-lo-ask-context="" className="text-ink-muted text-meta">
-					{t("ui.chat.asks.context.messages_since", {
-						count: messagesSince,
-						time: lastUserMessageTime,
-					})}
-				</p>
+							className={
+								index === 0 ? undefined : "border-hairline border-t pt-2"
+							}
+						>
+							<AskQuestionField
+								key={question.id}
+								question={question}
+								selected={draftFor(editDraft, question.id)}
+								secret={secrets[question.id] ?? ""}
+								secretPlaceholder={askSecretPlaceholder(
+									ask,
+									question,
+									editRecorded,
+								)}
+								disabled={fieldDisabled}
+								onCell={(cell) => {
+									setEditRevision((revision) => revision + 1);
+									writeDraft((current) => ({
+										...current,
+										[question.id]: cell,
+									}));
+								}}
+								onSecret={(value) => {
+									setEditRevision((revision) => revision + 1);
+									setSecrets((current) => ({
+										...current,
+										[question.id]: value,
+									}));
+								}}
+								onAdvance={advanceFrom}
+								focusOtherRef={focusOtherRef}
+								command={(() => {
+									/*
+									 * ONLY WHILE ANSWERABLE, and only for a command that passes
+									 * the core's rule again here (`askCommandOf`): the change
+									 * form over a recorded answer is not a request the agent is
+									 * still waiting on, and a forged or malformed value draws
+									 * nothing at all.
+									 */
+									if (!canAnswer) return undefined;
+									const hint = askCommandOf(question);
+									if (hint === null) return undefined;
+									return {
+										hint,
+										placement,
+										onInsert:
+											onCommand === undefined
+												? undefined
+												: () => {
+														onCommand({
+															ask,
+															questionId: question.id,
+															command: hint.command,
+															submit: false,
+														});
+													},
+										onRun:
+											onCommand === undefined || onRunRequest === undefined
+												? undefined
+												: () => onRunRequest(ask, question.id, hint.command),
+									};
+								})()}
+							/>
+						</div>
+					))}
+				</div>
 			) : null}
+			{/*
+			 * THE CONTEXT LINE MOVED under the status line (design spec S2/D11) - see the
+			 * status block above. Nothing sits between the last question and the pinned
+			 * bar now, which is what made the "message from you since" line read as an
+			 * option's description.
+			 */}
 			{/*
 			 * The refusal is the panel's own line rather than a toast: it belongs to the
 			 * ask on screen, and every refusal in this feature's copy contract is a
@@ -1744,7 +1860,7 @@ const AskRow = ({
 			{outcome?.sending === true && !dismissOpen ? (
 				<output
 					data-lo-ask-sending=""
-					className="flex items-center gap-1.5 text-ink-muted text-xs"
+					className="flex items-center gap-1.5 text-ink-muted text-meta"
 				>
 					<Loader2 aria-hidden="true" size={14} className="animate-spin" />
 					{t("ui.agents.config.state.sending")}
@@ -1775,7 +1891,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy || !retryPending}
 							onClick={outcome.retry}
-							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-xs hover:bg-sunken"
+							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-meta hover:bg-row-hover"
 						>
 							{t("ui.common.actions.retry")}
 						</button>
@@ -1798,7 +1914,7 @@ const AskRow = ({
 				 * status row's own pairing: a success role on body copy is a contrast claim
 				 * this table has not made for this size.
 				 */
-				<p className="flex items-start gap-1.5 text-xs">
+				<p className="flex items-start gap-1.5 text-meta">
 					<Check
 						aria-hidden="true"
 						size={14}
@@ -1825,7 +1941,7 @@ const AskRow = ({
 				 * same sentence (see `collapsedRow`), because this card unmounts when the
 				 * fold files the ask under Settled.
 				 */
-				<p className="flex items-start gap-1.5 text-xs">
+				<p className="flex items-start gap-1.5 text-meta">
 					<Check
 						aria-hidden="true"
 						size={14}
@@ -1849,23 +1965,20 @@ const AskRow = ({
 				 * question. A drawer-level footer would have to know which card is on screen and
 				 * would answer the wrong question for every other one.
 				 *
-				 * ITS GROUND IS A BAND, NOT A BORDER (branding §[grounds], and `docs/branding.md`'s
-				 * band table): the fill is what separates the row from the question text passing
-				 * under it. On glass that is `band-backdrop` - the isolating band the notifications
-				 * list's sticky headers use - because a 5% wash hides nothing from content that
-				 * MOVES under it; off glass the same element carries the flat `elevated` step. It
-				 * BLEEDS TO THE CARD'S EDGES (`-mx-3 px-3`) so no scrolled glyph shows in the
-				 * card's own 12 px padding beside the bar, and it bleeds to the card's
-				 * BOTTOM with the top half of that trick (`-mt-2 pt-2`, which gives the band
-				 * its air without changing the row's 34 px layout footprint - flex `gap`
-				 * measures margin boxes - so the card at rest is the height it was).
+				 * ITS GROUND IS THE CARD'S OWN (design spec, D9). The bar used to sit on a flat
+				 * `elevated` plate, so it read as a second panel bolted under a veiled card; it
+				 * now wears `bg-surface` with a `border-t border-hairline` - one card, one
+				 * ground, and a rule that separates the actions from the text. On glass the
+				 * element keeps `band-backdrop`, the isolating band the notifications list's
+				 * sticky headers use, because a 5% wash hides nothing from content that MOVES
+				 * under it. It BLEEDS TO THE CARD'S EDGES (`-mx-3 px-3`) so no scrolled glyph
+				 * shows in the card's own 12 px padding beside the bar.
 				 *
-				 * THE BOTTOM BLEEDS THE WHOLE PADDING (`-mb-3 pb-3`), not the 8 px the top
-				 * uses: `-my-2 py-2` left the band 4 px short of the card's own bottom edge,
-				 * and that gap is what a reader saw at maximum scroll as a strip of the
-				 * question text under the bar (design round 1, D3).
-				 *
-				 * NO BORDER: a plate's own step is the edge the contract asks for here.
+				 * THE BOTTOM BLEEDS THE WHOLE PADDING (`-mb-3 pb-3`): `-my-2 py-2` left the
+				 * band 4 px short of the card's own bottom edge, and that gap is what a
+				 * reader saw at maximum scroll as a strip of the question text under the bar
+				 * (design round 1, D3). No `-mt`: the card's own 8 px gap is the air above
+				 * the hairline, so the rule never sits on the last option's padding.
 				 *
 				 * THE BAND IS THE CARD'S LAST CHILD, SO DISMISS LIVES INSIDE IT. The full
 				 * bottom bleed above only holds while nothing renders after the band, and
@@ -1884,7 +1997,7 @@ const AskRow = ({
 					ref={actionsRef}
 					{...{ [ASK_ACTIONS_ATTR]: "" }}
 					data-glass-plane="band-backdrop"
-					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex flex-wrap items-center gap-2 gap-y-1 bg-elevated px-3 pt-2 pb-3"
+					className="sticky bottom-0 z-[1] -mx-3 -mb-3 flex flex-col gap-1.5 border-hairline border-t bg-surface px-3 pt-2 pb-3"
 				>
 					<div className="flex min-w-0 flex-wrap items-center gap-2">
 						{/*
@@ -1900,7 +2013,7 @@ const AskRow = ({
 							disabled={disabled || !ready || retryPending}
 							onClick={sendAnswer}
 							className={cn(
-								"rounded-md px-3 py-1.5 text-sm",
+								"h-8 rounded-md px-3 text-body-sm",
 								/*
 								 * The disabled state changes COLOUR, never opacity (branding §2),
 								 * and it keeps an EDGE: without one it rendered as body text of the
@@ -1915,82 +2028,113 @@ const AskRow = ({
 						>
 							{t("ui.chat.asks.send_answer")}
 						</button>
-						{onConfirm !== undefined ? (
+						{
 							/*
-							 * "Confirm and send…": the same answer, sent only after the person
-							 * confirms it on main's native sheet (see `onConfirm`). Secondary ink
-							 * beside the primary Send answer (design round 1, D1: most asks need
-							 * no approval, so Send answer stays primary), same gate, so it never
-							 * offers what Send answer would refuse. The label names the outcome;
-							 * the hint line below the row says why it matters.
+							 * ONE PRIMARY, ONE DOOR (the 2026-11-24 ask-panel consult, adopted by
+							 * the operator): the row held four competing controls - Send answer,
+							 * Confirm and send…, Decline and a far-right Dismiss… - and wrapped
+							 * to three lines at the drawer's 356 px floor. `More actions` now
+							 * holds the three that are not the ordinary answer; each stays a
+							 * DISTINCT action with its own outcome, so the menu merges nothing
+							 * into a shared "other" path. The menu is drawn only when it has an
+							 * item, each item keeps its own gate exactly as its button had it,
+							 * and the consequence hint below keeps saying that Send answer is
+							 * not approval wherever Confirm is offered.
+							 *
+							 * THE TRIGGER IS THE DISMISS CHOOSER'S RETURN-FOCUS TARGET
+							 * (`dismissTrigger`): Dismiss… now lives behind it, and a Cancel
+							 * must hand the keyboard back to the control that opened the
+							 * chooser. While main's confirm sheet is up the trigger carries the
+							 * waiting word that the Confirm button used to carry, at the wider
+							 * of the two widths so the row does not shift.
 							 */
-							<button
-								type="button"
-								disabled={disabled || !ready || retryPending}
-								onClick={confirmAnswer}
-								className={cn(
-									"rounded-md border px-3 py-1.5 text-sm",
-									disabled || !ready || retryPending
-										? "border-hairline bg-surface text-ink-dim"
-										: "border-control text-ink hover:bg-sunken",
-								)}
-							>
-								<ConfirmLabel
-									idle={t("ui.chat.ask_attest.action.confirm")}
-									confirming={confirming && busy}
-								/>
-							</button>
-						) : null}
-						{canDecline ? (
-							/*
-							 * `border-transparent` so the ROW BASELINES (design round 1, D4). The
-							 * accent sibling wears a 1px border in both of its states, so without one
-							 * here the two controls in one `items-center` row measured 34px and 32px
-							 * and the pair sat 1px apart. Fixed here AND on the change row's own
-							 * `Cancel`, which inherited the same pair - the finding's own condition is
-							 * fix both or neither, because one row alone would leave the drawer drawing
-							 * two differently-aligned action rows.
-							 */
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() => onDecline(ask)}
-								className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
-							>
-								{t("ui.chat.asks.decline")}
-							</button>
-						) : null}
+							hasMoreActions ? (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											ref={dismissTrigger}
+											type="button"
+											data-lo-ask-more=""
+											className="inline-flex h-8 items-center gap-1 rounded-md border border-control px-3 text-ink text-body-sm hover:bg-row-hover"
+										>
+											<ConfirmLabel
+												idle={t("ui.agents.detail.action.more_actions")}
+												confirming={confirming && busy}
+											/>
+											<ChevronDown aria-hidden="true" size={14} />
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="start" side="top">
+										{onConfirm !== undefined ? (
+											<DropdownMenuItem
+												disabled={disabled || !ready || retryPending || busy}
+												onSelect={confirmAnswer}
+											>
+												{t("ui.chat.ask_attest.action.confirm")}
+											</DropdownMenuItem>
+										) : null}
+										{canDecline ? (
+											<DropdownMenuItem
+												disabled={busy}
+												onSelect={() => onDecline(ask)}
+											>
+												{t("ui.chat.asks.decline")}
+											</DropdownMenuItem>
+										) : null}
+										{onDismiss !== undefined && canAnswer ? (
+											<DropdownMenuItem
+												disabled={busy}
+												onSelect={() => setDismissOpen(true)}
+											>
+												{t("ui.chat.asks.dismiss.trigger")}
+											</DropdownMenuItem>
+										) : null}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : null
+						}
 					</div>
-					{/*
-					 * The closed-state door to the dismiss chooser below. Same gate as the
-					 * chooser (`onDismiss` wired AND the live-arm `canAnswer`), and the band
-					 * unmounts while the chooser is open, so the two never coexist; the
-					 * `dismissTrigger` ref still re-attaches here on Cancel before the
-					 * return-focus effect reads it.
-					 */}
-					{onDismiss !== undefined && canAnswer ? (
-						<button
-							ref={dismissTrigger}
-							type="button"
-							disabled={busy}
-							onClick={() => setDismissOpen(true)}
-							className="ms-auto shrink-0 rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink disabled:text-ink-dim"
-						>
-							{t("ui.chat.asks.dismiss.trigger")}
-						</button>
-					) : null}
 					{onConfirm !== undefined ? (
 						/*
 						 * THE CONSEQUENCE, BEFORE THE CLICK (design round 1, D1; UX round 1,
 						 * U2): nothing else on the card says that Send answer will not count as
 						 * approval for a delete or move, and the sheet that does say it only
-						 * opens after the right button was found. Quiet meta ink, its own line
-						 * (`basis-full` in the wrapping band), and only where Confirm is drawn.
+						 * opens after the right button was found. Quiet meta ink, its own line,
+						 * and only where Confirm is drawn.
+						 *
+						 * It follows the actions row and PRECEDES THE FOOT (this merge): the band
+						 * is already a column (`flex flex-col gap-1.5`), so the hint needs no
+						 * `basis-full` wrapper to take its own line, and the foot stays the
+						 * band's last child for the bottom-bleed reason above.
 						 */
-						<p className="basis-full text-ink-dim text-meta">
+						<p className="text-ink-dim text-meta">
 							{t("ui.chat.ask_attest.action.hint")}
 						</p>
 					) : null}
+					{/*
+					 * THE FOOT: progress while the card is not ready, and the id in EVERY state
+					 * (design spec, D13/S2). The progress line answers "why is Send disabled?"
+					 * with a count rather than a hint, and disappears once the ask is complete -
+					 * there is nothing left to report then, and the id keeps the row's
+					 * right-hand side. The id moved out of a title span (invisible to touch and
+					 * keyboard) into a real copy button, at the card's quiet corner.
+					 */}
+					<div
+						data-lo-ask-foot=""
+						className="flex min-h-6 items-center justify-between gap-2"
+					>
+						<span className="min-w-0 text-ink-muted text-meta">
+							{disabled || !ready || retryPending
+								? t("ui.chat.asks.progress", {
+										answered: ask.questions.filter((question) =>
+											askQuestionIsAnswered(question, draft, secrets),
+										).length,
+										total: ask.questions.length,
+									})
+								: null}
+						</span>
+						<AskId id={ask.ask_id} />
+					</div>
 				</div>
 			) : null}
 			{/*
@@ -2033,7 +2177,7 @@ const AskRow = ({
 									disabled={busy || !changeReady}
 									onClick={sendChange}
 									className={cn(
-										"rounded-md px-3 py-1.5 text-sm",
+										"h-8 rounded-md px-3 text-body-sm",
 										busy || !changeReady
 											? "border border-hairline bg-surface text-ink-dim"
 											: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
@@ -2074,7 +2218,7 @@ const AskRow = ({
 									 * first-answer row does — see the `Decline`'s own note (design
 									 * round 1, D4: both rows or neither).
 									 */
-									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+									className="h-8 rounded-md border border-transparent px-3 text-ink-muted text-body-sm hover:bg-row-hover hover:text-ink"
 								>
 									{t("ui.chat.asks.cancel")}
 								</button>
@@ -2110,13 +2254,22 @@ const AskRow = ({
 								armChangeFocus.current = true;
 								setChanging(true);
 							}}
-							className="self-start rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
+							className="h-8 self-start rounded-md border border-control px-3 text-ink text-body-sm hover:bg-row-hover"
 						>
 							{t("ui.chat.asks.change_answer")}
 						</button>
 					)}
 				</div>
 			) : null}
+			{/*
+			 * THE SETTLED FRAME'S FOOT (design spec S3): a closed question has no pinned
+			 * bar, so the id and its copy control sit at the frame's own foot instead.
+			 * The id is drawn once per expanded row - the collapsed row's copy of it is
+			 * hidden by `SettledRow` while the row is open - and this is the copyable
+			 * one. `justify-end` keeps it in the card's quiet corner, the same corner
+			 * the live card's foot uses.
+			 */}
+			{!canAnswer && !canDecline ? foot : null}
 			{/*
 			 * THE DISMISS DOOR (harness PR #2833, SA-D5), on an OPEN ask only and only
 			 * where the caller resolved `features.ask_dismiss` — see
@@ -2175,12 +2328,12 @@ const AskRow = ({
 							}}
 							data-lo-ask-dismiss-reason={reason}
 							className={cn(
-								"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-sunken",
+								"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-row-hover",
 								busy && "text-ink-dim",
 								pressedReason === reason && "bg-sunken",
 							)}
 						>
-							<span className="flex min-w-0 items-center gap-1.5 text-ink text-sm">
+							<span className="flex min-w-0 items-center gap-1.5 text-ink text-body-sm">
 								{pressedReason === reason ? (
 									<Check
 										aria-hidden="true"
@@ -2201,10 +2354,12 @@ const AskRow = ({
 					<button
 						type="button"
 						onClick={closeDismiss}
-						className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+						className="h-8 self-start rounded-md border border-transparent px-3 text-ink-muted text-body-sm hover:bg-row-hover hover:text-ink"
 					>
 						{t("ui.chat.asks.dismiss.cancel")}
 					</button>
+					{/* The chooser is a step, not a different card: the id stays in the foot. */}
+					{foot}
 				</div>
 			) : null}
 		</div>
@@ -2226,6 +2381,63 @@ const HELD_SLOT_FRAME = "rounded-md border border-hairline";
  */
 export const LAPSE_NOTE_CLEAR_MS = 8000;
 
+/**
+ * ONE SETTLED ROW, WITH ITS OWN OPEN STATE (design spec S3).
+ *
+ * The disclosure is CONTROLLED here for one reason: the id belongs at the row's
+ * end while the row is closed and at the FOOT of the expanded frame once it
+ * opens (beside the copy control), so the row has to know whether it is open to
+ * draw it exactly once. The id also rides the trigger's accessible name in both
+ * states (`Answered - <question>, a-745e`), which is how a screen reader can
+ * match the id a chat message quotes.
+ *
+ * `summaryAlign="firstLine"` puts the chevron and the badge on the question's
+ * FIRST line instead of centring them over a five-line block (D12), and the
+ * chevron takes `ink-muted`: `ink-disabled` is exempt from every contrast floor,
+ * which is wrong for the surface's only affordance.
+ *
+ * The summary is a render prop because the id's visibility depends on `open`.
+ */
+const SettledRow = ({
+	label,
+	held,
+	summary,
+	children,
+}: {
+	label: string;
+	held: boolean;
+	summary: (open: boolean) => ReactNode;
+	children: ReactNode;
+}) => {
+	const [open, setOpen] = useState(false);
+	return (
+		<Disclosure
+			open={open}
+			onOpenChange={setOpen}
+			summaryAlign="firstLine"
+			triggerClassName={cn(
+				"text-ink hover:bg-row-hover hover:text-ink",
+				held && "rounded-t-[9px]",
+			)}
+			chevronClassName="text-ink-muted"
+			/*
+			 * TWO RAILS, NOT THREE (design review round 1, D2 = spec D14). The old row drew
+			 * the chevron on its own edge (x=33 at 400), the pill at x=48 and the card's
+			 * question at x=41 - a 7px jog between a settled row and the card it files
+			 * under. `gap-0` puts the summary's own column on the card's text rail (42 against
+			 * the card's padded 41, one pixel) and leaves the chevron as a hanging mark about
+			 * 4px inside the card's border line (33 against the border at 28 at 400), which is
+			 * the outline convention this reads like.
+			 */
+			rowClassName="min-h-7 gap-0 py-1"
+			triggerLabel={label}
+			summary={summary(open)}
+		>
+			{children}
+		</Disclosure>
+	);
+};
+
 export const AskPanel = ({
 	view,
 	onAnswer,
@@ -2243,6 +2455,8 @@ export const AskPanel = ({
 	commandPlacementOf,
 	className,
 }: AskPanelProps) => {
+	/* The filter chips format their own counts, so this panel is a leaf too. */
+	useI18nLocale();
 	/*
 	 * AN UNREAD FRAME DRAWS NOTHING; AN EMPTY ONE STATES ITS EMPTINESS.
 	 *
@@ -2825,16 +3039,17 @@ export const AskPanel = ({
 		 */
 		const dismissal = outcomes?.[presentation.ask.ask_id]?.dismissed;
 		return (
-			<Disclosure
+			/*
+			 * KEYED BY THE ASK, NOT BY THE SLOT (agent review round 1, M1). `SettledRow` holds
+			 * the row's own `open` state, so an unkeyed list reconciles it by POSITION: a newer
+			 * ask settling above an expanded row moved the expansion onto its neighbour. The
+			 * old `Disclosure` carried `key={ask_id}` here; the wrapper has to carry it now.
+			 */
+			<SettledRow
 				key={presentation.ask.ask_id}
-				triggerClassName={cn(
-					"text-ink hover:bg-row-hover hover:text-ink",
-					held && "rounded-t-[9px]",
-				)}
-				chevronClassName="text-ink-dim"
-				rowClassName="min-h-7 py-1"
-				triggerLabel={`${word} - ${question}`}
-				summary={
+				label={`${word} - ${question}, ${presentation.ask.ask_id}`}
+				held={held}
+				summary={(open) => (
 					<span className="flex min-w-0 flex-col gap-0.5">
 						<span className="flex min-w-0 items-start gap-1.5">
 							{/*
@@ -2853,23 +3068,38 @@ export const AskPanel = ({
 								{word}
 							</Badge>
 							{/*
-							 * THE QUESTION WRAPS (operator ask, 2026-10-05): "full
-							 * questions not truncated" is what he asked for, and a
-							 * `truncate` here is what put the whole question behind a
-							 * tooltip instead of on the row. `break-words` so a long
-							 * unbroken token cannot push the row wider than the pane.
+							 * THE QUESTION WRAPS (operator ask, 2026-10-05; upheld again by his
+							 * a-427e decision on 2026-11-23): full questions, not truncated. The
+							 * answer line below keeps its own two-line clamp - the full text is
+							 * one press away in the frame, and this is the row that says what
+							 * the question was.
+							 *
+							 * `flex-1` gives the column the room the id leaves, so the id sits
+							 * at the row's END on the first line rather than wherever a short
+							 * question happens to stop.
 							 */}
-							{/*
-							 * THE ANSWER SITS IN THE QUESTION'S COLUMN (design round 1, D1): as a
-							 * sibling of the chip row it started under the chevron, so a stack of
-							 * settled rows scanned chip, question, then an answer jutting left.
-							 */}
-							<span className="flex min-w-0 flex-col gap-0.5">
+							<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
 									{isolateValue(question, dir)}
 								</span>
 								{settledAnswerLine(presentation)}
 							</span>
+							{/*
+							 * THE ID, RIGHT-ALIGNED ON THE COLLAPSED ROW (design spec S3). It is
+							 * the row's own copy of the string a user quotes in chat - quiet mono
+							 * in the muted ink, and the reason `Withdrawn` is no longer a status
+							 * with no trace. Hidden while the row is open: the expanded frame's
+							 * foot draws the copyable one, and printing it twice would put the
+							 * same token 20px apart.
+							 */}
+							{open ? null : (
+								<span
+									data-lo-ask-id=""
+									className="shrink-0 self-start font-mono text-ink-muted text-mono-sm"
+								>
+									{presentation.ask.ask_id}
+								</span>
+							)}
 						</span>
 
 						{refusal === null ? null : (
@@ -2894,10 +3124,10 @@ export const AskPanel = ({
 							</span>
 						)}
 					</span>
-				}
+				)}
 			>
 				<div className="pt-1.5">{askRow(presentation)}</div>
-			</Disclosure>
+			</SettledRow>
 		);
 	};
 
@@ -2953,7 +3183,22 @@ export const AskPanel = ({
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
-					{t("ui.chat.ask_panel.filter.chip", { label, count })}
+					{/*
+					 * THE COUNT IS ITS OWN TOKEN (design spec S4): the same quiet register
+					 * as the tab strip's counts - a tabular numeral in `ink-muted` - so a
+					 * pressed chip does not turn its number into part of the label, and the
+					 * old boxed badge and `· n` suffix stop being two spellings of one style.
+					 *
+					 * ONE INLINE SPAN, WITH A REAL SPACE: a flex pair would put the two
+					 * words in separate items, and the accessible name would be `All2` -
+					 * the CSS gap is invisible to it.
+					 */}
+					<span>
+						{label}{" "}
+						<span className="tabular-nums text-ink-muted">
+							{formatNumber(count)}
+						</span>
+					</span>
 				</button>
 			))}
 		</fieldset>
@@ -3142,7 +3387,7 @@ export const AskPanel = ({
 					 * row, a legend above them names twice what the rows already say.
 					 */}
 					{showPending && shown.pending.length > 0 ? (
-						<p className="px-3 pt-1 text-ink-dim text-meta">
+						<p className="px-3 pt-2 font-medium text-ink-muted text-meta">
 							{t("ui.chat.asks.settled_heading")}
 						</p>
 					) : null}

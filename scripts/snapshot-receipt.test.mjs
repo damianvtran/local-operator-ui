@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
+import { EventEmitter, once } from "node:events";
 import { createServer } from "node:http";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -116,6 +116,236 @@ test("delaying the real observer shifts only its own local span", async () => {
 		assert.equal(delayed[key], control[key]);
 });
 
+test(
+	"first-paint GETs join by relay ID and stamp headers, first complete data and authoritative snapshot",
+	{ timeout: 10_000 },
+	async () => {
+		const origin = 1_000;
+		let now = 0;
+		const originalClock = globalThis.performance;
+		const originalFetch = globalThis.fetch;
+		const server = createServer();
+		const reads = new EventEmitter();
+		const traceHeader = "x-lop-open-trace";
+		const credential = "synthetic-test-credential";
+		const openFrame = '{"type":"open"}';
+		const snapshot = '{"type":"snapshot","text":"synthetic private payload"}';
+		await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+		const relay = new DesktopStreamRelay(
+			`http://127.0.0.1:${server.address().port}`,
+			credential,
+		);
+		relay.observe((_session, data) => (data === snapshot ? true : undefined));
+		globalThis.performance = { timeOrigin: origin, now: () => now };
+		globalThis.fetch = async (url, init) => {
+			const response = await originalFetch(url, init);
+			const id = new Headers(init.headers).get(traceHeader);
+			if (!id || !response.body) return response;
+			// Still use the real socket/reader; acknowledge each staged write once
+			// the relay processed its bytes and started the next read. A timer alone
+			// cannot prove that a comment or fragment was actually observed first.
+			const reader = response.body.getReader();
+			let consumed = 0;
+			return {
+				ok: response.ok,
+				status: response.status,
+				body: {
+					getReader: () => ({
+						async read() {
+							reads.emit(id, consumed);
+							const result = await reader.read();
+							consumed += result.value?.byteLength ?? 0;
+							return result;
+						},
+						cancel: () => reader.cancel(),
+					}),
+				},
+			};
+		};
+		const readThrough = (id, bytes) =>
+			new Promise((resolve) => {
+				const notify = (consumed) => {
+					if (consumed < bytes) return;
+					reads.off(id, notify);
+					resolve();
+				};
+				reads.on(id, notify);
+			});
+		async function subscribe(args) {
+			const requested = once(server, "request");
+			const ended = Promise.withResolvers();
+			const events = [];
+			const { streamId } = relay.subscribe(
+				{ sessionId: SESSION, ...args },
+				(event) => {
+					events.push(event);
+					if (event.kind === "end" || event.kind === "error")
+						ended.resolve(event.kind);
+				},
+			);
+			const [req, res] = await requested;
+			const url = new URL(req.url, "http://127.0.0.1");
+			assert.equal(req.method, "GET");
+			assert.equal(url.pathname, `/v1/desktop/sessions/${SESSION}/events`);
+			assert.ok(
+				req.headers.authorization === `Bearer ${credential}`,
+				"uses the desktop bearer",
+			);
+			assert.equal(req.headers.accept, "text/event-stream");
+			assert.equal(
+				url.searchParams.get("open_frame"),
+				args.openFrame === true ? "1" : null,
+			);
+			assert.equal(
+				req.headers[traceHeader],
+				args.openFrame === true ? streamId : undefined,
+			);
+			assert.equal(
+				url.searchParams.get("after_seq"),
+				args.afterSeq === undefined ? null : String(args.afterSeq),
+			);
+			return { streamId, res, events, ended: ended.promise };
+		}
+		async function sendHeaders(stream) {
+			const reading = readThrough(stream.streamId, 0);
+			stream.res.writeHead(200, { "Content-Type": "text/event-stream" });
+			stream.res.flushHeaders();
+			await reading;
+		}
+		try {
+			// Same session, overlapping GETs. Even an injected argument must not
+			// substitute for the freshly generated main-side stream ID.
+			const a = await subscribe({ openFrame: true, streamId: "0".repeat(32) });
+			now = 10;
+			const b = await subscribe({ openFrame: true });
+			assert.match(a.streamId, /^[a-f0-9]{32}$/);
+			assert.match(b.streamId, /^[a-f0-9]{32}$/);
+			assert.notEqual(a.streamId, "0".repeat(32));
+			assert.notEqual(a.streamId, b.streamId);
+
+			now = 20;
+			await sendHeaders(a);
+			let bytes = 0;
+			const write = async (data) => {
+				bytes += Buffer.byteLength(data);
+				const reading = readThrough(a.streamId, bytes);
+				a.res.write(data);
+				await reading;
+			};
+			now = 30;
+			await write(": keepalive\n\ndata:\n\n");
+			now = 40;
+			await write(`data: ${openFrame}\n`);
+			assert.deepEqual(
+				a.events.map((e) => e.data),
+				[""],
+			);
+			now = 50;
+			await write("\n");
+			assert.deepEqual(
+				a.events.map((e) => e.data),
+				["", openFrame],
+			);
+
+			now = 60;
+			await sendHeaders(b);
+			now = 70;
+			b.res.end(`data: ${snapshot}\n\n`);
+			assert.equal(await b.ended, "end");
+			now = 80;
+			a.res.end(`data: ${snapshot}\n\ndata: ${snapshot}\n\n`);
+			assert.equal(await a.ended, "end");
+			for (const [stream, ticks] of [
+				[a, [0, 20, 50, 80]],
+				[b, [10, 60, 70, 70]],
+			]) {
+				const receipts = stream.events.flatMap((event) =>
+					event.receipt ? [event.receipt] : [],
+				);
+				assert.equal(receipts.length, 1);
+				const [receipt] = receipts;
+				assert.equal(receipt.streamId, stream.streamId);
+				assert.deepEqual(
+					[
+						receipt.mainFetchStartEpochMs,
+						receipt.mainHeadersEpochMs,
+						receipt.mainFirstDataEpochMs,
+						receipt.mainRecordEpochMs,
+					],
+					ticks.map((tick) => origin + tick),
+				);
+				const line = formatSnapshotReceipt(receipt, 3, 85, 87);
+				assert.ok(
+					!line.includes(credential) && !line.includes("private payload"),
+				);
+				assert.equal(
+					fields(line).mainFirstDataEpochMs,
+					(origin + ticks[2]).toFixed(3),
+				);
+				console.log(`EXPECTED ${line}`);
+			}
+
+			const replay = await subscribe({ epoch: "synthetic", afterSeq: 2 });
+			replay.res.writeHead(200, { "Content-Type": "text/event-stream" });
+			replay.res.end(`data: ${openFrame}\n\ndata: ${snapshot}\n\n`);
+			assert.equal(await replay.ended, "end");
+			assert.deepEqual(
+				replay.events.map((e) => e.kind),
+				["data", "data", "end"],
+			);
+			assert.equal(replay.events[0].receipt, undefined);
+			assert.equal(replay.events[1].receipt.streamId, replay.streamId);
+			assert.equal(replay.events[1].receipt.mainFetchStartEpochMs, undefined);
+			assert.equal(replay.events[1].receipt.mainHeadersEpochMs, undefined);
+			assert.equal(replay.events[1].receipt.mainFirstDataEpochMs, undefined);
+
+			const abort = await subscribe({ openFrame: true });
+			await sendHeaders(abort);
+			const closed = once(abort.res, "close");
+			relay.unsubscribe(abort.streamId);
+			assert.equal(await abort.ended, "end");
+			await closed;
+			assert.deepEqual(abort.events, [
+				{ streamId: abort.streamId, kind: "end" },
+			]);
+
+			const redirected = await subscribe({ openFrame: true });
+			let forwarded = 0;
+			server.on("request", (_req, res) => {
+				forwarded++;
+				res.end();
+			});
+			redirected.res
+				.writeHead(302, { Location: "/not-a-desktop-stream" })
+				.end();
+			assert.equal(await redirected.ended, "error");
+			assert.equal(
+				forwarded,
+				0,
+				"never forwards the trace or bearer to a redirect target",
+			);
+			assert.equal(redirected.events[0].receipt, undefined);
+
+			const unpaired = new DesktopStreamRelay(
+				`http://127.0.0.1:${server.address().port}`,
+				null,
+			);
+			const refused = await new Promise((resolve) =>
+				unpaired.subscribe({ sessionId: SESSION, openFrame: true }, resolve),
+			);
+			assert.equal(refused.kind, "error");
+			assert.equal(refused.receipt, undefined);
+			assert.equal(forwarded, 0, "an unpaired relay never requests the route");
+		} finally {
+			relay.dispose();
+			server.closeAllConnections();
+			await new Promise((resolve) => server.close(resolve));
+			globalThis.performance = originalClock;
+			globalThis.fetch = originalFetch;
+		}
+	},
+);
+
 test("local delivery/parse spans and approximate bridges stay separate and payload-free", () => {
 	const original = globalThis.performance;
 	let now = 100;
@@ -142,6 +372,18 @@ test("local delivery/parse spans and approximate bridges stay separate and paylo
 		const delayedParse = fields(formatSnapshotReceipt(receipt, 7, 157, 190));
 		assert.equal(control.ipcApproxMs, "25.000");
 		assert.equal(control.bridgeApproxMs, "5.000");
+		assert.equal(
+			fields(
+				formatSnapshotReceipt(
+					{ ...receipt, rendererEntryEpochMs: 1_120 },
+					7,
+					157,
+					160,
+				),
+			).bridgeApproxMs,
+			"-10.000",
+			"cross-process clock differences are signed approximations, not elapsed time",
+		);
 		assert.equal(control.bufferMs, "20.000");
 		assert.equal(control.deliveryToParseMs, "2.000");
 		assert.equal(control.parseMs, "3.000");
@@ -231,6 +473,9 @@ test("preload stamps receipt before awaiting id and isolates listeners; unsubscr
 			streamId: "s1",
 			sessionId: SESSION,
 			chars: 19,
+			mainFetchStartEpochMs: 900,
+			mainHeadersEpochMs: 950,
+			mainFirstDataEpochMs: 990,
 			mainRecordEpochMs: 1_000,
 			mainFoldMs: 0,
 			mainObserverMs: 0,
@@ -261,6 +506,10 @@ test("preload stamps receipt before awaiting id and isolates listeners; unsubscr
 		const measured = fields(
 			formatSnapshotReceipt(received[0].receipt, 1, 60, 65),
 		);
+		assert.equal(measured.streamId, "s1");
+		assert.equal(measured.mainFetchStartEpochMs, "900.000");
+		assert.equal(measured.mainHeadersEpochMs, "950.000");
+		assert.equal(measured.mainFirstDataEpochMs, "990.000");
 		assert.equal(measured.ipcApproxMs, "5.000");
 		assert.equal(measured.preloadReadyMs, "40.000");
 	} finally {

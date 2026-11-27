@@ -136,6 +136,65 @@ const dual = {
 		{ label: "Orders", axis: "right", values: [128, 170, 182, 155] },
 	],
 };
+// The operator's report (2026-11-26): daily spend 84.04-153.66 USD with
+// annotated labels. Spec acceptance: ticks 80-160, "USD" once, axis "Nov 24".
+const spend = {
+	type: "line",
+	title: "Datadog daily allocated spend through Nov 24 (UTC)",
+	unit: "USD",
+	data: [
+		["Nov 16", 153.66],
+		["Nov 17", 143.37],
+		["Nov 18", 140.61],
+		["Nov 19", 141.67],
+		["Nov 20", 126.94],
+		["Nov 21", 118.38],
+		["Nov 22 · PDF ends", 109.2],
+		["Nov 23", 124.37],
+		["Nov 24 · rollout", 84.04],
+	],
+};
+// The schema's ceiling: 32 points. At 360px no two x labels may overlap.
+const dense = {
+	type: "line",
+	title: "Daily active sessions",
+	unit: "sessions",
+	data: Array.from({ length: 32 }, (_, day) => [
+		day < 31 ? `Oct ${day + 1}` : "Nov 1",
+		Math.round(1200 + 380 * Math.sin(day / 4) + day * 18),
+	]),
+};
+// Twelve items: six largest slices, "Other (6)" in ink-dim, table lists all 12.
+const pieMany = {
+	type: "pie",
+	title: "Seats by plan",
+	unit: "seats",
+	data: [
+		["Team", 420],
+		["Enterprise", 310],
+		["Individual", 260],
+		["Education", 180],
+		["Nonprofit", 95],
+		["Startup", 80],
+		["Agency", 40],
+		["Government", 26],
+		["Trial", 18],
+		["Partner", 12],
+		["Internal", 8],
+		["Legacy", 5],
+	],
+};
+const bigBars = {
+	type: "bar",
+	title: "Requests by region",
+	unit: "requests",
+	data: [
+		["us-east-1", 182_400],
+		["eu-west-1", 96_250],
+		["ap-southeast-2", 41_800],
+		["us-west-2", 28_120],
+	],
+};
 const id = "sample-assistant-row";
 const ts = 1_760_000_000_000;
 const sample =
@@ -162,6 +221,13 @@ const scenarios = {
 		dual,
 	],
 	compact: [sample, dual, spreadsheet, followup],
+	spend: [sample, spend, followup],
+	dense: [dense],
+	bars: [bigBars, histogram],
+	pies: [pieMany, pie],
+	grids: [scatter, heatmap],
+	series: [grouped, stacked],
+	shares: [percent, dual],
 	partial: [sample, bar, followup],
 	settled: [sample, bar, followup, table],
 	legacy: [sample, example],
@@ -281,7 +347,8 @@ function Fixture({
 					widgets.map((widget) =>
 						// A distinct valid figure payload exercises the renderer's prop refresh,
 						// rather than a same-value replay the reducer can memoize away.
-						widget.payload.type === "series"
+						widget.payload.type === "series" ||
+						widget.payload.type === "spreadsheet"
 							? {
 									...widget,
 									payload: {
@@ -408,7 +475,9 @@ export const CompactTransition: Story = {
 		const root = canvasElement.querySelector(
 			"main[data-glass-region=canvas-backing]",
 		);
-		const gridSelector = '[data-lo-inline-ui="series"] section';
+		// The spreadsheet is the scrolling grid: chart tables now sit in a
+		// collapsed "Chart data" disclosure.
+		const gridSelector = '[data-lo-inline-ui="spreadsheet"] section';
 		const grid = canvasElement.querySelector<HTMLElement>(gridSelector);
 		if (!root || !grid || grid.scrollWidth <= grid.clientWidth)
 			throw new Error("Compact transition must mount an overflowing live grid");
@@ -450,4 +519,79 @@ export const CompactTransition: Story = {
 			"Append, message end and durable refresh kept the focused grid and scrollLeft at 40.";
 		canvasElement.append(receipt);
 	},
+};
+
+/*
+ * Inline chart redesign (spec: readable, interactive inline charts). One dark
+ * and one light frame per surface at the wide (704) and narrow (360) widths.
+ * "Fence open" is what the desktop shows while the model is still writing a
+ * lop-ui block: the runtime withholds an unclosed fence from the stream
+ * (`inline_ui_text._parts`), so the prose streams and the figure arrives
+ * whole, at its final height, when the block closes.
+ */
+export const SpendDark: Story = {
+	args: { scenario: "spend", theme: "localOperatorDark", glass: "on" },
+};
+export const SpendLight: Story = {
+	args: { scenario: "spend", theme: "localOperatorLight", glass: "off" },
+};
+export const SpendNarrow: Story = {
+	args: { ...SpendDark.args, width: 360 },
+};
+export const SpendFenceOpen: Story = {
+	args: { scenario: "spend", theme: "localOperatorDark", proseOnly: true },
+};
+export const DenseDark: Story = {
+	args: { scenario: "dense", theme: "localOperatorDark", glass: "on" },
+};
+export const DenseLight: Story = {
+	args: { scenario: "dense", theme: "localOperatorLight", glass: "off" },
+};
+export const DenseNarrow: Story = {
+	args: { ...DenseLight.args, width: 360 },
+};
+export const BarsDark: Story = {
+	args: { scenario: "bars", theme: "localOperatorDark", glass: "on" },
+};
+export const BarsLight: Story = {
+	args: { scenario: "bars", theme: "localOperatorLight", glass: "off" },
+};
+export const BarsNarrow: Story = {
+	args: { ...BarsLight.args, width: 360 },
+};
+export const PiesDark: Story = {
+	args: { scenario: "pies", theme: "localOperatorDark", glass: "on" },
+};
+export const PiesLight: Story = {
+	args: { scenario: "pies", theme: "localOperatorLight", glass: "off" },
+};
+export const PiesNarrow: Story = {
+	args: { ...PiesLight.args, width: 360 },
+};
+export const GridsDark: Story = {
+	args: { scenario: "grids", theme: "localOperatorDark", glass: "on" },
+};
+export const GridsLight: Story = {
+	args: { scenario: "grids", theme: "localOperatorLight", glass: "off" },
+};
+export const GridsNarrow: Story = {
+	args: { ...GridsLight.args, width: 360 },
+};
+export const SeriesModesDark: Story = {
+	args: { scenario: "series", theme: "localOperatorDark", glass: "on" },
+};
+export const SeriesModesLight: Story = {
+	args: { scenario: "series", theme: "localOperatorLight", glass: "off" },
+};
+export const SeriesModesNarrow: Story = {
+	args: { ...SeriesModesDark.args, width: 360 },
+};
+export const SharesDark: Story = {
+	args: { scenario: "shares", theme: "localOperatorDark", glass: "on" },
+};
+export const SharesLight: Story = {
+	args: { scenario: "shares", theme: "localOperatorLight", glass: "off" },
+};
+export const SharesNarrow: Story = {
+	args: { ...SharesDark.args, width: 360 },
 };

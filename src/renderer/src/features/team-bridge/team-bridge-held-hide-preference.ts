@@ -1,7 +1,10 @@
-import { useSyncExternalStore } from "react";
+import { useObservedRadientAuthority } from "@shared/hooks/radient-account-authority";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useSyncExternalStore } from "react";
 import {
 	type HoldsPage,
 	actionableHoldCount,
+	holdInboxRevision,
 	isHoldHiddenLocally,
 } from "./team-bridge-holds-model";
 
@@ -104,14 +107,90 @@ export function useHeldHideRecoveryPending() {
 export function visibleHeldCount(
 	page: HoldsPage | undefined,
 	revisions: ReadonlySet<string>,
+	excluded: ReadonlySet<string> = EMPTY,
 ) {
 	return actionableHoldCount(
 		page && {
-			items: page.items.filter((item) => !isHoldHiddenLocally(item, revisions)),
+			items: page.items.filter(
+				(item) =>
+					!isHoldHiddenLocally(item, revisions) &&
+					!excluded.has(holdInboxRevision(item)),
+			),
 		},
 	);
 }
 
+type InboxProjection = {
+	accountId: string | undefined;
+	epoch: number;
+	excluded: ReadonlySet<string>;
+};
+
+// The badge is a synchronous reader of the inbox projection, not an audit
+// query. React Query batches observer notifications; using a disabled query
+// for this local state left one painted frame with History updated but the
+// attention badge unchanged. Keep it per QueryClient and authority instead.
+const inboxProjections = new WeakMap<
+	QueryClient,
+	ReturnType<typeof createInboxProjection>
+>();
+function createInboxProjection() {
+	let current: InboxProjection | undefined;
+	const listeners = new Set<() => void>();
+	const read = (accountId: string | undefined, epoch: number) =>
+		current && current.accountId === accountId && current.epoch === epoch
+			? current.excluded
+			: EMPTY;
+	return {
+		read,
+		subscribe(listener: () => void) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+		publish(
+			accountId: string,
+			epoch: number,
+			project: (before: ReadonlySet<string>) => ReadonlySet<string>,
+		) {
+			const before = read(accountId, epoch);
+			const excluded = project(before);
+			if (
+				before.size === excluded.size &&
+				[...excluded].every((key) => before.has(key))
+			)
+				return;
+			current = { accountId, epoch, excluded };
+			for (const listener of listeners) listener();
+		},
+	};
+}
+function inboxProjection(client: QueryClient) {
+	let store = inboxProjections.get(client);
+	if (!store) {
+		store = createInboxProjection();
+		inboxProjections.set(client, store);
+	}
+	return store;
+}
+
+export function publishHoldInboxProjection(
+	client: QueryClient,
+	accountId: string,
+	epoch: number,
+	project: (before: ReadonlySet<string>) => ReadonlySet<string>,
+) {
+	inboxProjection(client).publish(accountId, epoch, project);
+}
+
 export function useVisibleHeldCount(page: HoldsPage | undefined) {
-	return visibleHeldCount(page, useHeldHideRevisions());
+	const { accountId, epoch } = useObservedRadientAuthority();
+	const store = inboxProjection(useQueryClient());
+	const snapshot = useCallback(
+		() => store.read(accountId, epoch),
+		[store, accountId, epoch],
+	);
+	const excluded = useSyncExternalStore(store.subscribe, snapshot, () => EMPTY);
+	return visibleHeldCount(page, useHeldHideRevisions(), excluded);
 }

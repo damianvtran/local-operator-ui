@@ -1,0 +1,24 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4294254e545e-inlinechart-hi",
+	"date": "2026-11-26",
+	"locale": "hi",
+	"round": 2,
+	"independence": "Independent i18n auditor (lopdev reviewer session 4294254e545e), not the translator (desktop coder subagent), who applied the round-1 hi-M1 fix. Authored no translation. Same served model as the translator (anthropic/claude-opus-5-5): disclosed.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2137,
+	"head": "865f4cd3fac0 + uncommitted hi data_toggle fix (one-line diff verified with git diff)",
+	"scope": "All 11 keys of hi ui.chat.inline_chart re-read against en + en context and renderer call sites: meaning, idiom, polite register, ICU args byte-identical, NFC, no Cc/Cf, Latin digits, length (max 38), role/announcement suitability ('चार्ट' role; '{count} में से {index}' position, matching native); data_toggle now 'चार्ट का डेटा', matching audited native mobile.session.inline_chart_data and relay.chart.data_toggle.",
+	"namespace": "ui.chat.inline_chart",
+	"status": "passed",
+	"sha256": {
+		"en": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+		"hi": "50412154d7b98ced3b2241effe5ef39ac5659c95e49776250cb8c1d92d651034",
+		"context": "1a53d28f36f64e2a4e9efd72087c1c8ab84ee35ad580a99d0035a745669a8525",
+		"style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"findings": [],
+	"resolved": ["hi-M1"]
+}

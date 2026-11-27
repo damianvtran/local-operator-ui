@@ -142,8 +142,24 @@ const RAIL_HOST_GROUND =
 /* Trailing utilities are allowed after the ground: the browser pane's root carries its
  * `@container/bpane` there (#872, D5), and the ground is still the token that follows
  * `flex h-full flex-col`. */
-const PANE_ROOT =
-	/className=\{cn\(\s*"((?=[^"]*\bpanel-top-pad\b)[^"]*flex h-full flex-col (bg-[\w-]+)[^"]*)"\s*,?\s*\)\}/g;
+/*
+ * A pane root's class string, as TOKENS rather than as one ordered literal.
+ *
+ * Two roots in this tree broke the ordered spelling while remaining exactly the
+ * root the slot requires: the console pane carries `relative` before its flex
+ * column and `@container/consolepane` after its ground (design round 2, D7), and
+ * it DOCUMENTS that inside `cn(...)`, so even `cn(\s*"` did not reach its
+ * literal. Both facts the slot depends on are still required - the shared pad
+ * and a `bg-<role>` ground, each read on its own below - so a root that drops
+ * either still fails here; only the adjacency of the utilities stopped being
+ * part of the contract.
+ */
+const PANE_ROOT = /className=\{cn\(\s*(?:\/\*[\s\S]*?\*\/\s*)*"([^"]*)"/g;
+const PANE_ROOT_PAD = /(?<![\w:./-])panel-top-pad(?![\w/-])/;
+/* The column facts, independent of where they sit in the string. */
+const PANE_ROOT_HEIGHT = /(?<![\w:./-])h-full(?![\w/-])/;
+const PANE_ROOT_COLUMN = /(?<![\w:./-])flex-col(?![\w/-])/;
+const PANE_ROOT_GROUND = /(?<![\w:./-])(bg-[\w-]+)(?![\w/-])/;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
 const SLOT_BOX =
@@ -275,16 +291,33 @@ function conversationGround() {
 /** The ground token a pane's root section/div paints, as `bg-<role>`. */
 function paneRootGround(file, name) {
 	const source = read(file);
-	const matches = [...source.matchAll(PANE_ROOT)];
+	const matches = [...source.matchAll(PANE_ROOT)]
+		.map((match) => match[1])
+		.filter((classes) => PANE_ROOT_PAD.test(classes));
 	assert.ok(
 		matches.length > 0,
-		`${name}: no 'panel-top-pad flex h-full flex-col bg-*' root found in ${file} - the pane's ground and its pad are read off its own class string, so this file has to be re-read before it can assert anything`,
+		`${name}: no root carrying \`panel-top-pad\` found in ${file} - the pane's ground and its pad are read off its own class string, so this file has to be re-read before it can assert anything`,
 	);
-	for (const match of matches) {
+	for (const classes of matches) {
+		assert.match(
+			classes,
+			PANE_ROOT_HEIGHT,
+			`${name}: a root in ${file} is not h-full - an occupant of the right-pane slot has to fill it, and a root that does not is not the element whose ground this file is reading`,
+		);
+		assert.match(
+			classes,
+			PANE_ROOT_COLUMN,
+			`${name}: a root in ${file} is not flex-col - the slot's panes are columns, so this file cannot say which element paints the strip`,
+		);
+		const ground = classes.match(PANE_ROOT_GROUND);
+		assert.ok(
+			ground,
+			`${name}: a root in ${file} paints no \`bg-*\` ground - every occupant of the right-pane slot paints the slot's own \`elevated\` ground from y0, and a root without one shows the conversation's canvas in the strip`,
+		);
 		assert.equal(
-			match[2],
+			ground[1],
 			"bg-elevated",
-			`${name}: a root in ${file} paints \`${match[2]}\`. Every occupant of the right-pane slot must paint the slot's own \`elevated\` ground from y0; the lane no longer paints it, so anything else shows the conversation's canvas in the strip - the seam the operator reported, one layer up.`,
+			`${name}: a root in ${file} paints \`${ground[1]}\`. Every occupant of the right-pane slot must paint the slot's own \`elevated\` ground from y0; the lane no longer paints it, so anything else shows the conversation's canvas in the strip - the seam the operator reported, one layer up.`,
 		);
 	}
 	return matches.length;
@@ -750,10 +783,29 @@ test("the inset keeps non-fill current cues for a tab, rail item and temporary c
 		css,
 		/\[data-workspace-shell\][^{}]*\[data-panel-rail-item\][^{}]*::before\s*\{\s*content: none/,
 	);
+	/*
+	 * The temporary row's current state is FILLED now, not transparent. The
+	 * operator asked (2026-11-27, PR #2115) for the selected conversation to
+	 * carry a background highlight like the hover one, so the old
+	 * `background: transparent` pin was retired with that decision; this test
+	 * keeps pinning only the NON-fill cues named above. The fill itself is owned
+	 * by the `--sidebar-conversation-current` rule; what matters here is that
+	 * the rule exists and that no rule aimed at the current temporary row paints
+	 * it back to nothing.
+	 */
 	assert.match(
 		css,
-		/\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*\{\s*background: transparent/,
+		/\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*\{\s*background-color: var\(--sidebar-conversation-current\)/,
 	);
+	const currentTemporaryBlocks = [
+		...css.matchAll(
+			/([^{}]*\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*)\{([^{}]*)\}/g,
+		),
+	].filter(([, selector]) => !/:not\(\[aria-current="page"\]\)/.test(selector));
+	assert.ok(currentTemporaryBlocks.length > 0);
+	for (const [, , body] of currentTemporaryBlocks) {
+		assert.doesNotMatch(body, /background(?:-color)?:\s*transparent/);
+	}
 	const group = read(
 		"src/renderer/src/features/chat/components/sidebar-temporary-group.tsx",
 	);

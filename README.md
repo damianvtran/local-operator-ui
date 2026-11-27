@@ -21,12 +21,12 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/app-shell-chat-dark.webp">
-    <source media="(prefers-color-scheme: light)" srcset="./resources/readme/app-shell-chat-light.webp">
-    <img alt="The app's chat view: an agent's reply, the run details panel with two subagents running, and their shared to-do list." src="./resources/readme/app-shell-chat-light.webp">
+    <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/team-run-hero-2x-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="./resources/readme/team-run-hero-2x-light.webp">
+    <img alt="Local Operator showing the Product team in the sidebar, the manager dividing checkout recovery work among three agents, and the message composer below." src="./resources/readme/team-run-hero-2x-light.webp" width="840">
   </picture>
   <br />
-  <sub><code>the app at work</code> — a conversation with an agent, two subagents running beside it, and the to-do list they share.</sub>
+  <sub>Staged Local Operator demo: the Product team splits checkout recovery across three agents.</sub>
 </p>
 
 <br />

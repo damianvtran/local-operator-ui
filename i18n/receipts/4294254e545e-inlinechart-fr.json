@@ -1,0 +1,40 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4294254e545e-inlinechart-fr",
+	"date": "2026-11-26",
+	"locale": "fr",
+	"independence": "Independent i18n auditor (lopdev reviewer session 4294254e545e), not the translator (desktop coder subagent). Read committed bytes of PR #2137 at 865f4cd3fac0; authored no translation. Same served model as the translator (anthropic/claude-opus-5-5): disclosed.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2137,
+	"head": "865f4cd3fac0",
+	"scope": "All 11 keys of ui.chat.inline_chart against en + en context and their renderer call sites: meaning, tooltip/button idiom, vous-register (n/a, no address), ICU args byte-identical, NFC, no Cc/Cf, no ASCII '...', typographic spaces per fr style guide, length, role/announcement suitability; compared with audited relay.chart and native mobile.session.inline_chart_data. data_toggle matches native 'Données du graphique'.",
+	"namespace": "ui.chat.inline_chart",
+	"status": "passed",
+	"sha256": {
+		"en": "4939a75aa9edbcfcfbfb32c1e98ce148122d6b126e21656ff55b8299ccdaf4cd",
+		"fr": "2a880111d89a5f45cd517cbabc20ef8f3491eb0f4e926b24e917f95049b2ae48",
+		"context": "1a53d28f36f64e2a4e9efd72087c1c8ab84ee35ad580a99d0035a745669a8525",
+		"style_guide": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"findings": [
+		{
+			"id": "fr-m1",
+			"severity": "MINOR",
+			"key": "ui.chat.inline_chart.also",
+			"status": "deferred",
+			"issue": "'Aussi :' puts U+0020 before the colon; fr style guide (Punctuation) requires U+202F before ':' and the audited relay.chart.also uses U+202F. An ordinary space can wrap the colon onto its own line in the centred meta line under the donut.",
+			"fix": "Aussi\u202f:"
+		},
+		{
+			"id": "fr-m2",
+			"severity": "MINOR",
+			"key": "ui.chat.inline_chart.pair",
+			"status": "deferred",
+			"issue": "'{label}\u00a0: {value}' uses U+00A0 before the colon; fr style guide and audited relay.chart.axis_value use U+202F.",
+			"fix": "{label}\u202f: {value}"
+		}
+	],
+	"resolved": []
+}

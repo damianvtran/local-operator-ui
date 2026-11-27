@@ -401,6 +401,8 @@ const DevicePicker = ({
 					align="start"
 					side="bottom"
 					data-device-picker=""
+					/* Finish only: let the shared menu keep its existing Window glass. */
+					data-lo-floating-finish=""
 					data-device-picker-busy={busy ? "" : undefined}
 					className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
 					/*

@@ -1443,8 +1443,8 @@ async function initializeBrowserHost(
 					 *   - the document is one of the measured prompt documents of a known
 					 *     provider (`passkeyPromptProvider`), never the autofill menu;
 					 *   - that provider is installed, enabled and loaded (`isActive`);
-					 *   - a person has engaged THIS tab with a trusted click from app
-					 *     chrome (`tab-engagement.ts`), which CDP cannot imitate;
+					 *   - a person has engaged THIS tab with a trusted chrome or page
+					 *     click (`tab-engagement.ts`), which CDP cannot imitate;
 					 *   - the frame is a SUBframe: a provider document as a tab's own
 					 *     document is still refused (it is vault UI, `extension_page`).
 					 * Before that engagement nothing is admitted, so the agent can neither
@@ -1809,6 +1809,11 @@ async function initializeBrowserHost(
 		 * per-tab ring buffer until host stop while the ordinary close released all
 		 * three (R5).
 		 */
+		// Assigned once `host` exists (below). `releaseTab` is hoisted above the
+		// host's `const`, so reading `host` from it before that line would be a
+		// temporal-dead-zone throw that skips the rest of the release; before the
+		// host exists there are no links to forget, so the no-op is exact.
+		let forgetPasskeyContinue: (tabId: number) => void = () => {};
 		function releaseTab(tabId: number, webContentsId: number): void {
 			webauthn.cancelForTab(tabId);
 			if (nativePasskeyNotice.clearTab(tabId)) syncPasskeyNotice();
@@ -1816,6 +1821,10 @@ async function initializeBrowserHost(
 			// so a stale notice cannot outlive the tab it described.
 			authRequests.forget(webContentsId);
 			engagement.clear(tabId);
+			// Either end of a passkey-continue link closing ends the link: a copy
+			// closed before its sign-in finished must never refresh the agent tab,
+			// and a closed agent tab has nothing to refresh.
+			forgetPasskeyContinue(tabId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
 			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
@@ -1992,6 +2001,8 @@ async function initializeBrowserHost(
 					}
 				: undefined,
 		});
+		forgetPasskeyContinue = (tabId) =>
+			host.passkeyContinueLinks.forgetTab(tabId);
 		// Main can resolve language after renderer renegotiation. Publish from the
 		// actual locale owner, not from the renderer's earlier request or a timer.
 		const stopLocaleUpdates = observeBrowserLocale(options.window);
@@ -2699,20 +2710,26 @@ async function initializeBrowserHost(
 			 * and is not involved.
 			 */
 			contents.on("before-mouse-event", (_event, mouse) => {
-				if (mouse.type === "mouseDown") {
-					addressOverlay?.dismissForTab(tabId, "page_pointer");
-					// A PERSON'S PRESS ON THE PAGE engages the tab (review S4): the
-					// tab-strip selection alone missed a click straight into an already
-					// selected tab. The event cannot tell a person from CDP, so an agent
-					// input command in flight for this view makes it the agent's
-					// (`tab-engagement.ts` has the Electron source this rests on).
-					engagement.pagePressed(tabId, {
-						synthetic: cdp.isDispatchingInput(contents.id),
-						windowFocused:
-							!options.window.isDestroyed() && options.window.isFocused(),
-						active: registry.activeTab?.tabId === tabId,
-					});
+				if (mouse.type === "mouseLeave") {
+					engagement.pagePointerLeft(tabId);
+					return;
 				}
+				if (mouse.type !== "mouseDown" && mouse.type !== "mouseUp") return;
+				if (mouse.type === "mouseDown")
+					addressOverlay?.dismissForTab(tabId, "page_pointer");
+				// Chromium can deliver a primary press before window focus, then
+				// deliver its release (and run the page's click handler) after focus.
+				// Observe both edges here, before the page can request a prompt, and
+				// fence BOTH against CDP input. Never infer authority from DOM events.
+				const gesture = {
+					synthetic: cdp.isDispatchingInput(contents.id),
+					primary: mouse.button === "left",
+					windowFocused:
+						!options.window.isDestroyed() && options.window.isFocused(),
+					active: registry.activeTab?.tabId === tabId,
+				};
+				if (mouse.type === "mouseDown") engagement.pagePressed(tabId, gesture);
+				else engagement.pageReleased(tabId, gesture);
 			});
 			// The user's own navigation starts here; a page/agent-initiated one shares
 			// the event, which is why the design scopes "navigating dismisses" to the

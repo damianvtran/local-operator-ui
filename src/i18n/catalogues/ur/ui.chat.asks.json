@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "ہٹائیں…",
 	"ui.chat.asks.other_label": "دیگر",
 	"ui.chat.asks.recommended": "تجویز کردہ",
-	"ui.chat.asks.urgent": "فوری۔",
 	"ui.chat.asks.no_answer": "کوئی جواب نہیں دیا گیا",
 	"ui.chat.asks.changed_handoff": "تبدیل شدہ — ابھی ایجنٹ کو یہ نہیں دیا گیا۔",
 	"ui.chat.asks.send_answer": "جواب بھیجیں",
@@ -44,5 +43,8 @@
 	"ui.chat.asks.proposal.summary": "{kind, select, agent {ایجنٹ} team {ٹیم} skill {مہارت} other {پروفائل}} {name} میں مجوزہ تبدیلی",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} سطریں",
 	"ui.chat.asks.proposal.field_changed": "{label}: تبدیل شدہ",
-	"ui.chat.asks.proposal.review": "تبدیلیوں کا جائزہ لیں"
+	"ui.chat.asks.proposal.review": "تبدیلیوں کا جائزہ لیں",
+	"ui.chat.asks.progress": "{total, number, ::group-off} میں سے {answered, number, ::group-off} کے جواب دیے گئے",
+	"ui.chat.asks.urgent_label": "فوری",
+	"ui.chat.asks.copy_id": "سوال ID {id} نقل کریں"
 }
