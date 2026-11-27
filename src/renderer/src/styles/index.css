@@ -3248,6 +3248,63 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	);
 }
 
+/*
+ * THE NEUTRAL PAPER - the composer's own tone, as an opaque ground.
+ *
+ * Operator, 2026-11-27: on Tokyo Night the command palette read "too bright on
+ * dark mode", and the Model/Effort pickers read blue above a composer that reads
+ * dark grey. Both painted the raw `elevated` role, which on a cast palette is a
+ * saturated plate (Tokyo Night `#2B2F49`, OKLCH C 0.047), while the composer's
+ * writing well over window glass is an ink field over the desktop material and
+ * measures near-neutral at the same lightness (`#302F38`, C 0.016).
+ *
+ * The paper is `elevated` with its chroma scaled to 40% and its OKLCH lightness
+ * 0.01 lower, the hue held: every theme keeps its own cast, just at the
+ * composer's strength, and the paper is never brighter than the plate it
+ * replaces. It is DERIVED, not a palette role, because it is a function of one
+ * role and must follow a user's composed or custom palette for free. The two
+ * numbers are `NEUTRAL_PAPER_CHROMA`/`NEUTRAL_PAPER_LIGHTNESS` in
+ * `src/shared/theme-engine/contract-tables.mjs`, which carries their derivation;
+ * `evaluate.mjs` § 6a asserts the inks, the control edge and the selection row
+ * on the computed paper for every dark palette, and `contrast-contract.mjs`
+ * fails if this rule and those constants diverge - keep the spelling below.
+ *
+ * Dark only (`light-dark`): the report was about dark mode, and a light plate is
+ * already near-neutral. Declared on the consuming elements rather than `:root`,
+ * so it resolves against the nearest `data-theme` scope the way the role does.
+ */
+[data-lo-neutral-paper],
+[data-quick-picker][data-picker-placement="anchored"] {
+	--lo-neutral-paper: light-dark(
+		var(--lo-elevated),
+		oklch(from var(--lo-elevated) calc(l - 0.01) calc(c * 0.4) h)
+	);
+}
+
+/* The command palette wears the paper in every coverage: it is a modal over a
+ * darkened scrim, so the composer behind it is not the comparison - the scrim
+ * is, and a saturated plate is what read as "too bright" there. Unlayered, so
+ * it outranks the shared dialog's `bg-elevated` utility without `!important`;
+ * the dialog's sheen and soft edge (`.lo-dialog-surface`) are background-image
+ * and inset shadow, and still compose on top. */
+[data-lo-neutral-paper] {
+	background-color: var(--lo-neutral-paper);
+}
+
+/* The anchored pickers follow the COMPOSER'S material, not a fixed tone. With
+ * pane glass (and in the mini window's composer) the writing well becomes the
+ * neutral field (`[data-glass-region="composer"]` below), so the pickers take
+ * the neutral paper; with glass off the well is `bg-elevated` and the pickers
+ * keep `elevated`, so in each mode the menu matches the control it opened from.
+ * `--picker-paper` feeds the row hover/active mixes above, so the row states
+ * step off the same paper the panel paints. */
+html[data-glass~="pane"] [data-quick-picker][data-picker-placement="anchored"],
+html[data-glass]:has([data-glass-region="mini-ground"])
+	[data-quick-picker][data-picker-placement="anchored"] {
+	--picker-paper: var(--lo-neutral-paper);
+	background-color: var(--picker-paper);
+}
+
 /* Share the finish, not the ground. The translucent panel keeps its own fill,
  * blur and shadow. Near-white paper has no room for a visible brightening:
  * leave its top edge neutral and grade the paper immediately below it. Dark
@@ -3418,6 +3475,33 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 
 .composer-dock [data-lo-cwd-chip] > button {
 	min-inline-size: 0;
+}
+
+/* The shelf's working-directory chip is a `ghost` Button, whose hover and press
+ * are the accent wash. On the composer every other selectable control steps with
+ * a neutral ink wash (`COMPOSER_UTILITY_BUTTON`, `READING_BUTTON`), and a tinted
+ * chip on the neutral shelf read as "coloured" (operator, 2026-11-27). Scoped to
+ * the dock because `DirectoryIndicator` also renders in the create-file dialog,
+ * where the ghost button's own vocabulary is right. Unlayered, so it outranks
+ * the variant's utilities without `!important`; disabled keeps the variant's
+ * transparent ground (`:enabled`). One alpha for hover and press (the press keeps
+ * the hover ground; the variant's accent ink is replaced), matching
+ * `READING_BUTTON`'s 6%: the label is `ink` here too, and `contrast-contract.mjs`
+ * holds the pair to one number and `ink` to its 7:1 floor on it. */
+@media (hover: hover) {
+	.composer-dock [data-lo-cwd-chip] > button:enabled:hover {
+		background-color: color-mix(in oklab, var(--lo-ink) 6%, transparent);
+	}
+}
+.composer-dock [data-lo-cwd-chip] > button:enabled:active {
+	background-color: color-mix(in oklab, var(--lo-ink) 6%, transparent);
+}
+/* The variant's pressed ink is the accent; keep the danger ink an invalid
+ * directory paints, since that colour is information, not decoration. */
+.composer-dock
+	[data-lo-cwd-chip]
+	> button:enabled:active:not([aria-invalid="true"]) {
+	color: var(--lo-ink);
 }
 
 .composer-dock .composer-dock-readings {

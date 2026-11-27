@@ -572,7 +572,7 @@ const TOOLTIP_CLAMP = "line-clamp-4";
  * other direction of the same rule: a control that cannot be pressed must not
  * paint the ground it paints when it can, or the hover is a lie about a control
  * that is not listening. `disabled:hover:` is spelled out rather than left to the
- * shared `hover:bg-accent-wash` in `CHIP_CONTROL`, because that class is a single
+ * shared `hover:bg-ink/6` in `CHIP_CONTROL`, because that class is a single
  * utility on one element and would otherwise still apply while disabled.
  */
 const DISMISS_DISABLED = cn(
@@ -2388,7 +2388,9 @@ export const ComposerStatusRow = ({
 								 * it, and the snippet's `truncate` is what makes the result a shorter
 								 * snippet rather than an overflow.
 								 */
-								"w-fit max-w-full min-w-0 text-ink-muted hover:bg-accent-wash hover:text-ink focus-visible:outline-offset-1!",
+								// The neutral ink-wash hover `CHIP_CONTROL` (READING_BUTTON) carries,
+								// so the goal chip steps like its siblings on the composer.
+								"w-fit max-w-full min-w-0 text-ink-muted hover:bg-ink/6 hover:text-ink focus-visible:outline-offset-1!",
 								// The row's first-chip rule, applied by the row to whichever chip renders
 								// first; see FIRST_CHIP. The goal renders first whenever it is present.
 								FIRST_CHIP,

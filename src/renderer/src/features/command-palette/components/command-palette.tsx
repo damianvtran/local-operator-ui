@@ -1020,6 +1020,13 @@ export const CommandPalette: FC = () => {
 			>
 				<DialogContent
 					data-tour-tag="command-palette-dialog"
+					/*
+					 * The neutral paper instead of the raw `elevated` plate: on a cast dark
+					 * palette (Tokyo Night) the plate read "too bright" over the scrim
+					 * (operator, 2026-11-27). The rule, its numbers and the contract that
+					 * holds them are in `styles/index.css`, "THE NEUTRAL PAPER".
+					 */
+					data-lo-neutral-paper=""
 					showClose={false}
 					/*
 					 * `z-[2300]`, and the reason is the scrim as much as the panel: a modal

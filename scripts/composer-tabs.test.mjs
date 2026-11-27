@@ -3913,8 +3913,11 @@ test("both dismisses hold their box and are revealed by hover and by keyboard fo
 			"the pointer and the keyboard reveal the same utilities, or one of the two paths is behind",
 		);
 		// The readings' own control box, so the dismiss is the same species as the
-		// chips beside it rather than a second hover ground on one line.
-		assert.match(dismiss, /hover:bg-accent-wash/);
+		// chips beside it rather than a second hover ground on one line. The step
+		// is the composer's neutral ink wash, not the accent wash (operator,
+		// 2026-11-27: a tinted hover read "coloured" on the neutral composer).
+		assert.match(dismiss, /hover:bg-ink\/6/);
+		assert.doesNotMatch(dismiss, /hover:bg-accent-wash/);
 		assert.match(dismiss, /focus-visible:outline-offset-1/);
 		/*
 		 * The disabled step, while a command is in flight (agent review round 1, MINOR 2;

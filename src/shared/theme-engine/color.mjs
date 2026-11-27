@@ -250,3 +250,18 @@ export const mixOklab = (hexA, hexB, weightA) => {
 	const B = hexToOklab(hexB);
 	return oklabToHex(A.map((x, i) => x * weightA + B[i] * (1 - weightA)));
 };
+
+/*
+ * CSS `oklch(from <hex> calc(l + lightnessShift) calc(c * chromaShare) h)`, for
+ * the neutral paper (`--lo-neutral-paper` in `styles/index.css`) - a ground the
+ * stylesheet DERIVES from `elevated` rather than names, so the contract can only
+ * assert it by computing the same pixel. Scaling OKLCH chroma at a held hue is
+ * scaling OKLab's `a` and `b` by the same share, which is what this does; the
+ * result is clamped into sRGB the way `oklabToHex` clamps every other mix (a
+ * chroma REDUCTION never leaves the gamut a role already sat in, so the clamp
+ * only absorbs rounding).
+ */
+export const neutralizeOklch = (hex, chromaShare, lightnessShift) => {
+	const [L, a, b] = hexToOklab(hex);
+	return oklabToHex([L + lightnessShift, a * chromaShare, b * chromaShare]);
+};
