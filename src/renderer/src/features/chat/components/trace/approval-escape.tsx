@@ -370,12 +370,11 @@ const dropOurFailurePrefix = (text: string): string => {
  *
  * Either flag counts, and neither is derived from the title or the detail:
  * `bridge_latched` is the host's stamp that the conversation holds Team Bridge
- * (teammate-agent) content, and `approval_suspended: "bridge"` says a session
- * auto granted BEFORE that content arrived stopped covering calls. In both the
- * backend refuses `approvals auto` from this surface (`approval_reason:
- * "bridge_latched"`; the desktop command carries no `bridge_ack`), so a handle
- * that offers it can only fail. Absent or false flags - an older backend, an
- * unlatched conversation - read as not latched, which is today's behaviour.
+ * (teammate-agent) content, and `approval_suspended: "bridge"` marks a card
+ * from an earlier Auto grant that was suspended. A parked card is an Allow/Deny surface,
+ * not a place to grant Auto; its escapes never carry `bridge_ack`. The separate
+ * composer chip and session picker can acknowledge an explicit Auto selection
+ * without answering the card. Absent or false flags read as not latched.
  */
 export const approvalGateIsBridgeLatched = (gate: {
 	bridge_latched?: boolean;

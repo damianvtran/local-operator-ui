@@ -50,6 +50,8 @@ const bundle = await build({
 		contents: [
 			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { runSessionCommand } from "./src/renderer/src/features/chat/pickers/use-picker-backend";',
+			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
 			'export { ApprovalModeChipView, approvalModeFrom, approvalToggleArgs, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode-chip";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -88,10 +90,51 @@ const {
 	approvalEscapeHandleState,
 	policyAfterSave,
 	QuestionDock,
+	runSessionCommand,
+	desktopEndpoint,
+	desktopRequestSchema,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const SESSION = "aaaaaaaaaaaa";
+
+test("only an explicit session Auto selection acknowledges Team Bridge at the HTTP boundary", async () => {
+	const bodies = [];
+	const send = async (request) => {
+		const endpoint = desktopEndpoint(desktopRequestSchema.parse(request));
+		assert.equal(endpoint.path, `/v1/desktop/sessions/${SESSION}/commands`);
+		assert.equal(endpoint.method, "POST");
+		bodies.push(endpoint.body);
+		return { result: { kind: "notice", text: "Approvals updated" } };
+	};
+	for (const [command, args, bridgeAck] of [
+		["approvals", "auto", true],
+		["approvals", "auto", undefined],
+		["approvals", "ask", true],
+		["approvals", "default auto", true],
+		["model", "auto", true],
+	]) {
+		await runSessionCommand(
+			{ sessionId: SESSION, command, args, bridgeAck },
+			send,
+		);
+	}
+	assert.deepEqual(
+		bodies.map(({ command, args, bridge_ack, ...body }) => [
+			command,
+			args,
+			bridge_ack,
+			Object.hasOwn(body, "bridgeAck"),
+		]),
+		[
+			["approvals", "auto", true, false],
+			["approvals", "auto", undefined, false],
+			["approvals", "ask", undefined, false],
+			["approvals", "default auto", undefined, false],
+			["model", "auto", undefined, false],
+		],
+	);
+});
 
 const approvalGate = (over = {}) => ({
 	request_id: "11111111-1111-4111-8111-111111111111",
