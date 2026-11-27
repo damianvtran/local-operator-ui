@@ -1575,30 +1575,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "949573a5b3324d578ba7967727e009ee3b3c66c586184d7238f187485a612fb6",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "7168d65dfb43a141faf521b88e3bfcb28520b2a885f02b2d1646fa822369daa5",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-es-browser-passkey-notice-2091effe",
+					"instance": "pr2146-es-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-es-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "2209bddf93caa707c8903a9250b4b82f5a2b85a5e2bf412828d5cd67e739b6d1",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-es-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "b192be3605150bc907e014e68803ea690dea6619208906549b5fe35399a20890",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -1922,6 +1922,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-es.json",
 							"receipt_sha256": "43967a5cb42ff34b01f19abb9c401635c1c94fe5d96556ea79214f35da73f69b",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "949573a5b3324d578ba7967727e009ee3b3c66c586184d7238f187485a612fb6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-es-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-es-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "2209bddf93caa707c8903a9250b4b82f5a2b85a5e2bf412828d5cd67e739b6d1",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -15994,30 +16017,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "82967c56173a9cbbe50845f1457a538448b0759314c3bc390fbeae17eed81eda",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "69053857665160aaa062d08e36006f456332bd41d54af0837248c79b933e7323",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-fr-browser-passkey-notice-2091effe",
+					"instance": "pr2146-fr-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-fr-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "7918035aa24b4c29755c4b4931d3901f56989be370ff4c9f97b4ea2e8884eff1",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-fr-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "797aa4ca46a0daaed1717e6e38a0021aff90d8efb76a03e8c3a7abd88c719352",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -16341,6 +16364,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-fr.json",
 							"receipt_sha256": "362d4a1cb92e5b66ab1a9eeb88de9204b1ec98550fffc5e24b4b7b859ddba6f2",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "82967c56173a9cbbe50845f1457a538448b0759314c3bc390fbeae17eed81eda",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-fr-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-fr-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "7918035aa24b4c29755c4b4931d3901f56989be370ff4c9f97b4ea2e8884eff1",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -31035,30 +31081,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "e62592154b47d7c2bdf79c83debc30efbf84540c8db26f78ee068b5b346b1590",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "868348be6c9258501ecbf9112108cc2db3783c372fa574abb49ee7fba3664b6b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-hi-browser-passkey-notice-2091effe",
+					"instance": "pr2146-hi-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-hi-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "40a4a937cea05ddf6adfbe11d0a4f0be6cbc5184132775c862f53670caafe7a3",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-hi-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "d02c35d496f937d6976a56047fd340579d0243ad6c4ff511174f961b03c0c8a7",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -31382,6 +31428,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-hi.json",
 							"receipt_sha256": "04be1b3e7b2f8080265825336c15ce15cb8bd3cc075a07bb8ad6422721eabb78",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "e62592154b47d7c2bdf79c83debc30efbf84540c8db26f78ee068b5b346b1590",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-hi-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-hi-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "40a4a937cea05ddf6adfbe11d0a4f0be6cbc5184132775c862f53670caafe7a3",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -45634,30 +45703,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "bba2d3c745048f358e72f3743d34a8e6ceeceb1ccd84a6b93657f5babcdd19fe",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "26d6ca2490cad78c680425b2cbe668dd35fad00083ebe76f4ba971693b9f7247",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-ru-browser-passkey-notice-2091effe",
+					"instance": "pr2146-ru-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-ru-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "9d6b8e6c5080c8456ec94d2e94455173278912ac8e3afb2c18968f3ff2d40579",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-ru-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "968c67c9d264201559f78d0677a97b4b2e2bf9d38e36b448f8a0a6c722f981eb",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -45980,6 +46049,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ru.json",
 							"receipt_sha256": "0d0e72e7823f3e397faacfc407aa02560b2e20501b90fee7d45ec516d01ca284",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "bba2d3c745048f358e72f3743d34a8e6ceeceb1ccd84a6b93657f5babcdd19fe",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-ru-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-ru-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "9d6b8e6c5080c8456ec94d2e94455173278912ac8e3afb2c18968f3ff2d40579",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -60074,30 +60166,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "1c1899a53a750e15f7ced72b519ec99c2fe959256e1709817d9de836eb43b441",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "081dea7765e5d7193648c6327fc9302716dc6e85432a7c0fabb27459528c3bfe",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-ur-browser-passkey-notice-2091effe",
+					"instance": "pr2146-ur-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-ur-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "33bf6791a56ba3333f61ca5d08a8dc4d4aff842cef04c6c7b39e5d0b749edac3",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-ur-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "a37c66b41eb102797f59b0a9599d8d4479738daa56aa1b4ac1ba8e06a336f659",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -60444,6 +60536,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ur.json",
 							"receipt_sha256": "d8f33a236d741367ca8b3b6f58f47d335ace589cb5306da85fdf786d28b07f21",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "1c1899a53a750e15f7ced72b519ec99c2fe959256e1709817d9de836eb43b441",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-ur-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-ur-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "33bf6791a56ba3333f61ca5d08a8dc4d4aff842cef04c6c7b39e5d0b749edac3",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -74634,30 +74749,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "1ac85a28372d9897d35b260adefc6c46b686269dacda9aae977ad6a61ec7fb08",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "b123c44b7272cf3b188d474d15f458383c0692cf3fbb7945fefe96f34bf97bc7",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
-					"result": "clean",
-					"instance": "pr1964-vi-browser-passkey-notice-2091effe",
+					"date": "2026-11-27",
+					"result": "clean-with-findings",
+					"instance": "pr2146-vi-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-vi-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "6f0b152d801d7177781f61dc67cae3b1e5b5fce997961e0dffedb322ea0ded16",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-vi-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "371cb55f14a95df87bc4ba4c19a51a975b95c9ab69e6463585b87f890cc9306d",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -74981,6 +75096,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-vi.json",
 							"receipt_sha256": "747650aa34d85a18e411580142f6e881985ef99c6fed32527f4a2989a4c8581f",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "1ac85a28372d9897d35b260adefc6c46b686269dacda9aae977ad6a61ec7fb08",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-vi-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-vi-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "6f0b152d801d7177781f61dc67cae3b1e5b5fce997961e0dffedb322ea0ded16",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
@@ -89841,30 +89979,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
-			"target_sha256": "c02206424237bd5cb6c91681aa0ca6f55d86ed039ee7f258f5562be268fdc51b",
+			"source_sha256": "962e6901309158c064af093198c41931f6d364407639892ab8ae38e5510ffc6a",
+			"target_sha256": "08ff64f941d902653f61f0a6588df73723972e88665c738f3a2760becedaf93e",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-23",
-				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
+				"date": "2026-11-27",
+				"note": "Row restarted for PR #2146 (lopdev coder): browser_passkey_notice.agent_explanation reworded, browser_passkey_notice.continued_here added; every other key byte-identical to the superseded audited bytes."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-23",
+					"date": "2026-11-27",
 					"result": "clean",
-					"instance": "pr1964-zh-cn-browser-passkey-notice-2091effe",
+					"instance": "pr2146-zh-cn-browser-passkey-continue-r2-145475c8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1964-zh-cn-browser-passkey-notice-2091effe.json",
-					"receipt_sha256": "87b46207984638807d8f23945095559a0ba968fa1d19e1ac56139f15eccbf3d8",
-					"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
+					"receipt": "i18n/receipts/pr2146-zh-cn-browser-passkey-continue-r2-145475c8.json",
+					"receipt_sha256": "bfdff77fe7031e1b4ee6ac2bbc6385bb63984f55b856d20b666e5e9211d4e1d4",
+					"scope": "ui.browser delta at PR #2146 head 60fbbc02cfd7: agent_explanation changed, continued_here added; carried keys byte-identical to audited base"
 				}
 			],
 			"status": "audited",
@@ -90212,6 +90350,29 @@
 							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-zh-cn.json",
 							"receipt_sha256": "e9b2930da51ed62a1d54dd65e441f8dca8303c7dcf94fa8284e3a58ebc847744",
 							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+					"target_sha256": "c02206424237bd5cb6c91681aa0ca6f55d86ed039ee7f258f5562be268fdc51b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "pr1964-zh-cn-browser-passkey-notice-2091effe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1964-zh-cn-browser-passkey-notice-2091effe.json",
+							"receipt_sha256": "87b46207984638807d8f23945095559a0ba968fa1d19e1ac56139f15eccbf3d8",
+							"scope": "ui.browser delta at PR #1964: +2 approvals_card passkey-notice keys, -8 browser_passkey_custody keys; carried keys byte-identical to audited base"
 						}
 					],
 					"status": "audited"
