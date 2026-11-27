@@ -36,6 +36,7 @@ import {
 } from "../workspace-tabs-model";
 
 import { WORKSPACE_INACTIVE_MINUTES } from "../workspace-tab-cleanup";
+import { ChatRowTitle } from "./chat-row-title";
 import { createWorkspaceTabReveal } from "./workspace-tab-reveal";
 
 const WORKSPACE_DRAG = "application/x-lo-workspace-tab";
@@ -138,19 +139,31 @@ export function WorkspaceTabs({
 	 * FIXED width so the strip does not reflow when names arrive in a burst;
 	 * the sr-only text keeps the button's accessible name.
 	 */
-	const titleSlot = (tab: WorkspaceTab, className: string) =>
-		resolveTitle(tab).kind === "loading" ? (
-			<span
-				data-workspace-tab-title-loading=""
-				aria-busy="true"
-				className="flex items-center"
-			>
-				<Skeleton aria-hidden="true" className="h-2.5 w-20" />
-				<span className="sr-only">{title(tab)}</span>
+	const titleSlot = (tab: WorkspaceTab, placement: "strip" | "menu") => {
+		const resolved = resolveTitle(tab);
+		if (resolved.kind === "loading") {
+			return (
+				<span
+					data-workspace-tab-title-loading=""
+					aria-busy="true"
+					className="flex items-center"
+				>
+					<Skeleton aria-hidden="true" className="h-2.5 w-20" />
+					<span className="sr-only">{title(tab)}</span>
+				</span>
+			);
+		}
+		// Only the actual name on the strip needs hover reading. Keep menu
+		// labels and placeholder names static, and never pan the tab controls.
+		if (placement === "strip" && resolved.kind === "title") {
+			return <ChatRowTitle text={resolved.text} variant="workspace-tab" />;
+		}
+		return (
+			<span className={placement === "menu" ? "max-w-56 truncate" : "truncate"}>
+				{title(tab)}
 			</span>
-		) : (
-			<span className={className}>{title(tab)}</span>
 		);
+	};
 
 	/*
 	 * Remember every real name each tab has shown: the open conversation's
@@ -486,7 +499,7 @@ export function WorkspaceTabs({
 					}}
 				>
 					{tab.pinned && <Pin aria-hidden="true" className="size-3 shrink-0" />}
-					{titleSlot(tab, "truncate")}
+					{titleSlot(tab, "strip")}
 				</button>
 				{/*
 				 * The tab's own actions live INSIDE the tab, beside its close button, so
@@ -637,7 +650,7 @@ export function WorkspaceTabs({
 									{tab.pinned && (
 										<Pin aria-hidden="true" className="size-3 shrink-0" />
 									)}
-									{titleSlot(tab, "max-w-56 truncate")}
+									{titleSlot(tab, "menu")}
 								</DropdownMenuItem>
 							))}
 						{overflow && <DropdownMenuSeparator />}

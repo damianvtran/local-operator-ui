@@ -2,10 +2,18 @@ import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { TOOLTIP_DELAY_MS } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 /*
- * The conversation row's title: the clip box, the pan, and the edge fade.
+ * The conversation title: the clip box, the pan, and the edge fade.
+ * Workspace tabs opt into the same reader while keeping their own flex sizing
+ * and pointer host; the sidebar behavior described below remains the default.
  *
  * WHY THIS IS ITS OWN COMPONENT. The row is built by a plain render function
  * (`sessionRow` in `chat-sidebar.tsx`), where a hook would run a different number
@@ -82,12 +90,17 @@ const FADE_PX = 12;
 /** The machine's own preference, read once per row by the app's shared hook. */
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
-export function ChatRowTitle({ text }: { text: string }) {
+export function ChatRowTitle({
+	text,
+	variant = "sidebar",
+}: { text: string; variant?: "sidebar" | "workspace-tab" }) {
+	const isTab = variant === "workspace-tab";
 	const boxRef = useRef<HTMLSpanElement | null>(null);
 	const textRef = useRef<HTMLSpanElement | null>(null);
 	const detachRef = useRef<(() => void) | null>(null);
 	const dwellRef = useRef<number | null>(null);
 	const frameRef = useRef<number | null>(null);
+	const panTitleRef = useRef(text);
 	/*
 	 * Whether a pan is RUNNING is React state, because it swaps two classes: the pan
 	 * drops `truncate`'s ellipsis (a static ellipsis painted over moving text is a
@@ -149,10 +162,14 @@ export function ChatRowTitle({ text }: { text: string }) {
 	const runPan = useCallback(
 		(box: HTMLSpanElement, text: HTMLSpanElement, overflow: number) => {
 			const speed = Math.max(PAN_PX_PER_S, overflow / (PAN_MAX_MS / 1000));
+			// The sidebar keeps its existing physical mask. Tab text follows its
+			// inline direction and can have a much narrower clip beside controls.
+			const rtl = isTab && getComputedStyle(box).direction === "rtl";
+			const fade = isTab ? Math.min(FADE_PX, box.clientWidth / 4) : FADE_PX;
 			const started = performance.now();
 			const step = (now: number) => {
 				const distance = Math.min(overflow, ((now - started) / 1000) * speed);
-				text.style.transform = `translateX(${-distance}px)`;
+				text.style.transform = `translateX(${rtl ? distance : -distance}px)`;
 				/*
 				 * The LEFT ramp is `min(12px, offset)` and it is written in the same frame
 				 * as the transform: at offset 0 there is no left fade at all, so the first
@@ -160,7 +177,10 @@ export function ChatRowTitle({ text }: { text: string }) {
 				 * 12px of text has gone under the edge the full fade is in place. The right
 				 * fade is fixed - it is the honest end of the clip.
 				 */
-				const mask = `linear-gradient(to right, transparent 0, black ${Math.min(FADE_PX, distance)}px, black calc(100% - ${FADE_PX}px), transparent 100%)`;
+				// A tab's trailing fade eases out as the last characters become
+				// readable, rather than dimming them at the held position.
+				const endFade = isTab ? Math.min(fade, overflow - distance) : fade;
+				const mask = `linear-gradient(to ${rtl ? "left" : "right"}, transparent 0, black ${Math.min(fade, distance)}px, black calc(100% - ${endFade}px), transparent 100%)`; // i18n: ignore CSS gradient value, not user copy
 				box.style.setProperty("mask-image", mask);
 				box.style.setProperty("-webkit-mask-image", mask);
 				/*
@@ -173,7 +193,7 @@ export function ChatRowTitle({ text }: { text: string }) {
 			};
 			frameRef.current = window.requestAnimationFrame(step);
 		},
-		[],
+		[isTab],
 	);
 
 	/**
@@ -233,6 +253,14 @@ export function ChatRowTitle({ text }: { text: string }) {
 		dwellRef.current = window.setTimeout(startPan, TOOLTIP_DELAY_MS);
 	}, [resetPan, startPan]);
 
+	useLayoutEffect(() => {
+		if (!isTab || panTitleRef.current === text) return;
+		panTitleRef.current = text;
+		// Live tab names can change under a stationary pointer. The old title's
+		// dwell, travel and mask must not survive into the replacement's first paint.
+		resetPan();
+	}, [isTab, text, resetPan]);
+
 	useEffect(() => {
 		reduceMotionRef.current = reduceMotion;
 		/* A pan already running when the setting is turned on stops with the mask. */
@@ -263,11 +291,17 @@ export function ChatRowTitle({ text }: { text: string }) {
 			detachRef.current?.();
 			detachRef.current = null;
 			if (!node) return;
-			const host =
-				node.closest("[data-session-row]") ??
-				node.closest("button[data-chat-row]");
+			const host = isTab
+				? node.closest<HTMLElement>("[data-workspace-tab]")
+				: (node.closest<HTMLElement>("[data-session-row]") ??
+					node.closest<HTMLElement>("button[data-chat-row]"));
 			if (!host) return;
-			const onEnter = () => armPan();
+			const onEnter = (event: PointerEvent) => {
+				// A tap/press can emit pointerenter even though it is not hover.
+				if (isTab && (event.pointerType === "touch" || event.buttons !== 0))
+					return;
+				armPan();
+			};
 			const onLeave = () => resetPan();
 			host.addEventListener("pointerenter", onEnter);
 			host.addEventListener("pointerleave", onLeave);
@@ -278,15 +312,16 @@ export function ChatRowTitle({ text }: { text: string }) {
 				resetPan();
 			};
 		},
-		[armPan, resetPan],
+		[armPan, isTab, resetPan],
 	);
 
 	return (
 		<span
 			ref={attach}
-			data-session-title
+			data-session-title={isTab ? undefined : true}
+			data-workspace-tab-title={isTab ? true : undefined}
 			className={cn(
-				"min-w-0 flex-1",
+				!isTab && "min-w-0 flex-1",
 				// A title the user (or their agent) wrote: no text in analytics or replay.
 				USER_CONTENT_CLASS,
 				/* The shipped rest state, ellipsis and all - and the pan's own clip, which
@@ -297,7 +332,8 @@ export function ChatRowTitle({ text }: { text: string }) {
 			{panning ? (
 				<span
 					ref={textRef}
-					data-session-title-text
+					data-session-title-text={isTab ? undefined : true}
+					data-workspace-tab-title-text={isTab ? true : undefined}
 					className="inline-block w-max whitespace-nowrap"
 				>
 					{text}

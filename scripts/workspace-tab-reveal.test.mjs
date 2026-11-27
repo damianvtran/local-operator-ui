@@ -92,7 +92,10 @@ const requestFrame = (run) => {
 const cancelFrame = (id) => frames.delete(id);
 window.requestAnimationFrame = globalThis.requestAnimationFrame = requestFrame;
 window.cancelAnimationFrame = globalThis.cancelAnimationFrame = cancelFrame;
-window.matchMedia = () => ({ matches: reducedMotion });
+// The reveal reads a snapshot; the title also subscribes to the media query.
+// jsdom lacks matchMedia, so supply its EventTarget surface as well as matches.
+window.matchMedia = () =>
+	Object.assign(new window.EventTarget(), { matches: reducedMotion });
 window.ResizeObserver = globalThis.ResizeObserver = class {
 	constructor(run) {
 		this.run = run;
@@ -114,10 +117,10 @@ const resize = (...changed) =>
 			if (targets.length) observer.run(targets.map((target) => ({ target })));
 		}
 	});
-const frame = () =>
+const frame = (now = 0) =>
 	act(() => {
 		for (const [id, run] of [...frames]) {
-			if (frames.delete(id)) run(0);
+			if (frames.delete(id)) run(now);
 		}
 	});
 const tab = (key, pinned = false) => ({
@@ -635,6 +638,68 @@ const pointer = (node, type) => {
 	Object.defineProperty(event, "pointerId", { value: 1 });
 	act(() => node.dispatchEvent(event));
 };
+
+for (const phase of ["pending", "running", "held"]) {
+	test(`a replacement title does not inherit a ${phase} hover pan`, (t) => {
+		const { host, render } = fixture(t, [tab("active")]);
+		const {
+			rows: [row],
+		} = laneLayout(host, "regular", [[0, 100]]);
+		render("active", { activeTitle: "A long title that overflows" });
+		frame();
+
+		const clip = row.querySelector("[data-workspace-tab-title]");
+		const movingText = () =>
+			clip.querySelector("[data-workspace-tab-title-text]");
+		let width = 310;
+		Object.defineProperties(clip, {
+			clientWidth: { get: () => Math.min(120, width) },
+			scrollWidth: { get: () => width },
+		});
+		const dwell = new Map();
+		let id = 0;
+		t.mock.method(window, "setTimeout", (run) => {
+			dwell.set(++id, run);
+			return id;
+		});
+		t.mock.method(window, "clearTimeout", (id) => dwell.delete(id));
+		t.mock.method(performance, "now", () => 0);
+		const elapseDwell = () =>
+			act(() => {
+				for (const [id, run] of [...dwell]) if (dwell.delete(id)) run();
+			});
+
+		pointer(row, "pointerenter");
+		assert.equal(dwell.size, 1);
+		if (phase !== "pending") {
+			elapseDwell();
+			const moving = movingText();
+			moving.getBoundingClientRect = () => box(0, width);
+			frame(); // Measure the mounted text and start translating.
+			frame(phase === "held" ? 10_000 : 1_000);
+			const expected = phase === "held" ? -190 : -32;
+			assert.equal(moving.style.transform, `translateX(${expected}px)`);
+			assert.notEqual(clip.style.maskImage, "");
+		}
+
+		// Keep the same tab, pointer and title clip; a fresh overflowing title in
+		// the pending case also proves the old dwell cannot wake up and pan it.
+		const replacement =
+			phase === "pending" ? "A different overflowing title" : "Notes";
+		if (phase !== "pending") width = 36;
+		render("active", { activeTitle: replacement });
+		assert.equal(host.querySelector("[data-workspace-tab]"), row);
+		assert.equal(row.querySelector("[data-workspace-tab-title]"), clip);
+		assert.equal(clip.textContent, replacement);
+		assert.equal(clip.style.maskImage, "", `stale ${phase} mask`);
+		assert.equal(movingText(), null, `stale ${phase} moving text`);
+		assert.equal(dwell.size, 0, "the former title's dwell must be canceled");
+		elapseDwell();
+		frame(10_000);
+		assert.equal(movingText(), null);
+		assert.equal(clip.style.maskImage, "");
+	});
+}
 
 test("canceled pointer press defers one reveal of the latest title until release", (t) => {
 	const { host, render } = fixture(t, [tab("first"), tab("active")]);
