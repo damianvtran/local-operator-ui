@@ -6031,6 +6031,9 @@ export function ChatPage() {
 		() => stage(undefined, true),
 		desktopFeatureEnabled(capabilities.data, "desktop_feed"),
 	);
+	// The transcript remounts on navigation, but both tab lanes belong to
+	// the workspace. Keep their viewport at the page's unkeyed lifetime.
+	const workspaceViewport = useRef({ pinned: 0, regular: 0 });
 	const workspaceActive = id
 		? ({ kind: "session", id } as const)
 		: draftKey
@@ -6145,6 +6148,7 @@ export function ChatPage() {
 						routeNotice={routeNotice}
 						workspaceTabs={(activeTitle) => (
 							<WorkspaceTabs
+								viewport={workspaceViewport.current}
 								activeKey={workspaceActiveKey}
 								activeTitle={activeTitle}
 								tabs={workspace.tabs}
