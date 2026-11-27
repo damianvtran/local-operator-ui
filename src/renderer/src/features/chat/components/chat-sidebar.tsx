@@ -4528,10 +4528,25 @@ export function ChatSidebar({
 			? t("ui.chat.sidebar_notes.opened_by_named", { agent })
 			: t("ui.chat.sidebar_notes.opened_by_anonymous");
 	};
+	/*
+	 * THE FLYOUT'S ATTRIBUTION, KEYED WHOLE (i18n slice a, 2026-11-25). It used
+	 * to append an English ` in “<label>”` to the translated "opened by" clause
+	 * and lead with an ASCII ", " - an English fragment and a Latin comma inside
+	 * every locale's flyout. The conversation-named variants are their own ICU
+	 * messages so a translator can place the name and the quotation marks where
+	 * the language wants them, and the joiner is CLDR's (`listSeparator()`),
+	 * the same one the row's `sr-only` clauses use.
+	 */
 	const openedByNote = (row: CanonicalSessionRow) => {
 		if (!row.opened_by) return "";
 		const label = row.opened_by.label?.trim();
-		return `, ${openedBySentence(row)}${label ? ` in “${label}”` : ""}`;
+		if (!label) return `${listSeparator()}${openedBySentence(row)}`;
+		const agent = row.opened_by.agent?.trim();
+		return `${listSeparator()}${
+			agent
+				? t("ui.chat.sidebar_notes.opened_by_named_in", { agent, label })
+				: t("ui.chat.sidebar_notes.opened_by_anonymous_in", { label })
+		}`;
 	};
 	/*
 	 * The binding clause, and the ONE case it is dropped: when the attribution in

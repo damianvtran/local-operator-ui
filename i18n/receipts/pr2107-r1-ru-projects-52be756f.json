@@ -1,0 +1,52 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes)",
+	"locale": "ru",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-ru-projects-52be756f",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session cd4573fb0a8b (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, project-edit-model.ts/project-refusals.ts (code-mapped refusal copy) and the ru catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-ru-projects-52be756f"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "Проект не сохранён: одно из его значений не принято. Проверьте поля и повторите попытку.",
+		"ui.projects.project_refusals.project_store_busy": "Хранилище проектов занято. Повторите попытку через несколько секунд.",
+		"ui.projects.project_refusals.project_schema_newer": "Этот проект сохранён более новой версией Local Operator. Обновите приложение, чтобы изменить его."
+	},
+	"checks": {
+		"placeholders": "none in English or ru",
+		"accuracy": "project_invalid stays generic (names no field) as the context requires; store_busy keeps two sentences with the retry remedy ('in a moment' -> 'через несколько секунд', the catalogue's established rendering); schema_newer keeps Local Operator untranslated and two sentences",
+		"terminology": "'Повторите попытку' matches the ru catalogue's retry phrasing (used elsewhere in ui.projects; no competing 'Попробуйте ещё раз' there); 'хранилище' is the standard store term; 'Обновите приложение' / 'более новой версией' match shipped usage; formal вы imperatives consistent",
+		"grammar": "short passive participles agree: 'Проект не сохранён', 'одно … не принято', 'проект сохранён'; 'его' correctly refers to the project",
+		"english_leakage": "none beyond the product name Local Operator",
+		"width": "68-97 characters, two short sentences; within the two-line ~480px dialog hint",
+		"plurals": "none expected; none present",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"diff": "git diff --numstat: 3 insertions, 0 deletions",
+		"tooling": "generate.mjs --check, check-duplicates.mjs, check-strings.mjs, context-parity.mjs all exit 0; ledger-check reports ru/ui.projects stale source/target hashes as expected until the integrator updates i18n/ledger.json"
+	},
+	"binding": "sha256 of on-disk bytes in the PR #2107 worktree at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/ru/ui.projects.json 52be756f7469038f274da2dc3ba6e22712a2bf96e5c3bec12c521e0706afbdf8; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409. Key set equals English.",
+	"scope": "PR #2107 r1: the 3 new ui.projects.project_refusals keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "52be756f7469038f274da2dc3ba6e22712a2bf96e5c3bec12c521e0706afbdf8",
+	"sha256": {
+		"ru": "52be756f7469038f274da2dc3ba6e22712a2bf96e5c3bec12c521e0706afbdf8",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

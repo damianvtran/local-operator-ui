@@ -1,0 +1,54 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes)",
+	"locale": "vi",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-vi-projects-a9626ef8",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session aa5c1716715b (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render path (project-refusals.ts projectCreateErrorCopy/projectWriteErrorCopy via project-edit-model.ts projectRefusalCodeCopy) and the vi catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-vi-projects-a9626ef8"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "Dự án chưa được lưu: một trong các giá trị của dự án không được chấp nhận. Hãy kiểm tra các trường rồi thử lại.",
+		"ui.projects.project_refusals.project_store_busy": "Kho dự án đang bận. Hãy thử lại sau giây lát.",
+		"ui.projects.project_refusals.project_schema_newer": "Dự án này đã được lưu bằng một phiên bản Local Operator mới hơn. Hãy cập nhật ứng dụng để thay đổi dự án."
+	},
+	"checks": {
+		"accuracy": "all three carry the English meaning; project_invalid stays generic and names no specific field, as the context requires",
+		"sentence_count": "two sentences each, matching English and the context's 'keep the same sentence count'",
+		"terminology": "'Hãy thử lại sau giây lát' is the catalogue's established retry phrase (12 uses); 'đang bận' matches ui.agents.publication.pull.busy; 'phiên bản ... mới hơn' / 'Hãy cập nhật' match ui.agents.config.disabled.needs_newer_backend; 'các trường' matches shipped ui.projects usage",
+		"register": "quiet factual statement then a short 'Hãy …' instruction; no blame",
+		"product_name": "Local Operator kept untranslated",
+		"placeholders": "none in English or vi",
+		"english_leakage": "none besides the product name",
+		"width": "45-111 characters; within the two-line ~480px dialog hint",
+		"plurals": "none in English or vi; none expected",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"diff": "git diff --numstat: 3 insertions, 0 deletions",
+		"tooling": "generate.mjs --check (keys.gen.ts byte-identical), check-duplicates.mjs ok, check-strings.mjs ok, context-parity.mjs ok; ledger-check not expected to pass until the integrator updates i18n/ledger.json"
+	},
+	"binding": "sha256 of on-disk bytes in the PR worktree at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/vi/ui.projects.json a9626ef82078c07274601336724e78376ed16f097cfa7a42e472a03eec6230db; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409.",
+	"scope": "PR #2107 r1: the 3 new ui.projects.project_refusals keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "a9626ef82078c07274601336724e78376ed16f097cfa7a42e472a03eec6230db",
+	"sha256": {
+		"vi": "a9626ef82078c07274601336724e78376ed16f097cfa7a42e472a03eec6230db",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

@@ -1,0 +1,51 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes)",
+	"locale": "es",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-es-projects-76637c90",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 2007822d15c0 (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, project-refusals.ts (code-mapped refusal copy) and the es catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-es-projects-76637c90"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "El proyecto no se guardó: no se aceptó uno de sus valores. Revisa los campos y vuelve a intentarlo.",
+		"ui.projects.project_refusals.project_store_busy": "El almacén de proyectos está ocupado. Vuelve a intentarlo en un momento.",
+		"ui.projects.project_refusals.project_schema_newer": "Este proyecto se guardó con una versión más reciente de Local Operator. Actualiza la app para modificarlo."
+	},
+	"checks": {
+		"placeholders": "none in English or es",
+		"accuracy": "project_invalid stays generic (names no field) as the context requires; store_busy keeps two sentences with retry remedy; schema_newer keeps Local Operator untranslated and two sentences",
+		"terminology": "'almacén' matches the es catalogue's store term (almacén de adjuntos/secretos/certificados); 'vuelve a intentarlo' (96 uses) and 'intentarlo en un momento' are established es phrasings; 'versión más reciente' and 'la app' match shipped usage; tú register consistent",
+		"english_leakage": "none beyond the product name Local Operator",
+		"width": "72-106 characters, two short sentences; within the two-line ~480px dialog hint",
+		"plurals": "none expected; none present",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"diff": "git diff --numstat: 3 insertions, 0 deletions",
+		"tooling": "generate.mjs --check, check-duplicates.mjs, check-strings.mjs, context-parity.mjs all rc=0; ledger-check reports es/ui.projects stale hashes as expected until the integrator updates i18n/ledger.json"
+	},
+	"binding": "sha256 of on-disk bytes in /Users/damian/local-operator-ui/.worktrees/tb-edit-metadata at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/es/ui.projects.json 76637c9090fcdc5588a80026c6f5d2e8b0de6345adbb231c4559bc85ae377491; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409. Key set equals English.",
+	"scope": "PR #2107 r1: the 3 new ui.projects.project_refusals keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "76637c9090fcdc5588a80026c6f5d2e8b0de6345adbb231c4559bc85ae377491",
+	"sha256": {
+		"es": "76637c9090fcdc5588a80026c6f5d2e8b0de6345adbb231c4559bc85ae377491",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

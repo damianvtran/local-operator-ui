@@ -1,0 +1,52 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes keyed)",
+	"locale": "ur",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200 + uncommitted ur locale edits (working tree)",
+	"instance": "pr2107-r1-ur-projects-2a2d85ce",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer, team lopdev); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session a90c3b249655 (reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (separate session). Judged from English, the context sidecar, the render path (project-edit-model.ts refusal-code map, project-refusals.ts) and the shipped ur terminology; no MT used.",
+		"instance": "pr2107-r1-ur-projects-2a2d85ce"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "پروجیکٹ محفوظ نہیں ہوا: اس کی ایک قدر قبول نہیں ہوئی۔ خانے جانچیں اور دوبارہ کوشش کریں۔",
+		"ui.projects.project_refusals.project_store_busy": "پروجیکٹ اسٹور مصروف ہے۔ تھوڑی دیر میں دوبارہ کوشش کریں۔",
+		"ui.projects.project_refusals.project_schema_newer": "یہ پروجیکٹ Local Operator کے نئے ورژن نے محفوظ کیا تھا۔ اسے تبدیل کرنے کے لیے ایپ اپ ڈیٹ کریں۔"
+	},
+	"checks": {
+		"placeholders": "none in English or ur (identical empty sets)",
+		"latin_leakage": "only the product name Local Operator, kept per the context note",
+		"bidi_controls": "none in values; node --test scripts/i18n/ur-activation.test.mjs: 3/3 pass",
+		"rtl_rendering": "Local Operator is an interior Latin run between Urdu words; the Urdu full stop ۔ terminates sentences, no Latin punctuation",
+		"accuracy_register": "project_invalid stays generic (no field named), factual then instruction; store_busy keeps two sentences, transient retry; schema_newer factual then instruction. Terms match the catalogue: خانے (27 uses), قدر, اسٹور (as in خفیہ اسٹور), اپ ڈیٹ کریں.",
+		"width": "87/55/94 chars vs English 94/49/89; two short sentences within the 480px dialog hint",
+		"plurals": "none",
+		"pseudo_locale": "not applicable to ur; check-strings, check-duplicates, generate --check and context-parity ok; ledger-check reports this row stale as expected until the integrator updates i18n/ledger.json",
+		"diff_numstat": "3 insertions, 0 deletions"
+	},
+	"scope": "PR #2107 r1: the 3 new project_refusals keys above; all other values unchanged. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"binding": "sha256 of working-tree bytes at audit time: target src/i18n/catalogues/ur/ui.projects.json 2a2d85cedde066eab988df87546a54dc36a9f33487d5e6cc365e4301714a5c82; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "2a2d85cedde066eab988df87546a54dc36a9f33487d5e6cc365e4301714a5c82",
+	"sha256": {
+		"ur": "2a2d85cedde066eab988df87546a54dc36a9f33487d5e6cc365e4301714a5c82",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

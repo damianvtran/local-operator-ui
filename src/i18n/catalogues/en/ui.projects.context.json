@@ -1986,6 +1986,24 @@
 		"note": "English source: This project could not be found. It may have been deleted..  Markup and emphasized user names stay outside this message.",
 		"length": "English is 58 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions."
 	},
+	"ui.projects.project_refusals.project_invalid": {
+		"role": "error line under the New-project sheet or beside an edited project field when the backend rejects a value",
+		"tone": "Quiet factual statement then a short instruction; no blame.",
+		"note": "Generic on purpose: the backend does not say which value it rejected. Do not name a specific field.",
+		"length": "Two short sentences; may wrap to two lines in a dialog about 480px wide."
+	},
+	"ui.projects.project_refusals.project_store_busy": {
+		"role": "error line under the New-project sheet or beside an edited project field when the project store is momentarily locked by another write",
+		"tone": "Quiet factual statement; transient, retrying is the remedy.",
+		"note": "The project store is where the app keeps projects on this computer. Keep the same sentence count.",
+		"length": "Two short sentences; may wrap in a dialog about 480px wide."
+	},
+	"ui.projects.project_refusals.project_schema_newer": {
+		"role": "error line beside a project field when the stored project was written by a newer app version and this one refuses to rewrite it",
+		"tone": "Quiet factual statement then a short instruction.",
+		"note": "Local Operator is the product name; keep it untranslated.",
+		"length": "Two short sentences; may wrap in a dialog about 480px wide."
+	},
 	"ui.projects.project_request_update_button.request_update": {
 		"role": "project request update button: action/accessibility label for “Request update”",
 		"tone": "Direct imperative; retain the current action and punctuation.",

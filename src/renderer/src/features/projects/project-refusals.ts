@@ -12,12 +12,13 @@ import { t } from "@shared/i18n";
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
-	PROJECT_NAME_CONFLICT_CODE,
+	projectRefusalCodeCopy,
 	projectRefusalCopy,
 } from "./project-edit-model";
 import {
 	type DoneGateRefusal,
 	doneGateRefusal,
+	projectNotMovedCopy,
 	refusalCopy,
 } from "./project-model";
 
@@ -50,17 +51,19 @@ export function projectWriteErrorCopy(error: unknown): string {
  * the detail page's Key editor shows. Never match the English sentence to pick
  * a translation: the i18n contract forbids parsing prose the backend owns.
  *
+ * The same holds for `project_invalid`, `project_store_busy` and
+ * `project_schema_newer` (i18n slice a): every code
+ * `projectRefusalCodeCopy` knows is mapped by CODE to the app's sentence.
  * Every other refusal keeps the dialog's previous behaviour exactly: the
  * message through `refusalCopy` (which re-speaks only the done-gate tail),
  * otherwise as written.
  */
 export function projectCreateErrorCopy(error: unknown): string {
 	const message = error instanceof Error && error.message ? error.message : "";
-	if (
-		error instanceof DesktopControlError &&
-		error.code === PROJECT_NAME_CONFLICT_CODE
-	)
-		return projectRefusalCopy({ code: error.code, message });
+	if (error instanceof DesktopControlError) {
+		const coded = projectRefusalCodeCopy(error.code);
+		if (coded !== null) return coded;
+	}
 	return refusalCopy(message);
 }
 
@@ -83,10 +86,7 @@ export function projectGoneError(error: unknown): boolean {
  * rather than the editors' "not saved", because the board has no field.
  */
 export function projectMoveErrorCopy(error: unknown): string {
-	if (!(error instanceof Error) || !error.message)
-		return t(
-			"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat",
-		);
+	if (!(error instanceof Error) || !error.message) return projectNotMovedCopy();
 	/*
 	 * A project deleted (or renamed away) under an open card/dialog: the route's
 	 * own sentence is `no project with id or name '<32-hex id>'`, which names an

@@ -1,0 +1,67 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (projects/remote literals: 7 new ui.chat.sidebar_notes keys)",
+	"locale": "hi",
+	"namespace": "ui.chat.sidebar_notes",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-hi-sidebar-notes-682e6692",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer, team lopdev); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session a5cc4a60428a (reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the call sites (chat-remote.ts remoteDeviceLabel/remoteClause/remoteUnreachableClause, chat-sidebar.tsx openedByNote) and the hi catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-hi-sidebar-notes-682e6692"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 1, "nit": 0 },
+	"findings": [
+		{
+			"id": "H1",
+			"severity": "MINOR",
+			"key": "ui.chat.sidebar_notes.remote_another_device",
+			"current": "कोई दूसरा डिवाइस",
+			"replacement": "अन्य डिवाइस",
+			"why": "This value is the {device} fallback (remoteDeviceLabel) and is substituted before postpositions: remote_on_device '{device} पर' renders 'कोई दूसरा डिवाइस पर' and ui.canvas.files.remoteFetching '{device} से' renders 'कोई दूसरा डिवाइस से', both needing the oblique 'किसी दूसरे डिवाइस'. The invariant adjective 'अन्य' reads correctly in direct and oblique slots ('अन्य डिवाइस पर', 'अन्य डिवाइस जवाब नहीं दे रहा है'). Minor because the code comment says the canonical row always carries an id, so the fallback is a guard, not a produced state.",
+			"disposition": "open - recorded for the translator; not edited by the auditor"
+		}
+	],
+	"audited_values": {
+		"ui.chat.sidebar_notes.remote_another_device": "कोई दूसरा डिवाइस",
+		"ui.chat.sidebar_notes.remote_on_device": "{device} पर",
+		"ui.chat.sidebar_notes.remote_on_device_network": "{device} पर · {network}",
+		"ui.chat.sidebar_notes.remote_unreachable_no_answer": "पहुँच से बाहर · इसने जवाब नहीं दिया",
+		"ui.chat.sidebar_notes.remote_unreachable_reason": "पहुँच से बाहर · {reason}",
+		"ui.chat.sidebar_notes.opened_by_named_in": "{agent} ने “{label}” में खोली",
+		"ui.chat.sidebar_notes.opened_by_anonymous_in": "एक एजेंट ने “{label}” में खोली"
+	},
+	"checks": {
+		"diff_numstat": "7 insertions, 0 deletions",
+		"key_set_equals_english": true,
+		"placeholders": "byte-identical sets on all 7 keys ({device}; {device},{network}; {reason}; {agent},{label}; {label}; none)",
+		"middle_dot_kept": true,
+		"quotation_marks": "“ ” around {label}, matching the hi catalogue's existing “{name}” convention",
+		"agreement": "feminine 'खोली' agrees with चैट, consistent with shipped opened_by_named/opened_by_anonymous",
+		"english_leakage": "none (only placeholders Latin)",
+		"plurals": "none in English or hi",
+		"bidi_controls": "none",
+		"gates_run": "generate --check 0, check-duplicates 0, context-parity 0; ledger-check reports the expected stale-row errors for hi/ui.chat.sidebar_notes pending the integrator's ledger update"
+	},
+	"binding": "sha256 of working-tree bytes on d494bee5200: target src/i18n/catalogues/hi/ui.chat.sidebar_notes.json 682e6692b5c89986515d5d4662731be647a075d61e7eb86718f09914a986db63; English src/i18n/catalogues/en/ui.chat.sidebar_notes.json 877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934; context ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c. If H1 is applied the target hash changes and this receipt no longer binds.",
+	"scope": "PR #2107 r1: the 7 new keys only; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934",
+	"context_sha256": "ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c",
+	"target_sha256": "682e6692b5c89986515d5d4662731be647a075d61e7eb86718f09914a986db63",
+	"sha256": {
+		"hi": "682e6692b5c89986515d5d4662731be647a075d61e7eb86718f09914a986db63",
+		"en": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934"
+	}
+}

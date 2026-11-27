@@ -1,0 +1,61 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (remote-device and opened-by-in sidebar literals)",
+	"locale": "fr",
+	"namespace": "ui.chat.sidebar_notes",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-fr-sidebar-notes-c2622e4a",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session ff5af9c21d4a (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render sites (chat-remote.ts remoteDeviceLabel/remoteClause/remoteUnreachableClause; openedByNote in chat-sidebar.tsx; remoteDeviceLabel's reuse via use-remote-device.ts in attachment-frame.tsx) and the fr catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-fr-sidebar-notes-c2622e4a"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.chat.sidebar_notes.remote_another_device": "un autre appareil",
+		"ui.chat.sidebar_notes.remote_on_device": "sur {device}",
+		"ui.chat.sidebar_notes.remote_on_device_network": "sur {device} · {network}",
+		"ui.chat.sidebar_notes.remote_unreachable_no_answer": "injoignable · il n’a pas répondu",
+		"ui.chat.sidebar_notes.remote_unreachable_reason": "injoignable · {reason}",
+		"ui.chat.sidebar_notes.opened_by_named_in": "ouverte par {agent} dans « {label} »",
+		"ui.chat.sidebar_notes.opened_by_anonymous_in": "ouverte par un agent dans « {label} »"
+	},
+	"checks": {
+		"placeholders": "byte-identical ICU placeholder sets for all 7 keys (script comparison of {..} tokens en vs fr); all 7 values format with intl-messageformat 'fr'",
+		"device_fallback": "remote_another_device fills {device} (chat-remote.ts:47) and renders 'sur un autre appareil'; a verbatim name renders 'sur cloud-node-1'. 'appareil' matches the catalogue's shipped term ('cet appareil', 'Masquer sur cet appareil').",
+		"agreement": "'ouverte' (feminine) agrees with 'conversation', exactly as the shipped opened_by_named/opened_by_anonymous values ('ouverte par {agent}'); 'il' in remote_unreachable_no_answer refers to the masculine 'appareil'",
+		"quotes": "« … » with U+202F inside, matching the fr catalogue convention (184 of 198 guillemet pairs use U+202F)",
+		"middle_dot": "' · ' separator preserved in remote_on_device_network and both unreachable lines, as the context requires",
+		"terminology": "'injoignable' matches shipped fr usage ('Local Operator est injoignable', 'Le hub public est injoignable')",
+		"register": "lowercase clauses, no full stop, as the context requires; list joiner is CLDR listSeparator(), not part of the value",
+		"english_leakage": "none; only placeholders are Latin tokens",
+		"width": "all values 12-37 characters; within the one-line ~256px tooltip hint",
+		"plurals": "none in English or fr; none expected",
+		"bidi": "not applicable (LTR); no hard-coded control characters (U+202F is a typographic space, not a bidi control)",
+		"pseudo_locale": "no pseudo-locale catalogue exists (locales: en es fr hi ru ur vi zh-CN); nothing to check",
+		"diff": "git diff --numstat: 7 insertions, 0 deletions",
+		"tooling": "generate.mjs --check, check-duplicates.mjs, check-strings.mjs, context-parity.mjs all rc=0; ledger-check reports fr/ui.chat.sidebar_notes stale hashes as expected until the integrator updates i18n/ledger.json"
+	},
+	"out_of_scope": "pre-existing: ui.canvas.files.remoteUnreachable '{device} ne répond pas…' would start with lowercase 'un autre appareil' if the guard fallback ever fired; English has the same lowercase shape and the canonical row always carries the id (chat-remote.ts comment), so it does not gate.",
+	"binding": "sha256 of on-disk bytes in /Users/damian/local-operator-ui/.worktrees/tb-edit-metadata at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/fr/ui.chat.sidebar_notes.json c2622e4a283212d79fb5bdd2c5fa59522f50c7172634be3ada36150138e7c0c0; English src/i18n/catalogues/en/ui.chat.sidebar_notes.json 877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934; context ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c. Key set equals English.",
+	"scope": "PR #2107 r1: the 7 new ui.chat.sidebar_notes keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934",
+	"context_sha256": "ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c",
+	"target_sha256": "c2622e4a283212d79fb5bdd2c5fa59522f50c7172634be3ada36150138e7c0c0",
+	"sha256": {
+		"fr": "c2622e4a283212d79fb5bdd2c5fa59522f50c7172634be3ada36150138e7c0c0",
+		"en": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934"
+	}
+}

@@ -1,0 +1,54 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes)",
+	"locale": "fr",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-fr-projects-4df1b7aa",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session ff5af9c21d4a (reviewer, lopdev team), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render site (project-edit-model.ts code->key map, project-refusals.ts) and the fr catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-fr-projects-4df1b7aa"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "Le projet n’a pas été enregistré : l’une de ses valeurs a été refusée. Vérifiez les champs et réessayez.",
+		"ui.projects.project_refusals.project_store_busy": "Le stockage des projets est occupé. Réessayez dans un instant.",
+		"ui.projects.project_refusals.project_schema_newer": "Ce projet a été enregistré par une version plus récente de Local Operator. Mettez l’application à jour pour le modifier."
+	},
+	"checks": {
+		"placeholders": "none in English or fr for all 3 keys (script comparison); all format with intl-messageformat 'fr'",
+		"accuracy": "project_invalid stays generic (names no field) as the context requires; project_store_busy keeps two sentences and the retry remedy; project_schema_newer keeps 'Local Operator' untranslated and the update instruction",
+		"terminology": "'Mettez l’application à jour' and 'version plus récente' match shipped fr refusal copy; 'enregistré' matches the namespace's save verb (project_editors.save_field 'Enregistrer {field}'); 'Réessayez' matches shipped retry instructions",
+		"typography": "U+202F before ':' in project_invalid, a convention used across the fr catalogue (741 occurrences); curly apostrophes throughout",
+		"register": "quiet factual statement then short instruction, vouvoiement imperative, no blame",
+		"english_leakage": "none; only 'Local Operator' (product name) is Latin",
+		"width": "62-120 characters, two short sentences each; within the ~480px two-line dialog hint",
+		"plurals": "none in English or fr; none expected",
+		"bidi": "not applicable (LTR); no hard-coded control characters",
+		"pseudo_locale": "no pseudo-locale catalogue exists (locales: en es fr hi ru ur vi zh-CN); nothing to check",
+		"diff": "git diff --numstat: 3 insertions, 0 deletions",
+		"tooling": "generate.mjs --check, check-duplicates.mjs, check-strings.mjs, context-parity.mjs all rc=0; ledger-check reports fr/ui.projects stale hashes as expected until the integrator updates i18n/ledger.json"
+	},
+	"binding": "sha256 of on-disk bytes in /Users/damian/local-operator-ui/.worktrees/tb-edit-metadata at d494bee5200 + uncommitted locale edits: target src/i18n/catalogues/fr/ui.projects.json 4df1b7aad8dfbd184f35dfa7768e7b56b5efd23f8f3fc40922644dbd50541631; English src/i18n/catalogues/en/ui.projects.json e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f; context 2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409. Key set equals English.",
+	"scope": "PR #2107 r1: the 3 new ui.projects.project_refusals keys; unchanged messages retain prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "4df1b7aad8dfbd184f35dfa7768e7b56b5efd23f8f3fc40922644dbd50541631",
+	"sha256": {
+		"fr": "4df1b7aad8dfbd184f35dfa7768e7b56b5efd23f8f3fc40922644dbd50541631",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

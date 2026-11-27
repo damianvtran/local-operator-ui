@@ -1,0 +1,56 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (remote-device and opened-in literals keyed)",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.sidebar_notes",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-zh-cn-sidebar-notes-e5ce4f9a",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 1e0c0b3e4a4a (reviewer, team lopdev), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render paths (chat-remote.ts remoteDeviceLabel/remoteClause/remoteUnreachableClause; chat-sidebar.tsx openedByNote) and the zh-CN catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-zh-cn-sidebar-notes-e5ce4f9a"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"findings": [],
+	"audited_values": {
+		"ui.chat.sidebar_notes.remote_another_device": "另一台设备",
+		"ui.chat.sidebar_notes.remote_on_device": "在{device}上",
+		"ui.chat.sidebar_notes.remote_on_device_network": "在{device}上 · {network}",
+		"ui.chat.sidebar_notes.remote_unreachable_no_answer": "无法连接 · 设备未响应",
+		"ui.chat.sidebar_notes.remote_unreachable_reason": "无法连接 · {reason}",
+		"ui.chat.sidebar_notes.opened_by_named_in": "由{agent}在“{label}”中打开",
+		"ui.chat.sidebar_notes.opened_by_anonymous_in": "由智能体在“{label}”中打开"
+	},
+	"checks": {
+		"accuracy": "All seven render the English meaning. remote_another_device fills {device} in remote_on_device, giving 在另一台设备上 (grammatical); it matches the shipped 另一台设备 (ask_command.notice_elsewhere_unnamed, attachment_refusal.remote_*).",
+		"terminology": "在{device}上 matches ask_command.notice_elsewhere; 无法连接 matches agents.pages.backend.unreachable / canonical.send_failure.unreachable; 未响应 matches agents.starters.server_unanswered; 由…打开 extends the shipped opened_by_named / opened_by_anonymous (由{agent}打开, 由智能体打开).",
+		"placeholders": "Byte-identical sets per key: {device}; {device},{network}; {reason}; {agent},{label}; {label}; none on the two fixed strings.",
+		"grammar": "Chinese has no case, gender or agreement. {device}/{label}/{agent} are verbatim names, and 在X上 / 在“X”中 stay grammatical for any noun.",
+		"punctuation": "Middle dot ( · ) kept with spaces as the context requires. The conversation name uses Chinese quotation marks “”, per the sidecar. No full stops (lowercase-clause tone).",
+		"leakage": "No Latin text other than placeholders.",
+		"width": "All values are 5-18 CJK characters before substitution, well under one line of the ~256px tooltip.",
+		"plurals": "None in English or zh-CN.",
+		"bidi": "LTR locale; no control characters.",
+		"mechanical": "git diff --numstat: 7 insertions, 0 deletions. Key set equals English. generate --check, check-duplicates, check-strings and context-parity pass. ledger-check is stale for this row as expected until the integrator updates i18n/ledger.json."
+	},
+	"scope": "PR #2107 r1: the 7 new keys only. Other values are byte-identical to HEAD (insertions-only diff) and keep their prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934",
+	"context_sha256": "ae444579c0ecfeeff9057951395369ef45c0aabec6d3d922ba58f211f65b290c",
+	"target_sha256": "e5ce4f9ab0f39d7fecc8f2c303909f0f764abc55d1f28ec9f20e957a1c2fb358",
+	"sha256": {
+		"zh-CN": "e5ce4f9ab0f39d7fecc8f2c303909f0f764abc55d1f28ec9f20e957a1c2fb358",
+		"en": "877a2af602209a557373f767240cfaa1b18c5cdcbec9eec3a942f40b40597934"
+	}
+}

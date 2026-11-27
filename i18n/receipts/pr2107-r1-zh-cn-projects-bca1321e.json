@@ -1,0 +1,51 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2107 round 1 (project refusal codes keyed)",
+	"locale": "zh-CN",
+	"namespace": "ui.projects",
+	"pr": 2107,
+	"date": "2026-11-25",
+	"head": "d494bee5200",
+	"instance": "pr2107-r1-zh-cn-projects-bca1321e",
+	"auditor": {
+		"agent": "reviewer",
+		"role": "independent i18n auditor (reviewer); not the translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 1e0c0b3e4a4a (reviewer, team lopdev), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Translator: agent coder, model anthropic/claude-opus-5-5 (uncommitted working-tree edits on d494bee5200). Judged from English, the context sidecar, the render path (project-edit-model.ts refusal-code map; project-refusals.ts) and the zh-CN catalogue's shipped terms; no MT used.",
+		"instance": "pr2107-r1-zh-cn-projects-bca1321e"
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"findings": [],
+	"audited_values": {
+		"ui.projects.project_refusals.project_invalid": "项目未保存：有一个值未被接受。请检查各字段后重试。",
+		"ui.projects.project_refusals.project_store_busy": "项目存储正忙。请稍后重试。",
+		"ui.projects.project_refusals.project_schema_newer": "此项目由更新版本的Local Operator保存。请更新应用后再更改。"
+	},
+	"checks": {
+		"accuracy": "All three render the English meaning. project_invalid stays generic and names no field, per the sidecar. store_busy is transient with retry as the remedy. schema_newer says a newer version wrote the project and the app must be updated before changing it.",
+		"terminology": "请稍后重试 matches project_detail.*try_again_in_a_moment; 正忙 matches the shipped *.busy refusals; 更新版本的… matches agents.config.disabled.needs_newer_backend and run_details.children_unopenable. Local Operator has no adjoining space, the catalogue's majority form (e.g. 版本的Local Operator后端).",
+		"sentence_count": "Two sentences each, as the sidecar asks. Full-width colon and full stops are used.",
+		"placeholders": "None in English or zh-CN.",
+		"leakage": "Only the product name Local Operator, which the sidecar says to keep.",
+		"width": "Each is 13-33 characters, within two lines of a ~480px dialog.",
+		"plurals": "None.",
+		"bidi": "LTR locale; no control characters.",
+		"mechanical": "git diff --numstat: 3 insertions, 0 deletions. Key set equals English. generate --check, check-duplicates, check-strings and context-parity pass. ledger-check is stale for this row as expected until the integrator updates i18n/ledger.json."
+	},
+	"scope": "PR #2107 r1: the 3 new project_refusals keys only. Other values are byte-identical to HEAD (insertions-only diff) and keep their prior provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f",
+	"context_sha256": "2a6d13bff60bdbe6eb35eace8f42c34038c1bdb7857630adc4089dbcac7a8409",
+	"target_sha256": "bca1321efc1592df85a73fe5ec189a10bf6751bbc894a45241922add64894d2c",
+	"sha256": {
+		"zh-CN": "bca1321efc1592df85a73fe5ec189a10bf6751bbc894a45241922add64894d2c",
+		"en": "e616bb8ce3e7e4ce27e9bd0760fd9f75ec36625fce8d1d9d8acae47aaaff796f"
+	}
+}

@@ -1,8 +1,12 @@
 import { t } from "@shared/i18n";
-// Exported source-copy constants remain byte-stable for existing model consumers.
-// Product reads resolve their catalogue key at use time, so changing language
-// does not leave module-initialized labels frozen in the previous locale.
-import { bundledEnglish } from "../../../../i18n/keys.gen";
+/*
+ * NO MODULE-LEVEL COPY HERE (i18n slice a, 2026-11-25). A label evaluated at
+ * import time is evaluated BEFORE the backend's language is negotiated, so it
+ * freezes in English for the life of the renderer (the status-options bug, E1).
+ * Every label this module exports is therefore a function that calls `t()` when
+ * it is read; callers read it during render in a component subscribed through
+ * `useI18nLocale()`, so a language switch re-spells it.
+ */
 /**
  * The Projects tab's pure model: every label, tone and derivation the list and
  * the detail read, as functions of the wire DTOs and nothing else.
@@ -232,9 +236,15 @@ export function milestoneStatusMeta(status: DesktopMilestoneStatus): ChipMeta {
 	return { label: String(status), variant: "neutral" };
 }
 
-/** The stale badge's one label. Its presence is `progress_stale`, not a derivation here. */
-export const PROGRESS_STALE_LABEL =
-	bundledEnglish["ui.projects.project_model.stale"];
+/**
+ * The stale badge's one label. Its presence is `progress_stale`, not a
+ * derivation here. A FUNCTION, NOT A CONSTANT: this was
+ * `PROGRESS_STALE_LABEL`, read from the bundled English at import, so any
+ * consumer saw "Stale" in every language (see the note at the top).
+ */
+export function progressStaleLabel(): string {
+	return t("ui.projects.project_model.stale");
+}
 
 /** One ISO day, `YYYY-MM-DD`, as the wire carries it. */
 const PROJECT_DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -1110,9 +1120,13 @@ export function managedByLine(
 
 /* --------------------------------------------- slice 3: team grouping -- */
 
-/** The bucket a project with no team or owner files under. */
-export const NO_TEAM_LABEL =
-	bundledEnglish["ui.projects.project_model.no_team"];
+/**
+ * The bucket a project with no team or owner files under. A FUNCTION, NOT A
+ * CONSTANT: the former `NO_TEAM_LABEL` froze "No team" at import time.
+ */
+export function noTeamLabel(): string {
+	return t("ui.projects.project_model.no_team");
+}
 
 /**
  * The team a project groups under: `team` first, `owner` as the fallback, and
@@ -1723,8 +1737,13 @@ export function forcedCloseToastText(
 	return t("ui.projects.count.moved_open", { status: statusLabel, open });
 }
 
-/** The sentence shown when a refused move arrives with no message at all. */
-export const PROJECT_NOT_MOVED_COPY =
-	bundledEnglish[
-		"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat"
-	];
+/**
+ * The sentence shown when a refused move arrives with no message at all. A
+ * FUNCTION, NOT A CONSTANT: the former `PROJECT_NOT_MOVED_COPY` froze the
+ * English sentence at import time.
+ */
+export function projectNotMovedCopy(): string {
+	return t(
+		"ui.projects.project_model.the_project_was_not_moved_try_again_or_open_it_to_change_its_stat",
+	);
+}
