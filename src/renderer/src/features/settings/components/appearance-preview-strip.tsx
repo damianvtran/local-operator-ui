@@ -24,9 +24,8 @@ import "./appearance-preview-strip.css";
  *
  * WHAT IT PAINTS. By default it inherits the document's palette - the
  * composition `applyAppearance` published. Glass uses the same derived alphas
- * over a NEUTRAL backdrop fixed to the measured material tone, never the user's
- * own accent: the ground must not move with the palette being judged, and the
- * production floors are solved against that grey (`previewBackdropVars`).
+ * over a synthetic backdrop tinted by the painted canvas, never the accent or
+ * the desktop. The tint moves away from the material grey used by the floors.
  * `previewTheme` re-scopes it to another `[data-theme]` id: during a
  * contrast drag the picker writes an unverified candidate block (`previewCss`)
  * and points the strip at it, so the drag is visible at pointer speed while the
@@ -65,14 +64,22 @@ const CAPTION = "ui.settings.appearance.layers.preview.sample_backdrop";
 export const AppearancePreviewStrip: FC<{
 	/** A scoped `[data-theme]` id to paint instead of the document's palette. */
 	previewTheme?: string;
+	/** Subscribe to rewrites of a scoped block whose id stays fixed during a drag. */
+	subscribeScopedPalette?: (apply: () => void) => () => void;
 	className?: string;
 	glass?: WindowGlassState | null;
 	/** `compact` keeps the chat pair and sidebar rows for an inline companion. */
 	variant?: "full" | "compact";
-}> = ({ previewTheme, className, glass, variant = "full" }) => {
+}> = ({
+	previewTheme,
+	subscribeScopedPalette,
+	className,
+	glass,
+	variant = "full",
+}) => {
 	useI18nLocale();
-	/* The sample's alphas follow ITS painted palette, so a drag candidate is not
-	 * described by the document's last verified composition. */
+	/* Read the palette from the sample, not from the document's last verified
+	 * composition: its `data-theme` may select a draft instead. */
 	const ref = useRef<HTMLElement | null>(null);
 	const [preview, setPreview] = useState<PreviewGlass>({ kind: "solid" });
 	/* The composition is the palette-change SIGNAL. The palette reaches the strip
@@ -85,12 +92,6 @@ export const AppearancePreviewStrip: FC<{
 	 * class, so a light palette is never measured with a dark tier (code M1). */
 	const resolved = useResolvedAppearance();
 	useLayoutEffect(() => {
-		/* The scoped id selects WHICH `--lo-*` block this section inherits, so a change
-		   of id has to re-read even though it is never passed to the solver. The id is
-		   not sufficient on its own: a candidate rewrite keeps the same id (the one-rAF
-		   re-read below is for that), and a theme commit changes the palette without
-		   touching the id at all - which is why `resolved` is a dependency too. */
-		void previewTheme;
 		const apply = () =>
 			setPreview(
 				previewGlassState(
@@ -100,12 +101,29 @@ export const AppearancePreviewStrip: FC<{
 				),
 			);
 		apply();
-		/* `previewCss` writes the candidate block in the PARENT's layout effect, which
-		   runs after this child's; one frame later the painted values are the ones to
-		   measure. An alpha-only update, so nothing reflows. */
+		/* A drag keeps the same scoped id, but updates the rules after this
+		   effect. Refresh the tint after each write without rerunning the glass
+		   floor solver per pointer move or changing the existing alpha timing. */
+		const unsubscribe = previewTheme
+			? subscribeScopedPalette?.(() => {
+					const read = readPreviewPalette(ref.current);
+					if (!read) return;
+					const backdropVars = previewBackdropVars(
+						read.scheme ?? resolved.palette.mode,
+						read.roles.canvas,
+					);
+					setPreview((current) =>
+						current.kind === "glass" ? { ...current, backdropVars } : current,
+					);
+				})
+			: undefined;
+		// Parent layout effects can still publish inherited roles after this read.
 		const frame = requestAnimationFrame(apply);
-		return () => cancelAnimationFrame(frame);
-	}, [glass, previewTheme, resolved]);
+		return () => {
+			unsubscribe?.();
+			cancelAnimationFrame(frame);
+		};
+	}, [glass, previewTheme, resolved, subscribeScopedPalette]);
 	const paint = preview.kind === "glass" ? preview.paint : null;
 	return (
 		<section
@@ -118,9 +136,7 @@ export const AppearancePreviewStrip: FC<{
 			style={
 				{
 					...paint?.vars,
-					...(preview.kind === "glass"
-						? previewBackdropVars(preview.scheme)
-						: null),
+					...(preview.kind === "glass" ? preview.backdropVars : null),
 				} as CSSProperties
 			}
 			className={cn(
