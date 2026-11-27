@@ -843,6 +843,21 @@ export const PickerHeavyProjects: Story = stateStory({
 			text.includes("Projects")
 		);
 	},
+	after: () => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list?.querySelectorAll('[role="option"]');
+		const region = rows?.[0]?.parentElement?.parentElement;
+		if (!rows?.length || !region) return false;
+		// The first page budgets the rendered section as well as its rows, so
+		// its bottom must end on a real option, not merely a multiple of a constant.
+		const edge = region.getBoundingClientRect().bottom;
+		expect(
+			Array.from(rows).some(
+				(row) => Math.abs(row.getBoundingClientRect().bottom - edge) < 0.02,
+			),
+		).toBe(true);
+		return true;
+	},
 });
 
 /**

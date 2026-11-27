@@ -14,7 +14,6 @@ import { useBrowserAttention } from "@features/browser/hooks/use-browser-attenti
  * drift apart on.
  */
 import { pinDragSlot } from "@features/chat/chat-pin-order";
-import { sidebarToggleCap } from "@features/chat/chat-sidebar-layout";
 import { ChatSidebar } from "@features/chat/components/chat-sidebar";
 /*
  * One decision, one spelling: the row the reader is ON is painted by the
@@ -32,10 +31,6 @@ import {
 import { newChatCurrent } from "@features/chat/draft-rows";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
-import {
-	paletteDoorCaps,
-	paletteDoorLabel,
-} from "@features/command-palette/palette-shortcut";
 import {
 	useMeshApprovals,
 	waitingApprovalCount,
@@ -77,11 +72,7 @@ import {
 	SidebarFoot,
 } from "@shared/components/navigation/sidebar-foot";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import {
-	AttentionBadge,
-	BrowserSafeTooltip,
-	Button,
-} from "@shared/components/ui";
+import { AttentionBadge, BrowserSafeTooltip } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -109,8 +100,6 @@ import {
 	Bot,
 	CalendarDays,
 	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
 	ChevronsUp,
 	Ellipsis,
 	FolderKanban,
@@ -119,7 +108,6 @@ import {
 	LoaderCircle,
 	MessageSquarePlus,
 	Network,
-	Search,
 	Store,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -386,10 +374,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { expanded, onCollapse } = useSidebarFrame();
-	const openCommandPalette = useUiPreferencesStore(
-		(state) => state.openCommandPalette,
-	);
+	const { expanded } = useSidebarFrame();
 	/*
 	 * The catalogue capability, the gate the New chat row is disabled on - the
 	 * same bit `app.tsx`'s ⌘N binding reads, so the row and the chord refuse in
@@ -605,9 +590,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * the one place a row's icon, press, badge and tour tag are defined, so both
 	 * widths and both regions draw the same row from the same facts.
 	 *
-	 * WHAT IS DELIBERATELY NOT HERE: `New chat` and `Search` above are ACTIONS,
-	 * not destinations (design § 1). They never join the layout, never drag and
-	 * have no stored id.
+	 * WHAT IS DELIBERATELY NOT HERE: `New chat` is an ACTION, not a destination:
+	 * it never joins the layout, drags or has a stored id.
 	 */
 	const destinationItems = new Map<SidebarDestinationId, NavItem>();
 	if (aidaVisible) {
@@ -1601,7 +1585,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				data-tour-tag={item.tourTag}
 				/*
 				 * A ROW THAT NAVIGATES IS A DESTINATION (design review round 1, D3):
-				 * `New chat` and `Search` above already set this attribute on their
+				 * `New chat` already sets this attribute on its
 				 * buttons, and this one needs it for a different reason - the tour that
 				 * clicks it is not the only thing that looks; the screenshot rig opens a
 				 * destination by this tag. `aria-current` stays as it was: a destination
@@ -1966,16 +1950,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * expands the dock (`›`). Both directions write the same persisted preference
 	 * at every window width, so the glyph never depends on a viewport threshold.
 	 */
-	const toggleLabel = expanded
-		? t("ui.shell.sidebar_navigation.collapse_sidebar")
-		: t("ui.shell.sidebar_navigation.expand_sidebar");
-	const ToggleGlyph = expanded
-		? rtl
-			? ChevronRight
-			: ChevronLeft
-		: rtl
-			? ChevronLeft
-			: ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const catalogueReady = desktopFeatureEnabled(
 		capabilities.data,
@@ -1997,51 +1971,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		navigate("/chat");
 	};
 
-	/*
-	 * THE PRIMARY ACTIONS, two 30px rows at the top of the column (§C1.2; design
-	 * round 1, D1): `New chat ⌘N`, then `Search ⌘P`.
-	 *
-	 * New chat moved HERE from the list's own header, where it sat under a second
-	 * search field, a disclosure and an `All chats` row - the placement the design
-	 * round named as the biggest reason the shell read as two panels welded
-	 * together. Search stays the command palette's door: the one visible search in
-	 * the column. The list's own filter is type-to-filter now (`chat-sidebar.tsx`),
-	 * so there is no second search control at rest.
-	 *
-	 * THE CHORD IS WRITTEN ON THE ROW, as caps with no separator between them
-	 * (N1: `⌘P`, not `⌘ + P`) - the app's `KeyboardShortcut` spells a chord as
-	 * `+`-joined caps and prints the `+`, so the rows pass the caps as one string
-	 * and split nothing. The accessible name carries the chord in words.
-	 *
-	 * DISABLED ON THE CATALOGUE GATE, the same bit `app.tsx`'s ⌘N reads: staging a
-	 * draft needs the session catalogue, and a row that staged one against an
-	 * absent catalogue would be the shortcut claiming a capability the app has
-	 * just said it does not have.
-	 */
 	const newChatLabel = t("ui.shell.sidebar_navigation.new_chat_shortcut", {
 		shortcut: isolateLtr(newChatShortcutCap(isMac).replace("+", "")),
-	});
-	/*
-	 * BOTH DOORS IN THE NAME (design/UX round 2, U3; re-pointed by issue #850):
-	 * this row is where the app teaches the search chords, and there are two of
-	 * them — `Cmd/Ctrl+P` for the everything palette and `Cmd/Ctrl+K` for the
-	 * conversation switcher. THE TWO SWAPPED in #850 (K used to be the everything
-	 * door), so a name that still paired K with "everything" would be the stale
-	 * copy that change exists to remove. The visible cap follows the CLICK — this
-	 * row opens the everything door, so it prints that door's cap — while the
-	 * second door rides in the accessible name and (for the strip, which draws its
-	 * name as a tooltip) in the tooltip, so a reader who never met the tour can
-	 * still find it. The third door (`Cmd/Ctrl+Shift+P`, commands) is not on this
-	 * row: one cap is the row's budget, and two chords in the name is already the
-	 * most a rail row can carry.
-	 */
-	const searchLabel = t("ui.shell.sidebar_navigation.search_accessible", {
-		everything: isolateLtr(paletteDoorLabel("everything", isMac)),
-		chats: isolateLtr(paletteDoorLabel("chats", isMac)),
-	});
-	const searchTitle = t("ui.shell.sidebar_navigation.search_tooltip", {
-		everything: isolateLtr(paletteDoorLabel("everything", isMac)),
-		chats: isolateLtr(paletteDoorLabel("chats", isMac)),
 	});
 	const primaryRow = (
 		icon: LucideIcon,
@@ -2101,24 +2032,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			attrs: { "data-tour-tag": "nav-item-chat", "data-new-chat-row": "" },
 		},
 	);
-	const searchRowExpanded = primaryRow(
-		Search,
-		t("ui.shell.sidebar_navigation.search"),
-		paletteDoorCaps("everything", isMac),
-		{
-			onClick: openCommandPalette,
-			ariaLabel: searchLabel,
-			/* The title is what teaches the second door to a mouse reader; the cap
-			 * above can only carry one chord. */
-			attrs: { "data-command-palette-trigger": "", title: searchTitle },
-		},
-	);
 
 	/*
 	 * A strip control: 32px, one glyph, the name in a tooltip and in
-	 * `aria-label`. The strip's first group is expand + New chat + Search (§J2/§C3,
-	 * design round 1, D11): with only the destinations in it, New chat was
-	 * reachable from a narrow window by ⌘N alone.
+	 * `aria-label`. Keep New chat in the strip: the global controls moved to
+	 * the titlebar, but narrow windows still need a visible New chat action.
 	 */
 	const stripButton = (
 		icon: LucideIcon,
@@ -2187,41 +2105,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</BrowserSafeTooltip>
 		);
 	};
-
-	/*
-	 * The collapse control in the brand row, revealed when the column is pointed
-	 * at or contains focus - Linear, Notion and Slack all put it in the header
-	 * and reveal it on hover.
-	 *
-	 * `pointer-events-none` gates the mouse only; focus is unaffected, so the
-	 * button keeps its place in the tab order and reveals itself with
-	 * `group-focus-within/sidebar` when a keyboard reaches it.
-	 *
-	 * `aria-keyshortcuts` names the chord the shell answers (`chat-layout.tsx`):
-	 * this control and that handler are the two halves of one gesture.
-	 */
-	const collapseToggle = (
-		<div
-			className={cn(
-				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-				"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
-				"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
-			)}
-		>
-			<BrowserSafeTooltip content={toggleLabel} side={rtl ? "left" : "right"}>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					onClick={onCollapse}
-					aria-label={toggleLabel}
-					aria-expanded={expanded}
-					aria-keyshortcuts={sidebarToggleCap(isMac)}
-				>
-					<ToggleGlyph aria-hidden="true" />
-				</Button>
-			</BrowserSafeTooltip>
-		</div>
-	);
 
 	/*
 	 * THE "MORE" ROW AND ITS INLINE GROUP.
@@ -2363,10 +2246,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * on each side and a 28px hit target fits.
 		 *
 		 * THE LIST IS NOT DRAWN HERE. A 56px column cannot show a conversation
-		 * title. The strip is: the brand, then the first group - expand, New chat,
-		 * Search (§J2; design round 1, D11: it used to hold no New chat and no
-		 * visible expand, so a narrow window reached New chat by ⌘N alone) - then
-		 * the destinations, then the foot.
+		 * title. The strip keeps the brand, New chat, the destinations and foot.
+		 * The titlebar owns collapse/expand and Search at either width.
 		 */
 		return (
 			<div
@@ -2386,25 +2267,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				</div>
 				<ul className="flex flex-col items-center gap-1">
 					<li>
-						{stripButton(ChevronRight, toggleLabel, {
-							onClick: onCollapse,
-							attrs: {
-								"aria-expanded": false,
-								"aria-keyshortcuts": sidebarToggleCap(isMac),
-							},
-						})}
-					</li>
-					<li>
 						{stripButton(MessageSquarePlus, newChatLabel, {
 							onClick: stageNewChat,
 							disabled: !catalogueReady,
 							attrs: { "data-tour-tag": "nav-item-chat" },
-						})}
-					</li>
-					<li>
-						{stripButton(Search, searchLabel, {
-							onClick: openCommandPalette,
-							attrs: { "data-command-palette-trigger": "" },
 						})}
 					</li>
 				</ul>
@@ -2496,19 +2362,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 */}
 			<div className="flex h-10 shrink-0 items-center gap-1 pe-2 ps-4">
 				<CollapsibleAppLogo expanded />
-				<span className="ms-auto">{collapseToggle}</span>
 			</div>
 
 			{/*
-			 * §C1.2 then §C1.3: the two primary rows 8px apart, then the destinations
+			 * New chat is followed by the destinations
 			 * group. `pb-2` is the group's bottom step; the body below adds the rest of
 			 * §B6's 16px between the destinations and the list's first label.
 			 */}
 			<div className="flex shrink-0 flex-col gap-2 px-2 pb-2">
-				<div className="flex flex-col gap-0.5">
-					{newChatRow}
-					{searchRowExpanded}
-				</div>
+				<div className="flex flex-col gap-0.5">{newChatRow}</div>
 				{/*
 				 * THE DESTINATIONS GROUP. One ordered list cut by the fold (design § 2):
 				 * the visible region, then the More row, then More's own rows while it is

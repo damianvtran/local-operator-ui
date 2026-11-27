@@ -106,7 +106,12 @@ export const readPreviewPalette = (
  * when it cannot paint glass at all - in which case the sample has no backdrop,
  * and says nothing about one (design D1). */
 export type PreviewGlass =
-	| { kind: "glass"; paint: GlassPaint; scheme: GlassScheme }
+	| {
+			kind: "glass";
+			paint: GlassPaint;
+			scheme: GlassScheme;
+			backdropVars: Record<string, string>;
+	  }
 	| { kind: "solid" };
 
 /**
@@ -135,6 +140,7 @@ export const previewGlassState = (
 	return {
 		kind: "glass",
 		scheme,
+		backdropVars: previewBackdropVars(scheme, read.roles.canvas),
 		paint: glassPaintFor({
 			...state.settings,
 			mechanism: state.capability.mechanism,
@@ -144,56 +150,48 @@ export const previewGlassState = (
 	};
 };
 
-/**
- * How far the neutral ramp travels from the measured material tone, and in which
- * direction: AWAY from the ink's side of the ground.
- *
- * The floors promise every body ink at AA over the material grey, and the worst
- * of the 59 palettes sits within 0.05 of that floor at the transparent end of
- * the slider - so a ramp that went LIGHTER on a dark theme (or darker on a light
- * one) would show the sample's own text worse than the real window can. Moving
- * only toward the ink's own side can only gain contrast, which is what lets the
- * sample be visibly a window over something and still be a promise: measured
- * over a 101-point sweep of this ramp, all three inks clear 4.5:1 on 59/59
- * palettes at intensity 80 and 100 (floor 4.65 / 4.51, `rosePineDawn` and
- * `catppuccinLatte`, `inkDim` on the canvas). Those two digits are the sweep's
- * own floor, and the suite asserts them - a column sample lands higher because
- * the 125deg gradient never reaches a stop inside a column.
- */
+/** Keep the established shade travel away from the ink side of the ramp. */
 const BACKDROP_SHIFT = 32;
 
-const greyHex = (value: number): string =>
-	`#${Math.max(0, Math.min(255, Math.round(value)))
-		.toString(16)
-		.padStart(2, "0")
-		.repeat(3)}`;
-
 /**
- * THE SAMPLE'S BACKDROP IS NEUTRAL AND FIXED - NOT THE USER'S PALETTE.
- *
- * It used to ramp `accent -> surface -> accent-alt`, so the ground the sample is
- * judged on moved with the accent being judged, and the comparison was muddled
- * (design D2). Worse, the alphas drawn over it are the alphas production derives
- * against *this* grey ramp: an accent-lit backdrop pushed the sample's own
- * secondary ink under AA on 22 of 59 palettes at the shipped intensity (code R2,
- * design D3). A backdrop is the one part of the picture that must hold still
- * while the user changes theme, contrast and accent - and it must sit inside the
- * tone envelope the floors were measured for.
- *
- * So: three neutral greys, per scheme, starting at the measured material tone
- * and travelling away from the ink's side (`BACKDROP_SHIFT`). Emitted as CSS
- * variables by the strip rather than typed into the sheet, and used ONLY while
- * glass paints - the solid states have no backdrop at all, which is why the
- * caption changes with the state.
+ * Give the synthetic material the canvas's channel differences, not its
+ * brightness. Accent edits must not recolour the material, and nothing here
+ * samples the desktop. The strongest dark channel (weakest light channel)
+ * stays on the old grey ramp; the others only darken (lighten). With sRGB
+ * interpolation this bound also holds between stops, so the existing glass
+ * alphas keep at least their old body-ink contrast.
  */
 export const previewBackdropVars = (
 	scheme: GlassScheme,
+	canvas: PreviewPaletteRoles["canvas"],
 ): Record<string, string> => {
 	const material = BACKDROP_GRAY["under-window"][scheme];
-	const away = scheme === "dark" ? -BACKDROP_SHIFT : BACKDROP_SHIFT;
+	const dark = scheme === "dark";
+	const away = dark ? -BACKDROP_SHIFT : BACKDROP_SHIFT;
+	// Authored and custom palette blocks publish six-digit sRGB role values.
+	const channels = [1, 3, 5].map((i) =>
+		Number.parseInt(canvas.slice(i, i + 2), 16),
+	);
+	const highest = Math.max(...channels);
+	const lowest = Math.min(...channels);
+	const anchor = dark ? highest : lowest;
+	const headroom = dark ? material + away : 255 - (material + away);
+	const spread = highest - lowest;
+	// If a custom canvas is strongly saturated, scale the whole offset so it
+	// fits even at the far stop. Per-channel clipping would distort the hue
+	// there and flatten that channel's shade travel.
+	const scale = spread > headroom ? headroom / spread : 1;
+	const tint = (grey: number) =>
+		`#${channels
+			.map((value) =>
+				Math.round(grey + (value - anchor) * scale)
+					.toString(16)
+					.padStart(2, "0"),
+			)
+			.join("")}`;
 	return {
-		"--lo-preview-backdrop-a": greyHex(material),
-		"--lo-preview-backdrop-b": greyHex(material + away / 2),
-		"--lo-preview-backdrop-c": greyHex(material + away),
+		"--lo-preview-backdrop-a": tint(material),
+		"--lo-preview-backdrop-b": tint(material + away / 2),
+		"--lo-preview-backdrop-c": tint(material + away),
 	};
 };

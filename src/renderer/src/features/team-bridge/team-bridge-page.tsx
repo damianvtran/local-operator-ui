@@ -340,7 +340,6 @@ import {
 	type TeamBridgeQuickView,
 	type TeamBridgeScrollAnchor,
 	type TeamBridgeViewMemory,
-	readLastScope,
 	readViewMemory,
 	rememberedScroll,
 	rememberedThread,
@@ -5688,35 +5687,29 @@ const TeamBridgeOwnedPage: FC<{
 		[messageLinkCarry],
 	);
 	/*
-	 * THE READER'S LAST SCOPE seeds the first paint, synchronously, so a
-	 * multi-organization account lands where it left off rather than on the union
-	 * and then correcting. "Last" is the scope they were LOOKING AT when they left
-	 * (`team-bridge-view-memory`), else their last switcher pick. The stored value
-	 * only decides this page's START: `resolveOpeningScope` still validates it
-	 * against the memberships once they answer, and only an explicit switcher pick
-	 * writes the preference.
+	 * Only an explicit switcher pick survives as a startup preference. View
+	 * history also records automatic landings (including the old home default),
+	 * so it can restore a conversation only after the opening scope is resolved.
+	 * `resolveOpeningScope` still checks the pick against the authoritative list.
 	 */
 	const storedScope = useMemo(() => {
 		const storage = browserDraftStorage();
 		return storage && accountId
-			? (readLastScope(storage, accountId) ??
-					readScopePreference(storage, accountId))
+			? readScopePreference(storage, accountId)
 			: undefined;
 	}, [accountId]);
 	/*
-	 * WHERE THE READER IS IN THIS APP SESSION (RFC v2.4 Amendment A). The stored
-	 * values above outlive a restart, and Amendment A wants a restart to reopen on
-	 * the pending invitation or default private org instead; this one lives in
-	 * `sessionStorage`, so it keeps the reader's scope across leaving and
-	 * re-entering Team Bridge and is gone after a restart. It seeds the first
-	 * paint ahead of the durable value for the same no-correction reason.
+	 * The current session's scope starts ahead of the durable preference. Keep
+	 * it current in memory too: after a cold default actually opens, an
+	 * eligibility refresh isn't a new cold start and must not move the reader
+	 * away from a still-valid scope. A new account remounts this owned page.
 	 */
-	const sessionScope = useMemo(() => {
+	const [sessionScope, setSessionScope] = useState(() => {
 		const storage = browserSessionStorage();
 		return storage && accountId
 			? readSessionScope(storage, accountId)
 			: undefined;
-	}, [accountId]);
+	});
 	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
 	const carriedClick = useRef(requestedAny ? null : clickCarry.current).current;
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
@@ -5970,34 +5963,18 @@ const TeamBridgeOwnedPage: FC<{
 		organizations,
 	]);
 	/*
-	 * The account's DEFAULT private org (Amendment A rule 2): the Radient home
-	 * tenant, which `GET /v1/me/memberships` marks `is_home`. Only an active row
-	 * counts, and `resolveOpeningScope` further requires it to be one of this
-	 * page's organizations, so a plan-less personal home tenant changes nothing.
-	 */
-	const defaultTenantId = useMemo(
-		() =>
-			memberships.memberships.find(
-				(membership) => membership.is_home && membership.status === "active",
-			)?.tenant_id ?? null,
-		[memberships.memberships],
-	);
-	/*
-	 * THE OPENING WAITS FOR THE DEFAULT ORG (review round 1, M1/m2; the rule and
-	 * its exemptions are on `openingDefaultHeld`). Held, the page shows its gate
-	 * loading state rather than the seed scope's title, snapshot rows or restored
-	 * conversation: the seed is yesterday's durable pick, which the default org
-	 * outranks on a restart, so painting it would be a wrong-org flash.
-	 * `memberships.isPending` is also true while the query is disabled behind the
-	 * status gate, so the snapshot cannot paint a multi-org seed before then.
+	 * Keep the multi-org snapshot and restore behind the opening decision. A
+	 * cold seed can be All organizations even when the hub knows a clear Team
+	 * default, and a remembered scope may no longer belong to this account.
 	 */
 	const openingOrganizations = openingOrganizationCount(
 		organizations,
 		openingRows,
 	);
 	/*
-	 * HOLD ONLY WHAT MEMBERSHIPS CAN STILL ANSWER (review round 2, M3). The hold
-	 * ends when memberships settle, and that query is enabled by `readsEnabled`
+	 * HOLD ONLY WHILE THE OPENING INPUTS CAN STILL ANSWER (review round 2, M3). The hold
+	 * ends with authoritative status tenants or when legacy memberships settle.
+	 * The memberships query is enabled by `readsEnabled`
 	 * alone. Once the verdict is in and refuses reads (plan_required, rate_limited,
 	 * unavailable, ...), memberships never load, so a hold there would replace the
 	 * eligibility panel with an endless gate spinner. While the verdict is still
@@ -6008,7 +5985,8 @@ const TeamBridgeOwnedPage: FC<{
 		(gatePending || readsEnabled) &&
 		openingDefaultHeld({
 			organizationCount: openingOrganizations,
-			membershipsSettled: !memberships.isPending || memberships.isError,
+			membershipsSettled:
+				hubTenants !== null || !memberships.isPending || memberships.isError,
 			requestedTenant,
 			chosen: scopeChosen.current,
 			session: sessionScope,
@@ -6032,7 +6010,6 @@ const TeamBridgeOwnedPage: FC<{
 		organizations,
 		stored: storedScope,
 		session: sessionScope,
-		defaultTenantId,
 		requestedTenant,
 		chosen: scopeChosen.current,
 		current: scope,
@@ -6514,7 +6491,6 @@ const TeamBridgeOwnedPage: FC<{
 			organizations,
 			stored: storedScope,
 			session: sessionScope,
-			defaultTenantId,
 			requestedTenant,
 			chosen: scopeChosen.current,
 			current: scope,
@@ -6528,7 +6504,6 @@ const TeamBridgeOwnedPage: FC<{
 		openingRows,
 		storedScope,
 		sessionScope,
-		defaultTenantId,
 		requestedTenant,
 		openingHeld,
 		scope,
@@ -6546,15 +6521,26 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const recordSessionScope = shouldRecordSessionScope({
 		organizationCount: openingOrganizations,
-		membershipsFailed: memberships.isError,
+		membershipsFailed: hubTenants === null && memberships.isError,
 		requestedTenant,
 		chosen: scopeChosen.current,
 	});
 	useEffect(() => {
 		if (!scopeDecided || !recordSessionScope || !accountId) return;
+		// The pre-status empty list cannot validate even an All seed. Caching
+		// that seed as a session decision would suppress the actual cold default.
+		if (!readsEnabled || organizations.length === 0) return;
 		const storage = browserSessionStorage();
 		if (storage) writeSessionScope(storage, accountId, scope);
-	}, [scope, scopeDecided, recordSessionScope, accountId]);
+		setSessionScope(scope);
+	}, [
+		scope,
+		scopeDecided,
+		recordSessionScope,
+		accountId,
+		readsEnabled,
+		organizations.length,
+	]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -6634,7 +6620,7 @@ const TeamBridgeOwnedPage: FC<{
 	 *
 	 * `scope` starts as a SEED - this app session's scope, else yesterday's pick,
 	 * else the union - because the inputs that decide it (status tenants,
-	 * memberships and their `is_home`) come from hooks this state precedes. The
+	 * memberships and their plans) come from hooks this state precedes. The
 	 * correction used to be a passive effect, which runs after paint, so the seed
 	 * painted for a frame or more: when the shell had already cached memberships
 	 * (no hold at all), and in the commit where a hold lifted. React's
@@ -6643,18 +6629,14 @@ const TeamBridgeOwnedPage: FC<{
 	 * the seed never reaches the DOM - whether the inputs were cached at mount or
 	 * arrive later and lift the hold.
 	 *
-	 * The seed's restored view goes with it. The mount restored the seed scope's
-	 * remembered conversation into `target` (so a one-org open paints it in its
-	 * first frame), and a selection is not inert: its history read answers and the
-	 * mark-read effect advances its cursor, clearing unread the reader never saw
-	 * (Q2). So with several organizations - where the seed can be another org's -
-	 * nothing is restored while held, and a move drops the seed's restore. The
-	 * DECIDED scope's own record - the only one that belongs to it - is restored
-	 * in the same render pass that decides it, not left to the landing effect:
-	 * that effect needs rows, and a held list has none, which would lose the
-	 * remembered conversation's parallel history read (first-open latency) and
-	 * its first-frame paint. With one organization every record belongs to it,
-	 * so a move (e.g. union to that org) keeps the mount's restore.
+	 * The mount restored the seed scope's view, and a selection is not inert:
+	 * its history read answers and the mark-read effect advances its cursor,
+	 * clearing unread the reader never saw (Q2). So with several organizations
+	 * nothing is restored while held. Any opening scope move drops the seed's
+	 * view: All and the org can remember different targets even with one tenant.
+	 * Restore the decided scope's own record before commit, not in the landing
+	 * effect. That effect needs list rows, so waiting for it would lose the
+	 * remembered conversation's parallel history read and first-frame paint.
 	 *
 	 * Every update is conditional on the value differing, so the re-run converges
 	 * (React refuses an unconditional render-phase update as a loop).
@@ -6662,7 +6644,7 @@ const TeamBridgeOwnedPage: FC<{
 	const openingMoving =
 		openingUnsettled && !openingHeld && openingScope !== scope;
 	if (openingUnsettled && (openingHeld || openingMoving)) {
-		if (openingOrganizations > 1) {
+		if (openingMoving || openingOrganizations > 1) {
 			restoredScopes.current.clear();
 			pendingLanding.current = null;
 			restoredTarget.current = null;

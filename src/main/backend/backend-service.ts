@@ -187,6 +187,7 @@ export const READINESS_POLL_INTERVAL_MS = 1_000;
  * start that never becomes ready, and a wall-clock bound would make that test
  * sit out the whole 30 s. */
 export const READINESS_BUDGET_MS = 30_000;
+const HEALTH_CHECK_TIMEOUT_MS = 3_000;
 
 /**
  * The shortest gap between two recoveries this app's own ANSWERED requests start.
@@ -239,6 +240,19 @@ export function readinessPollDelayMs(elapsedMs: number): number {
 	if (elapsedMs < 10_000) return 250;
 	return READINESS_POLL_INTERVAL_MS;
 }
+
+/** The first-run watchdog needs wall time, not just the accumulated sleeps.
+ * Walk the same schedule as startOwned, including the last sleep and one
+ * bounded HTTP probe per rung (currently 90 probes, plus 30 s of sleeps). */
+export const READINESS_WALL_WORST_MS = (() => {
+	let waited = 0;
+	let probes = 0;
+	while (waited < READINESS_BUDGET_MS) {
+		waited += readinessPollDelayMs(waited);
+		probes++;
+	}
+	return waited + probes * HEALTH_CHECK_TIMEOUT_MS;
+})();
 
 /**
  * Where the app keeps the bearer for the daemon it spawns, inside its userData
@@ -697,9 +711,9 @@ function classifyDesktopAnswer(
 	return "unusable";
 }
 
-/** Options a `start()` caller may set. `quiet` is the watchdog's retry, whose
- * failures the status surface is already reporting; `reuseDiscovery` is the
- * startup block's second call, in the same tick as its own discovery pass. */
+/** `quiet` prevents a modal on watchdog retries (already reported by status)
+ * and headless first-run attempts (no one can dismiss it). `reuseDiscovery`
+ * is the startup block's second call, in the same tick as its discovery pass. */
 interface StartOptions {
 	quiet?: boolean;
 	reuseDiscovery?: boolean;
@@ -3337,7 +3351,7 @@ export class BackendServiceManager {
 	 * path: a daemon that appeared (or came back) after the app lost the one it
 	 * had must be found again before a second one is ever spawned.
 	 *
-	 * @param options.quiet set by the watchdog, whose retries would otherwise
+	 * @param options.quiet used for background or headless retries, which would otherwise
 	 * raise one modal error dialog per attempt for a failure the app is already
 	 * reporting in its status surface
 	 * @param options.reuseDiscovery the caller has JUST run discovery in this same
@@ -3988,7 +4002,7 @@ export class BackendServiceManager {
 	private reportStartOutcome(options: StartOptions, message: string): void {
 		if (options.quiet) {
 			logger.error(
-				`Backend Error (not shown; a retry is already reported in the status surface): ${message}`,
+				`Backend Error (logged instead of opening a startup dialog): ${message}`,
 				LogFileType.BACKEND,
 			);
 			return;
@@ -4250,7 +4264,10 @@ export class BackendServiceManager {
 	async checkHealth(): Promise<boolean> {
 		try {
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 3000);
+			const timeoutId = setTimeout(
+				() => controller.abort(),
+				HEALTH_CHECK_TIMEOUT_MS,
+			);
 
 			const response = await fetch(`${this.backendUrl}/health`, {
 				method: "GET",

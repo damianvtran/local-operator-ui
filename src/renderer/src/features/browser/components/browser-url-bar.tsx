@@ -5,7 +5,6 @@ import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
-import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
 	AppWindow,
 	ArrowLeft,
@@ -414,20 +413,17 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		redo: [],
 	});
 	const wasListOpen = useRef(false);
-	/*
-	 * The chord captions (issue #675's round-1 review, U5): the product caps
-	 * every other chord on the control that owns it (`sidebarToggleCap`,
-	 * `paletteDoorLabel`), and these two buttons are the nearest affordances
-	 * the gesture has. `aria-keyshortcuts` is the machine-readable half; the
-	 * tooltip is the visible one. The `aria-label`s stay the action alone —
-	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.
-	 */
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	// Glyph AND `aria-keyshortcuts` from the same chord id (design D-PR5).
 	const reload = chordCaption("primary+r", isMac ? "mac" : "linux");
 	const address = chordCaption("primary+l", isMac ? "mac" : "linux");
-	const backChord = navigationShortcutLabel("back", isMac);
-	const forwardChord = navigationShortcutLabel("forward", isMac);
+	// Browser-owned chrome and the native page keep their bracket commands.
+	// The app titlebar has a different focus owner and walks routes instead.
+	const back = chordCaption("primary+[", isMac ? "mac" : "linux");
+	const forward = chordCaption("primary+]", isMac ? "mac" : "linux");
+	const browserLabel = t("ui.browser.browser_pane.browser");
+	const pageBackLabel = `${browserLabel}: ${t("ui.browser.browser_url_bar.back")}`;
+	const pageForwardLabel = `${browserLabel}: ${t("ui.browser.browser_url_bar.forward")}`;
 	/**
 	 * Where the user asked to go, held only while the tab has not committed it.
 	 *
@@ -1658,17 +1654,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			<Tooltip
 				content={
 					<ShortcutText
-						text={t("ui.browser.browser_url_bar.back_shortcut", {
-							shortcut: isolateLtr(backChord),
-						})}
+						text={`${browserLabel}: ${t("ui.browser.browser_url_bar.back_shortcut", { shortcut: isolateLtr(back.glyph) })}`}
 					/>
 				}
 			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label={t("ui.browser.browser_url_bar.back")}
-					aria-keyshortcuts={backChord}
+					aria-label={pageBackLabel}
+					aria-keyshortcuts={back.aria}
 					disabled={disabled || !canGoBack}
 					onClick={onBack}
 					data-tour-tag="browser-back"
@@ -1680,17 +1674,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				<Tooltip
 					content={
 						<ShortcutText
-							text={t("ui.browser.browser_url_bar.forward_shortcut", {
-								shortcut: isolateLtr(forwardChord),
-							})}
+							text={`${browserLabel}: ${t("ui.browser.browser_url_bar.forward_shortcut", { shortcut: isolateLtr(forward.glyph) })}`}
 						/>
 					}
 				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label={t("ui.browser.browser_url_bar.forward")}
-						aria-keyshortcuts={forwardChord}
+						aria-label={pageForwardLabel}
+						aria-keyshortcuts={forward.aria}
 						disabled={disabled || !canGoForward}
 						onClick={onForward}
 						data-tour-tag="browser-forward"

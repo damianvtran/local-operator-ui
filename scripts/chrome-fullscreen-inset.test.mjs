@@ -10,7 +10,7 @@
  * the number never becomes a drag strip or a second inset.
  *
  * WHY A CASCADE RATHER THAN A REGEX. The defect class here is precedence: the
- * mac rule sets the strip to 32px with the same specificity as the full-screen
+ * mac rule sets the strip to 40px with the same specificity as the full-screen
  * rule, and the route band's `:not(...)` arm outranks a naive hide rule. A regex
  * on one block cannot see that another block wins. So this file resolves the
  * root-level chrome custom properties the way a browser does - every top-level
@@ -102,7 +102,7 @@ const WINDOWED = [
 	[
 		"mac integrated",
 		{ "data-chrome-mode": "integrated", "data-chrome-platform": "mac" },
-		"32px",
+		"40px",
 	],
 	[
 		"windows integrated (trailing buttons)",

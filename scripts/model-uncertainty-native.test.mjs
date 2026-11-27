@@ -341,6 +341,7 @@ function oracleContext(mode = "happy") {
 	let disabled = false;
 	let current = "test/mock-model-a";
 	let saved = false;
+	let saveReads = 0;
 	let armed = false;
 	let late = false;
 	let lateArmed = false;
@@ -385,6 +386,62 @@ function oracleContext(mode = "happy") {
 		if (late) {
 			late = false;
 			addPatch();
+		}
+		if (saved && mode.startsWith("presence-")) {
+			saveReads++;
+			const c = presencePolicyContext();
+			const offset = attempts.length;
+			c.feed.index = c.open.request_index = offset;
+			c.presence.index = offset + 1;
+			c.feed.order += result.evidence_order;
+			c.open.open_order += result.evidence_order;
+			c.presence.order += result.evidence_order + 3;
+			c.open.close_order = null;
+			if (
+				saveReads === 1 ||
+				["presence-never", "presence-unrelated"].includes(mode)
+			)
+				Reflect.deleteProperty(c.presence, "response_status");
+			if (saveReads > 1) {
+				if (mode === "presence-refused") c.presence.response_status = 503;
+				if (mode === "presence-replaced") c.presence.index++;
+				if (mode === "presence-witness-replaced") c.open.open_order++;
+				if (mode === "presence-closed-feed")
+					c.open.close_order = c.presence.order - 1;
+			}
+			result.attempts.push(c.feed, c.presence);
+			if (saveReads > 1 && mode === "presence-unrelated")
+				result.attempts.push({
+					...c.presence,
+					index: c.presence.index + 1,
+					order: c.presence.order + 1,
+					response_status: 200,
+				});
+			if (saveReads > 1 && mode === "presence-mutation")
+				result.attempts.push({
+					...result.attempts.find((a) => a.path === "/v1/settings/model_name"),
+					index: c.presence.index + 1,
+					order: c.presence.order + 1,
+					delivery_order: c.presence.order + 2,
+				});
+			if (saveReads > 1 && mode === "presence-read")
+				result.attempts.push({
+					index: c.presence.index + 1,
+					order: c.presence.order + 1,
+					method: "GET",
+					path: "/unmodeled-endpoint",
+					observer: false,
+				});
+			result.feed_opens = mode === "presence-missing-feed" ? [] : [c.open];
+			result.evidence_order = Math.max(
+				...result.attempts.map((a) => a.delivery_order ?? a.order),
+			);
+			calls.push([
+				"save-state",
+				saveReads,
+				c.presence.index,
+				c.presence.response_status,
+			]);
 		}
 		return result;
 	};
@@ -687,6 +744,81 @@ test("actual native drive accepts only consumed SSE + real post-ACK B with expli
 		3,
 	);
 });
+test("actual native drive waits for the originally observed presence index to receive 200", async () => {
+	const ctx = oracleContext("presence-delayed");
+	await modelUncertaintyCase.drive(ctx);
+	const observations = ctx.calls.filter(([name]) => name === "save-state");
+	assert.equal(observations[0][3], undefined);
+	assert.deepEqual(observations[1], ["save-state", 2, observations[0][2], 200]);
+	const [judgment] = ctx.stamps.filter(
+		({ label }) => label === "post-frame:explicit-save-traffic-judgment",
+	);
+	assert.deepEqual(
+		judgment.value.presence.map(({ index, status }) => [index, status]),
+		[[observations[0][2], 200]],
+	);
+	assert.deepEqual(
+		judgment.value.awaited.map(({ index }) => index),
+		[observations[0][2]],
+	);
+	assert.deepEqual(ctx.frames, modelUncertaintyCase.frames.candidate);
+});
+
+for (const [mode, expected, reads] of [
+	["never", /presence lease was not accepted before save deadline/, 2],
+	["unrelated", /presence lease was not accepted before save deadline/, 2],
+	["late", /presence lease was not accepted before save deadline/, 2],
+	["refused", /503 !== 200/, 2],
+	["replaced", /disappeared from traffic/, 2],
+	["witness-replaced", /changed request or feed witness/, 2],
+	["closed-feed", /lacks earlier live owned app-feed open witness/, 2],
+	["missing-feed", /lacks earlier live owned app-feed open witness/, 1],
+	[
+		"mutation",
+		{
+			code: "ERR_ASSERTION",
+			actual: [
+				"/v1/settings/hosting",
+				"/v1/settings/model_name",
+				"/v1/settings/model_name",
+			],
+		},
+		2,
+	],
+	["read", /unmodeled native read/, 2],
+]) {
+	test(`actual native drive fails closed on save presence ${mode}`, async (t) => {
+		const ctx = oracleContext(`presence-${mode}`);
+		if (["never", "unrelated", "late"].includes(mode)) {
+			// Expire the same save deadline while reading the second snapshot;
+			// no ten-second sleep and no injected timeout in the driver.
+			t.mock.method(Date, "now", () =>
+				ctx.calls.filter(([name]) => name === "save-state").length >= 2
+					? 10_000
+					: 0,
+			);
+		}
+		await assert.rejects(() => modelUncertaintyCase.drive(ctx), expected);
+		const observations = ctx.calls.filter(([name]) => name === "save-state");
+		assert.equal(observations.length, reads);
+		assert(!ctx.frames.includes("model-default-saved"));
+		const judgments = ctx.stamps.filter(
+			({ label }) => label === "post-frame:explicit-save-traffic-judgment",
+		);
+		assert.equal(judgments.length, 1);
+		const judged = judgments[0].value;
+		const [, , index, status] = observations.at(-1);
+		assert.deepEqual(
+			judged.presence.map((p) => [p.index, p.status]),
+			[
+				[index, status ?? "pending"],
+				...(mode === "unrelated" ? [[index + 1, 200]] : []),
+			],
+		);
+		if (mode === "mutation") assert.equal(judged.patches.length, 3);
+	});
+}
+
 for (const mode of [
 	"unconsumed-initial",
 	"wrong-initial-session",

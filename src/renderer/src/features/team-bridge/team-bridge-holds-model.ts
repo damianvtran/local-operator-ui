@@ -54,8 +54,8 @@ export type HoldItem = {
 	unscreened?: boolean;
 	/**
 	 * local-operator #4358: core's own "the person owes this an answer". When
-	 * present it is the ONLY input to the badge and the nav count (see
-	 * `isActionableHold`); absent means an older core.
+	 * present it bounds the badge and nav count; a settled inbox may exclude
+	 * an unusable proof for the same revision. Absent means an older core.
 	 */
 	actionable?: boolean;
 	/**
@@ -79,6 +79,8 @@ export type HoldsPage = {
 	enabled: boolean;
 	key_protection: string | null;
 	items: HoldItem[];
+	/** Signed receipts from newer core; older daemons only report item decisions. */
+	history?: HoldItem[];
 };
 
 export type HoldWord = "deliver" | "discard";
@@ -93,6 +95,8 @@ export type HoldReceipt = {
 	message_id: string | null;
 	state: string;
 	decided_at: string | null;
+	outcome?: string;
+	key_id?: string | null;
 };
 
 // -- why it was held ----------------------------------------------------------
@@ -231,12 +235,51 @@ export type HoldAffordance =
 const DISCARD_ONLY_CODES: ReadonlySet<string> = new Set(["screening_failed"]);
 
 /**
- * Whether a recorded decision failed to apply. Core writes `rejected` for a
- * COMPLETED Discard (connector/conversation.py: admitted for deliver, rejected
- * for discard), so only `refused` means it did not take (review m1).
+ * Core calls a completed Discard `rejected`; an operational `refused` is
+ * not an owner rejection. Only an outcome consistent with the recorded word
+ * can be presented as applied; unknowns must not read as success.
  */
-export function decisionNotApplied(outcome: string): boolean {
-	return outcome === "refused";
+export function holdDecisionStatus(
+	word: HoldWord | null,
+	outcome: string,
+): "applied" | "pending" | "local" | "not_applied" {
+	if (word && outcome === "pending") return "pending";
+	if (word === "discard" && outcome === "discarded_local_unconfirmed")
+		return "local";
+	if (
+		(word === "deliver" && outcome === "admitted") ||
+		(word === "discard" && outcome === "rejected")
+	)
+		return "applied";
+	return "not_applied";
+}
+
+/** The POST state is the recorded word, not confirmation it reached the hub. */
+export function holdFromReceipt(
+	item: HoldItem,
+	word: HoldWord,
+	receipt: HoldReceipt,
+): HoldItem | null {
+	if (
+		receipt.message_id !== item.message_id ||
+		!receipt.decided_at ||
+		receipt.state !== (word === "deliver" ? "released" : "discarded")
+	)
+		return null;
+	return {
+		...item,
+		actionable: false,
+		releasable: false,
+		can_deliver: false,
+		can_discard: false,
+		discard_receipt: null,
+		decision: {
+			word,
+			decided_at: receipt.decided_at,
+			outcome: receipt.outcome ?? "pending",
+			key_id: receipt.key_id ?? null,
+		},
+	};
 }
 
 export function holdAffordance(
@@ -274,8 +317,9 @@ export function holdAffordance(
 }
 
 /**
- * Whether the person owes this hold an answer: the one predicate the badge,
- * the nav count and the section's "waiting" all read, so they cannot disagree.
+ * The list's authority on whether the person owes this hold an answer. The
+ * badges have only metadata; the inbox additionally knows if the required
+ * proof can actually be shown or bound.
  *
  * WHY CORE DECIDES IT (local-operator #4358, operator report 2026-11-20). The
  * renderer used to re-derive this from `can_deliver` / `can_discard`, and
@@ -294,6 +338,8 @@ export function isActionableHold(
 	item: HoldItem,
 	now: number = Date.now(),
 ): boolean {
+	// A recorded attempt belongs in History even if a stale list flag says otherwise.
+	if (item.decision) return false;
 	if (typeof item.actionable === "boolean") return item.actionable;
 	// No conversation id: the owner-audit join cannot find the message, so
 	// it can never be decided here and must not hold the badge on (QA Q1).
@@ -357,7 +403,10 @@ type HoldContent = {
 /** A count-only audit receipt is still shown by the attachment disclosure. */
 export function holdAttachmentCounts(message: HoldContent | null) {
 	return {
-		images: message?.attachments?.length || message?.attachment_count || 0,
+		images: Math.max(
+			message?.attachments?.length ?? 0,
+			message?.attachment_count ?? 0,
+		),
 		files: Math.max(message?.files?.length ?? 0, message?.file_count ?? 0),
 	};
 }
@@ -485,7 +534,26 @@ export async function addLocalHoldRevisions(
 	return { ...page, items };
 }
 
-/** Same projection for the queue and both badges. A different receipt never matches. */
+// In-memory eligibility only. Include old-core audit coordinates and the exact
+// receipt so an exclusion cannot obscure a replaced hold on a later list poll.
+export function holdInboxRevision(item: HoldItem): string {
+	return JSON.stringify([
+		item.message_id,
+		item.conversation_id,
+		item.seq,
+		item.thread_root_id ?? null,
+		item.held_at,
+		item.kind,
+		item.hold_code,
+		item.discard_receipt ?? null,
+		item.releasable,
+		item.can_deliver,
+		item.can_discard,
+		item.deliver_until,
+	]);
+}
+
+/** Same local-hide projection for the queue and both badges. */
 export function isHoldHiddenLocally(
 	item: HoldItem,
 	revisions: ReadonlySet<string>,
@@ -502,21 +570,69 @@ export function projectHeldMessages(
 	items: readonly HoldItem[],
 	revisions: ReadonlySet<string>,
 	detail: (item: HoldItem) => JoinedDetail<HoldContent>,
+	recorded: readonly HoldItem[] = [],
+	persisted: readonly HoldItem[] = [],
+	now?: number,
 ) {
-	const visible: HoldItem[] = [];
+	const waiting: HoldItem[] = [];
+	const history: HoldItem[] = [];
 	const hidden: HoldItem[] = [];
 	const recovered: string[] = [];
-	for (const item of items) {
+	const byId = new Map(items.map((item) => [item.message_id, item]));
+	// A POST receipt wins over an undecided list row until the next poll.
+	// A decision in a subsequent list (including a refusal) is authoritative.
+	for (const item of recorded) {
+		if (item.decision && !byId.get(item.message_id)?.decision)
+			byId.set(item.message_id, item);
+	}
+	for (const item of persisted) {
+		if (item.decision) byId.set(item.message_id, item);
+	}
+	for (const item of byId.values()) {
+		const found = detail(item);
 		if (item.localHideRevision && isHoldHiddenLocally(item, revisions)) {
-			if (!hasLocalHoldContent(detail(item))) {
+			if (!hasLocalHoldContent(found)) {
 				hidden.push(item);
 				continue;
 			}
 			recovered.push(item.localHideRevision);
 		}
-		visible.push(item);
+		// An in-flight join must not flicker into History. Once it finishes, a
+		// legacy row without a usable proof belongs beside the local hide/retry
+		// actions, not alongside decisions that can actually be made here.
+		const proof = holdRowProofs(item, found, now);
+		const awaits =
+			isActionableHold(item, now) &&
+			(found.state === "loading" || proof.armed.deliver || proof.armed.discard);
+		(awaits ? waiting : history).push(item);
 	}
-	return { visible, hidden, recovered };
+	return { waiting, history, hidden, recovered };
+}
+
+/** Use immutable list/receipt clocks, not the order in which audit joins load. */
+export function sortHoldInbox(
+	items: readonly HoldItem[],
+	tab: "waiting" | "history",
+) {
+	const time = (item: HoldItem) =>
+		Date.parse(
+			(tab === "history"
+				? (item.decision?.decided_at ?? item.held_at)
+				: item.held_at) ?? "",
+		);
+	return [...items].sort((a, b) => {
+		const left = time(a);
+		const right = time(b);
+		if (Number.isFinite(left) && Number.isFinite(right) && left !== right)
+			return tab === "history" ? right - left : left - right;
+		if (Number.isFinite(left) !== Number.isFinite(right))
+			return Number.isFinite(left) ? -1 : 1;
+		return a.message_id < b.message_id
+			? -1
+			: a.message_id > b.message_id
+				? 1
+				: 0;
+	});
 }
 
 /**
@@ -559,28 +675,6 @@ export async function bindShownBody(
 	if (typeof bodyHash === "string" && bodyHash !== "" && bodyHash !== hex)
 		return { state: "mismatch" };
 	return { state: "shown", hash: hex };
-}
-
-/*
- * WHEN A BODY IS SHOWN IN FULL. A row clamps a long body to three lines, and a
- * clamped body or one with attachments has NOT been seen in full: three benign
- * lines can sit above the payload screening exists to stop (security S-1, UX
- * U3). A body under this size with no attachments renders unclamped, so it is
- * seen whole on arrival; anything else needs the owner to expand it, which
- * shows the whole text and the attachment group, before Deliver arms.
- */
-const SHORT_BODY_CHARS = 280;
-const SHORT_BODY_LINES = 3;
-
-export function needsExpand(
-	body: string | null | undefined,
-	attachments: number,
-): boolean {
-	if (attachments > 0) return true;
-	if (typeof body !== "string") return false;
-	return (
-		body.length > SHORT_BODY_CHARS || body.split("\n").length > SHORT_BODY_LINES
-	);
 }
 
 /*
@@ -777,6 +871,36 @@ export function receiptDiscardArmed(
  * receipt when `receiptDiscardArmed`. Pure so the "Deliver never carries a
  * receipt" rule is tested from the shipped source.
  */
+/** Body/receipt/allowed-action checks shared by the inbox and the actual click. */
+export function holdRowProofs(
+	item: HoldItem,
+	detail: JoinedDetail<HoldContent>,
+	now?: number,
+) {
+	const affordance = holdAffordance(item, now);
+	const binding = detail.state === "ready" ? detail.binding : null;
+	const hidden =
+		detail.state === "ready" && hasHiddenCharacters(detail.message.body);
+	const actionable = isActionableHold(item, now);
+	const unread =
+		actionable && receiptDiscardArmed(item, affordance, detail.state, binding);
+	const body =
+		actionable && binding
+			? armedWords(affordance, binding, true, hidden)
+			: null;
+	return {
+		affordance,
+		binding,
+		hidden,
+		unread,
+		armed: {
+			deliver: body?.deliver ?? false,
+			discard: Boolean(body?.discard || unread),
+		},
+		receipt: unread ? (item.discard_receipt ?? null) : null,
+	};
+}
+
 export function holdDecideProof(
 	word: HoldWord,
 	input: {
@@ -814,6 +938,7 @@ export function captureDiscardSnapshot(
 	now?: number,
 ): DiscardSnapshotEntry[] {
 	return sortHolds(items, now).flatMap((item) => {
+		if (!isActionableHold(item, now)) return [];
 		const found = detail(item);
 		const binding = found.state === "ready" ? (found.binding ?? null) : null;
 		const affordance = holdAffordance(item, now);

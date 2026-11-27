@@ -49,6 +49,7 @@ const bundle = await build({
 			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+			export { DRAFT_CONSOLE_OWNER } from "./src/shared/console-owner";
 		`,
 		resolveDir: ROOT,
 	},
@@ -85,6 +86,7 @@ mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "keymap-dispatch.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
+	DRAFT_CONSOLE_OWNER,
 	keymapEventAction,
 	useCanonicalSessionsStore,
 	useCanvasStore,
@@ -396,11 +398,17 @@ test("the router is registered in the BUBBLE phase: a descendant's stopPropagati
 			false,
 			"a descendant that consumed the press must keep the router from firing",
 		);
-		/* And on a draft the chord still acts (D1): the pane opens to its "needs a
-		   conversation" state, and no open request is filed - there is no working
-		   directory to spawn a console in. */
+		/* And on a draft the chord is the door onto a REAL terminal (D1, R2a): the
+		   pane opens and files the open under the pending console owner, so it
+		   creates the shell in the draft's staged directory. This cell used to
+		   assert `null` - the round-1 draft had no console to open - which a fresh
+		   draft no longer does. */
 		act(() => {
-			useCanonicalSessionsStore.setState({ activeSessionId: null });
+			useCanonicalSessionsStore.setState({
+				activeDraftKey: "draft-fresh",
+				drafts: {},
+				activeSessionId: null,
+			});
 			useUiPreferencesStore.setState({
 				rightSlotRoute: { mounted: true, session: false },
 				consoleOpenIntent: null,
@@ -408,7 +416,95 @@ test("the router is registered in the BUBBLE phase: a descendant's stopPropagati
 		});
 		api.dispatch(child, { key: "j" });
 		assert.equal(useUiPreferencesStore.getState().isConsolePaneOpen, true);
-		assert.equal(useUiPreferencesStore.getState().consoleOpenIntent, null);
+		assert.equal(
+			useUiPreferencesStore.getState().consoleOpenIntent,
+			DRAFT_CONSOLE_OWNER,
+			"a fresh draft's chord asks the pending console for a shell",
+		);
+	});
+});
+
+/*
+ * THE CHORD'S CONSOLE OWNER IS THE PANE'S, NOT THE VIEW'S TRANSCRIPT (R2a).
+ *
+ * A draft's first send creates its conversation before the message is admitted:
+ * the draft row carries the created transcript's id from the create's answer
+ * through a held acknowledgement, a refusal and the retry, while the pane is
+ * still scoped to the pending local console (`consoleOwnerForView`). The chord
+ * used to hand that transcript id to the shared rail action, so its request was
+ * one the mounted pane ignored — the drawer opened, and neither the first shell
+ * nor the caret into an existing one happened. These legs are the two states the
+ * brief names: no shell yet, and a shell that only needs focusing. The control
+ * is an established conversation, whose id is still the right answer.
+ */
+test("the console chord opens the PENDING console while a draft's first send is unadmitted (R2a)", async () => {
+	await mount(async (api) => {
+		const child = api.$('[data-testid="child"]');
+		const state = () => useUiPreferencesStore.getState();
+		const TRANSCRIPT = "44444444-4444-4444-4444-444444444444";
+		/* The view after the create answered: a draft view whose row already names
+		   the created transcript. */
+		const unadmittedDraft = (liveConsole) =>
+			act(() => {
+				useCanonicalSessionsStore.setState({
+					activeDraftKey: "draft-held",
+					drafts: { "draft-held": { sessionId: TRANSCRIPT } },
+					activeSessionId: null,
+				});
+				useUiPreferencesStore.setState({
+					rightSlotRoute: { mounted: true, session: false },
+					isConsolePaneOpen: false,
+					consoleOpenIntent: null,
+					consoleLiveSurface: liveConsole
+						? { sessionId: DRAFT_CONSOLE_OWNER, count: 1 }
+						: null,
+				});
+			});
+
+		/* HELD, WITH NO SHELL YET: the request must reach the pending owner so the
+		   pane starts the shell the user asked for. */
+		unadmittedDraft(false);
+		api.dispatch(child, { key: "j" });
+		assert.equal(state().isConsolePaneOpen, true, "the chord opens the pane");
+		assert.equal(
+			state().consoleOpenIntent,
+			DRAFT_CONSOLE_OWNER,
+			"no shell: the request names the pending console, not the transcript",
+		);
+
+		/* REFUSED, WITH THE PENDING SHELL ALREADY RUNNING: the same view, one
+		   surface live under the pending owner. The request is the focus, and it
+		   must still name the pending console - the transcript's console is empty
+		   until an accepted send moves the surfaces. */
+		unadmittedDraft(true);
+		api.dispatch(child, { key: "j" });
+		assert.equal(state().isConsolePaneOpen, true);
+		assert.equal(
+			state().consoleOpenIntent,
+			DRAFT_CONSOLE_OWNER,
+			"live shell: the focus request names the pending console too",
+		);
+
+		/* CONTROL: an established conversation's chord still names it. */
+		act(() => {
+			useCanonicalSessionsStore.setState({
+				activeDraftKey: null,
+				drafts: {},
+				activeSessionId: "session-1",
+			});
+			useUiPreferencesStore.setState({
+				rightSlotRoute: { mounted: true, session: true },
+				isConsolePaneOpen: false,
+				consoleOpenIntent: null,
+				consoleLiveSurface: null,
+			});
+		});
+		api.dispatch(child, { key: "j" });
+		assert.equal(
+			state().consoleOpenIntent,
+			"session-1",
+			"control: a conversation's own console is what its chord opens",
+		);
 	});
 });
 

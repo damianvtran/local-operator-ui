@@ -952,26 +952,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * box held no ink at all while the pane was up, because `flex-1 min-w-0`
 			 * lets it yield before any control does).
 			 *
-			 * THE LEADING INSET IS THE COLUMN'S LEFT INSET (24px), NOT THE BAR'S 16px
-			 * (operator, 2026-11-25, on PR #2099: "There needs to be more left padding
-			 * on the title ... it's too tight to the left"). The title restored by
-			 * #2091 leads this row, so the row's start padding is the title's left
-			 * edge. `ps-6` puts it on the column's left inset, `CHAT_COLUMN_INSET`
-			 * (24px: the transcript's p-4 plus its 8px scrollbar gutter, see
-			 * `chat-measure.ts`). That is the pane-edge gutter; it equals the text's
-			 * edge only below `CHAT_MEASURE`, which centres wider content. Logical,
-			 * so RTL mirrors it. Inside the framed workspace the unlayered
-			 * `[data-workspace-inset] > [data-chat-region="header"]` rule in
-			 * `styles/index.css` sets the END padding only, so this utility stays
-			 * the one owner of the start edge (a 4px start there once beat it). Padding the ROW rather
-			 * than the h2 keeps the rename input on the same start edge as the
-			 * title, so nothing jumps when the editor opens. The trailing side keeps
-			 * `pe-4` (12px in the framed workspace, from that CSS rule): the
-			 * controls align with the bar's chrome, not the column. The extra start
-			 * padding comes out of the pane-open floor arithmetic below. `scripts/lane-leading.test.mjs` pins it.
+			 * The transcript's 24px gutter looked too wide next to the whitespace
+			 * above the title. Use a 16px start inset instead of making the toolbar
+			 * taller and taking room from the transcript. Keep it on the row so the
+			 * title and inline rename share an edge, and keep it logical for RTL.
+			 * The unlayered workspace rule in `styles/index.css` sets the end only:
+			 * a start declaration there once overrode the utility with 4px. The
+			 * trailing controls keep `pe-4` (12px in the framed workspace).
 			 */
 			className={cn(
-				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 ps-6 pe-4",
+				"@container/chathdr flex min-h-10 shrink-0 items-center gap-3 ps-4 pe-4",
 			)}
 			data-tour-tag="chat-header"
 			data-titlebar-drag=""
@@ -997,26 +987,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * rather than picked: with the browser pane up at 1380px the header is 240px
 			 * wide, its fixed parts (avatar 32, two 12px gaps, the `...` menu, the trigger,
 			 * the console, and the row's padding as it was then) came to 200, leaving the
-			 * title 40. Those figures predate the 24px start inset (see the note above):
-			 * the row's padding is now ps-6 plus the 12px framed-workspace end, so they
-			 * need re-measuring rather than re-deriving.
+			 * title 40. Those are historical measurements, not a budget to reuse
+			 * without re-measuring the current row.
 			 *
 			 * AND THE ROW'S OVERFLOW IS VISIBLE, so the floor has to be one the row can pay
 			 * for: QA's round-2 Q-1 measured the pane-open header at a 900px window with the
 			 * controls not yielding - the last one ended 4px past the row and painted UNDER
 			 * the pane, invisible and unpressable, rather than being clipped. What fixes
-			 * that is the SHED ORDER below, and the gate here is its insurance rather than
-			 * its mechanism: at the app's own minimum window (`WINDOW_MIN_WIDTH = 800`)
-			 * the pane-open header measures 220px, its remaining fixed parts 164 and the
-			 * floor 40, which fitted with 16px to spare before the 24px start inset
-			 * (measured then; not re-measured since) - so at every width a person can
-			 * reach the floor is applied, and the gate only stops it from being the thing
-			 * that breaks a row nothing else is left to shed
-			 * (`@[13.5rem]` = 216px, beneath every width a person can reach) and the title
-			 * yields freely below that. The controls shed FIRST - the run trigger, then the canvas
-			 * button, then the console - so on the widths a person can reach the floor is
-			 * almost always applied; the gated-off case is the last resort beneath them
-			 * rather than the mechanism. */}
+			 * that is the SHED ORDER below: the run trigger, then the canvas button,
+			 * then the console yield first. The container gate (`@[13.5rem]` = 216px)
+			 * is the fallback, not the mechanism. Below it the title yields freely
+			 * instead of imposing a floor on a row with no controls left to shed. */}
 			{/*
 			 * THE TITLE OUTRANKS THE PATH, BY CONSTRUCTION (design round 1, D6).
 			 *

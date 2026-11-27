@@ -494,7 +494,14 @@ const SessionApprovalModePicker: typeof ApprovalModePicker = ({
 					// the live gate may differ (or may be inheriting, not overridden).
 					const live = await setLiveApprovalMode(
 						(name, args) =>
-							command.run(name, args, APPROVAL_ESCAPE_COPY.notChanged()),
+							command.run(
+								name,
+								args,
+								APPROVAL_ESCAPE_COPY.notChanged(),
+								// Only this explicit session choice can re-arm Auto after Team
+								// Bridge content; the default editor and pending card cannot.
+								choice.mode === "auto" ? { bridgeAck: true } : undefined,
+							),
 						choice.mode,
 					);
 					if (!live.ok) {

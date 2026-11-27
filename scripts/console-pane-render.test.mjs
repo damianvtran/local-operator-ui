@@ -165,6 +165,9 @@ const bundle = await build({
 			// flow under test is the flow the header drives rather than a prop the
 			// harness invents.
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			// The pending owner itself, so the draft tests file their open against the
+			// same constant the header files it with rather than a string typed here.
+			'export { DRAFT_CONSOLE_OWNER } from "./src/shared/console-owner";',
 			'export { CONSOLE_COMMAND_PICKUP_TTL_MS } from "./src/renderer/src/features/console/model/console-command";',
 			'export { createRoot } from "react-dom/client";',
 			'export { createElement, Profiler } from "react";',
@@ -262,7 +265,7 @@ const installBridge = ({
 	readDelayMs = 0,
 	close,
 } = {}) => {
-	const calls = { create: 0, state: 0, close: [] };
+	const calls = { create: 0, state: 0, close: [], createRequests: [] };
 	const listeners = [];
 	let listing = surfaces;
 	// Main's own displayed-surface acknowledgement: `openPane`/`closePane` write it
@@ -284,8 +287,12 @@ const installBridge = ({
 					displayed_surface: displayedSurface,
 				};
 			},
-			createSurface: async () => {
+			createSurface: async (request) => {
 				calls.create += 1;
+				// The request is part of the claim: a draft's shell is created under the
+				// pending owner and in the draft's staged directory, and a test that only
+				// counted the call could not tell those from the defaults.
+				calls.createRequests.push(request);
 				return create({ calls, setListing });
 			},
 			closeSurface: async (surface, options) => {
@@ -391,6 +398,7 @@ const recordPaint = (container) => {
 
 const mountPane = async ({
 	sessionId = SESSION,
+	draft,
 	onClose = () => {},
 	allowCommandSubmit,
 } = {}) => {
@@ -409,6 +417,7 @@ const mountPane = async ({
 			{ id: "console-pane", onRender: () => recordPaint(container) },
 			harness.createElement(harness.ConsolePane, {
 				sessionId,
+				draft,
 				onClose,
 				allowCommandSubmit,
 			}),
@@ -1015,6 +1024,121 @@ test("a request made for another conversation is not answered here", async () =>
 	} finally {
 		root.unmount();
 		container.remove();
+	}
+});
+
+test("opening a local draft requests its own console before any conversation exists", async () => {
+	/*
+	 * THE OPERATOR'S FIRST REQUIREMENT: a New Conversation's console is a real
+	 * terminal immediately, with no conversation and no message behind it. The
+	 * press files the open against the PENDING owner (every draft shares one, which
+	 * is what makes a second New chat press find the same shell), and the create
+	 * names the draft's staged directory rather than main's fallback.
+	 *
+	 * THE OLD REFUSAL IS ASSERTED ABSENT, not merely superseded: the draft pane used
+	 * to paint "A console needs a conversation" and disable its `+`, and a regression
+	 * that brought that state back while still creating a surface would otherwise
+	 * read as a pass here.
+	 */
+	const cwd = "/selected/local/folder";
+	const { calls } = installBridge({
+		create: async ({ setListing }) => {
+			setListing([
+				surfaceRow("con:1:draft", { session_id: harness.DRAFT_CONSOLE_OWNER }),
+			]);
+			return { surface: "con:1:draft" };
+		},
+	});
+	resetIntent();
+	harness.useUiPreferencesStore
+		.getState()
+		.requestConsoleOpen(harness.DRAFT_CONSOLE_OWNER);
+	const { root, container } = await mountPane({
+		sessionId: null,
+		draft: { cwd },
+	});
+	try {
+		assert.ok(await waitFor(() => calls.create === 1), container.textContent);
+		assert.deepEqual(calls.createRequests, [
+			{ sessionId: harness.DRAFT_CONSOLE_OWNER, cwd },
+		]);
+		assert.ok(
+			await waitFor(() => TERMINAL.test(container.textContent ?? "")),
+			container.textContent,
+		);
+		assert.doesNotMatch(
+			container.textContent ?? "",
+			/A console needs a conversation/,
+			"the draft pane must not greet the press with the retired refusal",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+		resetIntent();
+	}
+});
+
+test("a fresh draft finds the pending console an earlier draft started", async () => {
+	/*
+	 * THE SECOND REQUIREMENT, as the pane sees it: click New chat again and the SAME
+	 * running surfaces are there — no create, no empty state. The draft key is not an
+	 * input here because the owner is a constant; this mounts the pane the way a new
+	 * key would and asserts the terminal is what it paints.
+	 */
+	const { calls } = installBridge({
+		surfaces: [
+			surfaceRow("con:1:pending", { session_id: harness.DRAFT_CONSOLE_OWNER }),
+		],
+	});
+	resetIntent();
+	const { root, container } = await mountPane({
+		sessionId: null,
+		draft: { cwd: "/somewhere/else" },
+	});
+	try {
+		assert.ok(
+			await waitFor(() => TERMINAL.test(container.textContent ?? "")),
+			container.textContent,
+		);
+		assert.equal(
+			calls.create,
+			0,
+			"finding a running shell must not make another",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+		resetIntent();
+	}
+});
+
+test("a conversation's pane cannot see the draft's console", async () => {
+	/*
+	 * THE OTHER HALF OF THE SAME RULE: visiting an existing conversation must not
+	 * show — or adopt — the shell a draft opened. The listing carries a pending
+	 * surface and the pane is scoped to a session, so it must read as empty here.
+	 */
+	installBridge({
+		surfaces: [
+			surfaceRow("con:1:pending", { session_id: harness.DRAFT_CONSOLE_OWNER }),
+		],
+	});
+	resetIntent();
+	const { root, container } = await mountPane();
+	try {
+		assert.ok(
+			await waitFor(() => EMPTY_STATE.test(container.textContent ?? "")),
+			container.textContent,
+		);
+		assert.doesNotMatch(
+			container.textContent ?? "",
+			TERMINAL,
+			"another owner's terminal must not be painted in this conversation",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+		resetIntent();
 	}
 });
 

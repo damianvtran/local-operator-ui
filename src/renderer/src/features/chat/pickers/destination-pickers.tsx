@@ -6,8 +6,8 @@ import { useCustomThemes } from "@shared/themes/custom-theme-store";
  * (fields, sources, submit metadata) and the shared `PickerHost`. Its job is
  * to load real options from the named catalogue, collect the decision, call
  * the REAL backend operation the request named, and show the actual reply.
- * None of them synthesise success; a closed picker with no result strip is a
- * cancel, and a result strip always quotes the backend.
+ * None of them synthesise success: even an adapter that closes on a pick must
+ * wait for the outcome it treats as committed.
  *
  * Destinations that already have a settings surface (settings, providers,
  * accounts, appearance, MCP, updates, web-search) navigate to it rather than
@@ -208,6 +208,8 @@ export type PickerContext = {
 	canonical: CanonicalSessionHandle;
 	commands: SlashCommandMeta[];
 	onClose: () => void;
+	/** Complete a model pick only while its original draft dialog owns the slot. */
+	onDraftModelCommitted?: (receipt: string | null) => void;
 	/** The actual composer trigger, never inferred from focus after an owner round trip. */
 	quickPickerAnchor?: HTMLElement;
 	/** Outside dismissal must not take focus back from the user's next action. */
@@ -490,7 +492,7 @@ const DEFAULT_SAVE_FAILURE = () =>
  * are laid into the same grid cell as invisible generated content, so the cell
  * is already as tall as either before the box is ticked and nothing moves.
  *
- * Generated content rather than hidden spans: the wording lives in data
+ * Generated content rather than hidden DOM text: the wording lives in data
  * attributes, so it is not in the label's text or a query for the visible
  * sentence - a hidden copy in the DOM would answer every one of those as if it
  * were on screen. It stays out of the ACCESSIBLE NAME only because the
@@ -518,6 +520,7 @@ const ReservedLabelText: FC<{
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
+			data-picker-label-lines={capLines}
 			className={cn(
 				"grid",
 				capLines === 2 && "min-h-[2lh]",
@@ -535,6 +538,15 @@ const ReservedLabelText: FC<{
 			>
 				{text}
 			</span>
+			{capLines && (
+				// Reserve the lines the named receipt needs at the actual width,
+				// without leaving a blank line when all the wordings already fit.
+				<span
+					aria-hidden="true"
+					data-picker-label-reserve={wordings[2]}
+					className="invisible col-start-1 row-start-1 hidden"
+				/>
+			)}
 		</span>
 	);
 };
@@ -819,25 +831,20 @@ function useDraftPick(
 					return;
 				}
 				setPicked({ base: seed, selection: chosen });
-				setResult({
-					tone: "success",
-					/*
-					 * ONE COMPOSITION FOR BOTH BRANCHES (design review round 2, D6): the
-					 * carry's confirmation or the pick's own sentence is the base, and the
-					 * caller's notice is appended after either of them. The branch used to
-					 * choose the whole sentence, so a notice living inside `describe`
-					 * vanished exactly when an effort rung was carried.
-					 */
-					text: pickResultText({
-						carried: carry,
-						selector: selectorOfResolution(
-							resolved,
-							selectionSelector(chosen) ?? "",
-						),
-						described: reading.describe(resolved),
-						notice: reading.notice?.(resolved) ?? null,
-					}),
+				const notice = reading.notice?.(resolved) ?? null;
+				// Use the same receipt for the strip and a caller that closes on success:
+				// a dial change must not vanish on the branch that reports effort carry.
+				const text = pickResultText({
+					carried: carry,
+					selector: selectorOfResolution(
+						resolved,
+						selectionSelector(chosen) ?? "",
+					),
+					described: reading.describe(resolved),
+					notice,
 				});
+				setResult({ tone: "success", text });
+				return { details: carry !== null || notice !== null ? text : null };
 			} catch (error) {
 				/*
 				 * Said twice on purpose, and it is the same sentence both times: the
@@ -917,6 +924,7 @@ function carriedRung(
 export const PICKER_CADENCE_MS = 15 * 60_000;
 
 export const ModelPicker: FC<PickerContext> = ({
+	onDraftModelCommitted,
 	sessionId,
 	canonical,
 	onClose,
@@ -1653,7 +1661,10 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * dialog's own receipt, not the snapshot it opened on.
 				 */
 				const carriedFast = draftPick.selection?.fast_mode ?? null;
-				await draftPick.pick(
+				const refused = t(
+					"ui.chat.pickers.destination_pickers.the_model_was_not_changed",
+				);
+				const receipt = await draftPick.pick(
 					{ provider, model_id: modelId, reasoning_effort: null },
 					{
 						describe: (resolved) =>
@@ -1681,11 +1692,27 @@ export const ModelPicker: FC<PickerContext> = ({
 								fastModeState(bandReadings(resolved.snapshot, null).identity),
 							),
 						carry: carried,
-						refused: t(
-							"ui.chat.pickers.destination_pickers.the_model_was_not_changed",
-						),
+						refused,
+						applied: {
+							refusal: (resolved) => {
+								// The request and row label are not proof of a runnable model.
+								const { identity } = bandReadings(resolved.snapshot, null);
+								return modelSelector(identity) && !specUnresolved(identity)
+									? null
+									: refused;
+							},
+						},
 					},
 				);
+				// The confirmed selection is already visible on the composer chip.
+				// Only extra details that the chip cannot explain need another surface.
+				if (receipt) {
+					if (onDraftModelCommitted) onDraftModelCommitted(receipt.details);
+					else {
+						if (receipt.details) note(receipt.details);
+						onClose();
+					}
+				}
 				return;
 			}
 			/*
@@ -1952,6 +1979,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			modelName,
 			intents,
 			onClose,
+			onDraftModelCommitted,
 		],
 	);
 
@@ -2303,7 +2331,10 @@ export const ModelPicker: FC<PickerContext> = ({
 				 */
 				<div className="grid gap-1">
 					{(!draft || scopeControl) && (
-						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1">
+						<div
+							data-model-picker-checks=""
+							className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1"
+						>
 							{!draft && (
 								<div className="min-w-0 grow basis-48 [&_label]:min-w-0 [&_label]:flex-1">
 									{/* The control, not the saved model's name, sets the width.
@@ -2337,6 +2368,7 @@ export const ModelPicker: FC<PickerContext> = ({
 					<div className="flex min-w-0 flex-wrap items-center">
 						{!draft && (
 							<Button
+								data-picker-hover=""
 								variant="ghost"
 								size="sm"
 								type="button"
@@ -2354,6 +2386,7 @@ export const ModelPicker: FC<PickerContext> = ({
 							</Button>
 						)}
 						<Button
+							data-picker-hover=""
 							variant="ghost"
 							size="sm"
 							type="button"
@@ -4436,7 +4469,14 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 	const onPick = useCallback(
 		async (value: string) => {
 			if (scope === "session") {
-				await command.run("approvals", value);
+				// Match the composer toggle: only an explicit press on this session's
+				// Auto grants the capability, never the global settings branch below.
+				await command.run(
+					"approvals",
+					value,
+					undefined,
+					value === "auto" ? { bridgeAck: true } : undefined,
+				);
 				/*
 				 * The receipt is prose; the row marker and the composer's approval
 				 * chip read the entity query. Without this the dialog kept marking the

@@ -2824,6 +2824,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.max(64),
 			args: z.string().max(DESKTOP_MESSAGE_MAX_CHARS).optional(),
 			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
+			// Capability marker for an explicit session Auto press; core owns authority.
+			bridgeAck: z.literal(true).optional(),
 		})
 		.strict(),
 	/*
@@ -11754,6 +11756,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 					command: request.command,
 					args: request.args ?? "",
 					images: request.images ?? [],
+					...(request.bridgeAck === true &&
+					request.command === "approvals" &&
+					request.args === "auto"
+						? { bridge_ack: true }
+						: {}),
 				},
 			};
 		case "sessions.profileActionStatus":

@@ -10,6 +10,7 @@ import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeHoldsApi } from "@shared/api/local-operator/team-bridge-holds-api";
 import { TeamBridgeOwnerAuditApi } from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
@@ -27,11 +28,13 @@ import {
 import {
 	type HoldItem,
 	type HoldProof,
+	type HoldReceipt,
 	type HoldWord,
 	type JoinedDetail,
 	addLocalHoldRevisions,
 	bindShownBody,
 	findHeldMessage,
+	holdFromReceipt,
 	holdLookupRead,
 	holdRefusalLabel,
 	resolveHoldDetail,
@@ -270,81 +273,161 @@ export function useRetryHeldDetails() {
 	);
 }
 
-/** One Deliver / Discard at a time; the refusal is fixed copy by code. */
+type DecisionAuthority = { accountId: string | undefined; epoch: number };
+type DecisionState = {
+	authority: DecisionAuthority;
+	busy: { id: string; word: HoldWord } | null;
+	refusals: Record<string, string>;
+	recorded: readonly HoldItem[];
+};
+
+function emptyDecisions(authority: DecisionAuthority): DecisionState {
+	return { authority, busy: null, refusals: {}, recorded: [] };
+}
+
+/** One Deliver / Discard per currently observed authority. */
 export function useHoldDecide() {
 	const client = useQueryClient();
-	const { accountId } = useTeamBridgeAccount();
-	/* The word too, so the pressed button can say "Delivering..." (UX U4). */
-	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
-	const [refusals, setRefusals] = useState<Record<string, string>>({});
-	// State paints the lock; the ref takes it synchronously, before React can
-	// commit another frame (two clicks in one turn must not sign twice).
-	const locked = useRef(false);
-	const owner = useRef({ accountId, epoch: 0, mounted: true });
-	if (owner.current.accountId !== accountId) {
-		owner.current = {
-			accountId,
-			epoch: owner.current.epoch + 1,
-			mounted: true,
-		};
-	}
+	const { accountId, epoch } = useTeamBridgeAccount();
+	const owner = useRef<DecisionAuthority>({ accountId, epoch });
+	if (owner.current.accountId !== accountId || owner.current.epoch !== epoch)
+		owner.current = { accountId, epoch };
+	const authority = owner.current;
+	const mounted = useRef(true);
+	const locked = useRef<DecisionAuthority | null>(null);
+	const [state, setState] = useState(() => emptyDecisions(authority));
+	const isCurrent = useCallback(
+		(captured: DecisionAuthority) => {
+			const observed = observedRadientAuthority(client);
+			// An OAuth refetch can replace the account without advancing the epoch.
+			// Compare both with the captured owner, not a current-render account ref.
+			return (
+				mounted.current &&
+				owner.current === captured &&
+				observed.accountId === captured.accountId &&
+				observed.epoch === captured.epoch
+			);
+		},
+		[client],
+	);
 	useEffect(() => {
-		owner.current.mounted = true;
+		mounted.current = true;
 		return () => {
-			owner.current.mounted = false;
+			mounted.current = false;
 		};
 	}, []);
+	const update = useCallback(
+		(
+			captured: DecisionAuthority,
+			change: (previous: DecisionState) => DecisionState,
+		) => {
+			if (isCurrent(captured))
+				setState((previous) =>
+					change(
+						previous.authority === captured
+							? previous
+							: emptyDecisions(captured),
+					),
+				);
+		},
+		[isCurrent],
+	);
+	const record = useCallback(
+		(
+			captured: DecisionAuthority,
+			item: HoldItem,
+			word: HoldWord,
+			receipt: HoldReceipt,
+		) => {
+			const decided = holdFromReceipt(item, word, receipt);
+			if (!decided) return;
+			update(captured, (previous) => ({
+				...previous,
+				recorded: [
+					decided,
+					...previous.recorded.filter(
+						(row) => row.message_id !== decided.message_id,
+					),
+				],
+			}));
+		},
+		[update],
+	);
 	const run = useCallback(
 		async (item: HoldItem, word: HoldWord, proof: HoldProof) => {
-			if (!accountId || locked.current) return;
-			locked.current = true;
-			setBusy({ id: item.message_id, word });
-			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
+			const captured = authority;
+			if (!accountId || locked.current === captured || !isCurrent(captured))
+				return;
+			// Take the authority's lock synchronously; two clicks in one render
+			// must not send two signatures. A stale request cannot release a new lock.
+			locked.current = captured;
+			update(
+				captured,
+				({ refusals: { [item.message_id]: _, ...rest }, ...previous }) => ({
+					...previous,
+					busy: { id: item.message_id, word },
+					refusals: rest,
+				}),
+			);
 			try {
-				await TeamBridgeHoldsApi.decide(accountId, word, item, proof);
+				const receipt = await TeamBridgeHoldsApi.decide(
+					accountId,
+					word,
+					item,
+					proof,
+				);
+				record(captured, item, word, receipt);
 			} catch (error) {
 				const code =
 					error instanceof DesktopControlError ? (error.code ?? null) : null;
-				setRefusals((current) => ({
-					...current,
-					[item.message_id]: holdRefusalLabel(code, "hold_receipt" in proof),
+				update(captured, (previous) => ({
+					...previous,
+					refusals: {
+						...previous.refusals,
+						[item.message_id]: holdRefusalLabel(code, "hold_receipt" in proof),
+					},
 				}));
 			} finally {
-				locked.current = false;
-				setBusy(null);
-				void invalidateAfterDecision(client, accountId, item.message_id);
+				if (locked.current === captured) locked.current = null;
+				if (isCurrent(captured)) {
+					update(captured, (previous) => ({ ...previous, busy: null }));
+					void invalidateAfterDecision(client, accountId, item.message_id);
+				}
 			}
 		},
-		[accountId, client],
+		[accountId, authority, client, isCurrent, record, update],
 	);
 	const runBatch = useCallback(
 		async (
 			entries: readonly DiscardSnapshotEntry[],
 			onResult: (result: DiscardBatchResult) => void,
 		) => {
-			if (!accountId || locked.current) {
+			const captured = authority;
+			const isCurrentOwner = () => isCurrent(captured);
+			if (!accountId || !isCurrentOwner() || entries.length === 0) return;
+			if (locked.current === captured) {
 				for (const entry of entries)
 					onResult({ entry, recorded: false, error: holdRefusalLabel(null) });
 				return;
 			}
-			if (entries.length === 0) return;
-			locked.current = true;
-			const epoch = owner.current.epoch;
-			const isCurrentOwner = () =>
-				owner.current.mounted &&
-				owner.current.accountId === accountId &&
-				owner.current.epoch === epoch;
-			setBusy({ id: "__batch_discard__", word: "discard" });
+			locked.current = captured;
+			update(captured, (previous) => ({
+				...previous,
+				busy: { id: "__batch_discard__", word: "discard" },
+			}));
 			try {
 				await discardSnapshot(
 					entries,
-					(entry) =>
-						TeamBridgeHoldsApi.decide(
+					async (entry) => {
+						const receipt = await TeamBridgeHoldsApi.decide(
 							accountId,
 							"discard",
 							entry.item,
 							entry.proof,
-						),
+						);
+						record(captured, entry.item, "discard", receipt);
+						return receipt;
+					},
 					isCurrentOwner,
 					(error, entry) =>
 						holdRefusalLabel(
@@ -354,9 +437,12 @@ export function useHoldDecide() {
 					(result) => {
 						if (!isCurrentOwner()) return;
 						onResult(result);
-						setRefusals((current) => ({
-							...current,
-							[result.entry.item.message_id]: result.error ?? "",
+						update(captured, (previous) => ({
+							...previous,
+							refusals: {
+								...previous.refusals,
+								[result.entry.item.message_id]: result.error ?? "",
+							},
 						}));
 						void invalidateAfterDecision(
 							client,
@@ -366,11 +452,13 @@ export function useHoldDecide() {
 					},
 				);
 			} finally {
-				locked.current = false;
-				setBusy(null);
+				if (locked.current === captured) locked.current = null;
+				update(captured, (previous) => ({ ...previous, busy: null }));
 			}
 		},
-		[accountId, client],
+		[accountId, authority, client, isCurrent, record, update],
 	);
-	return { busy, refusals, run, runBatch };
+	const { busy, refusals, recorded } =
+		state.authority === authority ? state : emptyDecisions(authority);
+	return { busy, refusals, run, runBatch, recorded };
 }

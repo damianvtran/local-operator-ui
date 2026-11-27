@@ -36,6 +36,8 @@ const {
 	workspaceHeaderTitle,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
+	workspaceTabsAwaitingTitle,
+	snapshotConversationTitle,
 	workspaceTarget,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(outputFiles[0].contents).toString("base64")}`
@@ -55,7 +57,7 @@ const source = (name) =>
 const modelPath = "features/chat/components/";
 const routePath = /^\/chat\//;
 const TAB_STRIP =
-	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 32px;/;
+	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 36px;/;
 const TAB_PAINT_HOST =
 	/\[data-workspace-tab\]\s*\{[^}]*position: relative;\s*isolation: isolate;/;
 const TAB_PAINT =
@@ -64,14 +66,14 @@ const ACTIVE_TAB_PAINT =
 	/\[data-workspace-tab\]\[data-active\]\s*\{\s*--workspace-tab-fill:/;
 const DRAG_SPACER = /\[data-workspace-tab-spacer\]\s*\{\s*align-self: stretch;/;
 const NO_DRAG_TAB = /data-workspace-tab=""[^>]*data-titlebar-no-drag=""/;
-const TAB_TARGET = /className="flex h-7 [^"]+"\s*aria-current=/;
+const TAB_TARGET = /className="flex h-8 [^"]+"\s*aria-current=/;
 const CLOSE_TARGET = /data-workspace-close=""\s*className="[^"\n]*\bsize-6\b/;
 const MORE_TARGET =
 	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
 const TAB_FOCUS =
 	/\[data-workspace-tabs\] button:focus-visible\s*\{\s*outline: 2px solid var\(--color-accent\);\s*outline-offset: -2px;/;
-// End padding only: the start edge is the header row's `ps-6` utility (PR #2099),
-// and an unlayered start padding here would override it. lane-leading pins that.
+// End padding only: the row owns the start edge, and an unlayered rule here
+// would override it. lane-leading pins that.
 const HEADER_PADDING =
 	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-end: 12px;\s*\}/;
 
@@ -259,10 +261,10 @@ for (const [locale, check] of Object.entries({
 	});
 }
 
-test("the 32px strip leaves 4px of settled air on both sides of the tab paint without sacrificing hit area", () => {
+test("the 36px fallback strip leaves settled air around the larger tab target", () => {
 	const css = source("styles/index.css");
 	const strip = source(`${modelPath}workspace-tabs.tsx`);
-	// The centered 28px target leaves 2px of native lane on each edge; another
+	// The centered 32px target leaves at least 2px of lane on each edge; another
 	// 2px comes only out of its paint, not the scrollport or pointer target.
 	assert.match(css, TAB_STRIP);
 	assert.match(css, TAB_PAINT_HOST);
@@ -279,7 +281,14 @@ test("the 32px strip leaves 4px of settled air on both sides of the tab paint wi
 /*
  * THE ACTIVE-TAB TREATMENT (operator addition B on PR #2091): inactive tabs paint
  * nothing at rest and row-hover under the pointer; the active tab alone has the
- * opaque row-selected ground, full ink, weight 500 and a 2px accent indicator.
+ * opaque row-selected ground, full ink and weight 500 - BRIGHTENING ONLY. The
+ * 2px accent rail along the active tab's bottom edge was removed at the
+ * operator's request (2026-11-25: "remove that and we'll just leave the
+ * brightening but no rail, that looks super dated"), so any pseudo-element
+ * paint on the active tab beyond the shared `::before` ground fails here.
+ * With the rail gone the selected ground mixes 4% ink into row-selected (design
+ * D1 on PR #2109) so it stays distinct from a hovered neighbour's row-hover;
+ * a bare row-selected fill fails.
  */
 function assertActiveTabTreatment(css) {
 	assert.match(
@@ -292,22 +301,23 @@ function assertActiveTabTreatment(css) {
 	);
 	assert.match(
 		css,
-		/\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: var\(--color-row-selected\);\s*color: var\(--color-ink\);/,
+		/\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: color-mix\(\s*in srgb,\s*var\(--color-row-selected\) 96%,\s*var\(--color-ink\)\s*\);\s*color: var\(--color-ink\);/,
 	);
 	assert.match(
 		css,
 		/\[data-workspace-tab\]\[data-active\] > button\[aria-current\] \{\s*font-weight: 500;/,
 	);
-	assert.match(
-		css,
-		/\[data-workspace-tab\]\[data-active\]::after \{[^}]*height: 2px;[^}]*background: var\(--color-accent\);/,
+	assert.doesNotMatch(css, /\[data-workspace-tab\][^{,]*::after/);
+	assert.doesNotMatch(
+		css.match(/\[data-workspace-tab\]\[data-active\] \{[^}]*\}/)[0],
+		/border|box-shadow|accent/,
 	);
 	// No outline/pill: the tab block itself never draws a border.
 	const tab = css.match(/\[data-workspace-tab\] \{[^}]*\}/)[0];
 	assert.doesNotMatch(tab, /border(-width)?:/);
 }
 
-test("the active tab is the only filled tab, in full ink with an accent indicator", () => {
+test("the active tab is the only filled tab, in full ink, with no indicator rail", () => {
 	assertActiveTabTreatment(source("styles/index.css"));
 });
 
@@ -319,17 +329,32 @@ test("negative control: the old faint tint on every tab fails the treatment chec
 			"$1color-mix(in oklab, var(--color-canvas) 48%, var(--color-surface));",
 		)
 		.replace(
-			/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: )var\(--color-row-selected\);/,
+			/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: )color-mix\([^;]*\);/,
 			"$1color-mix(in oklab, var(--color-row-selected) 44%, var(--color-surface));",
 		);
 	assert.notEqual(faint, css, "control mutation applied");
 	assert.throws(() => assertActiveTabTreatment(faint));
-	const noIndicator = css.replace(
-		"[data-workspace-tab][data-active]::after",
-		"[data-x]::after",
+	// Re-adding the retired bottom rail must fail the check, in either spelling.
+	const rail = css.replace(
+		/(\[data-workspace-tab\]\[data-active\] > button\[aria-current\] \{)/,
+		"[data-workspace-tab][data-active]::after {\n\theight: 2px;\n\tbackground: var(--color-accent);\n}\n$1",
 	);
-	assert.notEqual(noIndicator, css, "control mutation applied");
-	assert.throws(() => assertActiveTabTreatment(noIndicator));
+	assert.notEqual(rail, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(rail));
+	// Reverting to the bare row-selected ground (pre-D1) must fail: with no
+	// rail, it sits ~1.04:1 from a hovered neighbour.
+	const bare = css.replace(
+		/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: )color-mix\([^;]*\);/,
+		"$1var(--color-row-selected);",
+	);
+	assert.notEqual(bare, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(bare));
+	const shadowRail = css.replace(
+		/(\[data-workspace-tab\]\[data-active\] \{\s*--workspace-tab-fill: color-mix\([^;]*\);)/,
+		"$1\n\tbox-shadow: inset 0 -2px var(--color-accent);",
+	);
+	assert.notEqual(shadowRail, css, "control mutation applied");
+	assert.throws(() => assertActiveTabTreatment(shadowRail));
 });
 
 test("header leading padding follows direction without moving its trailing actions", () => {
@@ -852,4 +877,124 @@ test("Q1C-F1: a conversation below page one is saved under its real header title
 		})[0].title,
 		"Seen",
 	);
+});
+
+/*
+ * THE OPERATOR'S 2026-11-25 "New chat" TAB, reproduced. Their saved strip held
+ * `{"id":"3389da57a13e","pinned":false}` with NO title, between "Erys" and
+ * "Self-hosted CVE scanning ...". That session has a real stored title
+ * (`title.json`, written 2026-11-24 10:11) but ~287 sessions had newer activity,
+ * so its row is far below the 50-row head page; the tab was not active this
+ * run, so no header named it either. Every source the strip consulted was
+ * empty, and once the catalogue settled it drew "New chat" for as long as the
+ * app ran - and saved no title, so the next launch did the same.
+ */
+test("a restored tab whose row is below the head page and has no saved title asks the session for its name", () => {
+	const tabs = [sessionA, sessionB, sessionC, draftTab];
+	const rows = new Map([[targetA.id, "Erys"]]);
+	const seen = {};
+	const saved = [
+		{ id: targetA.id, pinned: false, title: "Erys" },
+		{ id: targetB.id, pinned: false },
+		{ id: targetC.id, pinned: false, title: "Self-hosted CVE scanning" },
+	];
+	// The defect: the shipped chain settles B to the "New chat" fallback.
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetB,
+			catalogueSettled: true,
+			catalogueTitle: rows.get(targetB.id),
+			sessionTitle: seen[sessionB.key],
+			savedTitle: saved[1].title,
+		}),
+		{ kind: "fallback" },
+	);
+	// Only B is unnamed by every source, only once the catalogue has settled,
+	// never a draft (a draft IS a new chat), and never twice in one run.
+	const input = { tabs, rows, seen, saved, catalogueSettled: true };
+	assert.deepEqual(
+		workspaceTabsAwaitingTitle({ ...input, attempted: new Set() }),
+		[{ key: sessionB.key, id: targetB.id }],
+	);
+	assert.deepEqual(
+		workspaceTabsAwaitingTitle({
+			...input,
+			catalogueSettled: false,
+			attempted: new Set(),
+		}),
+		[],
+		"before the catalogue answers, the row may still arrive",
+	);
+	assert.deepEqual(
+		workspaceTabsAwaitingTitle({ ...input, attempted: new Set([targetB.id]) }),
+		[],
+	);
+	// The answer: Core's snapshot carries the stored title (Core #4576).
+	const snapshot = {
+		payload: {
+			frontend: {
+				snapshot: {
+					conversation_title:
+						"  Improve onboarding flow provider sign-in clarity ",
+				},
+			},
+		},
+	};
+	const title = snapshotConversationTitle(snapshot);
+	assert.equal(title, "Improve onboarding flow provider sign-in clarity");
+	for (const empty of [
+		null,
+		{},
+		{ payload: { frontend: { snapshot: { conversation_title: "" } } } },
+		{ payload: { frontend: { snapshot: { conversation_title: 7 } } } },
+	])
+		assert.equal(snapshotConversationTitle(empty), null);
+	// Remembered like a header title: the tab names itself now and saves it.
+	const after = { [sessionB.key]: title };
+	assert.deepEqual(
+		resolveWorkspaceTabTitle({
+			target: targetB,
+			catalogueSettled: true,
+			sessionTitle: after[sessionB.key],
+		}),
+		{ kind: "title", text: title },
+	);
+	assert.equal(
+		saveWorkspaceTabsWithTitles(tabs, { rows, seen: after, prior: saved })[1]
+			.title,
+		title,
+	);
+	assert.deepEqual(
+		workspaceTabsAwaitingTitle({ ...input, seen: after, attempted: new Set() }),
+		[],
+	);
+});
+
+function assertTitleLookupWiring(hook) {
+	assert.match(hook, /workspaceTabsAwaitingTitle\(\{/);
+	assert.match(
+		hook,
+		/desktopResult<unknown>\(\{\s*op: "sessions\.get",\s*sessionId: id,?\s*\}\)/,
+	);
+	assert.match(
+		hook,
+		/rememberTitle\(key, snapshotConversationTitle\(snapshot\)\)/,
+	);
+	assert.match(hook, /titleLookups\.current\.add\(id\)/);
+	assert.match(hook, /state\.head\.at > 0 \|\| state\.error !== null/);
+}
+
+test("the strip hook looks each unnamed tab up once and remembers the answer", () => {
+	const hook = source("features/chat/components/use-workspace-tabs.ts");
+	assertTitleLookupWiring(hook);
+	for (const mutated of [
+		hook.replace("titleLookups.current.add(id)", "void id"),
+		hook.replace(
+			"rememberTitle(key, snapshotConversationTitle(snapshot))",
+			"void snapshot",
+		),
+	]) {
+		assert.notEqual(mutated, hook, "control mutation applied");
+		assert.throws(() => assertTitleLookupWiring(mutated));
+	}
 });

@@ -254,6 +254,8 @@ export class DesktopStreamRelay {
 			return { streamId };
 		}
 
+		// The existing IPC stream ID also matches core's request-trace join
+		// key: 16 random bytes, rendered as 32 lowercase ASCII hex digits.
 		const streamId = randomBytes(16).toString("hex");
 		const controller = new AbortController();
 		this.streams.set(streamId, controller);
@@ -291,7 +293,8 @@ export class DesktopStreamRelay {
 		 * that already distinguishes the open frame distinguishing this too. An older
 		 * backend ignores the unknown parameter and keeps dropping the rows.
 		 */
-		if (args.openFrame === true) {
+		const firstPaint = args.openFrame === true;
+		if (firstPaint) {
 			query.set("open_frame", "1");
 			query.set("diff_bindings", "1");
 		}
@@ -337,6 +340,7 @@ export class DesktopStreamRelay {
 			args.sessionId,
 			url,
 			controller.signal,
+			firstPaint,
 			emit,
 		).finally(() => {
 			this.streams.delete(streamId);
@@ -350,17 +354,25 @@ export class DesktopStreamRelay {
 		sessionId: string,
 		url: URL,
 		signal: AbortSignal,
+		firstPaint: boolean,
 		emit: (event: RelayEvent) => void,
 	): Promise<void> {
 		try {
+			// Core joins on the existing main-generated stream ID, once per
+			// first-paint GET. This header belongs only to this authenticated
+			// desktop route; keep redirects disabled and never take an ID from IPC.
+			const mainFetchStartEpochMs = firstPaint ? receiptEpochMs() : undefined;
 			const response = await fetch(url, {
 				headers: {
 					Accept: "text/event-stream",
 					Authorization: `Bearer ${this.token}`,
+					...(firstPaint ? { "X-LOP-Open-Trace": streamId } : {}),
 				},
 				redirect: "error",
 				signal,
 			});
+			const mainHeadersEpochMs = firstPaint ? receiptEpochMs() : undefined;
+			let mainFirstDataEpochMs: number | undefined;
 			if (!response.ok || !response.body) {
 				emit({
 					streamId,
@@ -447,6 +459,11 @@ export class DesktopStreamRelay {
 						// arrive as data frames and pass through like any other.
 						if (record.data.length === 0) continue;
 						const data = record.data.join("\n");
+						// A comment, empty data record or partial read isn't the first
+						// payload. Keep the first complete data observation even when
+						// it isn't a snapshot (e.g. an open frame).
+						if (firstPaint && !snapshotTraced && data.length > 0)
+							mainFirstDataEpochMs ??= recordEpochMs;
 						// Reuse the notifier's existing parse/type knowledge. Never parse
 						// content a second time merely to identify a diagnostic frame.
 						const observerAt = snapshotTraced ? 0 : performance.now();
@@ -460,6 +477,13 @@ export class DesktopStreamRelay {
 								sessionId,
 								chars: data.length,
 								mainRecordEpochMs: recordEpochMs,
+								...(firstPaint
+									? {
+											mainFetchStartEpochMs,
+											mainHeadersEpochMs,
+											mainFirstDataEpochMs,
+										}
+									: {}),
 								mainFoldMs: observerAt - recordAt,
 								mainObserverMs: observedAt - observerAt,
 								mainEmitMs: performance.now() - observedAt,

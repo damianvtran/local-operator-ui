@@ -606,6 +606,19 @@ export const CommandPhase: Story = {
 			/>
 		</Box>
 	),
+	play: async ({ canvasElement }) => {
+		const options = [...canvasElement.querySelectorAll('[role="option"]')];
+		const region = options[0]?.parentElement?.parentElement;
+		if (!region) throw new Error("Missing command scroller");
+		const rows = options.map((option) => option.getBoundingClientRect());
+		const scroller = region.getBoundingClientRect();
+		// Assert the actual clipped edge, not just the style that requested it:
+		// selection and mixed mono/proportional content must not round the pitch.
+		await expect(rows[0].height).toBe(35.5);
+		await expect(rows.every((row) => row.height === rows[0].height)).toBe(true);
+		await expect(scroller.bottom).toBeCloseTo(rows[5].bottom, 1);
+		await expect(region.scrollWidth).toBe(region.clientWidth);
+	},
 };
 
 /** `/tea` typed: narrowed to `team`, with the alias row beside it. */

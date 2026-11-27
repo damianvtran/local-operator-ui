@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
+import { build, transformSync } from "esbuild";
 import {
 	isInsideAppBundle,
 	pythonChildEnv,
@@ -495,6 +495,8 @@ async function loadMainProcess() {
 					loadFile() {}
 					setMenuBarVisibility() {}
 					show() {}
+					showInactive() {}
+					isMinimized() { return false; }
 					focus() {}
 					close() {}
 					destroy() {}
@@ -569,7 +571,7 @@ async function loadMainProcess() {
 			const bundle = await build({
 				stdin: {
 					contents:
-						'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/backend-installer"; export * from "./src/main/update-service";',
+						'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/backend-installer"; export * from "./src/main/update-service"; export { LAUNCHER_EXIT_DEADLINE_MS, createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt } from "./src/main/window-mode"; export { LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS } from "./src/main/backend/owned-serve-launch"; export { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./src/main/backend/discovery"; export { SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS } from "./src/main/shell-path";',
 					resolveDir: process.cwd(),
 				},
 				bundle: true,
@@ -586,7 +588,9 @@ async function loadMainProcess() {
 						setup(builder) {
 							// Launch identity has real-child coverage in owned-serve-lifecycle;
 							// this fixture measures the spawn environment, not installation.
-							builder.onResolve({ filter: /owned-serve-launch$/ }, () => ({
+							// A direct test export of the real timing constants is safe; only
+							// the service's launch commands use this fake.
+							builder.onResolve({ filter: /^\.\/owned-serve-launch$/ }, () => ({
 								path: "launch",
 								namespace: "owned-launch-fixture",
 							}));
@@ -3520,7 +3524,7 @@ test("a failure parks on a decision the window's Retry actually answers", async 
 		resetInstallerFixture();
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		const finished = installer.install("never");
+		const finished = installer.install("inactive");
 
 		const first = await waitForSpawn();
 		// The script's own milestones, as the pipe delivers them: the phase the
@@ -3621,7 +3625,7 @@ test("closing the window with a failure unanswered exits instead of parking the 
 		resetInstallerFixture();
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		void installer.install("never");
+		void installer.install("inactive");
 
 		const first = await waitForSpawn();
 		first.child.stdout.emit("data", "|LO1:environment\n");
@@ -3664,7 +3668,7 @@ test("closing the window mid-run asks the same question Cancel does", async () =
 		resetInstallerFixture(0); // "Keep setting up"
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		void installer.install("never");
+		void installer.install("inactive");
 		await waitForSpawn();
 
 		const window = globalThis.__loWindows.at(-1);
@@ -3721,7 +3725,7 @@ test("a declined quit confirmation releases the app's quit state; a proceeding o
 			onQuitCancelled: () => released.push(true),
 		});
 		installer.pythonPath = join(PATHS.home, "external-python");
-		void installer.install("never");
+		void installer.install("inactive");
 		await waitForSpawn();
 
 		const window = globalThis.__loWindows.at(-1);
@@ -3758,7 +3762,7 @@ test("a declined quit confirmation releases the app's quit state; a proceeding o
 			onQuitCancelled: () => releasedOnAccept.push(true),
 		});
 		leaving.pythonPath = join(PATHS.home, "external-python");
-		void leaving.install("never");
+		void leaving.install("inactive");
 		await waitForSpawn();
 		globalThis.__loDialogResponse = 1;
 		const kills = [];
@@ -3807,7 +3811,7 @@ test("the click is authorised by the hold, not by the report flag", async () => 
 		resetInstallerFixture();
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		const finished = installer.install("never");
+		const finished = installer.install("inactive");
 
 		const first = await waitForSpawn();
 		first.child.stdout.emit("data", "|LO1:environment\n|LO1:components\n");
@@ -3832,6 +3836,303 @@ test("the click is authorised by the hold, not by the report flag", async () => 
 	});
 });
 
+function firstRunFragment(start, end) {
+	const source = readFileSync("src/main/index.ts", "utf8");
+	const from = source.indexOf(start);
+	const to = source.indexOf(end, from);
+	assert.ok(from >= 0 && to > from, `startup fixture needs ${start}`);
+	return source.slice(from, to);
+}
+
+// Keep startup and both quit deadlines under one clock. Stub the Electron
+// boundary and backend promises, not the transitions that decide exit status.
+async function driveFirstRunStart(t, start, launcherGone = false) {
+	const fixture = await loadMainProcess();
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const deadline = firstRunFragment(
+		"const QUIT_FAILSAFE_MARGIN_MS =",
+		"const headlessFirstRunSetup =",
+	);
+	const retry = `${firstRunFragment("let startAttempts = 0;", "startAttempts++;")}startAttempts++; }`;
+	const events = [];
+	const code = transformSync(
+		`
+		const {
+			LAUNCHER_EXIT_DEADLINE_MS, createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt,
+			LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS, OWNED_STOP_WORST_MS,
+			READINESS_POLL_INTERVAL_MS, READINESS_WALL_WORST_MS,
+			SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS, OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS,
+		} = fixture;
+		${deadline}
+		const windowLaunch = { mode: "headless" };
+		const quitEvents = [];
+		const quitState = { isQuitting: () => backendQuitPending };
+		const backendService = {
+			start, isOwnedCleanupComplete: () => false,
+			stop: (restart) => {
+				quitEvents.push(["stop", restart]);
+				return new Promise(() => {});
+			},
+		};
+		const logger = {
+			info: (line) => {
+				if (line.includes("deferring last-window quit")) events.push("deferred");
+			},
+			error() {},
+		};
+		const LogFileType = { BACKEND: "backend", INSTALLER: "installer" };
+		const console = { log: (line) => quitEvents.push(line) };
+		const scheduleReopenAtQuitTerminal = () => {};
+		const app = {
+			quit: () => {
+				const event = { preventDefault: () => quitEvents.push("quit prevented") };
+				${firstRunFragment("if (backendService.isOwnedCleanupComplete()) {", "\n});\n\n// Handle before-quit event")}
+			},
+			exit: (code) => quitEvents.push(["exit", code]),
+		};
+		${firstRunFragment("let headlessExitDeadline:", "/** The launcher watch,")}
+		${firstRunFragment("const headlessFirstRunSetup =", "/*\n * REVIEW F3:")}
+		const done = (async () => {
+			if (launcherGone) {
+				endHeadlessRun("launcher gone");
+				return;
+			}
+			headlessFirstRunSetup.begin();
+			headlessFirstRunSetup.windowClosed(false, false);
+			${retry}
+			if (backendStarted) headlessFirstRunSetup.settle("reachable");
+			return backendStarted;
+		})();
+		return { done, events, quitEvents, attemptMs: HEADLESS_FIRST_RUN_ATTEMPT_MS,
+			backoffMs: FIRST_RUN_START_BACKOFF_MS, timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS,
+			exitMs: LAUNCHER_EXIT_DEADLINE_MS };
+	`,
+		{ loader: "ts" },
+	).code;
+	return new Function("fixture", "start", "events", "launcherGone", code)(
+		fixture,
+		start,
+		events,
+		launcherGone,
+	);
+}
+
+test("first-run watchdog leaves a permitted third backend start alive", async (t) => {
+	let resolveAttempt;
+	let attempts = 0;
+	const fixture = await driveFirstRunStart(t, () => {
+		attempts++;
+		return new Promise((resolve) => {
+			resolveAttempt = resolve;
+		});
+	});
+	for (let i = 0; i < 2; i++) {
+		// 29 s interpreter proof, 30 s readiness waits, then the loop's 2 s backoff.
+		t.mock.timers.tick(59_000);
+		resolveAttempt(false);
+		await new Promise(setImmediate);
+		t.mock.timers.tick(2_000);
+		await new Promise(setImmediate);
+	}
+	assert.equal(attempts, 3);
+	t.mock.timers.tick(26_000);
+	assert.deepEqual(
+		fixture.events,
+		["deferred"],
+		"third attempt still starting at 148 s",
+	);
+	resolveAttempt(true);
+	assert.equal(await fixture.done, true);
+	t.mock.timers.tick(fixture.timeoutMs);
+	assert.deepEqual(
+		fixture.events,
+		["deferred"],
+		"readiness disarmed the watchdog",
+	);
+});
+
+test("all three slots can spend their full startup budget before the watchdog", async (t) => {
+	let resolveAttempt;
+	let attempts = 0;
+	const { done, events, attemptMs, backoffMs, timeoutMs } =
+		await driveFirstRunStart(t, () => {
+			attempts++;
+			return new Promise((resolve) => {
+				resolveAttempt = resolve;
+			});
+		});
+	t.diagnostic(
+		`shipped timing: attempt=${attemptMs} ms, backoff=${backoffMs} ms, watchdog=${timeoutMs} ms`,
+	);
+	for (let i = 0; i < 3; i++) {
+		assert.equal(attempts, i + 1);
+		t.mock.timers.tick(attemptMs - 1);
+		assert.deepEqual(events, ["deferred"]);
+		resolveAttempt(i === 2);
+		await new Promise(setImmediate);
+		if (i < 2) {
+			t.mock.timers.tick(backoffMs);
+			await new Promise(setImmediate);
+		}
+	}
+	assert.equal(await done, true);
+	t.mock.timers.tick(timeoutMs);
+	assert.deepEqual(events, ["deferred"]);
+});
+
+for (const launcherGone of [false, true]) {
+	const reason = launcherGone
+		? "launcher gone"
+		: "headless first-run setup failed (start-failed)";
+	const exitCode = launcherGone ? 0 : 1;
+	test(`${reason}: stuck cleanup hard-exits once with status ${exitCode}`, async (t) => {
+		let attempts = 0;
+		const { done, events, quitEvents, attemptMs, exitMs } =
+			await driveFirstRunStart(
+				t,
+				() => {
+					attempts++;
+					return new Promise(() => {});
+				},
+				launcherGone,
+			);
+		if (!launcherGone) {
+			t.mock.timers.tick(attemptMs - 1);
+			assert.deepEqual(events, ["deferred"]);
+			assert.deepEqual(quitEvents, []);
+			t.mock.timers.tick(1);
+		}
+		await done;
+		assert.equal(attempts, launcherGone ? 0 : 1);
+		const stalled = [
+			`[window-mode] ${reason}; quitting`,
+			"quit prevented",
+			["stop", false],
+		];
+		assert.equal(exitMs, 10_000);
+		t.mock.timers.tick(exitMs - 1);
+		assert.deepEqual(quitEvents, stalled);
+		t.mock.timers.tick(1);
+		assert.deepEqual(quitEvents, [
+			...stalled,
+			`[window-mode] ${reason}; the quit did not finish within ${exitMs} ms, exiting`,
+			["exit", exitCode],
+		]);
+	});
+}
+
+test("a failed hidden installer child settles without a Retry/Quit decision", async () => {
+	const { BackendInstaller } = await loadMainProcess();
+	await onPlatform("linux", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		installer.pythonPath = join(PATHS.home, "external-python");
+		let result;
+		const finished = installer.install("never").then((value) => {
+			result = value;
+		});
+		const first = await waitForSpawn();
+		first.child.stdout.emit("data", "|LO1:components\n");
+		first.child.emit("exit", 1);
+		// Drain the failure continuation without ever sending renderer input.
+		await new Promise(setImmediate);
+		assert.equal(
+			result,
+			false,
+			`failure must settle (decisionPending=${installer.decisionPending})`,
+		);
+		await finished;
+		assert.equal(globalThis.__loDialogs.length, 0);
+		assert.equal(installer.decisionPending, false);
+		assert.equal(installer.preparationWindow, null);
+		assert.equal(globalThis.__loExitCode, undefined, "the caller owns exit");
+	});
+});
+
+test("a rejected macOS headless preparation reaches the app failure terminal", async () => {
+	const { BackendInstaller, createHeadlessFirstRunSetup } =
+		await loadMainProcess();
+	await onPlatform("darwin", async () => {
+		resetInstallerFixture();
+		const installer = new BackendInstaller();
+		// No seed exists in these scratch resources. The real prepareManagedPython
+		// rejects after install() has created a live but invisible setup window.
+		installer.managedOptions = () => ({
+			support: join(PATHS.home, "missing-seed-support"),
+			resources: join(PATHS.home, "missing-seed-resources"),
+			packaged: true,
+			arch: "arm64",
+		});
+
+		// Execute the shipped installer call, onFailure and cleanup-complete
+		// terminal with fake Electron. Loading the whole index starts the app.
+		const code = transformSync(
+			`
+			const windowLaunch = { mode: "headless", show: "never" };
+			const HEADLESS_FIRST_RUN_DEADLINE_MS = 20_000;
+			const quitState = { isQuitting: () => false };
+			const LogFileType = { BACKEND: "backend", INSTALLER: "installer" };
+			const logger = { info: (line) => events.push(line), error() {} };
+			const console = { log() {} };
+			const armHeadlessExitDeadline = () => {};
+			const app = {
+				quit: () => {
+					const backendService = { isOwnedCleanupComplete: () => true };
+					const event = { preventDefault() {} };
+					${firstRunFragment("if (backendService.isOwnedCleanupComplete()) {", "\n\tevent.preventDefault();")}
+				},
+				exit: (code) => events.push(code),
+			};
+			${firstRunFragment("function endHeadlessRun(", "/** The launcher watch,")}
+			${firstRunFragment("const headlessFirstRunSetup =", "let backendQuitPending")}
+			return (async () => {
+				${firstRunFragment("headlessFirstRunSetup.begin();", "// After successful installation,")}
+				assert.fail("the backend must not start after a failed install");
+			})();
+		`,
+			{ loader: "ts" },
+		).code;
+		const events = [];
+		const run = new Function(
+			"backendInstaller",
+			"createHeadlessFirstRunSetup",
+			"events",
+			"assert",
+			code,
+		);
+		let finished = false;
+		const startup = run(
+			installer,
+			createHeadlessFirstRunSetup,
+			events,
+			assert,
+		).then(() => {
+			finished = true;
+		});
+		await waitFor(
+			() => finished || installer.decisionPending,
+			"the installer failure to settle or wait for input",
+		);
+		assert.equal(
+			finished,
+			true,
+			`setup must settle (decisionPending=${installer.decisionPending})`,
+		);
+		await startup;
+		assert.equal(
+			globalThis.__loWindows.length,
+			1,
+			"preparation rejected after creating the hidden window",
+		);
+		assert.equal(globalThis.__loDialogs.length, 0);
+		assert.equal(globalThis.__loErrorBoxes.length, 0);
+		assert.deepEqual(events, [
+			"[window-mode] headless first-run setup failed (install-failed); quitting",
+			1,
+		]);
+	});
+});
+
 test("a retry runs the same attempt the first run does", async () => {
 	/*
 	 * Review R3-1/R3-2 and UX U17, measured through the shipped graph: a retry used
@@ -3848,7 +4149,7 @@ test("a retry runs the same attempt the first run does", async () => {
 		resetInstallerFixture();
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		const finished = installer.install("never");
+		const finished = installer.install("inactive");
 
 		const first = await waitForSpawn();
 		first.child.stdout.emit("data", "|LO1:environment\n");
@@ -3925,7 +4226,7 @@ test("a successful retry holds its finished state and does not ask to quit over 
 		resetInstallerFixture();
 		const installer = new BackendInstaller();
 		installer.pythonPath = join(PATHS.home, "external-python");
-		const finished = installer.install("never");
+		const finished = installer.install("inactive");
 
 		const first = await waitForSpawn();
 		first.child.stdout.emit("data", "|LO1:components\n");

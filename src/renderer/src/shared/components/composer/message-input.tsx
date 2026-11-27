@@ -143,6 +143,7 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Spinner } from "@shared/components/common/spinner";
 import { DictationTakeRow } from "@shared/components/composer/dictation-take-row";
+import { desktopHistoryKeepsFocus } from "@shared/components/navigation/desktop-navigation-focus";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import {
@@ -7032,6 +7033,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!autoFocus && !dictationEnded) return;
 			if (isInputDisabled || dictating) return;
 			const activeElement = document.activeElement;
+			if (desktopHistoryKeepsFocus(activeElement)) return;
 			/*
 			 * A FOCUSED TAB IS NOT A PLACE TO TAKE FOCUS FROM (UX round 1, U2). Radix
 			 * activates a tab on focus, so arrowing along a tab strip can MOUNT this box

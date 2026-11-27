@@ -312,6 +312,8 @@ type PickerRowProps = {
 	/** See `PickerHostProps.busyLabel`: the picked row's spinner name. */
 	busyLabel?: string;
 	quick?: boolean;
+	/** The composer paper uses local tones instead of the dialog's tinted roles. */
+	anchored?: boolean;
 };
 
 /*
@@ -712,7 +714,11 @@ export function pickerPrimaryLabel(state: {
  * risk, since windowing has to preserve `aria-activedescendant`, the arrow walk
  * and the current-row start.
  *
- * WHY TWO GROUNDS, AND WHICH GROUND EACH ONE TAKES.
+ * WHY TWO STATES, AND WHY THE DIALOG HAS ITS OWN GROUNDS.
+ *
+ * Anchored rows use two steps from the composer's palette-driven paper. The
+ * stronger fill identifies Enter's target without a leading mark; the check
+ * still identifies the current value. Dialog rows keep the roles below.
  *
  * `isActive` is the keyboard's selection — what Enter picks. It takes `bg-
  * sunken`, because that is the only ground role that steps perceptibly away
@@ -766,6 +772,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 		isHovered,
 		isPicked,
 		quick,
+		anchored,
 		onHover,
 		onPick,
 		busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
@@ -810,9 +817,10 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				className={cn(
 					"flex items-start gap-3 rounded-sm px-2 py-1.5",
 					quick && "min-h-8 items-center",
-					isActive && "bg-sunken",
+					!anchored && isActive && "bg-sunken",
 					// Keep the keyboard target legible even if the selected theme's tint is subtle.
 					quick &&
+						!anchored &&
 						isActive &&
 						"outline-solid outline-1 -outline-offset-1 outline-control",
 					/*
@@ -824,10 +832,15 @@ export const PickerRow: FC<PickerRowProps> = memo(
 					 * half a hover mark is a defect of its own - while the cursor and the
 					 * reason stay.
 					 */
-					isHovered && !isActive && !option.disabled && "bg-accent-wash",
+					!anchored &&
+						isHovered &&
+						!isActive &&
+						!option.disabled &&
+						"bg-accent-wash",
 					// The structural half of both marks; see the block comment above for
 					// why the wash alone is not enough in every theme.
-					(isPicked || (isHovered && !isActive && !option.disabled)) &&
+					!anchored &&
+						(isPicked || (isHovered && !isActive && !option.disabled)) &&
 						"outline-solid outline-1 -outline-offset-1 outline-control",
 					option.disabled && "text-ink-disabled",
 				)}
@@ -837,6 +850,8 @@ export const PickerRow: FC<PickerRowProps> = memo(
 						<span
 							className={cn(
 								"truncate text-body-sm",
+								// Mark Enter's target without colouring or styling the Current check.
+								anchored && isActive && "font-medium",
 								option.disabled ? "text-ink-disabled" : "text-ink",
 							)}
 						>
@@ -907,7 +922,13 @@ export const PickerRow: FC<PickerRowProps> = memo(
 						<Spinner size="sm" label={busyLabel} />
 					</span>
 				) : option.meta ? (
-					<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+					<span
+						className={cn(
+							"shrink-0 font-mono text-mono-sm",
+							// The stronger tonal fills still need readable metadata.
+							anchored && !option.disabled ? "text-ink-muted" : "text-ink-dim",
+						)}
+					>
 						{option.meta}
 					</span>
 				) : null}
@@ -1579,6 +1600,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 				collisionPadding: 8,
 				"aria-labelledby": titleId,
 				"aria-describedby": descriptionId,
+				// Use the same palette finish as @ and /, but keep these choices on
+				// solid paper. Other consumers still get the shared popover's glass.
+				"data-lo-floating-finish": "",
+				"data-glass-overlay": undefined,
 				className: cn(
 					compactFrame,
 					"max-h-[var(--radix-popover-content-available-height)] w-[calc(100vw-1rem)]",
@@ -1728,8 +1753,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 								}
 								className={cn(
 									"ps-8",
-									isQuick &&
-										"border-0 bg-sunken focus-visible:-outline-offset-1!",
+									isQuick && "border-0 focus-visible:-outline-offset-1!",
+									isQuick && !anchor && "bg-sunken",
 								)}
 								autoComplete="off"
 								spellCheck={false}
@@ -1824,20 +1849,28 @@ export const PickerHost: FC<PickerHostProps> = ({
 								// hover left over from somewhere else can never read as the
 								// keyboard's selection (design D2).
 								onMouseLeave={clearHovered}
+								// Let the native scrollbar signal overflow; a mask also dims the
+								// keyboard target when it lands at the bottom of the scrollport.
 								className={cn(
 									"overflow-y-auto",
 									isQuick
 										? cn(
 												"min-h-8 overscroll-contain [overflow-anchor:none]",
 												isEffort
-													? "max-h-48 focus-visible:-outline-offset-2!"
+													? cn(
+															"max-h-48",
+															!anchor && "focus-visible:-outline-offset-2!",
+														)
 													: "max-h-64",
 											)
 										: "max-h-[min(50vh,420px)]",
 								)}
 							>
 								{grouped.map(([group, rows]) => (
-									<div key={group || "ungrouped"}>
+									<div
+										key={group || "ungrouped"}
+										className={isQuick && anchor ? "space-y-0.5" : undefined}
+									>
 										{group && (
 											<p className="px-2 pt-2 pb-1 text-ink-dim text-meta">
 												{group}
@@ -1856,6 +1889,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 													isHovered={index === list.hovered}
 													isPicked={list.picked === option.value}
 													quick={isQuick}
+													anchored={isQuick && !!anchor}
 													onHover={setHoveredIndex}
 													onPick={pickRow}
 													busyLabel={busyLabel}
@@ -1972,7 +2006,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				{toolbar && isQuick && (
-					<div className="divider-inset relative mx-2 mt-2 shrink-0 px-1 pt-2">
+					<div
+						className={cn(
+							"relative mx-2 mt-2 shrink-0 px-1 pt-2",
+							// The anchored toolbar is on the same paper as the list, not a divider.
+							!anchor && "divider-inset",
+						)}
+					>
 						{toolbar}
 					</div>
 				)}
@@ -2075,6 +2115,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 */}
 						<Button
 							ref={closeButtonRef}
+							data-picker-hover=""
 							variant="ghost"
 							size={isQuick ? "icon-sm" : "sm"}
 							type="button"
@@ -2157,7 +2198,7 @@ export const PickerCheck: FC<{
 }) => {
 	const id = useId();
 	return (
-		<div className="flex items-start gap-2">
+		<div data-picker-check="" className="flex items-start gap-2">
 			<Checkbox
 				className="mt-0.5"
 				id={id}

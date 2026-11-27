@@ -35,6 +35,7 @@ import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
 } from "@shared/components/composer/message-input";
+import { desktopHistoryKeepsFocus } from "@shared/components/navigation/desktop-navigation-focus";
 import {
 	hasPendingSend,
 	pendingSendForView,
@@ -74,6 +75,7 @@ import {
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
+	adoptPendingConsole,
 	composerIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
@@ -113,6 +115,7 @@ import {
 import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
+import { consoleOwnerForView } from "../../../../../shared/console-owner";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
 import { RemoteRunCards } from "../../remote-compute/remote-run-card";
 import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
@@ -340,6 +343,7 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
+	consoleOwner,
 	onStartNewChat,
 	workspaceTabs,
 	routeNotice,
@@ -349,6 +353,13 @@ function SessionPanel({
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
+	/**
+	 * The console this pane is showing: the pending owner while the view is still
+	 * a draft, this conversation's id otherwise. Computed by the page
+	 * (`consoleOwnerForView`) because `draftKey` is the page's own fact about
+	 * whether a staged draft is still the view.
+	 */
+	consoleOwner: string | null;
 	/**
 	 * The missing notice's route move, owned by `ChatPage` (agent review round 1 /
 	 * QA round 1, Q1): the panel and the transcript below it can stage the fresh
@@ -1966,7 +1977,8 @@ function SessionPanel({
 	 */
 	const paneHasSession = Boolean(sessionId);
 	useEffect(() => {
-		if (draftKey) input.current?.focusInput();
+		if (draftKey && !desktopHistoryKeepsFocus(document.activeElement))
+			input.current?.focusInput();
 	}, [draftKey]);
 	useEffect(() => {
 		if (!sessionId || !canonical.frontend) return;
@@ -4575,9 +4587,22 @@ function SessionPanel({
 		setSendErrorCode(undefined);
 		setSendErrorRetry(false);
 		setSendErrorMuted(false);
+		const deliveredTo = draft?.sessionId ?? sessionId ?? "";
+		/*
+		 * THE DRAFT'S CONSOLE MOVES WITH THE MESSAGE (the send path's two arms do
+		 * the same, in `canonical-sessions-store`). Reconciliation is the app
+		 * confirming a first message DID arrive, so the shells a New Conversation's
+		 * pane opened belong to this conversation now — and without this they would
+		 * be left under the pending owner while the user looks at an empty console in
+		 * the conversation they were moved to. Fire-and-forget: this effect runs when
+		 * the message is already visible, and the pane re-reads on main's own change
+		 * signal (`console-state-changed`), so waiting here would only delay the
+		 * sentence this effect exists to clear.
+		 */
+		void adoptPendingConsole(draftIdentity, deliveredTo);
 		useCanonicalSessionsStore
 			.getState()
-			.finishDraft(draftIdentity, draft?.sessionId ?? sessionId ?? "");
+			.finishDraft(draftIdentity, deliveredTo);
 	}, [
 		unresolvedRequestId,
 		ownerHasIt,
@@ -5525,6 +5550,7 @@ function SessionPanel({
 					 * memory by draft key or by agent id is the bug this fixes.
 					 */
 					sessionId={sessionId}
+					consoleOwner={consoleOwner}
 					cwdPending={canMove && live.busy}
 					/*
 					 * Whether the backend has ACCEPTED the move in flight, so the chip's second
@@ -6014,6 +6040,14 @@ export function ChatPage() {
 		sameWorkspaceTarget(tab.target, workspaceActive),
 	)?.key;
 	const identity = panelIdentityFor(draftKey, id);
+	/*
+	 * WHICH CONSOLE THIS PANE SHOWS, decided here because only the page knows
+	 * whether the view is still a DRAFT. `id` becomes the created session id the
+	 * moment the draft's create answers, while the message has not been admitted
+	 * and main has not moved (and must not move) the pending surfaces; the rule and
+	 * the two regressions it closes are in `consoleOwnerForView`.
+	 */
+	const consoleOwner = consoleOwnerForView(Boolean(draftKey), id);
 	// The panel's MOUNT key, which unlike `identity` survives the draft's own
 	// admission: remounting there repainted the echo the press had just painted
 	// (`panelMountKeyFor`). Derived during render from the COMMITTED mount, and
@@ -6106,6 +6140,7 @@ export function ChatPage() {
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
+						consoleOwner={consoleOwner}
 						onStartNewChat={startNewChatRoute}
 						routeNotice={routeNotice}
 						workspaceTabs={(activeTitle) => (

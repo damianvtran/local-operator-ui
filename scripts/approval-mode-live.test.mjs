@@ -146,12 +146,19 @@ const reset = (over = {}) => {
 		readWait: null,
 		commands: [],
 		edits: [],
+		writes: [],
 		reads: 0,
 		...over,
 	});
 };
 globalThis.fetch = async (_url, init) => {
 	const request = JSON.parse(init?.body ?? "{}");
+	// Use the desktop bridge's real HTTP mapping before the synthetic owner
+	// replies. A green mode receipt alone cannot prove which door was used.
+	const { method, path, body } = desktopEndpoint(
+		desktopRequestSchema.parse(request),
+	);
+	if (method !== "GET") world.writes.push({ method, path, body });
 	return {
 		ok: true,
 		status: 200,
@@ -170,6 +177,7 @@ const bundle = await build({
 			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
 			'export { TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";',
 			'export { PickerHost } from "./src/renderer/src/features/chat/pickers/picker-host";',
+			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -207,6 +215,8 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	TooltipProvider,
+	desktopEndpoint,
+	desktopRequestSchema,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 const React = await import("react");
@@ -301,7 +311,7 @@ const openPicker = async () => {
 	assert.ok(popover(), "the popover is open");
 };
 
-test("opening the picker sends no command and re-reads the mode in the background", async () => {
+test("opening and dismissing the picker send no writes; opening re-reads the mode", async () => {
 	reset();
 	await mount();
 	const readsBefore = world.reads;
@@ -331,8 +341,7 @@ test("opening the picker sends no command and re-reads the mode in the backgroun
 		trigger(),
 		"Escape returns to the real trigger",
 	);
-	assert.deepEqual(world.commands, []);
-	assert.deepEqual(world.edits, []);
+	assert.deepEqual(world.writes, [], "open and Escape are read-only");
 });
 
 test("D1/Q1: a session choice takes the live-gate route and flips the card's mode line", async () => {
@@ -370,6 +379,32 @@ test("D1/Q1: a session choice takes the live-gate route and flips the card's mod
 	await openPicker();
 	await click(choice("session:ask"));
 	assert.deepEqual(world.commands, ["approvals auto", "approvals ask"]);
+	assert.deepEqual(
+		world.writes.map(
+			({ method, path, body: { request_id: _id, ...body } }) => ({
+				method,
+				path,
+				body,
+			}),
+		),
+		[
+			{
+				method: "POST",
+				path: `/v1/desktop/sessions/${SESSION}/commands`,
+				body: {
+					command: "approvals",
+					args: "auto",
+					images: [],
+					bridge_ack: true,
+				},
+			},
+			{
+				method: "POST",
+				path: `/v1/desktop/sessions/${SESSION}/commands`,
+				body: { command: "approvals", args: "ask", images: [] },
+			},
+		],
+	);
 	assert.match(policyLine(), /Approvals: Ask — session override/);
 	assert.equal($("[data-approval-escape-ask]"), null);
 });
@@ -397,6 +432,14 @@ test("all-sessions choices write only the default in both directions", async () 
 		"tool_approval_mode=ask",
 	]);
 	assert.deepEqual(world.commands, []);
+	assert.deepEqual(
+		world.writes.map(({ method, path, body }) => [method, path, body]),
+		["auto", "ask"].map((value) => [
+			"PATCH",
+			"/v1/settings/tool_approval_mode",
+			{ value, base: undefined },
+		]),
+	);
 	assert.equal(trigger().dataset.mode, "ask");
 });
 
@@ -434,6 +477,9 @@ test("D1: the card's confirmation clears when the picker moves the mode away fro
 	reset();
 	await mount();
 	await click($("[data-approval-escape-session]"));
+	assert.equal(world.writes.length, 1);
+	assert.equal(world.writes[0].body.args, "auto");
+	assert.equal(Object.hasOwn(world.writes[0].body, "bridge_ack"), false);
 	assert.match(
 		$("[data-approval-escape-status]").textContent,
 		/Auto for this session/,

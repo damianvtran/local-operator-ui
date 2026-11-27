@@ -1,4 +1,8 @@
-import { MessageCircleQuestion, MessagesSquare } from "lucide-react";
+import {
+	type LucideProps,
+	MessageCircleQuestion,
+	MessagesSquare,
+} from "lucide-react";
 import type { FC } from "react";
 import type { AskScope } from "../../ask-queue";
 
@@ -20,10 +24,10 @@ import type { AskScope } from "../../ask-queue";
  * a component that always hid itself would be wrong the moment a caller wants the
  * glyph to speak.
  */
-export const AsksScopeIcon: FC<{
-	scope: AskScope;
-	"aria-hidden"?: boolean;
-}> = ({ scope, ...props }) => {
+export const AsksScopeIcon: FC<LucideProps & { scope: AskScope }> = ({
+	scope,
+	...props
+}) => {
 	const Icon = scope === "fleet" ? MessagesSquare : MessageCircleQuestion;
 	return <Icon {...props} />;
 };

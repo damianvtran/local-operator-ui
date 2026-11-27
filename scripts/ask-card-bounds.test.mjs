@@ -1380,8 +1380,24 @@ test("the dock contains the wheel; the panel hands it to its host", async () => 
 		"sticky is bounded by the card it belongs to, so the row is its direct child",
 	);
 	const classes = classesOf(actions).split(/\s+/);
-	for (const cls of ["sticky", "bottom-0", "bg-elevated"])
+	/*
+	 * THE BAR WEARS THE CARD'S GROUND AND A HAIRLINE RULE (design spec, D9): the
+	 * flat `elevated` plate read as a second panel under a veiled card. The
+	 * sticky/bottom-0 contract is unchanged - what changed is the surface.
+	 */
+	for (const cls of [
+		"sticky",
+		"bottom-0",
+		"bg-surface",
+		"border-t",
+		"border-hairline",
+	])
 		assert.ok(classes.includes(cls), `pinned row is ${cls}`);
+	assert.equal(
+		classes.includes("bg-elevated"),
+		false,
+		"the bar is the card's own ground, not a plate",
+	);
 	assert.equal(
 		actions.getAttribute("data-glass-plane"),
 		"band-backdrop",

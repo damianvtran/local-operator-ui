@@ -71,10 +71,8 @@ export const TeamBridgeBackRow: FC = () => {
 	const [handoff, setHandoff] = useState(false);
 	const { total: attention, lines: attentionLines } =
 		useOtherSurfacesAttention();
-	const chord = navigationShortcutLabel(
-		"back",
-		MAC_PLATFORM.test(navigator.platform),
-	);
+	const isMac = MAC_PLATFORM.test(navigator.platform);
+	const chord = navigationShortcutLabel("back", isMac);
 	const leaveName =
 		attention > 0
 			? t("ui.teamBridge.leave.name_attention", { count: attention })
@@ -135,9 +133,7 @@ export const TeamBridgeBackRow: FC = () => {
 					<span className="flex flex-col">
 						<span>
 							<ShortcutText
-								text={t("ui.teamBridge.leave.back_shortcut", {
-									shortcut: isolateLtr(chord),
-								})}
+								text={`${t("ui.teamBridge.leave.name")} (${isolateLtr(chord)})`}
 							/>
 						</span>
 						{attentionLines.map((line) => (
@@ -169,7 +165,7 @@ export const TeamBridgeBackRow: FC = () => {
 					onKeyDown={() => setHandoff(false)}
 					onClick={leave}
 					aria-label={leaveName}
-					aria-keyshortcuts={chord}
+					aria-keyshortcuts={isMac ? "Meta+[" : "Control+["}
 					className={cn(
 						"inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-body-sm font-medium text-ink-muted",
 						"transition-colors duration-fast ease-out-quart",

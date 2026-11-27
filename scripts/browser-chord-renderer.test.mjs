@@ -569,11 +569,16 @@ test("the address field renders no tooltip, while a chrome-band control still do
 			});
 			await new Promise((resolve) => setTimeout(resolve, 900));
 		};
-		const back = document.querySelector('[aria-label="Back"]');
+		const back = document.querySelector('[data-tour-tag="browser-back"]');
 		assert.ok(back, "the Back control rendered");
+		assert.equal(back.getAttribute("aria-label"), "Browser: Back");
+		assert.match(
+			back.getAttribute("aria-keyshortcuts"),
+			/^(Control|Meta)\+\[$/,
+		);
 		await hover(back);
 		assert.ok(
-			panels().some((text) => text.startsWith("Back")),
+			panels().some((text) => text.startsWith("Browser: Back")),
 			`positive control: hovering Back opens its tooltip; panels=${JSON.stringify(panels())}`,
 		);
 		const field = document.querySelector('[data-tour-tag="browser-address"]');

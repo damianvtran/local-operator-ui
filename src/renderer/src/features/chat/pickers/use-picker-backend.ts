@@ -158,6 +158,8 @@ export async function runSessionCommand(
 		sessionId: string;
 		command: string;
 		args: string;
+		/** Opt in only from an explicit owner press selecting Auto for this session. */
+		bridgeAck?: true;
 		/** The caller's own prefix for a failure that never reached the owner. */
 		failure?: string;
 		/**
@@ -202,7 +204,15 @@ export async function runSessionCommand(
 	send: SendCommand = (request) =>
 		desktopResult<DesktopCommandReceipt>(request),
 ): Promise<CommandRun> {
-	const { sessionId, command, args, failure, resendWhileBusy, landed } = input;
+	const {
+		sessionId,
+		command,
+		args,
+		bridgeAck,
+		failure,
+		resendWhileBusy,
+		landed,
+	} = input;
 	/*
 	 * THE BASELINE, SAMPLED BEFORE ANYTHING IS SENT. This one read is what keeps the
 	 * displaced state from impersonating evidence: with a pinned fallback the session
@@ -236,6 +246,10 @@ export async function runSessionCommand(
 			requestId: uuidv4(),
 			command,
 			args,
+			// Never carry a session-only grant onto another command or the global default.
+			...(bridgeAck === true && command === "approvals" && args === "auto"
+				? { bridgeAck: true }
+				: {}),
 		});
 	};
 	try {
@@ -323,7 +337,10 @@ export function useSessionCommand(sessionId: string) {
 			 * would admit a second turn. Absent, a command is dispatched exactly once -
 			 * the behaviour every other control in this tree was written against.
 			 */
-			options?: { resendWhileBusy?: boolean; landed?: () => boolean },
+			options?: Pick<
+				Parameters<typeof runSessionCommand>[0],
+				"resendWhileBusy" | "landed" | "bridgeAck"
+			>,
 		): Promise<CommandRun> => {
 			setBusy(true);
 			setResult(null);
@@ -335,6 +352,7 @@ export function useSessionCommand(sessionId: string) {
 					failure,
 					resendWhileBusy: options?.resendWhileBusy,
 					landed: options?.landed,
+					bridgeAck: options?.bridgeAck,
 				});
 				// A repeat leaves the control busy for the whole press, so nothing is
 				// reported while the app still has a chance (the policy's own property);

@@ -99,6 +99,13 @@ import {
 } from "../session-status/session-model";
 import { useChatTagAssignment } from "../use-chat-tag-assignment";
 import {
+	SUGGESTION_FOOTER,
+	SUGGESTION_HEADING,
+	SUGGESTION_NOTICE,
+	SUGGESTION_ROW,
+	SUGGESTION_ROW_PITCH,
+} from "./composer-suggestion-style";
+import {
 	type ArgumentActionRow,
 	type ArgumentRow,
 	type ArgumentSource,
@@ -192,15 +199,6 @@ export type SlashCommandMeta = {
 };
 
 const MAX_VISIBLE_ROWS = 6;
-
-/**
- * The popup's row pitch, in px: `py-2` (16) plus the `text-body-sm` line box
- * (20). Named because the row region's max-height is a whole multiple of it, so
- * the list never RESTS on a half-row slice — a 2px thumb already says "more
- * content", and a sliced glyph at the top edge reads as a clipping bug rather
- * than as a scroller (round 1 N1).
- */
-const ROW_PITCH = 36;
 
 /*
  * NO CLASS OF ITS OWN: every separator question in this file reads the one
@@ -2142,6 +2140,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 					: t("ui.chat.pickers.slash.region_label")
 			}
 			data-lo-floating=""
+			data-lo-floating-finish=""
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
@@ -2157,12 +2156,14 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * vanished hint column — and the meaning is what decides what Enter does
 			 * (round 1 D3 / UX U3). One word, sentence case, an existing role.
 			 */}
-			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
+			<div className={SUGGESTION_HEADING}>
 				{tagListShown ? (
-					<span className="flex items-center gap-1">
+					<span className="flex flex-wrap items-baseline gap-x-1.5">
 						<span>{t("ui.chat.tags.label")}</span>
-						<span aria-hidden="true">·</span>
-						<span>
+						<span aria-hidden="true" className="text-ink-muted">
+							·
+						</span>
+						<span className="font-normal text-ink-muted tabular-nums">
 							{t("ui.chat.tags.selection_count", {
 								count: String(state.tagSelectedCount),
 							})}
@@ -2191,7 +2192,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				<div
 					role={tagStatusIsError ? "alert" : "status"}
 					className={cn(
-						"border-b border-hairline px-3 py-1 text-meta",
+						"px-4 py-1 text-meta",
 						tagStatusIsError ? "text-danger" : "text-ink-muted",
 					)}
 				>
@@ -2205,11 +2206,19 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * says (round 1 N1).
 			 */}
 			<div
-				className="overflow-y-auto"
-				style={{ maxHeight: `${MAX_VISIBLE_ROWS * ROW_PITCH}px` }}
+				className="overflow-x-hidden overflow-y-auto"
+				style={{ maxHeight: `${MAX_VISIBLE_ROWS * SUGGESTION_ROW_PITCH}px` }}
 			>
 				{state.matches.length === 0 ? (
-					<div className="px-3 py-2 text-body-sm text-ink-muted">
+					<div
+						className={cn(
+							SUGGESTION_NOTICE,
+							argument &&
+								!state.argumentList.needsSession &&
+								state.argumentList.error &&
+								"text-danger",
+						)}
+					>
 						{argument
 							? emptyArgumentCopy
 							: t("ui.chat.slash.empty.no_commands")}
@@ -2241,22 +2250,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 								 * base layer gives it the pointer, and an explicit utility would
 								 * also beat that layer's disabled arm for the `aria-disabled` row.
 								 */
-								className={cn(
-									"relative flex items-baseline gap-3 px-3 py-2",
-									index === state.active
-										? cn(
-												"bg-accent-wash",
-												// The row Enter will APPLY was carried by hue alone — the
-												// wash measures 1.000:1 against its own ground in `dune`
-												// and 1.017-1.046:1 in four more themes, and the `●`
-												// cannot take the job because it means "current". A 2px
-												// accent bar on the leading edge is a second,
-												// non-luminance signal that costs no layout (round 1
-												// D6).
-												"before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
-											)
-										: "bg-transparent",
-								)}
+								className={SUGGESTION_ROW}
 								onMouseDown={(event) => {
 									// Focus, not the pick. Preventing the default here keeps the
 									// textarea's caret and draft position, which a focus change to
@@ -2309,14 +2303,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			</div>
 			{(footerText || clickText) && (
 				/*
-				 * One bordered strip, two lines: Enter's meaning on the first, the
+				 * One quiet strip, two lines: Enter's meaning on the first, the
 				 * pointer's on the second. Both are read off the same active row, so
 				 * the pair cannot describe two different rows, and the pointer line is
 				 * ABSENT whenever there is no row to act on (an empty argument list).
 				 */
-				<div className="border-t border-hairline px-3 py-1 text-meta text-ink-dim">
-					{footerText ? <p>{footerText}</p> : null}
-					{clickText ? <p>{clickText}</p> : null}
+				<div className={SUGGESTION_FOOTER}>
+					{footerText ? (
+						<p className="truncate" title={footerText}>
+							{footerText}
+						</p>
+					) : null}
+					{clickText ? (
+						<p className="truncate" title={clickText}>
+							{clickText}
+						</p>
+					) : null}
 				</div>
 			)}
 		</div>
@@ -2371,20 +2373,24 @@ function commandRowContent(
 		<>
 			<span
 				className={cn(
-					"shrink-0 font-mono text-body-sm",
+					"min-w-0 shrink truncate font-mono font-medium",
 					destructive ? "text-danger" : "text-ink",
 				)}
 			>
 				{word}
 			</span>
 			{command.aliases.length > 0 && (
-				<span className="shrink-0 text-meta text-ink-dim">{aliases}</span>
+				<span className="hidden min-w-0 max-w-[30%] shrink truncate font-mono text-meta text-ink-muted @min-[24rem]/slash:inline">
+					{aliases}
+				</span>
 			)}
 			<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
 				{command.description}
 			</span>
 			{slot !== null && (
-				<span className="shrink-0 text-meta text-ink-dim">{slot}</span>
+				<span className="max-w-[40%] shrink-0 truncate text-end text-meta text-ink-muted">
+					{slot}
+				</span>
 			)}
 		</>
 	);
@@ -2394,14 +2400,17 @@ function actionRowContent(row: ArgumentActionRow) {
 	return (
 		<>
 			<span
-				className={cn("shrink-0 font-medium", row.disabled && "text-ink-muted")}
+				className={cn(
+					"min-w-0 shrink truncate font-medium",
+					row.disabled && "text-ink-muted",
+				)}
 			>
 				{row.name}
 			</span>
 			<span className="min-w-0 flex-1 truncate text-ink-muted">
 				{row.description}
 			</span>
-			<span className="shrink-0 text-meta text-ink-dim">
+			<span className="shrink-0 text-meta text-ink-muted">
 				{t("ui.chat.pickers.slash.action_kind")}
 			</span>
 		</>
@@ -2462,14 +2471,15 @@ function argumentRowContent(
 			</span>
 			<span
 				className={cn(
-					"min-w-0 shrink truncate text-body-sm text-ink",
+					"min-w-0 shrink truncate font-medium",
 					/*
-					 * The human face for a label, the machine face for a slug (design
-					 * round 1, D3): monospace is machine voice, and once a team row
-					 * shows its label this span carries prose — the slug it addresses
-					 * by rides the adjacent token below instead.
+					 * Keep display names and tags in the human face. A literal
+					 * value (such as a flag, slug or server command) uses mono.
 					 */
-					!value.slug && "font-mono",
+					!value.slug &&
+						(mcp ||
+							(source !== "session-tags" && value.name === value.value)) &&
+						"font-mono",
 					/*
 					 * The floor is what makes D2 hold: the name may shrink from its own
 					 * width down to 24ch, and the PATH detail below absorbs the rest, so
@@ -2505,7 +2515,7 @@ function argumentRowContent(
 				 * discovered in the composer. Quiet and monospace because it IS
 				 * machine voice — the key, not prose.
 				 */
-				<span className="shrink-0 font-mono text-ink-dim text-mono-sm">
+				<span className="min-w-0 max-w-[40%] shrink truncate font-mono text-ink-muted text-mono-sm">
 					{value.slug}
 				</span>
 			)}
@@ -2542,10 +2552,11 @@ function argumentRowContent(
 				 */
 				<span
 					className={cn(
-						"ml-auto hidden font-mono text-meta",
+						"ms-auto hidden text-end text-meta",
+						(mcp || source === "model") && "font-mono",
 						NUMBERS_MIN,
 						mcp ? "min-w-0 shrink truncate" : "shrink-0",
-						"text-ink-dim",
+						"text-ink-muted",
 					)}
 				>
 					{value.detail ?? t("ui.chat.tags.primary")}

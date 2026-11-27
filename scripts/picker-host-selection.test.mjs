@@ -704,6 +704,148 @@ const effortRows = [
 	{ value: "high", label: "High" },
 ];
 
+test("only an anchored quick picker uses solid paper and local row tones", () => {
+	for (const kind of ["model", "effort"]) {
+		const props = {
+			open: true,
+			onClose() {},
+			title: kind,
+			options: effortRows,
+			onPick() {},
+			toolbar: createElement("span", { "data-test-toolbar": "" }),
+		};
+		const view = mount({ ...props, quick: { kind } });
+		try {
+			const panel = () =>
+				document.querySelector(`[data-quick-picker="${kind}"]`);
+			assert.equal(panel().dataset.pickerPlacement, "fallback");
+			assert.ok(panel().classList.contains("lo-dialog-surface"));
+			const toolbar = () =>
+				panel().querySelector("[data-test-toolbar]").parentElement;
+			const selected = () =>
+				panel().querySelector('[role="option"][aria-selected="true"]');
+			assert.ok(toolbar().classList.contains("divider-inset"));
+			assert.ok(selected().classList.contains("bg-sunken"));
+			assert.ok(selected().classList.contains("outline-control"));
+			assert.ok(!selected().parentElement.classList.contains("space-y-0.5"));
+
+			const anchor = document.createElement("button");
+			// jsdom has no layout. Supply the visible chip rect that the host
+			// requires, then inspect the actual portalled content, not its props.
+			anchor.getClientRects = () => [new dom.window.DOMRect(10, 10, 20, 20)];
+			document.body.append(anchor);
+			view.render({ ...props, quick: { kind, anchor } });
+
+			assert.equal(panel().dataset.pickerPlacement, "anchored");
+			assert.ok(panel().hasAttribute("data-lo-floating"));
+			assert.ok(panel().hasAttribute("data-lo-floating-finish"));
+			assert.ok(!panel().hasAttribute("data-glass-overlay"));
+			assert.ok(panel().classList.contains("shadow-overlay"));
+			assert.ok(!toolbar().classList.contains("divider-inset"));
+			assert.ok(!selected().classList.contains("bg-sunken"));
+			assert.ok(!selected().classList.contains("outline-control"));
+			// Spacing belongs inside a group: headings and the scrollport don't
+			// need a trailing spacer, and the fallback keeps its own rhythm.
+			assert.ok(selected().parentElement.classList.contains("space-y-0.5"));
+		} finally {
+			view.unmount();
+		}
+	}
+});
+
+test("anchored Model relies on native scrolling through search updates and dismissal", async (t) => {
+	const errors = t.mock.method(console, "error");
+	const listeners = t.mock.method(
+		dom.window.EventTarget.prototype,
+		"addEventListener",
+	);
+	const observedLists = new Set();
+	// Spy on the jsdom stub's instance methods: Node's method-mock constructor
+	// proxy delegates `new` to the original implementation, not the replacement.
+	t.mock.method(ResizeObserver.prototype, "observe", function (node) {
+		if (node.getAttribute("role") === "listbox") observedLists.add(this);
+	});
+	t.mock.method(ResizeObserver.prototype, "disconnect", function () {
+		observedLists.delete(this);
+	});
+
+	const anchor = document.createElement("button");
+	anchor.getClientRects = () => [new dom.window.DOMRect(10, 10, 20, 20)];
+	let dismissals = 0;
+	const props = {
+		open: true,
+		onClose: () => dismissals++,
+		title: "Model",
+		options: effortRows,
+		onPick() {},
+		quick: { kind: "model", anchor },
+	};
+	const view = mount({ ...props, open: false });
+	let list;
+	let masked;
+	const observerCounts = [];
+	try {
+		document.body.append(anchor);
+		// Radix mounts the portal after the host's opening layout effect. Let
+		// the catalogue finish loading inside the mounted portal so that the
+		// visible-rows transition attaches the keyboard-reveal observer.
+		view.render({ ...props, loading: true });
+		const panel = document.querySelector('[data-quick-picker="model"]');
+		assert.equal(panel.dataset.pickerPlacement, "anchored");
+		assert.equal(panel.querySelector('[role="listbox"]'), null);
+		view.render(props);
+		const input = panel.querySelector('[role="combobox"]');
+		list = panel.querySelector('[role="listbox"]');
+		assert.ok(list.classList.contains("overflow-y-auto"));
+		// jsdom cannot lay out rows. Supply overflow metrics and dispatch the
+		// event that previously opted the whole scrollport into a glyph mask.
+		Object.defineProperties(list, {
+			scrollHeight: { value: 240 },
+			clientHeight: { value: 150 },
+		});
+		act(() => list.dispatchEvent(new Event("scroll")));
+		masked = list.hasAttribute("data-model-list-continues");
+
+		// Search replaces groups. Only the existing keyboard-reveal observer
+		// should survive each update, and none should survive dismissal.
+		for (const [query, count] of [
+			["high", 2],
+			["medium", 1],
+			["", 4],
+		]) {
+			await type(input, query);
+			assert.equal(list.querySelectorAll('[role="option"]').length, count);
+			observerCounts.push(observedLists.size);
+		}
+		key(input, "Escape");
+		assert.equal(dismissals, 1);
+		view.render({ ...props, open: false });
+		assert.equal(document.querySelector('[role="listbox"]'), null);
+	} finally {
+		view.unmount();
+	}
+	assert.deepEqual(
+		{
+			masked,
+			scrollRegistrations: listeners.mock.calls.filter(
+				(call) => call.this === list && call.arguments[0] === "scroll",
+			).length,
+			observerCounts,
+			observersAfterUnmount: observedLists.size,
+			refWarnings: errors.mock.calls.filter((call) =>
+				String(call.arguments[0]).includes("callback ref"),
+			).length,
+		},
+		{
+			masked: false,
+			scrollRegistrations: 0,
+			observerCounts: [1, 1, 1],
+			observersAfterUnmount: 0,
+			refWarnings: 0,
+		},
+	);
+});
+
 test("quick effort is a focused ladder without search, and keys act on its announced row", () => {
 	const calls = [];
 	let closed = false;

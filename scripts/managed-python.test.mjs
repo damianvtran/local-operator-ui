@@ -103,6 +103,7 @@ const {
 	managedPythonRoot,
 	runtimesRoot,
 	isLegacyManagedCommand,
+	refuseUnavailableLockTool,
 	PYTHON_SEED_NAMESPACE,
 } = runtime;
 function fixture(t) {
@@ -172,6 +173,45 @@ function skipUnlessDarwin(t, missing) {
 	t.skip(`macOS only: ${missing}`);
 	return true;
 }
+
+test("a lock tool that cannot start is refused, not retried as contention", () => {
+	/*
+	 * THE DEFECT THIS EXISTS FOR. `locked` retried every failed `shlock` call as
+	 * CONTENTION for `PREPARATION_LOCK_MS` (two minutes). A tool that cannot
+	 * SPAWN fails identically on every attempt, so a host without it paid the full
+	 * deadline and was then told it was "blocked by an existing lock record" - a
+	 * record that never existed.
+	 *
+	 * Measured on ubuntu-latest, which is such a host AND where the desktop suite
+	 * fakes `darwin` to drive this path: "a rejected macOS headless preparation
+	 * reaches the app failure terminal" waited its full 8 s bound (8008 ms on
+	 * ubuntu-latest); reproducing the same stall on this host took 9178 ms.
+	 * The preparation had not reached its terminal - the attempt was parked in
+	 * that loop.
+	 *
+	 * WHY THE CLASSIFIER AND NOT `locked`: this host HAS the tool, so calling the
+	 * loop directly could only ever observe the uncontested case - which is
+	 * exactly why the defect survived every macOS run of the suite. The
+	 * classification is exported for this, like `runtimeManifest` and
+	 * `inspectManagedSelection`.
+	 */
+	for (const code of ["ENOENT", "EACCES", "EPERM"])
+		assert.throws(
+			() =>
+				refuseUnavailableLockTool(Object.assign(new Error("spawn"), { code })),
+			/needs \/usr\/bin\/shlock/,
+			`${code} means the tool could not start, so retrying it cannot help`,
+		);
+	/*
+	 * Negative controls: a LOST RACE is `shlock` running and exiting non-zero, and
+	 * a timeout is a slow holder. Both must keep retrying - a helper that refused
+	 * everything would satisfy the assertions above and break live contention.
+	 */
+	for (const code of [1, "ETIMEDOUT", null, undefined])
+		assert.doesNotThrow(() =>
+			refuseUnavailableLockTool(Object.assign(new Error("locked"), { code })),
+		);
+});
 
 test("runtime identity binds final file bytes, names, modes and internal link targets", (t) => {
 	const root = fixture(t);

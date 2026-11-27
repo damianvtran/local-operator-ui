@@ -1271,7 +1271,12 @@ test("POSITIVE CONTROL: before engagement nothing is admitted, so there is no no
 
 test("S4/B3: engagement is a LIVE human signal — page press engages, CDP input does not, blur and deactivation end it", async () => {
 	const engagement = new TabEngagement();
-	const live = { synthetic: false, windowFocused: true, active: true };
+	const live = {
+		synthetic: false,
+		primary: true,
+		windowFocused: true,
+		active: true,
+	};
 	// A person clicking straight into the page of the already-selected tab.
 	engagement.pagePressed(1, live);
 	assert.equal(engagement.has(1), true);
@@ -1329,10 +1334,118 @@ test("S4/B3: engagement is a LIVE human signal — page press engages, CDP input
 	const index = readSource("src/main/browser/index.ts");
 	assert.match(
 		index,
-		/engagement\.pagePressed\(tabId, \{\s*synthetic: cdp\.isDispatchingInput\(contents\.id\)/,
+		/const gesture = \{\s*synthetic: cdp\.isDispatchingInput\(contents\.id\),[\s\S]*?engagement\.pagePressed\(tabId, gesture\);\s*else engagement\.pageReleased\(tabId, gesture\);/,
 	);
 	assert.match(index, /options\.window\.on\("blur", endEngagementOnBlur\)/);
 	assert.match(index, /removeListener\("blur", endEngagementOnBlur\)/);
+});
+
+test("a primary page click that acquires focus can admit a provider frame at release", () => {
+	const engagement = new TabEngagement();
+	const { requests, events } = rig();
+	const focused = {
+		synthetic: false,
+		primary: true,
+		windowFocused: true,
+		active: true,
+	};
+	const beforeFocus = { ...focused, windowFocused: false };
+	const admit = (overrides) =>
+		requests.admit(
+			ceremony(undefined, {
+				url: PROMPT,
+				engaged: engagement.has(1),
+				...overrides,
+			}),
+		);
+
+	engagement.pagePressed(1, beforeFocus);
+	assert.equal(admit(), false, "before focus the press grants nothing");
+	engagement.activated(1); // a layout pass on the SAME tab isn't a switch
+	assert.equal(engagement.has(1), false);
+	engagement.pageReleased(1, focused);
+
+	assert.equal(engagement.has(2), false, "another tab is not engaged");
+	assert.equal(admit({ url: MENU }), false, "non-prompt UI remains refused");
+	assert.equal(
+		admit({ url: PROMPT.replace(ONEPASSWORD, "a".repeat(32)) }),
+		false,
+		"an unknown provider cannot use the same path",
+	);
+	assert.equal(admit({ isInstalled: () => false }), false, "disabled provider");
+	assert.equal(admit(), true, "the known enabled provider frame may load");
+	assert.deepEqual(
+		events,
+		[],
+		"a generic autofill card is still not a request",
+	);
+});
+
+test("a release cannot reuse missing, synthetic, or abandoned engagement evidence", () => {
+	const focused = {
+		synthetic: false,
+		primary: true,
+		windowFocused: true,
+		active: true,
+	};
+	const beforeFocus = { ...focused, windowFocused: false };
+	const negatives = [
+		["no press", () => {}],
+		[
+			"synthetic press",
+			(e) => e.pagePressed(1, { ...beforeFocus, synthetic: true }),
+		],
+		[
+			"inactive press",
+			(e) => e.pagePressed(1, { ...beforeFocus, active: false }),
+		],
+		[
+			"non-primary press",
+			(e) => e.pagePressed(1, { ...beforeFocus, primary: false }),
+		],
+		["different tab", (e) => e.pagePressed(2, beforeFocus)],
+		[
+			"synthetic release",
+			(e) => e.pageReleased(1, { ...focused, synthetic: true }),
+			true,
+		],
+		[
+			"inactive release",
+			(e) => e.pageReleased(1, { ...focused, active: false }),
+			true,
+		],
+		["unfocused release", (e) => e.pageReleased(1, beforeFocus), true],
+		[
+			"non-primary release",
+			(e) => e.pageReleased(1, { ...focused, primary: false }),
+			true,
+		],
+		[
+			"new press supersedes an abandoned one",
+			(e) => e.pagePressed(1, { ...beforeFocus, synthetic: true }),
+			true,
+		],
+		["pointer left before release", (e) => e.pagePointerLeft(1), true],
+		["app blur", (e) => e.windowBlurred(), true],
+		[
+			"tab switch",
+			(e) => {
+				e.activated(2);
+				e.activated(1);
+			},
+			true,
+		],
+		["renderer takes focus", (e) => e.clearAll(), true],
+		["navigation or owner replacement", (e) => e.clear(1), true],
+	];
+	for (const [label, interrupt, seed] of negatives) {
+		const engagement = new TabEngagement();
+		if (seed) engagement.pagePressed(1, beforeFocus);
+		interrupt(engagement);
+		assert.equal(engagement.has(1), false, label);
+		engagement.pageReleased(1, focused);
+		assert.equal(engagement.has(1), false, label);
+	}
 });
 
 test("B5: a generic prompt admitted BEFORE the passkey signal becomes the ceremony when it arrives", () => {

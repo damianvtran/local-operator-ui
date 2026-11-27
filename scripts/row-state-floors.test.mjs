@@ -48,13 +48,17 @@ cpSync(join(ROOT, "scripts"), join(probeRoot, "scripts"), { recursive: true });
 cpSync(join(ROOT, "src"), join(probeRoot, "src"), { recursive: true });
 after(() => rmSync(probeRoot, { recursive: true, force: true }));
 
-/** The gate's own verdict, as text. */
-function runGate() {
-	const run = spawnSync(
+function invokeGate() {
+	return spawnSync(
 		process.execPath,
 		[join(probeRoot, "scripts", "contrast-contract.mjs")],
 		{ encoding: "utf8" },
 	);
+}
+
+/** The gate's own verdict, as text. */
+function runGate() {
+	const run = invokeGate();
 	return `${run.stdout ?? ""}${run.stderr ?? ""}`;
 }
 
@@ -91,6 +95,57 @@ test("the unmutated tree passes the gate this file mutates", () => {
 	 */
 	const out = runGate();
 	assert.match(out, /Contrast contract holds: \d+ assertions across 59 themes/);
+});
+
+test("picker hover keeps the anchored palette treatment separate from dialog and fallback rows", () => {
+	const css = "src/renderer/src/styles/index.css";
+	const host = "src/renderer/src/features/chat/pickers/picker-host.tsx";
+	// Change the shipped selectors/classes in the passing copy, not the pins.
+	const baseline = invokeGate();
+	assert.equal(baseline.status, 0, baseline.stderr);
+	// Exercise the exclusions independently; each protects a different row state.
+	for (const [file, from, to, diagnostic] of [
+		[
+			css,
+			"color-mix(in srgb, var(--picker-paper), black 10%)",
+			"color-mix(in srgb, var(--picker-paper), var(--color-accent) 10%)",
+			"anchored picker option row pointer tone",
+		],
+		...[
+			'\n\t\t\t[aria-selected="true"],',
+			'\n\t\t\t[aria-disabled="true"],',
+			',\n\t\t\t[data-picked="true"]',
+		].map((exclusion) => [
+			css,
+			exclusion,
+			"",
+			"anchored picker option row pointer scope",
+		]),
+		[
+			host,
+			"!anchored &&\n\t\t\t\t\t\tisHovered &&",
+			"isHovered &&",
+			"non-anchored picker option row pointer tint",
+		],
+		[
+			host,
+			"!anchored &&\n\t\t\t\t\t\t(isPicked ||",
+			"(isPicked ||",
+			"non-anchored picker option row structural mark",
+		],
+	]) {
+		const path = join(probeRoot, file);
+		const before = readFileSync(path, "utf8");
+		assert.equal(before.split(from).length, 2, `Unique mutation: ${from}`);
+		try {
+			writeFileSync(path, before.replace(from, to));
+			const run = invokeGate();
+			assert.equal(run.status, 1, `Gate must reject mutation: ${from}`);
+			assert.ok(run.stderr.includes(`FAIL  ${diagnostic}:`), run.stderr);
+		} finally {
+			writeFileSync(path, before);
+		}
+	}
 });
 
 test("the Settings flat-surface contract accepts the tree and rejects selected-fill returns", () => {

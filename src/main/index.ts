@@ -96,7 +96,9 @@ import {
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
 import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
+import { READINESS_WALL_WORST_MS } from "./backend/backend-service";
 import { backendConfig, launchEnv } from "./backend/config";
+import { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./backend/discovery";
 import { sessionHasRuntime } from "./backend/fleet-drain";
 import { LogFileType, logger } from "./backend/logger";
 import { engageSessionThroughStream } from "./backend/session-engage";
@@ -206,7 +208,11 @@ import { createQuitState } from "./quit-state";
 import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
 import { SessionNotificationAvatars } from "./session-notification-avatars";
-import { createUserShellPath } from "./shell-path";
+import {
+	SHELL_PATH_ANSWER_GRACE_MS,
+	SHELL_PATH_TIMEOUT_MS,
+	createUserShellPath,
+} from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
 import {
 	installSupplementProtocol,
@@ -283,11 +289,13 @@ import {
 	WINDOW_MIN_HEIGHT,
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
+	createHeadlessFirstRunSetup,
 	describeWindowLaunch,
 	hotkeysAllowed,
 	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
+	runHeadlessFirstRunAttempt,
 	windowIntentPayload,
 } from "./window-mode";
 import {
@@ -429,7 +437,7 @@ for (const problem of windowLaunch.problems) {
  * guarantee underneath it.
  *
  * What the deadline does NOT cover, stated because it decides what a harness
- * author may rely on: the escalation is `app.exit(0)`, whose `process.on("exit")`
+ * author may rely on: the escalation is `app.exit`, whose `process.on("exit")`
  * handler runs `backendService.emergencyStopOwned()`, which can only `SIGKILL` a
  * child that was SPAWNED AND REGISTERED as the owned backend. A boot still
  * installing its managed runtime has no such field yet, and a deadline that
@@ -438,10 +446,9 @@ for (const problem of windowLaunch.problems) {
  * the window, which is why 10 s is chosen deliberately over the app's own
  * `QUIT_CLEANUP_FAILSAFE_MS` (115 s, the sum of the bounds above): a launcher-gone run is a run nobody is
  * watching, and the cost of waiting is another instance of exactly the kind this
- * module exists to remove. An escalated exit is still status 0 — it is a run
- * ending because its way of being watched went away, not a failure — so a
- * harness must not read the status as the signal; the `[window-mode]` line is
- * what says which path ended it.
+ * module exists to remove. Ordinary launcher shutdown still exits 0; the
+ * `[window-mode]` line distinguishes forced from graceful shutdown. A recorded
+ * first-run setup failure is different: it exits 1 even if the deadline wins.
  */
 let headlessExitDeadline: NodeJS.Timeout | null = null;
 function armHeadlessExitDeadline(why: string): void {
@@ -458,7 +465,9 @@ function armHeadlessExitDeadline(why: string): void {
 		 * line already said `reopen=deferred` could die on this exit.
 		 */
 		scheduleReopenAtQuitTerminal();
-		app.exit(0);
+		// Read the outcome at exit: another quit path may have armed this timer
+		// before startup failed, and blocked cleanup cannot report it for us.
+		app.exit(headlessFirstRunSetup.failed() ? 1 : 0);
 	}, LAUNCHER_EXIT_DEADLINE_MS);
 	// Never a reason for the process to stay alive by itself.
 	deadline.unref();
@@ -5468,6 +5477,7 @@ app
 			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
 			}
+			activeUpdateService?.observeAttachedPromotion();
 		});
 
 		// Check if backend manager is disabled via environment variable
@@ -5537,12 +5547,26 @@ app
 
 			// If local-operator doesn't exist globally and our backend is not installed
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-				// Install backend
-				const installSuccess = await backendInstaller.install(
-					windowLaunch.show,
-				);
+				// The installer's finally may emit the last-window close before this await returns.
+				headlessFirstRunSetup.begin();
+				let installSuccess: boolean;
+				try {
+					installSuccess = await backendInstaller.install(windowLaunch.show);
+				} catch (error) {
+					if (windowLaunch.mode !== "headless") throw error;
+					if (quitState.isQuitting()) return;
+					logger.error(
+						"Backend installation threw",
+						LogFileType.INSTALLER,
+						error,
+					);
+					if (headlessFirstRunSetup.settle("install-failed")) return;
+					throw error;
+				}
+				if (windowLaunch.mode === "headless" && quitState.isQuitting()) return;
 				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
+					if (headlessFirstRunSetup.settle("install-failed")) return;
 					logger.error(
 						"Backend installation cancelled or failed, quitting app",
 						LogFileType.INSTALLER,
@@ -5557,19 +5581,42 @@ app
 					LogFileType.INSTALLER,
 				);
 				let startAttempts = 0;
-				const maxStartAttempts = 3;
 				let backendStarted = false;
 
-				while (startAttempts < maxStartAttempts && !backendStarted) {
+				while (
+					startAttempts < FIRST_RUN_MAX_START_ATTEMPTS &&
+					!backendStarted
+				) {
+					if (windowLaunch.mode === "headless" && quitState.isQuitting())
+						return;
 					try {
-						backendStarted = await backendService.start();
+						const started =
+							windowLaunch.mode === "headless"
+								? await runHeadlessFirstRunAttempt(
+										// Native failure dialogs can stop the main thread (and its watchdog).
+										() => backendService.start({ quiet: true }),
+										HEADLESS_FIRST_RUN_ATTEMPT_MS,
+									)
+								: await backendService.start();
+						if (started === null) {
+							if (quitState.isQuitting()) return;
+							logger.error(
+								`Backend start attempt ${startAttempts + 1} did not settle within ${HEADLESS_FIRST_RUN_ATTEMPT_MS} ms`,
+								LogFileType.INSTALLER,
+							);
+							headlessFirstRunSetup.settle("start-failed");
+							return;
+						}
+						backendStarted = started;
 						if (!backendStarted) {
 							logger.error(
 								`Backend start attempt ${startAttempts + 1} failed`,
 								LogFileType.INSTALLER,
 							);
 							// Wait before retrying
-							await new Promise((resolve) => setTimeout(resolve, 2000));
+							await new Promise((resolve) =>
+								setTimeout(resolve, FIRST_RUN_START_BACKOFF_MS),
+							);
 						}
 					} catch (error) {
 						logger.error(
@@ -5581,9 +5628,20 @@ app
 					startAttempts++;
 				}
 
+				if (windowLaunch.mode === "headless" && quitState.isQuitting()) return;
+				if (
+					headlessFirstRunSetup.settle(
+						backendStarted ? "reachable" : "start-failed",
+						!backendStarted &&
+							windowLaunch.mode === "headless" &&
+							BrowserWindow.getAllWindows().length > 0,
+					)
+				)
+					return;
 				if (!backendStarted) {
 					/*
-					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW, and for
+					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW for launches with a
+					 * window (or a windowed mode), and for
 					 * the same reason (review round 1, R1-1). This site used to quit
 					 * unconditionally, and it is REACHABLE in exactly the state the incident
 					 * was measured in: `checkLocalOperatorExists()` false and
@@ -6419,8 +6477,10 @@ app
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
 	/*
-	 * A headless run has one window, no user, and no way back: if its window has
-	 * closed the run is over. This is the WINDOW path and not the signal one —
+	 * A serving headless run has one window, no user, and no way back: if its
+	 * window has closed the run is over. First-run setup is the exception above
+	 * platform policy: its own close hands off to backend start, not to a user.
+	 * This is the WINDOW path and not the signal one —
 	 * measured, a driver closing the window over CDP reaches this branch and the
 	 * app is gone in about a second, while an app-initiated quit (a signal) does
 	 * not emit `window-all-closed` at all, which is why the signal path handles
@@ -6430,6 +6490,13 @@ app.on("window-all-closed", () => {
 	 * app in the Dock.
 	 */
 	if (windowLaunch.mode === "headless") {
+		if (
+			headlessFirstRunSetup.windowClosed(
+				BrowserWindow.getAllWindows().length > 0,
+				quitState.isQuitting(),
+			) !== "end"
+		)
+			return;
 		/*
 		 * Prefixed like every other end path (round 2, D8): this line is how a rig
 		 * learns which path ended a run, and it was the one that did not carry the
@@ -6542,6 +6609,43 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	OWNED_STOP_WORST_MS +
 	READINESS_POLL_INTERVAL_MS +
 	QUIT_FAILSAFE_MARGIN_MS;
+
+const FIRST_RUN_MAX_START_ATTEMPTS = 3;
+const FIRST_RUN_START_BACKOFF_MS = 2_000;
+
+// Each headless attempt gets the launcher/interpreter and stop allowance, the
+// entire readiness wall budget, and the shell PATH resolver's limit. Reserve
+// two default address probes and room for registration/discovery work on top.
+// This is an enforced attempt budget, not a bound on the number of records.
+const HEADLESS_FIRST_RUN_ATTEMPT_MS =
+	QUIT_CLEANUP_FAILSAFE_MS +
+	READINESS_WALL_WORST_MS +
+	SHELL_PATH_TIMEOUT_MS +
+	SHELL_PATH_ANSWER_GRACE_MS +
+	2 * OWNED_RECORD_WINDOW_MS +
+	2 * PROBE_TIMEOUT_MS;
+// Reserve all three attempt slots, including the existing wait after the last
+// false result, plus handoff/timer margin. Last-window close still arms once.
+const HEADLESS_FIRST_RUN_DEADLINE_MS =
+	FIRST_RUN_MAX_START_ATTEMPTS *
+		(HEADLESS_FIRST_RUN_ATTEMPT_MS + FIRST_RUN_START_BACKOFF_MS) +
+	QUIT_FAILSAFE_MARGIN_MS;
+const headlessFirstRunSetup = createHeadlessFirstRunSetup({
+	mode: windowLaunch.mode,
+	timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS,
+	onDeferred: () =>
+		logger.info(
+			"[window-mode] headless first-run setup in flight; deferring last-window quit",
+			LogFileType.BACKEND,
+		),
+	onFailure: (reason) => {
+		const detail =
+			reason === "deadline"
+				? `deadline: backend did not become reachable within ${HEADLESS_FIRST_RUN_DEADLINE_MS} ms of last-window close`
+				: reason;
+		endHeadlessRun(`headless first-run setup failed (${detail})`);
+	},
+});
 let backendQuitPending = false;
 /*
  * REVIEW F3: the install stand-down is worth exactly ONE line — it reports a
@@ -6691,7 +6795,13 @@ app.on("will-quit", (event) => {
 	 * helper is idempotent, `./relaunch-pending` owns why).
 	 */
 	scheduleReopenAtQuitTerminal();
-	if (backendService.isOwnedCleanupComplete()) return;
+	if (backendService.isOwnedCleanupComplete()) {
+		if (headlessFirstRunSetup.failed()) {
+			event.preventDefault();
+			app.exit(1);
+		}
+		return;
+	}
 	event.preventDefault();
 	if (backendQuitPending) return;
 	backendQuitPending = true;
@@ -6747,10 +6857,11 @@ app.on("will-quit", (event) => {
 			 *
 			 * `app.exit` still fires the process-level `exit` handler
 			 * (`emergencyStopOwned`, telemetry shutdown), and the failsafe above keeps its
-			 * own `app.exit(1)`, so the bound is the only difference between a clean and a
-			 * failed exit.
+			 * own `app.exit(1)`. A first-run failure retains its failure status even
+			 * if this cleanup succeeded.
 			 */
-			app.exit(0);
+			if (headlessFirstRunSetup.failed()) app.exit(1);
+			else app.exit(0);
 		})
 		.catch((error) => {
 			clearTimeout(failsafe);
@@ -6815,6 +6926,7 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	headlessFirstRunSetup.clearDeadline();
 	stopAppIconBadge();
 	/*
 	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the

@@ -11,6 +11,7 @@ import {
 	readdirSync,
 	renameSync,
 	rmSync,
+	rmdirSync,
 	statSync,
 	writeFileSync,
 } from "node:fs";
@@ -153,6 +154,20 @@ export function logPath(
 	surface: string,
 ): string {
 	return join(sessionDir(root, sessionId), `${fileStem(surface)}.log`);
+}
+
+/**
+ * Put a sidecar's exact bytes back, for `adoptSession`'s undo path.
+ *
+ * Written straight to the path rather than staged-and-renamed like `writeMeta`:
+ * this runs only after something has already failed, and a second temporary file
+ * is one more thing a failing disk can leave behind. The mode is re-asserted
+ * because `writeFileSync`'s applies only at creation.
+ */
+function restoreSidecar(path: string, raw: string): void {
+	mkdirSync(dirname(path), { recursive: true, mode: HISTORY_DIR_MODE });
+	writeFileSync(path, raw, { mode: HISTORY_FILE_MODE });
+	enforceModes(path);
 }
 
 export function sidecarPath(
@@ -356,6 +371,137 @@ export class ConsoleHistory {
 	 */
 	nextExitEpoch(sessionId: string, surface: string, live: number): number {
 		return Math.max(this.exitEpoch(sessionId, surface), live) + 1;
+	}
+
+	/**
+	 * Move named surfaces' retained history from one owner to another.
+	 *
+	 * THIS IS THE ONE MOVE A SESSION ID EVER MAKES ON DISK, and it exists for the
+	 * pending local console being attached to the conversation its draft's first send
+	 * created (`ConsoleHost.adoptPendingConsole`). The directory NAME is the session
+	 * key (`sessionDir`), and the host appends from its own `persistedBytes` mark, so
+	 * an adoption that only re-keyed the record in memory would continue the surface's
+	 * log under a new owner while the bytes written so far stayed under the old one —
+	 * two files claiming one surface, each with half of it, and a relaunch that
+	 * restored whichever directory it happened to read.
+	 *
+	 * THE SURFACES ARE THE CALLER'S, not this module's inference, because the handle
+	 * is the one fact a filename cannot reconstruct (`fileStem` is one-way by design).
+	 * A surface the caller did not name — a dismissed shell whose files still sit here
+	 * — is left where it is, so nothing is moved that no record claims.
+	 *
+	 * THE SIDECAR IS REWRITTEN rather than moved unchanged: it carries `session_id`,
+	 * and a sidecar naming the old owner under the new owner's directory would restore
+	 * the surface into the wrong listing on the next launch — the exact half-state this
+	 * method exists to avoid. The empty source directory goes last, and a directory
+	 * with something left in it stays: a file this move did not carry is not this
+	 * move's to delete.
+	 */
+	adoptSession(
+		from: string,
+		to: string,
+		surfaces: readonly string[],
+	): string[] {
+		if (from === to || surfaces.length === 0) return [];
+		const source = sessionDir(this.root, from);
+		if (!existsSync(source)) return [];
+		mkdirSync(sessionDir(this.root, to), {
+			recursive: true,
+			mode: HISTORY_DIR_MODE,
+		});
+		/*
+		 * COMMIT OR ROLL BACK, never a half-move (agent review round 1, R4). The
+		 * first version did one surface at a time — rename its log, write its
+		 * sidecar, delete the old sidecar — so a failure on the second surface left
+		 * the FIRST one's bytes under the new owner while the records stayed pending:
+		 * main then kept appending from its old byte watermark into the old
+		 * directory, and the prefix that had already moved was never re-emitted. The
+		 * renderer's recovery (“the shells stay pending”) only holds if the disk
+		 * agrees with it, so the whole batch is staged under an undo journal and any
+		 * failure puts every touched surface back byte for byte before it rethrows.
+		 *
+		 * THE JOURNAL IS THE ONLY STATE: each entry is a closure that restores the
+		 * exact prior contents of the paths one step touched, run in reverse order.
+		 * A destination file that already existed (a stale name from an earlier
+		 * launch) is captured rather than assumed absent, so a rollback cannot delete
+		 * a file this call did not create.
+		 */
+		const undo: Array<() => void> = [];
+		const moved = new Set<string>();
+		try {
+			for (const surface of surfaces) {
+				const logFrom = logPath(this.root, from, surface);
+				const logTo = logPath(this.root, to, surface);
+				if (!existsSync(logFrom)) continue;
+				/*
+				 * A DESTINATION LOG IS A CONFLICT, not something to overwrite. One
+				 * surface has one log, and a rename here would destroy whatever the
+				 * target owner already had for it with no bytes left to restore from —
+				 * the exact loss this batch exists to prevent. Refused before anything
+				 * moves, so the caller's error names a move that did not start.
+				 */
+				if (existsSync(logTo))
+					throw new Error(
+						`console history: ${fileStem(to)} already holds ${fileStem(surface)}'s log`,
+					);
+				renameSync(logFrom, logTo);
+				moved.add(surface);
+				undo.push(() => renameSync(logTo, logFrom));
+			}
+			for (const surface of surfaces) {
+				const fromPath = sidecarPath(this.root, from, surface);
+				if (!existsSync(fromPath)) continue;
+				/*
+				 * The source sidecar is read BEFORE anything is written, so this call is
+				 * the only writer of either file during the batch and the journal can
+				 * restore the source from memory if a later step fails.
+				 */
+				const rawFrom = readFileSync(fromPath, "utf8");
+				const meta = parseMeta(rawFrom);
+				const toPath = sidecarPath(this.root, to, surface);
+				const priorTo = existsSync(toPath)
+					? readFileSync(toPath, "utf8")
+					: null;
+				// Written after the logs are in place, so a reader that sees the sidecar
+				// sees the file it describes.
+				this.writeMeta({ ...meta, session_id: to });
+				undo.push(() => {
+					if (priorTo === null) rmSync(toPath, { force: true });
+					else restoreSidecar(toPath, priorTo);
+				});
+			}
+			/*
+			 * THE SOURCE SIDECARS GO LAST, and only once every destination file is in
+			 * place: that is the commit point. A failure before it leaves the source
+			 * untouched; a failure during it is restored from the bytes just read.
+			 */
+			for (const surface of surfaces) {
+				const fromPath = sidecarPath(this.root, from, surface);
+				if (!existsSync(fromPath)) continue;
+				const rawFrom = readFileSync(fromPath, "utf8");
+				rmSync(fromPath, { force: true });
+				undo.push(() => restoreSidecar(fromPath, rawFrom));
+			}
+		} catch (error) {
+			for (const restore of undo.reverse()) {
+				try {
+					restore();
+				} catch {
+					/*
+					 * A restore that fails cannot be reported as a second failure: the
+					 * caller's own error is the one that explains the state, and throwing
+					 * from here would replace it with a message about the cleanup.
+					 */
+				}
+			}
+			throw error;
+		}
+		try {
+			rmdirSync(source);
+		} catch {
+			// Not empty: something this call did not name still lives here.
+		}
+		return surfaces.filter((surface) => moved.has(surface));
 	}
 
 	/** Remove one surface's history, log and sidecar. */

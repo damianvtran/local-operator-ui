@@ -2734,6 +2734,339 @@ test("the offer names the restart cost only where the app may restart the server
 	assert.match(allCopy(unstated).join(" "), PLAN_MANAGED_CLAUSE);
 });
 
+const EXTERNAL_SKEW_HEADING =
+	"The server is on an older build than the install";
+const EXTERNAL_PROMOTION = {
+	installVersion: "0.113.9",
+	runningVersion: "0.113.8",
+	installScope: "/fixture/current/bin/local-operator",
+	restarted: false,
+	restartable: false,
+	appOwnedEnvironment: false,
+	observationId: 2,
+};
+const CHECK_AFTER_PROMOTION = {
+	version: EXTERNAL_PROMOTION.installVersion,
+	runningVersion: EXTERNAL_PROMOTION.installVersion,
+	installScope: EXTERNAL_PROMOTION.installScope,
+	observationId: 3,
+	bootVersionVerified: true,
+};
+const BACKEND_SUCCESS = "Server update completed successfully";
+
+test("a newer warning and its equality belong to the same attached install", () => {
+	for (const source of [
+		"same-version completion",
+		"lower-version fresh check",
+		"lower while converging",
+	]) {
+		const handle = mountNotification();
+		const emit = (name, payload) => {
+			updater.emit(name, payload);
+			handle.render();
+		};
+		const warns = () => showsText(handle, EXTERNAL_SKEW_HEADING);
+		const installB = "/different/install/bin/local-operator";
+		const sameVersion = source === "same-version completion";
+		const versionB = sameVersion ? "0.113.9" : "0.113.8";
+		emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: !sameVersion,
+		});
+		if (source === "lower-version fresh check") {
+			emit("backend-update-not-available", {
+				...CHECK_AFTER_PROMOTION,
+				observationOnly: true,
+			});
+			assert.equal(warns(), false);
+		}
+		if (sameVersion) {
+			emit("backend-update-completed", {
+				...EXTERNAL_PROMOTION,
+				installScope: installB,
+				observationId: 4,
+			});
+		} else {
+			emit("backend-update-not-available", {
+				version: versionB,
+				runningVersion: "0.113.7",
+				installScope: installB,
+				observationId: 4,
+				restartable: false,
+				releaseRead: false,
+			});
+		}
+		assert.ok(warns(), source);
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationId: 5,
+			observationOnly: !sameVersion,
+		});
+		assert.ok(warns(), "A's equality may not retire B's warning");
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationId: 6,
+			runningVersion: "0.113.8",
+			bootVersionVerified: false,
+			observationOnly: true,
+			convergenceEnded: true,
+		});
+		assert.ok(
+			allCopy(handle)
+				.join(" ")
+				.includes(sameVersion ? "0.113.8" : "0.113.7"),
+			"A's deadline may not replace B",
+		);
+		emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			version: versionB,
+			runningVersion: versionB,
+			installScope: installB,
+			observationId: 7,
+			observationOnly: true,
+		});
+		assert.equal(
+			warns(),
+			false,
+			"B's verified equality retires its own warning",
+		);
+	}
+});
+
+test("unscoped unattended measured skew still warns after scoped equality", () => {
+	const handle = mountNotification();
+	updater.emit("backend-update-completed", EXTERNAL_PROMOTION);
+	handle.render();
+	updater.emit("backend-update-not-available", CHECK_AFTER_PROMOTION);
+	handle.render();
+	const unattended = {
+		installVersion: "0.113.9",
+		runningVersion: "0.113.8",
+		restarted: false,
+		restartable: false,
+		unattended: true,
+	};
+	updater.emit("backend-update-completed", unattended);
+	handle.render();
+	assert.ok(showsText(handle, EXTERNAL_SKEW_HEADING));
+	assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+	updater.emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		observationId: 4,
+	});
+	handle.render();
+	assert.ok(
+		showsText(handle, EXTERNAL_SKEW_HEADING),
+		"scoped equality cannot identify an unscoped warning",
+	);
+	control(handle, "Understood").props.onClick();
+	handle.render();
+	updater.emit("backend-update-completed", unattended);
+	handle.render();
+	assert.equal(
+		showsText(handle, EXTERNAL_SKEW_HEADING),
+		false,
+		"acknowledged reading stays dismissed",
+	);
+	assert.equal(
+		showsText(handle, BACKEND_SUCCESS),
+		false,
+		"a dismissed mismatch is still not success",
+	);
+});
+
+test("only pressed convergence with verified equality affirms success", async () => {
+	// As on screen, measure the open success alert, not a flattened subtree:
+	// an unmeasured session count adds a second line to the same toast.
+	const successAlerts = (handle) =>
+		visible(handle).filter(({ variant }) => variant === "success");
+	for (const [pressed, verified] of [
+		[true, true],
+		[false, true],
+		[true, false],
+	]) {
+		const handle = mountNotification();
+		if (pressed) startServerUpdate(handle);
+		// Main sends completion before the update invoke returns. The press
+		// earns a toast only when a later observation verifies that completion.
+		assert.equal(updater.backendUpdates.length, pressed ? 1 : 0);
+		updater.emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: true,
+		});
+		handle.render();
+		if (pressed) await settleServerUpdate(handle, true);
+		assert.deepEqual(successAlerts(handle), []);
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, true);
+		updater.emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationOnly: true,
+			runningVersion: verified ? CHECK_AFTER_PROMOTION.version : null,
+			bootVersionVerified: verified,
+			convergenceEnded: !verified,
+		});
+		handle.render();
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
+		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
+		assert.deepEqual(
+			successAlerts(handle).map(({ lines }) => lines[0]),
+			pressed && verified ? [BACKEND_SUCCESS] : [],
+		);
+	}
+});
+
+test("a later equal server reading retires a stale external-install warning", () => {
+	const handle = mountNotification();
+	const emit = (name, data) => {
+		updater.emit(name, data);
+		handle.render();
+	};
+	const warns = () => showsText(handle, EXTERNAL_SKEW_HEADING);
+	emit("backend-update-completed", EXTERNAL_PROMOTION);
+	assert.ok(warns());
+	emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		bootVersionVerified: false,
+	});
+	assert.ok(
+		warns(),
+		"equality from /health alone proves nothing about the booted process",
+	);
+	emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		observationId: 4,
+		installScope: "/another/install",
+	});
+	assert.ok(
+		warns(),
+		"an unrelated install with the same version cannot clear the notice",
+	);
+	emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		observationId: 5,
+	});
+	assert.equal(warns(), false);
+	emit("backend-update-completed", EXTERNAL_PROMOTION);
+	emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		runningVersion: "0.113.8",
+		observationId: 4,
+	});
+	assert.equal(
+		warns(),
+		false,
+		"an older completion or check cannot re-pin a settled notice",
+	);
+	emit("backend-update-completed", {
+		...EXTERNAL_PROMOTION,
+		installVersion: "0.113.10",
+		observationId: 6,
+	});
+	assert.ok(warns());
+	emit("backend-update-not-available", {
+		...CHECK_AFTER_PROMOTION,
+		observationId: 7,
+	});
+	assert.ok(
+		warns(),
+		"even a later equal observation cannot clear a newer version's notice",
+	);
+});
+
+test("proven convergence is nonblocking, with a warning only for measured sustained skew", () => {
+	for (const outcome of ["equal", "sustained", "unreadable"]) {
+		const handle = mountNotification();
+		updater.emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: true,
+		});
+		handle.render();
+		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
+		assert.equal(
+			showsText(handle, "Updating server"),
+			false,
+			"no blocking panel",
+		);
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, true);
+		updater.emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			runningVersion: "0.113.8",
+			bootVersionVerified: false,
+		});
+		handle.render();
+		assert.equal(
+			showsText(handle, EXTERNAL_SKEW_HEADING),
+			false,
+			"intermediate check must not warn",
+		);
+		updater.emit("backend-update-not-available", {
+			...CHECK_AFTER_PROMOTION,
+			observationId: 4,
+			observationOnly: true,
+			convergenceEnded: true,
+			bootVersionVerified: outcome === "equal",
+			runningVersion:
+				outcome === "equal"
+					? "0.113.9"
+					: outcome === "sustained"
+						? "0.113.8"
+						: null,
+		});
+		handle.render();
+		assert.equal(useUpdateNoticeStore.getState().inflight.backend, false);
+		assert.equal(
+			showsText(handle, EXTERNAL_SKEW_HEADING),
+			outcome === "sustained",
+		);
+		if (outcome === "sustained") control(handle, "Understood");
+	}
+});
+
+test("only a newer matching deadline can finish convergence at a rolled-back version", async () => {
+	for (const runningVersion of [null, "0.113.7"]) {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		updater.emit("backend-update-completed", {
+			...EXTERNAL_PROMOTION,
+			converging: true,
+			observationId: 1,
+		});
+		handle.render();
+		await settleServerUpdate(handle, true);
+		const inFlight = () => useUpdateNoticeStore.getState().inflight.backend;
+		const deadline = {
+			...CHECK_AFTER_PROMOTION,
+			version: "0.113.8",
+			runningVersion,
+			observationId: 2,
+			bootVersionVerified: false,
+			observationOnly: true,
+			convergenceEnded: true,
+		};
+		const notify = (payload) => {
+			updater.emit("backend-update-not-available", payload);
+			handle.render();
+		};
+		assert.equal(inFlight(), true);
+		notify({ ...deadline, observationId: 0 });
+		assert.equal(inFlight(), true, "an older deadline cannot end progress");
+		notify({ ...deadline, installScope: "/another/install" });
+		assert.equal(inFlight(), true, "another install cannot end this promotion");
+		notify({ ...deadline, convergenceEnded: false });
+		assert.equal(inFlight(), true, "a lower ordinary reading is not terminal");
+		assert.equal(showsText(handle, EXTERNAL_SKEW_HEADING), false);
+		notify(deadline);
+		assert.equal(inFlight(), false, "the owning deadline ends the promotion");
+		assert.equal(showsText(handle, BACKEND_SUCCESS), false);
+		assert.equal(
+			showsText(handle, EXTERNAL_SKEW_HEADING),
+			runningVersion !== null,
+			"only measured skew against the rolled-back install warns",
+		);
+	}
+});
+
 /**
  * R2-3: silence on SUCCESS is the one outcome this panel must not produce.
  *

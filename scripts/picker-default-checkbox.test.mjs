@@ -103,6 +103,11 @@ const ANY_MODULE = /.*/;
 const XHIGH_ROW = /^xHigh$/;
 const LOW_ROW = /^Low$/;
 const SONNET_ROW = /Claude Sonnet 5\.5/;
+const OPUS_ROW = /Claude Opus 5\.5/;
+const SIGN_IN_ROW = /GPT-5/;
+const EFFORT_DROPPED =
+	/Its effort is now low, because high is not one of that model's levels\./;
+const FAST_DROPPED = /This model does not support fast mode, so it stays off\./;
 const SEAM_NAMES =
 	/^(@shared\/api\/local-operator\/desktop-api|@shared\/themes)$/;
 
@@ -129,6 +134,9 @@ const bundle = await build({
 		contents: `
 			export { EffortPicker, ModelPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+			export { MemoryRouter } from "react-router-dom";
+			export { useSlashDispatch } from "./src/renderer/src/features/chat/components/slash-dispatch";
+			export { useConnectProviderStore } from "./src/renderer/src/features/providers/connect-provider-store";
 		`,
 		resolveDir: ROOT,
 	},
@@ -182,11 +190,19 @@ mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, `pickers-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 
-const { EffortPicker, ModelPicker, QueryClient, QueryClientProvider } =
-	await import(pathToFileURL(bundlePath).href);
+const {
+	EffortPicker,
+	ModelPicker,
+	QueryClient,
+	QueryClientProvider,
+	MemoryRouter,
+	useSlashDispatch,
+	useConnectProviderStore,
+} = await import(pathToFileURL(bundlePath).href);
 const React = await import("react");
 const { act } = React;
 const { createRoot } = await import("react-dom/client");
+const { toast } = await import("sonner");
 
 /* ------------------------------------------------------------------ harness */
 
@@ -245,6 +261,12 @@ const acceptCommand = (request) => ({
 	},
 });
 let commandAnswer = acceptCommand;
+const previewFrame = (model) => ({
+	frontend: { snapshot: { effective_model: model, selected_model: model } },
+});
+const acceptPreview = (request) => previewFrame(request.model ?? SESSION_MODEL);
+let previewAnswer = acceptPreview;
+let catalogueAnswer = CATALOGUE;
 
 globalThis.__desktopResult = async (request) => {
 	requests.push(request);
@@ -257,7 +279,9 @@ globalThis.__desktopResult = async (request) => {
 				current: ownerRung,
 			};
 		case "models.catalogue":
-			return CATALOGUE;
+			return catalogueAnswer;
+		case "sessions.preview":
+			return previewAnswer(request);
 		case "sessions.command": {
 			await commandGate();
 			const receipt = commandAnswer(request);
@@ -315,7 +339,7 @@ const newClient = () =>
  */
 const mount = async (
 	Picker,
-	{ client: shared, model = SESSION_MODEL, reset = true } = {},
+	{ client: shared, draft, model = SESSION_MODEL, reset = true } = {},
 ) => {
 	const client = shared ?? newClient();
 	document.body.innerHTML = "";
@@ -324,6 +348,8 @@ const mount = async (
 		commandGate = () => Promise.resolve();
 		settingsGate = () => Promise.resolve();
 		commandAnswer = acceptCommand;
+		previewAnswer = acceptPreview;
+		catalogueAnswer = CATALOGUE;
 		config = {};
 		ownerRung = "high";
 	}
@@ -354,6 +380,7 @@ const mount = async (
 						clearPendingModel: () => {},
 					},
 					commands: [],
+					draft,
 					onClose: () => {},
 					note: (text, error) => notes.push({ text, error }),
 					dispatch: () => {},
@@ -417,6 +444,245 @@ const pick = async (pattern) => {
 
 const dialogSays = (text) =>
 	(document.querySelector('[role="dialog"]')?.textContent ?? "").includes(text);
+
+const dialog = () => document.querySelector('[role="dialog"]');
+const draftSearch = () => dialog()?.querySelector("input");
+const SONNET = {
+	provider: "anthropic",
+	model_id: "claude-sonnet-5-5",
+	reasoning_effort: null,
+};
+
+// The pane keeps one presentation slot. Use its real owner so a test cannot
+// pass if the adapter supplies a receipt but closes the wrong slot.
+function DraftControls({ draft, note }) {
+	const { openDraftPicker, picker } = useSlashDispatch({
+		paneIdentity: "synthetic-draft",
+		sessionId: undefined,
+		canonical: { status: "unavailable", frontend: null },
+		addMessage: (message) => note(message.message),
+		rebind: () => {},
+		draftPicker: draft,
+	});
+	return React.createElement(
+		React.Fragment,
+		null,
+		React.createElement("input", {
+			"aria-label": "Message",
+			defaultValue: "Unsent message",
+		}),
+		...["model-chip", "replacement-chip"].map((id) =>
+			React.createElement(
+				"button",
+				{
+					key: id,
+					id,
+					type: "button",
+					onClick: (event) =>
+						openDraftPicker("session.model", event.currentTarget),
+				},
+				id,
+			),
+		),
+		picker && React.createElement(ModelPicker, picker),
+	);
+}
+
+const mountDraft = async (select, model) =>
+	mount(
+		(props) =>
+			React.createElement(
+				MemoryRouter,
+				null,
+				React.createElement(DraftControls, props),
+			),
+		{ draft: { target: { cwd: "/synthetic-draft", model }, select } },
+	);
+
+const openDraftModel = async (id = "model-chip") => {
+	const chip = document.getElementById(id);
+	assert.ok(chip);
+	await act(async () => {
+		chip.focus();
+		chip.click();
+	});
+	await settle();
+	return chip;
+};
+
+const enterSonnet = async () => {
+	const search = draftSearch();
+	assert.ok(search, "the model picker offers search");
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			DOM.window.HTMLInputElement.prototype,
+			"value",
+		).set.call(search, "sonnet");
+		search.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	assert.ok(dialogSays("Enter picks Claude Sonnet 5.5"));
+	const enter = new DOM.window.KeyboardEvent("keydown", {
+		key: "Enter",
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => search.dispatchEvent(enter));
+	assert.ok(
+		enter.defaultPrevented,
+		"the picker owns Enter, not native form submit",
+	);
+	await settle();
+};
+
+test("draft model: Enter waits for preview, commits, and closes without submitting the composer", async () => {
+	const selected = [];
+	await mountDraft((model) => selected.push(model) > 0);
+	const pending = held();
+	previewAnswer = async (request) => {
+		if (request.model) await pending.gate();
+		return acceptPreview(request);
+	};
+	const chip = await openDraftModel();
+	await enterSonnet();
+	assert.ok(dialog(), "the dialog stays open while the model is resolving");
+	assert.deepEqual(selected, []);
+	pending.release();
+	await settle();
+	assert.deepEqual(selected, [SONNET]);
+	assert.equal(dialog(), null, "close only after the draft committed");
+	assert.equal(
+		document.activeElement,
+		chip,
+		"focus returns to the invoking chip",
+	);
+	assert.equal(
+		document.querySelector('[aria-label="Message"]').value,
+		"Unsent message",
+	);
+	assert.ok(
+		requests.every(
+			({ op }) =>
+				![
+					"sessions.create",
+					"sessions.command",
+					"settings.edit",
+					"sessions.send",
+				].includes(op),
+		),
+	);
+});
+
+test("draft model: pointer-picking the current default also closes", async () => {
+	const selected = [];
+	await mountDraft((model) => selected.push(model) > 0);
+	await openDraftModel();
+	await pick(OPUS_ROW);
+	assert.deepEqual(selected, [{ ...SESSION_MODEL, reasoning_effort: null }]);
+	assert.equal(dialog(), null);
+});
+
+test("draft model: the signed-out row connects without selecting or closing", async () => {
+	const selected = [];
+	await mountDraft((model) => selected.push(model) > 0);
+	catalogueAnswer = {
+		...CATALOGUE,
+		models: [
+			...CATALOGUE.models,
+			{ ...catalogueRow("openai", "gpt-5", "GPT-5"), connected: false },
+		],
+	};
+	await openDraftModel();
+	await tick();
+	await pick(SIGN_IN_ROW);
+	try {
+		assert.equal(useConnectProviderStore.getState().providerId, "openai");
+		assert.ok(dialog());
+		assert.deepEqual(selected, []);
+		assert.ok(
+			!requests.some(({ op, model }) => op === "sessions.preview" && model),
+		);
+	} finally {
+		await act(async () => useConnectProviderStore.getState().closeConnect());
+	}
+});
+
+test("draft model: dropped effort and fast settings are still reported after close", async () => {
+	const selected = [];
+	const toastsBefore = toast.getHistory().length;
+	await mountDraft((model) => selected.push(model) > 0, {
+		...SESSION_MODEL,
+		reasoning_effort: "high",
+		fast_mode: true,
+	});
+	previewAnswer = async ({ model }) =>
+		previewFrame({
+			...(model ?? SESSION_MODEL),
+			display_name: "Fixture model",
+			reasoning_efforts: ["low"],
+			reasoning_effort: model?.reasoning_effort ?? "low",
+		});
+	await openDraftModel();
+	await enterSonnet();
+	assert.equal(dialog(), null);
+	assert.deepEqual(selected, [SONNET]);
+	const raised = toast.getHistory().slice(toastsBefore);
+	assert.equal(
+		raised.length,
+		1,
+		"one outside-dialog receipt replaces the strip",
+	);
+	assert.match(raised[0].title, EFFORT_DROPPED);
+	assert.match(raised[0].title, FAST_DROPPED);
+});
+
+for (const failure of ["transport", "unresolved", "commit refused"]) {
+	test(`draft model: ${failure} keeps the dialog open`, async () => {
+		const selected = [];
+		await mountDraft(
+			(model) => failure !== "commit refused" && selected.push(model) > 0,
+		);
+		previewAnswer = async (request) => {
+			if (request.model && failure === "transport")
+				throw new Error("Preview failed");
+			if (request.model && failure === "unresolved") return previewFrame(null);
+			return acceptPreview(request);
+		};
+		await openDraftModel();
+		await enterSonnet();
+		assert.ok(dialog());
+		assert.ok(dialogSays("The model was not changed."));
+		assert.deepEqual(selected, []);
+	});
+}
+
+test("draft model: a late preview cannot close a replacement or steal its focus", async () => {
+	const selected = [];
+	await mountDraft((model) => selected.push(model) > 0);
+	const pending = held();
+	previewAnswer = async (request) => {
+		if (request.model) await pending.gate();
+		return acceptPreview(request);
+	};
+	await openDraftModel();
+	await enterSonnet();
+	assert.deepEqual(selected, []);
+	// A scrimless picker can be replaced by the same adapter. Waiting for
+	// unmount alone would miss this stale completion.
+	await openDraftModel("replacement-chip");
+	const replacement = dialog();
+	const search = draftSearch();
+	assert.ok(replacement && search);
+	search.focus();
+	pending.release();
+	await settle();
+	assert.deepEqual(
+		selected,
+		[SONNET],
+		"dismissal does not cancel the in-flight preview",
+	);
+	assert.equal(dialog(), replacement);
+	assert.equal(document.activeElement, search);
+});
 
 /* -------------------------------------------------------------------- effort */
 

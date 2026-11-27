@@ -1,0 +1,108 @@
+{
+	"auditor": {
+		"agent": "task",
+		"session": "ec772324f103",
+		"instance": "ec772324f103-askpanel-fr",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-sonnet-5-5'; no fallback observed"
+	},
+	"instance": "ec772324f103-askpanel-fr",
+	"model": "anthropic/claude-sonnet-5-5",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"locale": "fr",
+	"independence": "Independent i18n auditor (lopdev task session ec772324f103); not the translator of record, and not the lane's coding agent (radient/auto, no fallback) that added the three keys. Read the committed bytes of the worktree and edited only the catalogue defects listed below (applied by the auditor, recorded as findings).",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "feat/desktop-ask-panel-cleanup",
+	"head": "ee7d139e70",
+	"references": {
+		"glossary": "damianvtran/local-operator@355f2656c49d i18n/glossary.md (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+		"style_guide": "damianvtran/local-operator@355f2656c49d i18n/style-guides/fr.md (sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7)"
+	},
+	"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id); ui.chat.ask_panel: removal of filter.chip (delta only)",
+	"observations": [
+		"INFO: Rendered every audited key through the repo's real translate()/translateRaw() (esbuild bundle of src/i18n/index.ts) for answered/total = 0/0, 0/1, 1/1, 1/2, 2/2, 2/5, 5/5, 1234/12345, 10/1000000: no key text, no raw ICU, no grouping separators, arguments land in the right slots.",
+		"INFO: The three keys carry no plural arms in English or in any locale: the counts are bare numbers in a fixed frame, so no CLDR category is needed in fr/es/ru/ur/hi/vi/zh-CN (Russian uses the neuter 'Отвечено', fr/es use feminine plural participles agreeing with questions, hi/ur use an invariant 'जवाब/جواب').",
+		"INFO: ui.chat.ask_panel.filter.chip is removed from every locale and from English (and its sidecar entry); no call site remains (grep of src/). The 19 remaining ui.chat.ask_panel values are byte-identical to origin/main in this locale.",
+		"INFO: Translator of record is unchanged on the row (this audit does not use --update-translator). The three ui.chat.asks keys added on this branch were produced by the lane's coding agent (radient/auto, no fallback) per the dispatching manager; that provenance is disclosed here and in the row's audit note, not rewritten into the row."
+	],
+	"namespaces": {
+		"ui.chat.asks": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": [
+				"ui.chat.asks.progress",
+				"ui.chat.asks.urgent_label",
+				"ui.chat.asks.copy_id"
+			],
+			"sha256": {
+				"en": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+				"fr": "30774b6aa37faa94d60f241d56904d1df84ab83ca4ff76589359df54db672e8b"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.chat.asks.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.asks.json",
+			"context_sha256": "08c60314e0f864ae93355f6b883153b31c610f9f83bfe25ca17ba26a13c77aa6",
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "MINOR",
+					"key": "ui.chat.asks.progress",
+					"current": "Répondues : {answered} sur {total}  (ASCII U+0020 before the colon)",
+					"problem": "fr style guide §Punctuation requires an espace fine insécable U+202F before \":\"; the namespace's other colon strings (answer_aria, proposal.field_*) use U+202F.",
+					"replacement": "Répondues : {answered, number, ::group-off} sur {total, number, ::group-off}",
+					"disposition": "applied by the auditor"
+				},
+				{
+					"id": "M2",
+					"severity": "MINOR",
+					"key": "ui.chat.asks.progress",
+					"current": "{answered} / {total} bare arguments",
+					"problem": "English source renders both counts with `number, ::group-off`; the translator dropped the type and skeleton, so the argument no longer matches the source and a large count would not be rendered the way every sibling count in this namespace is.",
+					"replacement": "{answered, number, ::group-off} … {total, number, ::group-off}",
+					"disposition": "applied by the auditor"
+				},
+				{
+					"id": "M3",
+					"severity": "MINOR",
+					"key": "ui.chat.asks.urgent_label",
+					"current": "Urgent",
+					"problem": "The fr catalogue renders this concept as \"Prioritaire\" everywhere: ui.chat.asks.urgent (\"Prioritaire.\") and both ui.chat.ask_queue.chip.label_* urgent arms (\"· Prioritaire\"). The visible badge must carry the same word as the screen-reader sentence on the same card. \"Urgent\" is also byte-identical to English, which the repo's locale-parity guard (is not an English stub) rejects; no exemption was added, the term was aligned instead.",
+					"replacement": "Prioritaire",
+					"disposition": "applied by the auditor"
+				},
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"key": "ui.chat.asks.progress",
+					"current": "Répondues",
+					"problem": "Past participle agreeing with the implied \"questions\"; some French purists prefer \"Réponses données\" for a question, but the namespace already uses \"Répondu dans la conversation\" and the form is common in UIs. Meaning unambiguous.",
+					"replacement": "",
+					"disposition": "accepted, no change"
+				}
+			]
+		},
+		"ui.chat.ask_panel": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": [],
+			"keys_removed": [
+				"ui.chat.ask_panel.filter.chip"
+			],
+			"sha256": {
+				"en": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+				"fr": "2489ff97d99c3b2735398696d81a879e7b9dc37e28e2c8fe7a7fae0bbdc909f5"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.chat.ask_panel.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.ask_panel.json",
+			"context_sha256": "55fbd2a18e48b3cd8cf208105c9d9810952f58c7993559e4d3a5be60b9a16c1f",
+			"findings": []
+		}
+	},
+	"verdict": "pass",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 3,
+		"NIT": 1
+	}
+}

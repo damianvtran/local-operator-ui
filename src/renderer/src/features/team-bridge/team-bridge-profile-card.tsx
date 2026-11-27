@@ -94,33 +94,58 @@ function agentGlyphSize(plate: number): number {
  * photo, and the agent placeholder is always the Bot glyph. `fallback`
  * customizes a PERSON's placeholder only, so no surface can opt an agent out.
  */
-export function TeamBridgeAvatar({
-	member,
-	kind,
-	endpointId,
-	label,
-	size = 36,
-	className,
-	fallback,
-	selected = false,
-}: {
-	member: TeamBridgeDirectoryMember;
+type AvatarPlateProps = {
 	kind: "human" | "agent";
-	/** The agent's endpoint, when the surface knows it better than the row. */
-	endpointId?: string;
 	label: string;
 	size?: number;
 	className?: string;
 	/** A person's placeholder; ignored for an agent (always the Bot glyph). */
 	fallback?: ReactNode;
 	selected?: boolean;
+};
+
+export function TeamBridgeAvatar({
+	member,
+	endpointId,
+	...plate
+}: AvatarPlateProps & {
+	/** Receipt-only rows still use the conversation plate, without resolving a photo. */
+	member?: TeamBridgeDirectoryMember;
+	/** The agent's endpoint, when the surface knows it better than the row. */
+	endpointId?: string;
 }) {
-	// CSS size in; the hook picks the server variant for this display's DPR
-	// (`pickAvatarVariant`), so a 36 px row on a 2x panel gets the 256 file.
-	const image = useIdentityAvatar(
-		directoryIdentity(member, kind, endpointId),
-		size,
+	return member ? (
+		<ResolvedAvatar {...plate} member={member} endpointId={endpointId} />
+	) : (
+		<AvatarPlate {...plate} />
 	);
+}
+
+function ResolvedAvatar({
+	member,
+	endpointId,
+	...plate
+}: AvatarPlateProps & {
+	member: TeamBridgeDirectoryMember;
+	endpointId?: string;
+}) {
+	// The hook picks a variant for the current DPR, not for the display label.
+	const image = useIdentityAvatar(
+		directoryIdentity(member, plate.kind, endpointId),
+		plate.size ?? 36,
+	);
+	return <AvatarPlate {...plate} image={image} />;
+}
+
+function AvatarPlate({
+	kind,
+	label,
+	size = 36,
+	className,
+	fallback,
+	selected = false,
+	image,
+}: AvatarPlateProps & { image?: string }) {
 	const mark = agentMarkPx(size);
 	const [failedImage, setFailedImage] = useState<string>();
 	const placeholder =

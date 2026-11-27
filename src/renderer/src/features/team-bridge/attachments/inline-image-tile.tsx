@@ -89,6 +89,7 @@ export function InlineImageTile({
 	onOpen,
 	onDownload,
 	buttonRef,
+	onImageReadiness,
 	overflow,
 	busy,
 }: {
@@ -104,6 +105,8 @@ export function InlineImageTile({
 	/** Omitted where this client offers no download (owner audit, #1634). */
 	onDownload?: () => void;
 	buttonRef?: Ref<HTMLButtonElement>;
+	/** The audit approval waits for rendered image decode, not just a blob URL. */
+	onImageReadiness?: (ready: boolean) => void;
 	/**
 	 * Images past the 2×2 grid. The group draws the visible `+N` label over
 	 * the slot (so it survives a failed fourth tile); the tile uses the count
@@ -167,8 +170,16 @@ export function InlineImageTile({
 			>
 				{url ? (
 					<img
+						key={url}
 						src={url}
 						alt={label}
+						onLoad={
+							onImageReadiness &&
+							((event) => {
+								onImageReadiness(event.currentTarget.naturalWidth > 0);
+							})
+						}
+						onError={onImageReadiness && (() => onImageReadiness(false))}
 						draggable={false}
 						/*
 						 * `scale-down` for the letterbox: contain for a large panorama,

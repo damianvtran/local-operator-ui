@@ -1,0 +1,13 @@
+{
+	"ui.chat.inline_chart.also": "Также:",
+	"ui.chat.inline_chart.data_toggle": "Данные диаграммы",
+	"ui.chat.inline_chart.more": "ещё {count, number}",
+	"ui.chat.inline_chart.no_data": "Нет данных",
+	"ui.chat.inline_chart.other": "Другое ({count, number})",
+	"ui.chat.inline_chart.pair": "{label}: {value}",
+	"ui.chat.inline_chart.position": "{index, number} из {count, number}",
+	"ui.chat.inline_chart.right_axis": "{label} · правая ось",
+	"ui.chat.inline_chart.role": "диаграмма",
+	"ui.chat.inline_chart.share_of_total": "{share} от общего",
+	"ui.chat.inline_chart.total": "Итого"
+}

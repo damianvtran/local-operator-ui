@@ -7,7 +7,13 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { asTeamBridgeTenantId } from "./team-bridge-model";
 import { TeamBridgePage } from "./team-bridge-page";
+import {
+	SCOPE_PREFERENCE_KEY,
+	SESSION_SCOPE_KEY,
+} from "./team-bridge-scope-preference";
+import { VIEW_MEMORY_KEY, writeViewMemory } from "./team-bridge-view-memory";
 
 /**
  * LEAVE AND RETURN, LIVE: the operator's report ("when switching back to the
@@ -107,7 +113,15 @@ const history = (conversation: string) =>
 		created_at: now,
 	}));
 
-function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
+function LeaveAndReturn({
+	reset,
+	long,
+	opening,
+}: {
+	reset: boolean;
+	long?: boolean;
+	opening?: "cold" | "remembered" | "ambiguous" | "upgrade";
+}) {
 	const orgs = long ? LONG_ORGS : ORGS;
 	const navigate = useNavigate();
 	const [ready, setReady] = useState(false);
@@ -117,7 +131,45 @@ function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
 	   "Go to chat" and bounced the page straight back to Team Bridge. */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: see above.
 	useLayoutEffect(() => {
-		if (reset) localStorage.removeItem("lo.teamBridge.view.v1");
+		// Seed browser storage, not a fake selection prop: these boards must
+		// pass through the real account, status and opening/revalidation path.
+		const saved = [
+			[localStorage, VIEW_MEMORY_KEY],
+			[localStorage, SCOPE_PREFERENCE_KEY],
+			[sessionStorage, SESSION_SCOPE_KEY],
+		] as const;
+		const previous = saved.map(([storage, key]) => storage.getItem(key));
+		if (opening) {
+			for (const [storage, key] of saved) storage.removeItem(key);
+			if (opening === "remembered") {
+				localStorage.setItem(
+					SCOPE_PREFERENCE_KEY,
+					JSON.stringify({ acct_me: "org_northwind" }),
+				);
+				// The last viewed rail and the explicit switcher pick can differ.
+				writeViewMemory(
+					localStorage,
+					"acct_me",
+					asTeamBridgeTenantId("org_minerva"),
+					{
+						target: { type: "conversation", id: "gen_minerva" },
+						tenantId: "org_minerva",
+					},
+				);
+			}
+			if (opening === "upgrade") {
+				// A legacy automatic home landing wrote view history but no preference.
+				writeViewMemory(
+					localStorage,
+					"acct_me",
+					asTeamBridgeTenantId("org_northwind"),
+					{
+						target: { type: "conversation", id: "gen_northwind" },
+						tenantId: "org_northwind",
+					},
+				);
+			}
+		} else if (reset) localStorage.removeItem(VIEW_MEMORY_KEY);
 		const prior = window.api.desktop;
 		queryClient.clear();
 		const reply = (result: unknown) => ({ status: 200, body: { result } });
@@ -154,7 +206,35 @@ function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
 												},
 												identity: {},
 											}
-										: { memberships: [] },
+										: {
+												memberships: opening
+													? [
+															{
+																tenant_id: "org_minerva",
+																tenant_name: "Minerva",
+																status: "active",
+																role: "member",
+																is_home: false,
+																plan: { status: "active", seats: 8 },
+															},
+															{
+																tenant_id: "org_northwind",
+																tenant_name:
+																	opening === "ambiguous"
+																		? "Northwind"
+																		: "Example Organization",
+																status: "active",
+																role: "owner",
+																is_home: true,
+																plan: {
+																	status:
+																		opening === "ambiguous" ? "active" : "none",
+																	seats: 0,
+																},
+															},
+														]
+													: [],
+											},
 							},
 						});
 					case "team_bridge.status":
@@ -182,8 +262,11 @@ function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
 									},
 									{
 										tenant_id: "org_northwind",
-										tenant_name: "Northwind",
-										eligible: true,
+										tenant_name:
+											opening && opening !== "ambiguous"
+												? "Example Organization"
+												: "Northwind",
+										eligible: !opening || opening === "ambiguous",
 										endpoint: null,
 									},
 								],
@@ -261,8 +344,14 @@ function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
 		return () => {
 			window.api.desktop = prior;
 			queryClient.clear();
+			if (opening)
+				for (const [index, [storage, key]] of saved.entries()) {
+					const value = previous[index];
+					if (value === null) storage.removeItem(key);
+					else storage.setItem(key, value);
+				}
 		};
-	}, [reset, long]);
+	}, [reset, long, opening]);
 	return (
 		<QueryClientProvider client={queryClient}>
 			<div className="flex h-screen flex-col bg-surface text-ink">
@@ -286,6 +375,7 @@ function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
 						data-rig="restart"
 						onClick={() => {
 							navigate("/chat");
+							sessionStorage.removeItem(SESSION_SCOPE_KEY);
 							queryClient.clear();
 							setTimeout(() => {
 								setGeneration((value) => value + 1);
@@ -395,6 +485,18 @@ export default {
 	args: { reset: false },
 } satisfies Meta<typeof LeaveAndReturn>;
 export const LiveFlow: StoryObj<typeof LeaveAndReturn> = {};
+export const ColdOpening: StoryObj<typeof LeaveAndReturn> = {
+	args: { opening: "cold" },
+};
+export const RememberedOpening: StoryObj<typeof LeaveAndReturn> = {
+	args: { opening: "remembered" },
+};
+export const UpgradeOpening: StoryObj<typeof LeaveAndReturn> = {
+	args: { opening: "upgrade" },
+};
+export const AmbiguousOpening: StoryObj<typeof LeaveAndReturn> = {
+	args: { opening: "ambiguous" },
+};
 /**
  * The same live page with a rail longer than the window: scroll the rail down,
  * pick a row below the fold, and the rail must stay where it was.

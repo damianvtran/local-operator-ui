@@ -459,21 +459,12 @@
  * deliberately does not enable WCO (it would add no pixels, and it would hand the
  * renderer a geometry main already reproduces from its own full-screen events).
  *
- * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
- * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
- * window capture reads the drawn circles at centre 16.00. The derivation and the
- * instrument note are on `src/main/titlebar-options.ts`, beside the
- * `trafficLightPosition` decision they explain.
- *
- * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
- * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
- * BESIDE the lights; this shell puts the lane above every column instead, so no
- * column's first row is beside them and the inset's only consumer left is a banner,
- * which is a first child of the shell and therefore paints under the lights.
+ * The app controls and traffic lights share a 40px centerline. Keep an
+ * exclusion beyond the native left hit boxes regardless of text direction.
  */
 [data-chrome-mode="integrated"][data-chrome-platform="mac"] {
-	--chrome-strip-h: 32px;
-	--chrome-inset-start: 80px;
+	--chrome-strip-h: 40px;
+	--chrome-inset-start: 88px;
 	--chrome-inset-end: 0px;
 	--chrome-inset-end-h: 0px;
 }
@@ -605,6 +596,80 @@
 	[data-titlebar-lane] {
 	display: block;
 	height: var(--chrome-strip-h);
+}
+
+/* One transparent overlay: keep the columns' grounds reaching y0, with
+ * Browser's own tab/address controls below this independent app history. */
+[data-desktop-navigation-shell] {
+	--app-navigation-row-h: max(
+		40px,
+		var(--chrome-strip-h),
+		var(--chrome-inset-end-h)
+	);
+	--panel-top-pad: var(--app-navigation-row-h);
+	--app-navigation-button: 28px;
+	--app-navigation-gap: 4px;
+	--app-navigation-margin: 8px;
+	--app-navigation-width: calc(
+		4 *
+		var(--app-navigation-button) +
+		3 *
+		var(--app-navigation-gap)
+	);
+	--app-navigation-left: calc(
+		var(--chrome-inset-start) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-right: auto;
+	--app-navigation-exclusion-left: calc(
+		var(--app-navigation-left) +
+		var(--app-navigation-width)
+	);
+	--app-navigation-exclusion-right: var(--chrome-inset-end);
+}
+/* Mirror the group except beside physical left-side OS controls. On the
+ * right, stop before the native caption hit targets rather than mirroring them. */
+:root:not([data-chrome-platform="mac"], [data-chrome-leading="true"])
+	[data-desktop-navigation-shell]:dir(rtl),
+[data-chrome-fullscreen="true"] [data-desktop-navigation-shell]:dir(rtl) {
+	--app-navigation-left: auto;
+	--app-navigation-right: calc(
+		var(--chrome-inset-end) +
+		var(--app-navigation-margin)
+	);
+	--app-navigation-exclusion-left: var(--chrome-inset-start);
+	--app-navigation-exclusion-right: calc(
+		var(--app-navigation-right) +
+		var(--app-navigation-width)
+	);
+}
+[data-desktop-navigation] {
+	position: absolute;
+	z-index: 34;
+	inset-block-start: 0;
+	left: var(--app-navigation-left);
+	right: var(--app-navigation-right);
+	display: flex;
+	align-items: center;
+	gap: var(--app-navigation-gap);
+	height: var(--app-navigation-row-h);
+}
+[data-desktop-navigation] > button {
+	width: var(--app-navigation-button);
+	height: var(--app-navigation-button);
+}
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-desktop-navigation-shell]
+	> [data-titlebar-lane] {
+	display: block;
+	height: var(--app-navigation-row-h);
+}
+/* The app shell now owns trailing caption clearance, too. */
+:root
+	[data-desktop-navigation-shell]
+	main[data-workspace-outlet]
+	> [data-chrome-route-band] {
+	display: none;
 }
 
 /* An ordinary route body starts after platform clearance. Full-height split
@@ -1557,6 +1622,19 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 	   which is a step on the button's ramp and promises nothing about the ground
 	   a chart mark is drawn on. See `chartBarHover` in the palette contract. */
 	--color-chart-bar-hover: var(--lo-chart-bar-hover);
+	/* Categorical chart slots (series 1-4, pie slices 1-6). DERIVED from the
+	   composed palette by `src/shared/theme-engine/chart-palette.mjs` and emitted
+	   by `paletteBlock`, so every built-in, contrast preset and custom accent has
+	   them; slot 1 is the accent. Distinct hues at >= 3.05:1 on every ground, never
+	   shades of the accent (inline chart spec section 4). The accent fallback only
+	   covers a partial capture palette that carries no canvas/accent pair. */
+	--color-chart-1: var(--lo-chart-1, var(--lo-accent));
+	--color-chart-2: var(--lo-chart-2, var(--lo-accent));
+	--color-chart-3: var(--lo-chart-3, var(--lo-accent));
+	--color-chart-4: var(--lo-chart-4, var(--lo-accent));
+	--color-chart-5: var(--lo-chart-5, var(--lo-accent));
+	--color-chart-6: var(--lo-chart-6, var(--lo-accent));
+	--color-chart-7: var(--lo-chart-7, var(--lo-accent));
 
 	/* The composer's structured-token ink, for the leading `/word` a user typed:
 	   its own role because `info` is the accent's twin in three palettes and the
@@ -3153,6 +3231,165 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 
 /* Textareas can match :focus-visible on click or autofocus. Use the ink
  * caret in ordinary themes so getting ready to type never boxes the draft. */
+/* Keep the popover's elevated role, including its hue. The composer and
+ * every portalled picker then respond to the same live palette. Tint the
+ * row states from that ground instead of painting either with an accent. */
+[data-quick-picker][data-picker-placement="anchored"] {
+	--picker-paper: var(--lo-elevated);
+	/* Reverse the steps on light ground rather than drawing row outlines.
+	 * Keep the keyboard step stronger so it still owns Enter beside hover. */
+	--picker-pointer: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 10%),
+		color-mix(in srgb, var(--picker-paper), white 7%)
+	);
+	--picker-active: light-dark(
+		color-mix(in srgb, var(--picker-paper), black 16%),
+		color-mix(in srgb, var(--picker-paper), white 12%)
+	);
+}
+
+/* Share the finish, not the ground. The translucent panel keeps its own fill,
+ * blur and shadow. Near-white paper has no room for a visible brightening:
+ * leave its top edge neutral and grade the paper immediately below it. Dark
+ * paper takes the same palette tint as a lift. Fade within one spacing unit
+ * so the wash stops before a compact header's pt-1 line box (Team/Agent have
+ * the panel's p-1 as well). A long ink wash spent the last bit of muted-text
+ * contrast on clear glass. Only opt in a panel with that text/icon clearance. */
+[data-lo-floating-finish] {
+	--lo-floating-panel-wash: color-mix(in srgb, var(--lo-ink) 3%, transparent);
+	--lo-floating-panel-gradient: linear-gradient(
+		180deg in srgb,
+		light-dark(transparent, var(--lo-floating-panel-wash)) 0.0625rem,
+		var(--lo-floating-panel-wash) 0.125rem,
+		transparent 0.25rem
+	);
+}
+
+[data-lo-floating-finish] {
+	background-image: linear-gradient(
+			90deg,
+			transparent,
+			light-dark(rgb(255 255 255 / 60%), rgb(255 255 255 / 17%)) 36% 60%,
+			transparent
+		),
+		var(
+			--lo-floating-panel-gradient,
+			linear-gradient(180deg, var(--lo-floating-panel-wash), transparent 38px)
+		);
+	background-position: 9% top, center top;
+	background-size: 61% 1px, 100% 100%;
+	background-repeat: no-repeat;
+}
+
+/* The stronger fill names the keyboard target; the existing check names the
+ * current value, and the spinner names the pending operation. Keep actual
+ * focus on the combobox or Effort list, not on the active descendant. */
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"]:is([aria-selected="true"], [data-picked="true"]) {
+	background-color: var(--picker-active);
+}
+
+/* Muted Model metadata clears the paper and hover floors, but can fall below
+ * 4.5:1 on the brighter active/pending fill at softer contrast presets. Lift
+ * just those enabled text roles; refusal copy and the Current check stay dim. */
+[data-quick-picker][data-picker-placement="anchored"]
+	[role="option"]:is([aria-selected="true"], [data-picked="true"])
+	[class~="text-ink-muted"] {
+	color: var(--lo-ink);
+}
+
+[data-quick-picker="model"][data-picker-placement="anchored"] [data-lo-input] {
+	background-color: color-mix(
+		in srgb,
+		var(--picker-paper),
+		var(--lo-sunken) 55%
+	);
+}
+
+[data-quick-picker="model"][data-picker-placement="anchored"]
+	[data-lo-input]:focus-visible,
+[data-quick-picker="effort"][data-picker-placement="anchored"]
+	[role="listbox"]:focus-visible {
+	outline-width: 1px;
+	outline-color: var(--lo-ink-muted);
+}
+
+/* The model's two options share a column on every anchored width. Let each
+ * associated label provide a full-height target without scaling the glyph. */
+[data-quick-picker="model"][data-picker-placement="anchored"]
+	[data-model-picker-checks] {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.125rem;
+
+	[data-picker-check] > [role="checkbox"] {
+		margin-block-start: 0.1875rem;
+	}
+
+	[data-picker-check] > label {
+		display: block;
+		flex: 1;
+		min-inline-size: 0;
+		min-block-size: 1.5rem;
+		padding-block: 0.0625rem;
+		overflow-wrap: anywhere;
+	}
+
+	[data-picker-label-lines] {
+		min-block-size: 0;
+	}
+
+	[data-picker-label-reserve] {
+		display: block;
+	}
+
+	/* Clamp inside the grid cell without adding a second sentence to the label. */
+	[data-picker-label-reserve]::before {
+		content: attr(data-picker-label-reserve);
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
+
+	[data-picker-label-lines="2"] [data-picker-label-reserve]::before {
+		-webkit-line-clamp: 2;
+	}
+}
+
+/* The Effort ring sits in the paper gutter, not over the brighter row fill. */
+[data-quick-picker="effort"][data-picker-placement="anchored"]
+	[role="listbox"]:focus-visible {
+	outline-offset: 1px;
+}
+
+@media (hover: hover) {
+	[data-quick-picker][data-picker-placement="anchored"]
+		[role="option"][data-hovered="true"]:not(
+			[aria-selected="true"],
+			[aria-disabled="true"],
+			[data-picked="true"]
+		),
+	[data-quick-picker][data-picker-placement="anchored"]
+		[data-picker-hover]:enabled:hover:not(:active) {
+		background-color: var(--picker-pointer);
+	}
+}
+
+@media (forced-colors: active) {
+	[data-lo-floating-finish] {
+		background-image: none;
+	}
+
+	/* System colors flatten the row fills. Indicate the keyboard target
+	 * without restoring the leading tick in either color mode. */
+	[data-quick-picker][data-picker-placement="anchored"]
+		[role="option"][aria-selected="true"] {
+		outline: 1px solid Highlight;
+		outline-offset: -1px;
+	}
+}
+
 .composer-dock-textarea {
 	caret-color: var(--lo-ink);
 }
@@ -4223,15 +4460,10 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	display: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] {
-	/* END ONLY. The start edge belongs to the row's `ps-6` utility in
-	 * chat-header.tsx: the title leads the row, and the operator asked for it
-	 * to sit on the column's left inset (`CHAT_COLUMN_INSET`, 24px), not 4px
-	 * off the frame (PR #2099, 2026-11-25: "too tight to the left"). This rule
-	 * is unlayered, so any start padding here silently beats the utility -
-	 * which is how the first fix measured 4px. `scripts/lane-leading.test.mjs`
-	 * fails if a start padding comes back here. The trailing 12px is
-	 * unchanged from #2043's header alignment (fc4021f) and still wins over
-	 * the row's `pe-4` inside the framed workspace. */
+	/* END ONLY. The row in chat-header.tsx owns the title and rename's
+	 * shared start edge. This rule is unlayered, so setting start padding
+	 * here would override the row utility (as the old 4px rule did).
+	 * Keep the framed workspace's trailing actions aligned at 12px. */
 	padding-inline-end: 12px;
 }
 [data-workspace-inset] {
@@ -4359,7 +4591,7 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 [data-workspace-tabs] {
 	display: flex;
 	align-items: center;
-	min-height: 32px;
+	min-height: 36px;
 	gap: 4px;
 	padding-inline: 8px;
 }
@@ -4401,6 +4633,36 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	--workspace-left-column: var(--panel-rail-w, 0px);
 	--workspace-right-column: var(--workspace-sidebar-w, 0px);
 }
+/* Share the overlay with the app controls even in a collapsed layout. The
+ * sidebar and rail widths are the physical distances already spent. */
+:root [data-desktop-navigation-shell] [data-workspace-tabs] {
+	--workspace-left-column: var(--workspace-sidebar-w, 0px);
+	--workspace-right-column: var(--panel-rail-w, 0px);
+	position: relative;
+	z-index: 31;
+	margin-block-start: calc(-1 * var(--app-navigation-row-h));
+	min-height: var(--app-navigation-row-h);
+	padding-left: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-left) +
+			8px -
+			var(--workspace-left-column)
+		)
+	);
+	padding-right: max(
+		8px,
+		calc(
+			var(--app-navigation-exclusion-right) +
+			8px -
+			var(--workspace-right-column)
+		)
+	);
+}
+:root [data-desktop-navigation-shell] [data-workspace-tabs]:dir(rtl) {
+	--workspace-left-column: var(--panel-rail-w, 0px);
+	--workspace-right-column: var(--workspace-sidebar-w, 0px);
+}
 [data-workspace-tab-spacer] {
 	align-self: stretch;
 	flex: 1 0 32px;
@@ -4428,9 +4690,23 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
  * blended into the strip. So the contrast is now made by ABSENCE as much as by
  * fill: an inactive tab paints nothing at rest (muted ink) and takes the
  * sidebar's `row-hover` only under the pointer; the active tab alone carries an
- * opaque `row-selected` ground, full ink at weight 500, and a 2px accent rule
- * along its bottom edge. Tokens only, no border or pill outline (design
- * direction). `scripts/workspace-tabs.test.mjs` holds this.
+ * opaque `row-selected` ground and full ink at weight 500. Tokens only, no
+ * border or pill outline (design direction).
+ *
+ * SELECTED = BRIGHTENING, NO RAIL (operator, 2026-11-25: "I hate the bottom
+ * border rail style of highlight on the tab, please remove that and we'll just
+ * leave the brightening but no rail, that looks super dated"). The 2px accent
+ * `::after` mark that sat along the active tab's bottom edge is gone; the ground
+ * and ink above are the whole treatment. `scripts/workspace-tabs.test.mjs`
+ * holds this and fails if a rail returns as an `::after` or a box-shadow.
+ *
+ * BRIGHTER SELECTED GROUND (operator approved design D1 on PR #2109: "Brighten
+ * the selected tab a little"). With the rail gone, plain `row-selected` sat
+ * only ~1.04:1 from the `row-hover` a neighbour takes under the pointer, so
+ * selected and hovered tabs read alike. Mixing 4% `ink` into `row-selected`
+ * lifts that to ~1.17:1 in dark and ~1.13:1 in light. It is scoped to this
+ * rule on purpose: hover keeps `row-hover`, and no theme token moves, so every
+ * other `row-selected` consumer is unchanged.
  */
 [data-workspace-tab] {
 	--workspace-tab-fill: transparent;
@@ -4443,9 +4719,8 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	flex: 0 0 auto;
 	color: var(--color-ink-muted);
 }
-/* In the 32px lane, a 28px tab already leaves 2px outside its hit box.
- * Inset only the paint by another 2px per edge for 4px of visible air,
- * without growing the no-drag scrollports or touching the button targets. */
+/* Inset the paint inside the larger hit box, keeping the tab row airy
+ * without reducing its pointer target. */
 [data-workspace-tab]::before {
 	content: "";
 	position: absolute;
@@ -4460,20 +4735,12 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	--workspace-tab-fill: var(--color-row-hover);
 }
 [data-workspace-tab][data-active] {
-	--workspace-tab-fill: var(--color-row-selected);
+	--workspace-tab-fill: color-mix(
+		in srgb,
+		var(--color-row-selected) 96%,
+		var(--color-ink)
+	);
 	color: var(--color-ink);
-}
-/* The indicator sits inside the paint's 2px inset, inset 8px from each end so
- * it reads as a mark on the tab, not a strip-wide underline. */
-[data-workspace-tab][data-active]::after {
-	content: "";
-	position: absolute;
-	inset-block-end: 2px;
-	inset-inline: 8px;
-	height: 2px;
-	border-radius: 1px;
-	background: var(--color-accent);
-	pointer-events: none;
 }
 [data-workspace-tab][data-active] > button[aria-current] {
 	font-weight: 500;

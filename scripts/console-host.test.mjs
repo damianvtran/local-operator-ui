@@ -49,6 +49,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/console/registry";',
+			// The pending local draft's owner: the fence below is spelled with the same
+			// constant the pane and main use, not with a literal typed into a test.
+			'export * from "./src/shared/console-owner";',
 			// Harness-only export for separately leased interop calibration.
 			"export const consoleHarnessRequire = require;",
 			'export * from "./src/main/console/byte-log";',
@@ -232,6 +235,7 @@ const {
 	broadcastConsoleState,
 	CONSOLE_METHODS,
 	CONSOLE_ERROR_CODES,
+	DRAFT_CONSOLE_OWNER,
 	CONSOLE_COMMAND_TIMEOUTS_S,
 	dispatchConsole,
 	isConsoleDispatchMethod,
@@ -4875,4 +4879,343 @@ test("a legacy sidecar with no reason keeps the honest unknown, rather than inve
 		null,
 		"parseMeta normalises the absent field to null, the UI's \u201cnot observed\u201d",
 	);
+});
+
+/* ------------------------------------------------- pending local draft console */
+
+/*
+ * THE PENDING LOCAL CONSOLE'S LIFETIME, end to end in main: a New Conversation's
+ * pane makes a surface with no session behind it, and the first message the owner
+ * accepts hands that surface — the same handle, the same pty, the same bytes on
+ * disk — to the conversation it created. Everything here runs the shipped host,
+ * history and registry; only the pty seam is fake, so "no respawn" and "the log
+ * moved rather than restarted" are properties of the code the app runs.
+ */
+test("a pending draft console moves to the new conversation with its pty and history intact", () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, registry, spawned } = makeHost({ history });
+	try {
+		const pending = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+			retain: true,
+		});
+		spawned[0].pty.emit("sentinel output\r\n");
+		host.flush(pending.surface);
+		const before = host.status(pending.surface);
+		// Captured BEFORE the move: the runtime is the pty seam's own handle, and the
+		// adoption must not replace it with a fresh one.
+		const runtime = registry.require(pending.surface).runtime;
+
+		const adopted = host.adoptPendingConsole("session-first-send");
+		assert.deepEqual(adopted.adopted, [pending.surface]);
+		assert.equal(
+			host.list(DRAFT_CONSOLE_OWNER).length,
+			0,
+			"pending owner is empty",
+		);
+		const listing = host.list("session-first-send");
+		assert.equal(listing.length, 1);
+		assert.equal(listing[0].surface, pending.surface, "same handle");
+		assert.equal(listing[0].session_id, "session-first-send");
+		assert.equal(spawned.length, 1, "no second pty was spawned");
+		assert.equal(host.status(pending.surface).running, before.running);
+		assert.equal(
+			registry.require(pending.surface).runtime,
+			runtime,
+			"the pty handle is the one created, not a rebuilt one",
+		);
+
+		/*
+		 * HISTORY FOLLOWED THE OWNER. The bytes are the same bytes (not a fresh log
+		 * starting at byte zero) and the sidecar names the new session, so a relaunch
+		 * lists the surface under the conversation rather than under a draft that no
+		 * longer exists.
+		 */
+		assert.equal(
+			existsSync(logPath(root, DRAFT_CONSOLE_OWNER, pending.surface)),
+			false,
+		);
+		assert.ok(existsSync(logPath(root, "session-first-send", pending.surface)));
+		assert.match(
+			readFileSync(
+				sidecarPath(root, "session-first-send", pending.surface),
+				"utf8",
+			),
+			/"session_id": "session-first-send"/,
+		);
+		assert.equal(
+			history.listMetadata(DRAFT_CONSOLE_OWNER).length,
+			0,
+			"nothing is left under the pending owner for a later launch to restore",
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+/*
+ * A FAILED MOVE LEAVES EVERY BYTE WHERE IT WAS (agent review round 1, R4).
+ *
+ * The move is a batch now: all logs, then all sidecars, then the source sidecars
+ * go last, under an undo journal. This drives the late failure the review's fault
+ * probe found — the SECOND surface's destination sidecar unwritable — and asserts
+ * the whole batch rolled back, byte for byte, across two surfaces: nothing is
+ * under the target owner, both source logs and sidecars are intact, and the
+ * registry still holds both surfaces pending. Then it removes the fault and
+ * retries, which is the recovery the renderer promises its user ("the shells stay
+ * pending"): the same bytes arrive under the conversation, once.
+ */
+test("a late failure during the move rolls the whole batch back, and the retry carries the same bytes", () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, registry, spawned } = makeHost({ history });
+	const target = "session-atomic";
+	const digests = (paths) =>
+		paths.map((path) =>
+			createHash("sha256").update(readFileSync(path)).digest("hex"),
+		);
+	try {
+		const first = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+			retain: true,
+		});
+		const second = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+			retain: true,
+		});
+		spawned[0].pty.emit("first surface bytes\r\n");
+		spawned[1].pty.emit("second surface bytes\r\n");
+		host.flush(first.surface);
+		host.flush(second.surface);
+
+		const sourceLogs = [first.surface, second.surface].map((surface) =>
+			logPath(root, DRAFT_CONSOLE_OWNER, surface),
+		);
+		const sourceSidecars = [first.surface, second.surface].map((surface) =>
+			sidecarPath(root, DRAFT_CONSOLE_OWNER, surface),
+		);
+		const beforeLogs = digests(sourceLogs);
+		const beforeSidecars = digests(sourceSidecars);
+
+		/*
+		 * THE FAULT: the second surface's DESTINATION sidecar name is a directory,
+		 * so `writeMeta`'s staged rename fails with EISDIR — the same shape the
+		 * review injected. It is created only after the first surface's destination
+		 * sidecar has been written, which is what makes it a LATE failure.
+		 */
+		mkdirSync(sidecarPath(root, target, second.surface), { recursive: true });
+
+		assert.throws(() => host.adoptPendingConsole(target));
+
+		assert.deepEqual(
+			digests(sourceLogs),
+			beforeLogs,
+			"every source log is byte-identical after the rollback",
+		);
+		assert.deepEqual(
+			digests(sourceSidecars),
+			beforeSidecars,
+			"every source sidecar is byte-identical after the rollback",
+		);
+		assert.equal(
+			existsSync(logPath(root, target, first.surface)),
+			false,
+			"the log the batch had already renamed is back under the pending owner",
+		);
+		assert.equal(
+			existsSync(sidecarPath(root, target, first.surface)),
+			false,
+			"the destination sidecar written before the failure is gone",
+		);
+		assert.equal(host.list(DRAFT_CONSOLE_OWNER).length, 2, "both stay pending");
+		assert.equal(host.list(target).length, 0, "the target owns nothing");
+		assert.equal(spawned.length, 2, "no pty was restarted or replaced");
+
+		/*
+		 * AND THE WATERMARK STILL DESCRIBES THE FILES IT POINTS AT. The host appends
+		 * from a byte count per surface, so the failure mode the review found was a
+		 * moved prefix: the old directory kept the mark, the bytes were elsewhere,
+		 * and the next flush appended the tail to a fresh file — the prefix never
+		 * reaching either. A rollback makes the count true again, which this asserts
+		 * by writing MORE bytes after the failure and finding both in one file.
+		 */
+		spawned[0].pty.emit("bytes after the failed move\r\n");
+		host.flush(first.surface);
+		const grown = readFileSync(sourceLogs[0], "utf8");
+		assert.match(grown, /first surface bytes/);
+		assert.match(grown, /bytes after the failed move/);
+		const grownDigests = digests(sourceLogs);
+
+		/*
+		 * THE RETRY, AFTER THE FAULT IS REMOVED: the same batch commits, and the
+		 * bytes are the ones the surfaces wrote — not a fresh log starting empty.
+		 * That is the contract the host's persisted-byte watermark rests on: it is
+		 * a count per surface, so a move that did not happen must leave the paths
+		 * the count describes untouched.
+		 */
+		rmSync(sidecarPath(root, target, second.surface), {
+			recursive: true,
+			force: true,
+		});
+		const retried = host.adoptPendingConsole(target);
+		assert.deepEqual(
+			retried.adopted.sort(),
+			[first.surface, second.surface].sort(),
+		);
+		assert.deepEqual(
+			digests(
+				[first.surface, second.surface].map((surface) =>
+					logPath(root, target, surface),
+				),
+			),
+			grownDigests,
+			"the retry moved exactly the bytes that were written, including the ones after the failure",
+		);
+		for (const surface of [first.surface, second.surface]) {
+			assert.match(
+				readFileSync(sidecarPath(root, target, surface), "utf8"),
+				new RegExp(`"session_id": "${target}"`),
+			);
+		}
+		assert.equal(history.listMetadata(DRAFT_CONSOLE_OWNER).length, 0);
+		assert.equal(
+			registry.require(first.surface).record.sessionId,
+			target,
+			"the record moved with the files",
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("adopting with nothing pending is a no-op, and the pending owner is not a target", () => {
+	const { host } = makeHost();
+	try {
+		assert.deepEqual(host.adoptPendingConsole("session-nothing-pending"), {
+			adopted: [],
+		});
+		assert.throws(
+			() => host.adoptPendingConsole(DRAFT_CONSOLE_OWNER),
+			(error) => error.code === "surface_not_owned",
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+/*
+ * THE AGENT WIRE CANNOT SEE THE DRAFT'S TERMINAL, in either form of the call.
+ *
+ * The capability-compatible legacy form omits `session_id` and names only a
+ * handle; that is the form the owner check alone cannot cover, so the fence is in
+ * `assertOwned` and reads the RECORD. A non-pending surface keeps the legacy
+ * behaviour exactly (an omitted owner is still accepted), which the second half
+ * asserts.
+ */
+test("a pending draft surface is refused by handle alone, and absent from a global listing", async () => {
+	const { host } = makeHost();
+	try {
+		const pending = host.create({
+			sessionId: DRAFT_CONSOLE_OWNER,
+			origin: "user",
+		});
+		const mine = host.create({
+			sessionId: "session-agent-owner",
+			origin: "agent",
+		});
+
+		const global = await dispatchConsole(host, "console_list", {});
+		assert.deepEqual(
+			global.surfaces.map((surface) => surface.surface),
+			[mine.surface],
+			"a global listing carries the agent's own surface and not the draft's",
+		);
+
+		// The legacy form: a handle, no session id.
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_status", { surface: pending.surface }),
+			(error) => error.code === "surface_not_owned",
+		);
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_read", {
+					surface: pending.surface,
+					mode: "screen",
+				}),
+			(error) => error.code === "surface_not_owned",
+		);
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_input", {
+					surface: pending.surface,
+					text: "rm -rf /\r",
+				}),
+			(error) => error.code === "surface_not_owned",
+		);
+
+		// Claiming the pending owner as a session id is refused for every session op.
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_list", {
+					session_id: DRAFT_CONSOLE_OWNER,
+				}),
+			(error) => error.code === "surface_not_owned",
+		);
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_create", {
+					session_id: DRAFT_CONSOLE_OWNER,
+					cols: 80,
+					rows: 24,
+				}),
+			(error) => error.code === "surface_not_owned",
+		);
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_cleanup", {
+					session_id: DRAFT_CONSOLE_OWNER,
+				}),
+			(error) => error.code === "surface_not_owned",
+		);
+
+		// AND THE LEGACY FORM STILL WORKS where it always did: an agent's own surface
+		// named without an owner.
+		const status = await dispatchConsole(host, "console_status", {
+			surface: mine.surface,
+		});
+		assert.equal(status.running, true, "the legacy ownerless form still works");
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("a registry records the adoption as one move, not a copy", () => {
+	const registry = new ConsoleRegistry();
+	const entry = registry.create({
+		sessionId: DRAFT_CONSOLE_OWNER,
+		origin: "user",
+		command: "zsh",
+		argvTail: "",
+		cwd: "/tmp",
+		cols: 80,
+		rows: 24,
+		retain: true,
+		sizing: "auto",
+	});
+	const runtime = { marker: "the pty" };
+	registry.attach(entry.record.surface, runtime);
+	assert.deepEqual(registry.adopt(DRAFT_CONSOLE_OWNER, "session-after-send"), [
+		entry.record.surface,
+	]);
+	assert.equal(registry.list(DRAFT_CONSOLE_OWNER).length, 0);
+	const moved = registry.require(entry.record.surface);
+	assert.equal(moved.record.sessionId, "session-after-send");
+	assert.equal(moved.record.surface, entry.record.surface);
+	assert.equal(moved.runtime, runtime, "the runtime is not copied");
+	assert.deepEqual(registry.adopt("owner-nothing", "owner-other"), []);
 });

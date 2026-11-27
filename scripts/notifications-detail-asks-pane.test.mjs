@@ -884,9 +884,9 @@ for (const surface of ["pane", "fleet"]) {
 						);
 					}
 					assert.deepEqual(page.filterText(), [
-						"All · 2",
-						"Pending · 1",
-						"Settled · 1",
+						"All 2",
+						"Pending 1",
+						"Settled 1",
 					]);
 					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
 					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
@@ -1031,9 +1031,9 @@ for (const surface of ["pane", "fleet"]) {
 						"a successful revision must replace the superseded public answer",
 					);
 					assert.deepEqual(page.filterText(), [
-						"All · 2",
-						"Pending · 1",
-						"Settled · 1",
+						"All 2",
+						"Pending 1",
+						"Settled 1",
 					]);
 					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
 					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
@@ -1067,9 +1067,9 @@ for (const surface of ["pane", "fleet"]) {
 					);
 					assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
 					assert.deepEqual(page.filterText(), [
-						"All · 2",
-						"Pending · 1",
-						"Settled · 1",
+						"All 2",
+						"Pending 1",
+						"Settled 1",
 					]);
 					await page.press(page.buttonIn(page.card("a-1111"), "Retry"));
 					assert.ok(
@@ -1159,9 +1159,9 @@ for (const surface of ["pane", "fleet"]) {
 					);
 					const assertAccepted = (revisionFormLive = false) => {
 						assert.deepEqual(page.filterText(), [
-							"All · 2",
-							"Pending · 1",
-							"Settled · 1",
+							"All 2",
+							"Pending 1",
+							"Settled 1",
 						]);
 						assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
 						assert.equal(
@@ -1268,11 +1268,7 @@ test(
 						!page.buttonIn(page.card("a-1111"), "Change answer"),
 				),
 			);
-			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
 			assert.equal(Boolean(page.buttonIn(page.card("a-1111"), "Retry")), false);
 			assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
@@ -1310,11 +1306,7 @@ test(
 				"a-1111",
 				"the action slot acknowledges this ask instead of substituting the unrelated pending ask",
 			);
-			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
 		} finally {
 			await page.unmount();
