@@ -254,6 +254,41 @@ export const SELECTION_DELTA_E = 3.0;
 export const SELECTION_LIGHTNESS_STEP = 2.0;
 
 /**
+ * THE NEUTRAL PAPER (`--lo-neutral-paper`, `styles/index.css`): the dark-mode
+ * ground of the command palette, and of the anchored Model and Effort pickers
+ * wherever the composer they open from is itself a neutral glass field.
+ *
+ * Why it exists (operator, 2026-11-27): on Tokyo Night the composer's writing
+ * well reads as dark neutral grey (window glass: an ink field over the desktop
+ * material), while the pickers and the palette painted the palette's raw
+ * `elevated` - a saturated blue-black at the same lightness - so the menus read
+ * "blue" against a grey composer and the palette read loud over its scrim. The
+ * paper is `elevated` with its OKLCH chroma scaled by `NEUTRAL_PAPER_CHROMA`
+ * and its OKLCH lightness moved by `NEUTRAL_PAPER_LIGHTNESS`, the hue held, so
+ * every theme keeps its own cast at a composer-like strength rather than all
+ * landing on one grey (that would be the "the themes have all gone the same
+ * grey" regression `docs/branding.md` § 2 guards).
+ *
+ * The two numbers are derived, not chosen by eye. 0.4: the composer's measured
+ * chroma over the palette's `elevated` was 0.34 on the operator's own glass
+ * capture (`#302F38` against `#2B2F49`, OKLCH C 0.016 / 0.047) and 0.54 on the
+ * Storybook glass model (`#2C2C3A`); 0.4 sits between the two. -0.01: the
+ * paper must never be brighter than the plate it replaces (the operator's
+ * report was "too bright"), and holding OKLCH L while dropping chroma lifts CIE
+ * L* by up to +0.58 on the fleet; -0.01 makes it 0.52-1.60 L* DARKER than
+ * `elevated` on every one of the 41 dark palettes, with every ink floor and the
+ * selection row's step still clear (asserted per palette by `evaluate.mjs`
+ * § 6a). Light palettes keep `elevated`: the request was about dark mode, and a
+ * near-white plate has little cast to remove.
+ *
+ * `scripts/contrast-contract.mjs` reads both numbers back out of the stylesheet
+ * and fails closed if the rule that ships and these constants diverge.
+ */
+export const NEUTRAL_PAPER_CHROMA = 0.4;
+
+export const NEUTRAL_PAPER_LIGHTNESS = -0.01;
+
+/**
  * The user message block's fill. Its boundary IS the fill (D10), so it needs a
  * findability floor of its own, and the shared `surface` step cannot carry one:
  * on the low palettes it measures 2.05 (`sage`), 2.08 (`catppuccinMacchiato`)

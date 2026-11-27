@@ -332,10 +332,14 @@ function expectComposerPickerPaint(dialog: HTMLElement, list: HTMLElement) {
 	expect(current).not.toBeNull();
 	expect(current?.querySelector("svg[aria-label]")).not.toBeNull();
 
-	// Normalize the authored role through the browser, not a hex or a palette
+	// Normalize the authored paper through the browser, not a hex or a palette
 	// name: this assertion must hold on whichever theme the gallery is using.
+	// The panel paints `--picker-paper`, the same value its row states mix
+	// from: `elevated` with glass off, the neutral paper over a glass composer
+	// (`styles/index.css`, "THE NEUTRAL PAPER"). The swatch sits inside the
+	// dialog so it resolves the variable in the dialog's own scope.
 	const swatch = document.createElement("span");
-	swatch.style.backgroundColor = "var(--lo-elevated)";
+	swatch.style.backgroundColor = "var(--picker-paper)";
 	dialog.append(swatch);
 	try {
 		expect(getComputedStyle(dialog).backgroundColor).toBe(

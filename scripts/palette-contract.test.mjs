@@ -851,3 +851,61 @@ test("the store no longer carries a reader-less `sessionByAgent` map", () => {
 		"the chat page must not read the removed map",
 	);
 });
+
+test("the palette's list fade ramps to the panel's own ground, not the plate", () => {
+	/*
+	 * THE BAND NO OTHER CHECK COULD SEE. This branch repainted the panel from the
+	 * raw `elevated` role to `--lo-neutral-paper` (that role with its chroma scaled
+	 * to 40%), and the list's bottom scroll fade kept ramping to `elevated`. Both
+	 * are OPAQUE, so the faded last row sat under a ~24px band of a different
+	 * ground than the footer beneath it - on Tokyo Night C 0.043 against the
+	 * paper's 0.018, i.e. visibly bluer - while every contrast assertion in the
+	 * repo stayed green, because the difference between the two grounds is hue
+	 * rather than luminance (design round 1, D1). No rendered suite runs the
+	 * glass-on Tokyo Night combination that showed it, so the source is the
+	 * durable place to pin it.
+	 *
+	 * WHAT IS PINNED IS THE COUPLING, not one class name: the fade names the
+	 * panel's own variable, and the panel's rule DECLARES that variable on the
+	 * element the fade inherits from. A repaint that moves the panel onto another
+	 * token, or a fade moved back onto a palette role, splits the two and fails
+	 * here - which is the only way the band comes back.
+	 */
+	const palette = read(PALETTE_SOURCE);
+	const fade = palette.match(/className="([^"]*\bbg-gradient-to-t\b[^"]*)"/);
+	assert.ok(fade, "the list's bottom fade must still be a gradient");
+	assert.match(
+		fade[1],
+		/\bfrom-\[var\(--lo-neutral-paper\)\]/,
+		`the fade must ramp to the panel's ground, --lo-neutral-paper: ${fade[1]}`,
+	);
+	assert.match(
+		fade[1],
+		/\bto-transparent\b/,
+		"the fade still opens upward into the list it covers",
+	);
+	assert.match(
+		palette,
+		/data-lo-neutral-paper=""/,
+		"the dialog must still opt into the neutral paper the fade is measured against",
+	);
+
+	const css = read("src/renderer/src/styles/index.css");
+	/*
+	 * The declaration and the paint are read as two rules of one file because the
+	 * fade's ground is identical to the panel's only if the value is declared ON
+	 * the painted element: the overlay is a descendant, so it inherits the exact
+	 * computed colour the panel's `background-color` resolves to, in every theme
+	 * and for a user's composed palette.
+	 */
+	assert.match(
+		css,
+		/\[data-lo-neutral-paper\][^{]*\{[^}]*--lo-neutral-paper:/,
+		"`--lo-neutral-paper` must be declared on `[data-lo-neutral-paper]` itself, so descendants inherit it",
+	);
+	assert.match(
+		css,
+		/\[data-lo-neutral-paper\]\s*\{[^}]*background-color:\s*var\(--lo-neutral-paper\)/,
+		"the panel must PAINT the variable the fade reads, or the two grounds drift",
+	);
+});

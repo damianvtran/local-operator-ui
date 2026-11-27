@@ -64,6 +64,7 @@ import {
 	isHex,
 	labToHex,
 	lum,
+	neutralizeOklch,
 	over,
 	r2,
 	ratio,
@@ -111,6 +112,8 @@ import {
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
 	MESSAGE_SURFACE_LIGHTNESS_STEP,
+	NEUTRAL_PAPER_CHROMA,
+	NEUTRAL_PAPER_LIGHTNESS,
 	PAIR_PINS,
 	PANEL_SEAM_ALPHA,
 	PERCEPTIBLE,
@@ -1320,6 +1323,69 @@ for (const entry of palettes) evaluatePalette(run, entry);
 	}
 }
 
+/*
+ * THE COMPOSER CHIPS' NEUTRAL HOVER (operator, 2026-11-27): the Model, Effort
+ * and Approvals triggers, the status-row chips and the shelf's working-directory
+ * chip step with an ink wash instead of the accent wash, and their label lifts
+ * to `ink` on it. A wash of a palette's own ink spends that ink's contrast, so
+ * the alpha is read back from the two places that ship it and `ink` is held to
+ * its 7:1 floor on the composite over `elevated` and `surface` (the composer
+ * well and its shelf, opaque), in sRGB the way the browser composites a
+ * translucent background. Measured when chosen: 8% put ayuDark at 6.83:1, 6%
+ * holds 7.14:1 at the fleet's worst - which is why the chips do not reuse the
+ * `+` button's 8%. Unreadable or diverging alphas FAIL CLOSED.
+ *
+ * ON A COMPOSED RUN (`LO_CONTRAST_PRESET`) THE FLOOR IS 4.5:1, not 7. The softer
+ * presets compose `elevated` until `ink` sits on its 7:1 floor with nothing to
+ * spare (measured at Soft: ayuDark 6.35:1 at 6%), so ANY ink wash - this one or
+ * the `+` button's - takes `ink` under 7 there; a user who chose a softer
+ * contrast has asked for exactly that trade. 4.5:1 is the text floor the
+ * anchored picker's active row (the next section) already holds its state fill
+ * to on every preset, and it is what this pointer-only state keeps.
+ */
+{
+	const strip = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		),
+		"utf8",
+	);
+	const css = readFileSync(
+		join(ROOT, "src/renderer/src/styles/index.css"),
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\s+/g, " ");
+	const chip = strip.match(/"hover:bg-ink\/(\d+) hover:text-ink"/);
+	const cwd = [
+		...css.matchAll(
+			/\.composer-dock \[data-lo-cwd-chip\] > button:enabled:(?:hover|active) \{ background-color: color-mix\(in oklab, var\(--lo-ink\) (\d+)%, transparent\); \}/g,
+		),
+	].map((m) => Number(m[1]));
+	run.assertions++;
+	if (!chip || cwd.length !== 2 || cwd.some((a) => a !== Number(chip[1]))) {
+		fail(
+			`the composer chips' neutral hover is unmeasured or split: READING_BUTTON reads ${chip ? `bg-ink/${chip[1]}` : "nothing"}, the working-directory chip's hover/active read ${cwd.join(", ") || "nothing"} - keep one alpha, spelled as this section reads it`,
+		);
+	} else {
+		const alpha = Number(chip[1]) / 100;
+		for (const { id, palette } of palettes) {
+			for (const ground of ["elevated", "surface"]) {
+				const fill = over(palette.ink, palette[ground], alpha);
+				const got = ratio(palette.ink, fill);
+				run.assertions++;
+				const floor = COMPOSED ? FLOOR.text : FLOOR.strongText;
+				if (got < floor) {
+					fail(
+						`${id}: a composer chip's hovered \`ink\` label on the ${Math.round(alpha * 100)}% ink wash over \`${ground}\` (${fill}) is ${got.toFixed(2)}:1, need ${floor}:1`,
+					);
+				}
+			}
+		}
+	}
+}
+
 /* Read the anchored Model row's actual sRGB paint, not the generic floating
  * panel pair. This runs for Standard and each composed preset. */
 {
@@ -1351,20 +1417,62 @@ for (const entry of palettes) evaluatePalette(run, entry);
 		);
 	} else {
 		const [, lightMix, darkMix] = activeMix;
+		/*
+		 * THE NEUTRAL PAPER (operator, 2026-11-27). Over a glass composer the
+		 * anchored pickers' `--picker-paper` is the derived neutral paper, not
+		 * `elevated`, so the active fill is measured on BOTH papers a dark palette
+		 * can paint. The rule is read back, not mirrored: its two numbers must be
+		 * the constants `evaluate.mjs` § 6a asserts the paper's own floors with,
+		 * and an unreadable rule FAILS CLOSED rather than measuring last week's
+		 * paper. (Light palettes resolve the paper to `elevated` via `light-dark`.)
+		 */
+		const neutral = rules.match(
+			/\[data-lo-neutral-paper\], \[data-quick-picker\]\[data-picker-placement="anchored"\] \{ --lo-neutral-paper: light-dark\( var\(--lo-elevated\), oklch\(from var\(--lo-elevated\) calc\(l - ([\d.]+)\) calc\(c \* ([\d.]+)\) h\) \); \}/,
+		);
+		const neutralWired =
+			rules.includes(
+				"[data-lo-neutral-paper] { background-color: var(--lo-neutral-paper); }",
+			) &&
+			rules.includes(
+				`${scope} { --picker-paper: var(--lo-neutral-paper); background-color: var(--picker-paper); }`,
+			);
+		run.assertions++;
+		if (
+			!neutral ||
+			!neutralWired ||
+			-Number(neutral[1]) !== NEUTRAL_PAPER_LIGHTNESS ||
+			Number(neutral[2]) !== NEUTRAL_PAPER_CHROMA
+		) {
+			fail(
+				`the neutral paper rule in \`src/renderer/src/styles/index.css\` is unreadable or diverges from \`NEUTRAL_PAPER_CHROMA ${NEUTRAL_PAPER_CHROMA}\` / \`NEUTRAL_PAPER_LIGHTNESS ${NEUTRAL_PAPER_LIGHTNESS}\` (read: ${neutral ? `l - ${neutral[1]}, c * ${neutral[2]}` : "nothing"}; wired: ${neutralWired}) - the paper that ships and the one every assertion measured must be one value`,
+			);
+		}
 		for (const { id, palette } of palettes) {
 			const light = glassSchemeOf(palette) === "light";
-			const fill = over(
-				light ? "#000000" : "#ffffff",
-				palette.elevated,
-				Number(light ? lightMix : darkMix) / 100,
-			);
-			for (const ink of new Set(["ink", metadata])) {
-				const contrast = ratio(palette[ink], fill);
-				run.assertions++;
-				if (contrast < 4.5) {
-					fail(
-						`${id}: anchored picker active/picked ${ink} on ${fill} is ${contrast.toFixed(2)}:1 (min 4.5:1)`,
-					);
+			const papers = light
+				? [palette.elevated]
+				: [
+						palette.elevated,
+						neutralizeOklch(
+							palette.elevated,
+							NEUTRAL_PAPER_CHROMA,
+							NEUTRAL_PAPER_LIGHTNESS,
+						),
+					];
+			for (const paper of papers) {
+				const fill = over(
+					light ? "#000000" : "#ffffff",
+					paper,
+					Number(light ? lightMix : darkMix) / 100,
+				);
+				for (const ink of new Set(["ink", metadata])) {
+					const contrast = ratio(palette[ink], fill);
+					run.assertions++;
+					if (contrast < 4.5) {
+						fail(
+							`${id}: anchored picker active/picked ${ink} on ${fill} (paper ${paper}) is ${contrast.toFixed(2)}:1 (min 4.5:1)`,
+						);
+					}
 				}
 			}
 		}

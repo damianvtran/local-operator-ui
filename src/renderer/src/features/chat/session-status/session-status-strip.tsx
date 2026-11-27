@@ -380,7 +380,20 @@ const READING_BOX =
 export const READING_BUTTON = cn(
 	READING_BOX,
 	"cursor-pointer text-ink-muted transition-colors duration-fast ease-out-quart",
-	"hover:bg-accent-wash hover:text-ink",
+	/*
+	 * The hover is a NEUTRAL ink wash - a brightening on dark, a darkening on light -
+	 * the vocabulary of the composer's own utility buttons (`COMPOSER_UTILITY_BUTTON`
+	 * in `message-input.tsx`), not the accent wash. Every chip of this species sits
+	 * on the composer (the Model/Effort/Approvals triggers in its rail, the
+	 * status-row chips above it), and a tinted hover on the neutral writing well
+	 * read as "coloured" beside the `+` button's neutral one on Tokyo Night
+	 * (operator, 2026-11-27). Ink steps in the mode's own direction on every
+	 * palette, so no per-theme value is needed. 6% rather than the `+` button's
+	 * 8%: unlike that icon, this label lifts to `ink` on the wash, and 8% put
+	 * ayuDark's `ink` at 6.83:1, under its 7:1 floor; `contrast-contract.mjs`
+	 * ("THE COMPOSER CHIPS' NEUTRAL HOVER") reads this class back and holds it.
+	 */
+	"hover:bg-ink/6 hover:text-ink",
 	// Focus is the base layer's `:focus-visible` outline. Offset pulled in to
 	// 1px like the app's other dense controls, since a 2px ring at 2px offset
 	// on a 24px control bleeds into its neighbours.

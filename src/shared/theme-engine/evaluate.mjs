@@ -25,7 +25,16 @@
  *  - The body was moved mechanically and kept as written, including its
  *    comments, so a later edit to a floor's reasoning has one place to go.
  */
-import { deltaE, isHex, mixOklab, over, r2, ratio, toLab } from "./color.mjs";
+import {
+	deltaE,
+	isHex,
+	mixOklab,
+	neutralizeOklch,
+	over,
+	r2,
+	ratio,
+	toLab,
+} from "./color.mjs";
 import {
 	ADJACENT,
 	ALT_ACCENT_CHROMA_FLOOR,
@@ -69,6 +78,8 @@ import {
 	MESSAGE_SURFACE_DELTA_E,
 	MESSAGE_SURFACE_LIGHTNESS_STEP,
 	MIXED_FILLS,
+	NEUTRAL_PAPER_CHROMA,
+	NEUTRAL_PAPER_LIGHTNESS,
 	PAIR_PINS,
 	PANEL_SEAM_ALPHA,
 	PERCEPTIBLE,
@@ -1812,6 +1823,61 @@ export const evaluatePalette = (run, entry) => {
 			if (step < SELECTION_LIGHTNESS_STEP) {
 				fail(
 					`${id}: the palette/picker active row sits ${r2(step)} L* from \`elevated\`, under the ${SELECTION_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
+				);
+			}
+		}
+
+		/*
+		 * 6a. The neutral paper: the dark-mode ground of the command palette and of
+		 * the anchored Model/Effort pickers over a glass composer (the constants'
+		 * doc in `contract-tables.mjs` carries the why and the derivation). It is a
+		 * DERIVED ground - `elevated` with its chroma scaled and its lightness
+		 * nudged down - so it is not one of the eight grounds and no role table
+		 * reaches it; this computes the same pixel the browser paints and holds it to
+		 * the rules the plate it replaces already met: never lighter than
+		 * `elevated` (the report was "too bright"), the three ink weights at their
+		 * floors, `borderControl` (the palette active row's ring) at 3:1, and the
+		 * selection row (`sunken`) still a findable step off it. Light palettes keep
+		 * `elevated` itself, which § 6 above already covers.
+		 */
+		if (p.mode === "dark" && isHex(p.elevated)) {
+			const paper = neutralizeOklch(
+				p.elevated,
+				NEUTRAL_PAPER_CHROMA,
+				NEUTRAL_PAPER_LIGHTNESS,
+			);
+			const lift = toLab(paper)[0] - toLab(p.elevated)[0];
+			run.assertions++;
+			if (lift > 0) {
+				fail(
+					`${id}: the neutral paper ${paper} is ${r2(lift)} L* LIGHTER than the \`elevated\` plate ${p.elevated} it replaces — the paper exists to calm the palette and pickers, so it may only hold or lower lightness`,
+				);
+			}
+			for (const [inkRole, floor] of INKS) {
+				if (!isHex(p[inkRole])) continue;
+				const got = ratio(p[inkRole], paper);
+				run.assertions++;
+				if (got < floor) {
+					fail(
+						`${id}: \`${inkRole}\` ${p[inkRole]} on the neutral paper ${paper} is ${r2(got)}:1, need ${floor}:1`,
+					);
+				}
+			}
+			if (isHex(p.borderControl)) {
+				const edge = ratio(p.borderControl, paper);
+				run.assertions++;
+				if (edge < FLOOR.nonText) {
+					fail(
+						`${id}: \`borderControl\` ${p.borderControl} on the neutral paper ${paper} is ${r2(edge)}:1, need ${FLOOR.nonText}:1 (the palette active row's ring)`,
+					);
+				}
+			}
+			const sel = deltaE(p.sunken, paper);
+			const selStep = Math.abs(toLab(p.sunken)[0] - toLab(paper)[0]);
+			run.assertions += 2;
+			if (sel < SELECTION_DELTA_E || selStep < SELECTION_LIGHTNESS_STEP) {
+				fail(
+					`${id}: the palette/picker active row (\`sunken\` ${p.sunken}) is ΔE00 ${r2(sel)} / ${r2(selStep)} L* from the neutral paper ${paper}, need ΔE00 ${SELECTION_DELTA_E} and ${SELECTION_LIGHTNESS_STEP} L*`,
 				);
 			}
 		}

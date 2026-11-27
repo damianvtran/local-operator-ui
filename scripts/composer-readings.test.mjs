@@ -224,7 +224,7 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	assert.ok(model.classes.includes("cursor-default"));
 	assert.ok(!model.classes.includes("cursor-pointer"));
 	assert.ok(
-		!model.classes.includes("hover:bg-accent-wash"),
+		!model.classes.some((name) => name.startsWith("hover:bg-")),
 		"an inert reading must not light up under the pointer",
 	);
 	assert.match(model.label, /This conversation will use it\./);
@@ -345,7 +345,7 @@ test("a draft without a resolved model offers the pick, where it used to render 
 	// `--draft-actionable-tooltip` is the frame that photographs the panel.
 	assert.match(
 		html,
-		/<button type="button" aria-label="Model: none resolved yet[^"]*"[^>]*cursor-pointer[^>]*hover:bg-accent-wash[^>]*>\s*<span class="truncate">Choose a model<\/span>/,
+		/<button type="button" aria-label="Model: none resolved yet[^"]*"[^>]*cursor-pointer[^>]*hover:bg-ink\/6[^>]*>\s*<span class="truncate">Choose a model<\/span>/,
 	);
 	// The empty ring is a draft's own, unchanged, and stays inert beside it.
 	assert.match(html, /aria-label="Context: nothing measured yet/);
