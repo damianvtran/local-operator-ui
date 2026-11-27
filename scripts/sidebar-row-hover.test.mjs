@@ -47,8 +47,7 @@ const SESSION_ROW_NOT = /\[data-session-row\]:not/;
 const SPARES_HELD_GROUND = /:not\( ?\[class~="bg-row-hover"\] ?\)/;
 const SHIPPED_RELEASE =
 	/button:not\(\[data-lo-floating\] \*\):not\( :is\(\[data-chat-row\], \[data-sidebar-row-button\]\):hover \) \{/;
-const CURRENT_RESTING_RESET =
-	/\[data-workspace-current\]:not\(\[data-dragging\]\):not\(:hover\)/;
+const SESSION_RESET_SPARES_CURRENT = /:not\(\s*\[data-workspace-current\]\s*\)/;
 const CLASS_NAME_ATTR = /className=(\{cn\([\s\S]*?\)\}|"[^"]*")/;
 const FULL_WIDTH = /\bw-full\b/;
 const ROW_HOVER_CLASS = /hover:bg-row-hover/;
@@ -59,26 +58,24 @@ const ROW_BUTTON_ATTR = /data-sidebar-row-button/;
 const CREATE_TEAM_MARKED =
 	/data-sidebar-row-button\s*\n(\s*)data-sidebar-create-team/;
 
-const CURRENT_MARKER = /\[data-workspace-current\]/;
-const HOVER_PSEUDO = /:hover/;
-const ROW_HOVER_GROUND = /background-color:\s*var\(--color-row-hover\)/;
-const TEMPORARY_MARKER = /\[data-temporary-row\]/;
-const STAGED_MARKER = /\[data-entity-staged\]/;
-const NOT_DRAGGING_HOVER_TAIL = /:not\(\[data-dragging\]\):hover$/;
-const CURRENT_PAGE_HOVER_TAIL = /\[aria-current="page"\]:hover$/;
-const CURRENT_BUTTON_CLEARED =
-	/\[data-workspace-current\]:not\(\[data-dragging\]\) > \[data-chat-row\]/;
-const CURRENT_HOVER_RULE =
-	/\[data-workspace-shell\]\s*:is\(\s*\[data-workspace-current\]:not\(\[data-dragging\]\):hover,[\s\S]*?\}/;
+const SELECTED_GROUND =
+	/background-color:\s*var\(--sidebar-conversation-current\)/;
+const HOVER_GROUND = /background-color:\s*var\(--sidebar-conversation-hover\)/;
+/* Each role is `light-dark(<authored light fill>, <dark fill>)`; the dark
+ * fill is the number under test. Opaque mixes ink INTO the palette's row fill,
+ * glass paints that ink at the same alpha over the glass. */
+const OPAQUE_DARK_MIX =
+	/^light-dark\(\s*var\(--color-row-(hover|selected)\),\s*color-mix\(in srgb, var\(--color-row-\1\), var\(--lo-ink\) (\d+)%\)\s*\)$/;
+const GLASS_DARK_MIX =
+	/^light-dark\(\s*var\(--color-row-(hover|selected)\),\s*color-mix\(in srgb, var\(--lo-ink\) (\d+)%, transparent\)\s*\)$/;
+const CONVERSATION_BUTTON_SEED = /\bdata-chat-row\s+data-session-row-button\b/;
+const SELECTOR_PAREN_WHITESPACE = /\( +| +\)/g;
 
 const SIDEBAR_MARKERS =
 	/\[data-(?:sidebar-band|entity|workspace-launcher|session-row|workspace-current|temporary-row)\]/;
 
-/*
- * Top-level (unlayered) rules only: a rule inside `@layer` loses to nothing the
- * row wears that matters here, and nested blocks are skipped by tracking depth.
- */
-function unlayeredRules(stylesheet) {
+/* Read one block level at a time so an at-rule's conditions stay attached. */
+function topLevelBlocks(stylesheet) {
 	const code = stylesheet.replace(/\/\*[\s\S]*?\*\//g, "");
 	const rules = [];
 	let depth = 0;
@@ -93,8 +90,7 @@ function unlayeredRules(stylesheet) {
 		} else if (ch === "}") {
 			depth--;
 			if (depth === 0) {
-				if (!prelude.startsWith("@"))
-					rules.push({ prelude, body: code.slice(start, i) });
+				rules.push({ prelude, body: code.slice(start, i) });
 				start = i + 1;
 			}
 		} else if (ch === ";" && depth === 0) {
@@ -102,6 +98,12 @@ function unlayeredRules(stylesheet) {
 		}
 	}
 	return rules;
+}
+
+function unlayeredRules(stylesheet) {
+	return topLevelBlocks(stylesheet).filter(
+		({ prelude }) => !prelude.startsWith("@"),
+	);
 }
 
 /* Split a selector list on top-level commas only (`:is(a, b)` stays whole). */
@@ -137,7 +139,7 @@ function expandIs(selector) {
 }
 
 const BOX_PAINTS =
-	/(?:\[data-session-row\]\[class~="hover:bg-row-hover"\]|\[data-workspace-current\][^>]*|\[data-entity\] > \[data-entity-staged\]) > \[data-chat-row\]$/;
+	/(?:\[data-session-row\]\[class~="(?:hover:)?bg-row-hover"\]|\[data-workspace-current\][^>]*|\[data-entity\] > \[data-entity-staged\]) > \[data-chat-row\]$/;
 
 /*
  * The release (a) requires: BOTH row-button kinds are freed while hovered - the
@@ -213,7 +215,15 @@ test("the shipped stylesheet's sidebar resets leave the hover ground to the rows
 	assert.deepEqual(hoverKillingResets(css), []);
 	// The resets still exist: this is a narrowing, not a removal.
 	assert.match(css.replace(/\s+/g, " "), SHIPPED_RELEASE);
-	assert.match(css, CURRENT_RESTING_RESET);
+	const sessionReset = unlayeredRules(css)
+		.filter(({ body }) => TRANSPARENT_BODY.test(body))
+		.flatMap(({ prelude }) => splitSelectors(prelude).flatMap(expandIs))
+		.find((selector) => SESSION_ROW_NOT.test(selector));
+	assert.ok(
+		sessionReset,
+		"the non-current session's resting reset still exists",
+	);
+	assert.match(sessionReset, SESSION_RESET_SPARES_CURRENT);
 });
 
 test("negative control: the v0.63.0 rules are caught, one offender per row kind", () => {
@@ -317,52 +327,128 @@ test("negative control: a reset that frees only the chat row (a27135e) is caught
 	assert.equal(hoverKillingResets(chatRowOnly).length, 2);
 });
 
-/**
- * THE CURRENT ROW HOVERS WITH `row-hover`, ONE LAYER (design round 1, D5).
- *
- * The inset clears a current row's resting fill, so `rowCurrent`'s
- * `hover:bg-row-selected` was the only ground it painted - the selected step,
- * under the pointer only. The stylesheet must give the hovered current box (and
- * the box-less temporary current row, and a staged launcher entity) the same
- * `--color-row-hover` every other row hovers with, never on a dragged row, and
- * the current box's row button must stay transparent so the two do not stack.
- */
-function currentHoverRule(stylesheet) {
-	return unlayeredRules(stylesheet).find(
-		({ prelude, body }) =>
-			CURRENT_MARKER.test(prelude) &&
-			HOVER_PSEUDO.test(prelude) &&
-			ROW_HOVER_GROUND.test(body),
-	);
+function selectorsPainting(ground, stylesheet = css) {
+	return unlayeredRules(stylesheet)
+		.filter(({ body }) => ground.test(body))
+		.flatMap(({ prelude }) => splitSelectors(prelude).flatMap(expandIs))
+		.map((selector) =>
+			selector.replace(SELECTOR_PAREN_WHITESPACE, (match) => match.trim()),
+		);
 }
 
-function currentHoverIsOneRowHoverLayer(stylesheet) {
-	const rule = currentHoverRule(stylesheet);
-	if (!rule) return false;
-	const selectors = splitSelectors(rule.prelude).flatMap(expandIs);
-	const box = selectors.find((s) => CURRENT_MARKER.test(s));
-	const temp = selectors.find((s) => TEMPORARY_MARKER.test(s));
-	const staged = selectors.find((s) => STAGED_MARKER.test(s));
-	return (
-		Boolean(box && temp && staged) &&
-		NOT_DRAGGING_HOVER_TAIL.test(box) &&
-		CURRENT_PAGE_HOVER_TAIL.test(temp) &&
-		// the single layer: the current box's row button is cleared
-		CURRENT_BUTTON_CLEARED.test(stylesheet.replace(/\s+/g, " "))
+// Selection survives a hover anywhere, including on the current row itself.
+// Only the box paints for a wrapped row; the temporary button paints itself.
+test("current conversations keep one selected ground before and during hover", () => {
+	const currentBox = "[data-workspace-current]:not([data-dragging])";
+	const currentTemporary =
+		'[data-temporary-row] > [data-chat-row][aria-current="page"]';
+	const selected = selectorsPainting(SELECTED_GROUND).filter((selector) =>
+		selector.startsWith("[data-workspace-shell] "),
 	);
+	assert.ok(selected.includes(`[data-workspace-shell] ${currentBox}`));
+	assert.ok(selected.includes(`[data-workspace-shell] ${currentTemporary}`));
+	const resets = selectorsPainting(TRANSPARENT_BODY);
+	assert.ok(
+		resets.includes(`[data-workspace-shell] ${currentBox} > [data-chat-row]`),
+	);
+	for (const owner of [currentBox, currentTemporary]) {
+		assert.ok(!resets.includes(`[data-workspace-shell] ${owner}:not(:hover)`));
+	}
+});
+
+/* One `--sidebar-conversation-*` declaration's value, whitespace-normalised. */
+function conversationToken(body, name) {
+	const m = body.match(
+		new RegExp(`--sidebar-conversation-${name}:\\s*([^;]+);`),
+	);
+	return m?.[1].replace(/\s+/g, " ").replace(/\( /g, "(").replace(/ \)/g, ")");
 }
 
-test("the hovered current row takes row-hover, not row-selected, in one layer", () => {
-	assert.equal(currentHoverIsOneRowHoverLayer(css), true);
-	// Negative control: the a27135e stylesheet, with no current-row hover rule.
-	const before = css.replace(CURRENT_HOVER_RULE, "");
-	assert.notEqual(before, css, "control mutation applied");
-	assert.equal(currentHoverIsOneRowHoverLayer(before), false);
-	// Negative control: a rule that also paints a dragged current row.
-	const paintsDrag = css.replace(
-		"[data-workspace-current]:not([data-dragging]):hover,",
-		"[data-workspace-current]:hover,",
+function conversationMixes(rule, pattern) {
+	const out = {};
+	for (const name of ["hover", "current"]) {
+		const m = conversationToken(rule?.body ?? "", name)?.match(pattern);
+		assert.ok(m, `${name} must match ${pattern}`);
+		// The light half is the authored role of the same kind: hover->row-hover.
+		assert.equal(m[1], name === "hover" ? "hover" : "selected");
+		out[name] = Number(m[2]);
+	}
+	return out;
+}
+
+/* Operator 2026-11-27 ("Brighter hover, same as selected when translucent";
+ * contrast contract's SIDEBAR_CONVERSATION_ROW_FLOORS names the exemption).
+ * `scripts/contrast-contract.mjs` proves every value passes on the 41 dark
+ * palettes; this pins WHICH values, so a tweak cannot drift without the
+ * derivation numbers being re-read. */
+const OPAQUE_HOVER_MIX = 10;
+const OPAQUE_CURRENT_MIX = 14;
+const GLASS_ROW_MIX = 9;
+
+test("conversation grounds use the sidebar's opaque and glass roles", () => {
+	const shell = "[data-workspace-shell]";
+	const sidebar = '[data-chat-region="sidebar"]';
+	const rules = unlayeredRules(css);
+	const opaque = rules.find(({ prelude }) => prelude === `${shell} ${sidebar}`);
+	const glass = rules.find(
+		({ prelude }) =>
+			prelude.startsWith('html[data-glass~="sidebar"]') &&
+			prelude.includes(`${sidebar}[data-glass-region="sidebar"]`),
 	);
-	assert.notEqual(paintsDrag, css, "control mutation applied");
-	assert.equal(currentHoverIsOneRowHoverLayer(paintsDrag), false);
+	const opaqueMix = conversationMixes(opaque, OPAQUE_DARK_MIX);
+	const glassMix = conversationMixes(glass, GLASS_DARK_MIX);
+	assert.deepEqual(opaqueMix, {
+		hover: OPAQUE_HOVER_MIX,
+		current: OPAQUE_CURRENT_MIX,
+	});
+	assert.deepEqual(glassMix, { hover: GLASS_ROW_MIX, current: GLASS_ROW_MIX });
+});
+
+test("ordering: glass hover equals current; opaque hover sits below current; both above rest", () => {
+	const rules = unlayeredRules(css);
+	const opaque = conversationMixes(
+		rules.find(
+			({ prelude }) =>
+				prelude === '[data-workspace-shell] [data-chat-region="sidebar"]',
+		),
+		OPAQUE_DARK_MIX,
+	);
+	const glass = conversationMixes(
+		rules.find(({ prelude }) =>
+			prelude.includes(
+				'[data-chat-region="sidebar"][data-glass-region="sidebar"]',
+			),
+		),
+		GLASS_DARK_MIX,
+	);
+	// Glass: the operator's "same as selected" - the fill does not rank the two.
+	assert.equal(glass.hover, glass.current);
+	// Opaque: the selection still outranks the hover, and a rest row is 0.
+	assert.ok(opaque.hover < opaque.current, "opaque hover < current");
+	assert.ok(opaque.hover > 0 && glass.hover > 0, "both above the rest fill");
+	// Glass hover is brighter than main's published 5% hover ink.
+	assert.ok(glass.hover > 5, "brighter than main's 5% hover");
+});
+
+test("only pointer paints require hover capability; a menu holds its ground on touch", () => {
+	const shell = "[data-workspace-shell]";
+	const sessionBox = `${shell} [data-session-row]:not([data-workspace-current]):not([data-dragging])`;
+	assert.deepEqual(
+		selectorsPainting(HOVER_GROUND),
+		[`${sessionBox}[class~="bg-row-hover"]`],
+		"only the menu-held fill can paint unconditionally",
+	);
+	// A tap can leave :hover latched even when the primary pointer cannot hover.
+	// Check the actual rule bodies inside the same capability query Tailwind uses.
+	const hoverMedia = topLevelBlocks(css)
+		.filter(({ prelude }) => prelude === "@media (hover: hover)")
+		.map(({ body }) => body)
+		.join("\n");
+	assert.deepEqual(selectorsPainting(HOVER_GROUND, hoverMedia), [
+		`${sessionBox}[class~="hover:bg-row-hover"]:hover`,
+		`${shell} [data-session-row-button]:not([aria-current="page"]):not([data-session-row][class~="hover:bg-row-hover"] > *, [data-session-row][class~="bg-row-hover"] > *, [data-session-row][data-dragging] > *):hover`,
+		`${shell} [data-temporary-row] > [data-chat-row]:not([aria-current="page"]):hover`,
+	]);
+	assert.deepEqual(selectorsPainting(SELECTED_GROUND, hoverMedia), []);
+	assert.match(sidebarSource, CONVERSATION_BUTTON_SEED);
 });
