@@ -135561,6 +135561,97 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "211c2a243210342e41b761451aec7a3a30f88f2fd5790c4856268645e5b31b0e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "cae8ca05d328cf6e884c8e53e29c30273f57a4fbbdb902d4a1af47002679eaa5",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "df760fe4ad4e5cbfc1eabd12935bc7b1d33e2a01429b8577cfd96ca7ed29808e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "94f6e61886385a2137dda953da11ebbb48fa22f909c74bbf5bd6fa0ecb55c2a2",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "46e16253d12366f522cd0330be617cd021f692809233e9842551f041ee759cd3",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "0661f8794f8380d90f7f0a1c776db7479b0ac5add18532f39fabd002e3b12df6",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.guard",
+			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+			"target_sha256": "fa7087aea9a00a3ebba6d735814b97bb799d0b292b45da5b3c094411a9ef0509",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-27"
+			},
+			"auditors": [],
+			"status": "translated"
 		}
 	]
 }

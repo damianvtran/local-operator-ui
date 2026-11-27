@@ -210,6 +210,20 @@ test("Mesh drops profile rows only with new capability; ordinary approvals survi
 		["b", "c"],
 	);
 });
+test("Mesh never lists a Guard consent, and returns the same array when nothing is dropped", () => {
+	const plain = [{ kind: "device", id: "b" }];
+	assert.equal(m.meshRowsWithoutProfileProposals(plain, false), plain);
+	assert.equal(m.meshRowsWithoutProfileProposals(plain, true), plain);
+	const rows = [
+		{ kind: "guard", id: "g" },
+		{ kind: "device", id: "b" },
+	];
+	for (const enabled of [false, true])
+		assert.deepEqual(
+			m.meshRowsWithoutProfileProposals(rows, enabled).map((r) => r.id),
+			["b"],
+		);
+});
 test("proposed receipt is bounded, deep link preserves name/proposal without injection", () => {
 	const receipt = {
 		status: "proposed",

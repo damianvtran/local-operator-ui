@@ -66,14 +66,21 @@ export function useGuardCardPlane(): boolean {
 	return desktopFeatureEnabled(capabilities.data, "approvals");
 }
 
+/**
+ * Module-level so `select` keeps one identity: an inline arrow is a new function
+ * each render, which makes react-query re-run it and hand every consumer (the gear
+ * count, the entries, the section) a fresh array to re-render on.
+ */
+const guardRows = (rows: MeshApprovalRow[]): MeshApprovalRow[] =>
+	rows.filter((row) => row.kind === "guard");
+
 export function useGuardPrompts({ poll = true }: { poll?: boolean } = {}) {
 	const enabled = useGuardCardPlane();
 	return useQuery({
 		queryKey: meshApprovalKeys.approvals,
 		enabled,
 		queryFn: readApprovalRows,
-		select: (rows: MeshApprovalRow[]) =>
-			rows.filter((row) => row.kind === "guard"),
+		select: guardRows,
 		retry: false,
 		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
 		refetchInterval: enabled && poll ? GUARD_POLL_MS : false,

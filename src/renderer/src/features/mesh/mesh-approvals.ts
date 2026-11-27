@@ -689,12 +689,19 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		 */
 		const profile = profileTypedApproval(raw.typed_approval);
 		/*
-		 * A GUARD ROW IS RECOGNISED BY ITS RECORD KIND OR ITS TYPED OPERATION, and
-		 * both are checked for the profile row's reason: a `guard_consent` record
-		 * served without a parseable block must still never fall through to the
-		 * generic signing path, so it keeps the kind and loses the block.
+		 * A GUARD ROW IS RECOGNISED BY ITS TYPED OPERATION ALONE. The host's
+		 * approvals row (`badge_row`/`ApprovalRow`) carries no `kind` key, so the
+		 * typed block's `operation` is the only marker it serves. The strict parse
+		 * yields the block; the bare operation name keeps the KIND when the strict
+		 * parse fails (a field this build does not know), so a `guard_consent` record
+		 * with an unreadable block still never falls through to the generic signing
+		 * path or the Mesh tray: it keeps the kind and loses the block.
 		 */
 		const guard = guardTypedApproval(raw.typed_approval);
+		const guardOperation =
+			guard !== null ||
+			(isRecord(raw.typed_approval) &&
+				raw.typed_approval.operation === GUARD_CONSENT_OPERATION);
 		const credential =
 			(isRecord(raw.what) &&
 				(Object.prototype.hasOwnProperty.call(
@@ -709,19 +716,18 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		const explicitKind = Object.prototype.hasOwnProperty.call(raw, "kind")
 			? text(raw.kind)
 			: undefined;
-		const kind: MeshApprovalRow["kind"] =
-			guard !== null || explicitKind === GUARD_CONSENT_OPERATION
-				? "guard"
-				: profile !== null || explicitKind === PROFILE_SAVE_OPERATION
-					? "profile"
-					: credential || explicitKind === "credential_inheritance"
-						? "credential"
-						: explicitKind !== undefined &&
-								!["device_onboard", "local_authority"].includes(explicitKind)
-							? "unknown"
-							: !isRecord(raw.device) && isRecord(raw.machine)
-								? "machine"
-								: "device";
+		const kind: MeshApprovalRow["kind"] = guardOperation
+			? "guard"
+			: profile !== null || explicitKind === PROFILE_SAVE_OPERATION
+				? "profile"
+				: credential || explicitKind === "credential_inheritance"
+					? "credential"
+					: explicitKind !== undefined &&
+							!["device_onboard", "local_authority"].includes(explicitKind)
+						? "unknown"
+						: !isRecord(raw.device) && isRecord(raw.machine)
+							? "machine"
+							: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
@@ -1592,7 +1598,10 @@ export function meshRowsWithoutProfileProposals(
 	rows: MeshApprovalRow[],
 	enabled: boolean,
 ): MeshApprovalRow[] {
-	return rows.filter(
-		(row) => row.kind !== "guard" && !(enabled && row.kind === "profile"),
-	);
+	const dropped = (row: MeshApprovalRow) =>
+		row.kind === "guard" || (enabled && row.kind === "profile");
+	// Hand back the SAME array when nothing is dropped: react-query keeps the
+	// previous `select` result by reference, so a fresh array on every read would
+	// re-render every Mesh surface on each poll for no change.
+	return rows.some(dropped) ? rows.filter((row) => !dropped(row)) : rows;
 }

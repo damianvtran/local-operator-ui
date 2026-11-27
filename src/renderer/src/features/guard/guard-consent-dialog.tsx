@@ -89,9 +89,15 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 	useI18nLocale();
 	const noRef = useRef<HTMLButtonElement>(null);
 	const openedAt = useRef(0);
+	// Re-armed when the CARD changes, not only when the dialog opens: a newer
+	// prompt for the same org replaces `view` while the dialog stays open
+	// (`guard-prompt-entries`), and a press aimed at the old text must not sign the
+	// new one inside the typed-ahead window.
+	const approvalId = view.approvalId;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: approvalId is a re-arm trigger, not a value read in the effect.
 	useEffect(() => {
 		if (open) openedAt.current = now();
-	}, [open, now]);
+	}, [open, now, approvalId]);
 
 	/** True while a press is still inside the typed-ahead window (RFC §5.2.3). */
 	const tooSoon = useCallback(
@@ -110,6 +116,8 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 			open={open}
 			onOpenChange={(next) => {
 				if (next) return;
+				// Esc/scrim while an answer is in flight would hide its outcome.
+				if (busy) return;
 				if (settled) onDone();
 				else onLater();
 			}}

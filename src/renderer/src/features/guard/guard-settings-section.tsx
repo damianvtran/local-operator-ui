@@ -38,9 +38,17 @@ export const GuardSettingsSection: FC = () => {
 	const nonTeam = routes && status.data?.mode === "non_team";
 	const memberships = useMembershipsQuery({ enabled: nonTeam === true });
 	const tenantId = user?.radientUser?.account.tenant_id;
-	const viewerRole = guardViewerRole(
-		memberships.data?.memberships.find((m) => m.tenant_id === tenantId)?.role,
-	);
+	// While the membership read is in flight the role is unknown, not "owner": the
+	// card draws nothing until it settles, so a member never sees (or triggers the
+	// network read for) the owner's call to action. A FAILED read still answers the
+	// owner variant (see `guardViewerRole`).
+	const viewerRole =
+		nonTeam === true && memberships.isPending
+			? "member"
+			: guardViewerRole(
+					memberships.data?.memberships.find((m) => m.tenant_id === tenantId)
+						?.role,
+				);
 	// The one network-reaching read of the family: made only while the card shows.
 	const card = useGuardNonTeamCard(nonTeam === true && viewerRole !== "member");
 	const [failed, setFailed] = useState<string | null>(null);

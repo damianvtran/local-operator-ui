@@ -528,6 +528,21 @@ test("an unparseable or opaque guard card is not listed and cannot be shared", (
 	assert.equal(approvalDecisionRequest(opaque[0], "approve"), null);
 });
 
+test("a guard card is recognised by its typed operation alone: the host sends no `kind` key", () => {
+	for (const typed of [
+		{ operation: "guard_consent", signable_here: true, surprise: 1 },
+		undefined,
+	]) {
+		// The fixture's `kind` is dropped: the real host never serves one.
+		const { kind: _unserved, ...raw } = guardRow(
+			typed ? { typed_approval: typed } : {},
+		);
+		const [row] = approvalRows({ approvals: [raw] });
+		assert.equal(row.kind, "guard");
+		assert.deepEqual(meshRowsWithoutProfileProposals([row], false), []);
+	}
+});
+
 test("every guard op is a /v1/desktop/guard path, and none can carry a grant", () => {
 	for (const request of [
 		{ op: "guard.status" },
@@ -632,6 +647,34 @@ test("Esc is Decide later: nothing is sent and the card is still pending", async
 		[],
 		"Esc answered nothing",
 	);
+});
+
+test("Esc while an answer is in flight keeps the dialog, so its outcome is read", async () => {
+	let release;
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () =>
+			new Promise((resolve) => {
+				release = () => resolve(ok({ applied: { ok: true } }));
+			}),
+	};
+	await render(createElement(GuardPromptEntries));
+	await until(() => q('[data-testid="guard-review"]'), "the entry");
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	await wall(600);
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => release, "the accept in flight");
+	await press("Escape");
+	assert.ok(
+		q('[data-testid="guard-consent-dialog"]'),
+		"Esc did not close the dialog mid-answer",
+	);
+	script["approvals.list"] = list();
+	release();
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
 });
 
 test("input inside the first 500 ms is ignored; Share then sends the one typed accept", async () => {
@@ -788,6 +831,48 @@ test("a newer prompt for the same org replaces the open one with a notice", asyn
 	assert.equal(
 		q('[data-testid="guard-notice"]').textContent,
 		"Acme changed this request. Check the new one below.",
+	);
+});
+
+test("a prompt swapped in under an open dialog re-arms the 500 ms window", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": ok({ applied: { ok: true } }),
+	};
+	await render(createElement(GuardPromptEntries));
+	await until(() => q('[data-testid="guard-review"]'), "the entry");
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	// Past the first window: a press now WOULD be accepted for the first card.
+	await wall(600);
+	script["approvals.list"] = list(
+		guardRow(
+			{ approval_id: "ap_newer" },
+			{ approval_id: "ap_newer", collection_rev: 4 },
+		),
+	);
+	await act(async () => {
+		await client.invalidateQueries();
+	});
+	await until(() => q('[data-testid="guard-notice"]'), "the notice");
+	// A click aimed at the OLD text lands on the NEW card inside its window.
+	await click(q('[data-testid="guard-yes"]'));
+	assert.deepEqual(
+		sent.filter((r) => r.op === "approvals.approveOperation"),
+		[],
+		"the replaced card's first 500 ms ignored the press",
+	);
+	await wall(600);
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => sent.some((r) => r.op === "approvals.approveOperation"),
+		"the accept after the window",
+	);
+	assert.equal(
+		sent.find((r) => r.op === "approvals.approveOperation").approvalId,
+		"ap_newer",
 	);
 });
 
