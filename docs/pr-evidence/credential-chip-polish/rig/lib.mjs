@@ -143,10 +143,10 @@ export const openStory = async (
 	);
 	await sleep(150);
 };
-export const shot = async (cdp, path, clip) => {
+export const shot = async (cdp, path, clip, scale = 2) => {
 	const { data } = await cdp.send("Page.captureScreenshot", {
 		format: "png",
-		...(clip ? { clip: { ...clip, scale: 2 } } : {}),
+		...(clip ? { clip: { ...clip, scale } } : {}),
 	});
 	writeFileSync(path, Buffer.from(data, "base64"));
 };

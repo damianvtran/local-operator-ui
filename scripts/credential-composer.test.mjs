@@ -2631,7 +2631,7 @@ const painted = () => {
 	if (!overlay) return [];
 	return [...overlay.children].map((span) => ({
 		text: span.textContent,
-		pill: span.className.includes("bg-sunken"),
+		pill: span.className.includes("lo-chip-surface"),
 		/*
 		 * ROUND 3 (UX U13) SPLIT THE WARNING ROLE IN TWO, so the background no
 		 * longer identifies a span on its own: the armed TOKEN is the wash alone
@@ -5798,7 +5798,11 @@ test("a chip's box is in content coordinates and the plane's translate takes the
 	host.append(mirror, field);
 	stubRect(mirror, { left: 0, top: 0, width: 400, height: 112 });
 	stubRect(field, { left: 0, top: 0, width: 400, height: 112 });
-	Object.defineProperty(field, "scrollHeight", { value: 331 });
+	// `configurable` so the stale-range row below can grow the text under the chip.
+	Object.defineProperty(field, "scrollHeight", {
+		value: 331,
+		configurable: true,
+	});
 	Object.defineProperty(field, "clientHeight", { value: 112 });
 	// The field is scrolled to 60: the run sits at content y 100, which is y 40 on screen.
 	mirror.scrollTop = 60;
@@ -5806,27 +5810,28 @@ test("a chip's box is in content coordinates and the plane's translate takes the
 	stubRect(run, { left: 10, top: 40, width: 120, height: 17 });
 
 	const layerRoot = createRoot(host);
+	const payloads = new Map([
+		[
+			1,
+			{
+				index: 1,
+				key: "LOP_SECRET_4CE3Y48G",
+				value: "v",
+				marker: "[Credential #1, 19 chars]",
+			},
+		],
+	]);
+	const layerFor = (text) =>
+		h(CredentialChipLayer, {
+			text,
+			payloads,
+			mirrorRef: { current: mirror },
+			fieldRef: { current: field },
+			onClear: () => {},
+			onControlUnmounted: () => {},
+		});
 	await act(async () => {
-		layerRoot.render(
-			h(CredentialChipLayer, {
-				text: "deploy with [Credential #1, 19 chars]",
-				payloads: new Map([
-					[
-						1,
-						{
-							index: 1,
-							key: "LOP_SECRET_4CE3Y48G",
-							value: "v",
-							marker: "[Credential #1, 19 chars]",
-						},
-					],
-				]),
-				mirrorRef: { current: mirror },
-				fieldRef: { current: field },
-				onClear: () => {},
-				onControlUnmounted: () => {},
-			}),
-		);
+		layerRoot.render(layerFor("deploy with [Credential #1, 19 chars]"));
 	});
 	const plane = host.querySelector("[data-credential-chips]");
 	assert.ok(plane, "the layer draws the plane");
@@ -5883,6 +5888,36 @@ test("a chip's box is in content coordinates and the plane's translate takes the
 		plane.firstElementChild.style.top,
 		"100px",
 		"its content position did not move",
+	);
+
+	/*
+	 * THE RANGE IS REFRESHED BY AN EDIT THAT MOVES NO CHIP (code review round 1, R1-1). Text
+	 * typed, pasted or undone BELOW a visible chip while the field is scrolled changes
+	 * `scrollHeight` and nothing else: the run keeps its rect and the field's `scrollTop` is
+	 * unchanged, so no scroll event fires, no resize fires and `sameBoxes` keeps the old
+	 * boxes. The range the compositor's animation maps progress onto must still be the new
+	 * `scrollHeight - clientHeight`, or the plane lands `scrollTop * (1 - old/new)` px off the
+	 * glyphs until the next scroll (12.9px at these numbers). Two more lines after the
+	 * marker: 331 -> 391 tall, so 219px must become 279px on the SAME plane element.
+	 */
+	Object.defineProperty(field, "scrollHeight", {
+		value: 391,
+		configurable: true,
+	});
+	await act(async () => {
+		layerRoot.render(
+			layerFor("deploy with [Credential #1, 19 chars]\nand\nmore"),
+		);
+	});
+	assert.equal(
+		host.querySelector("[data-credential-chips]"),
+		plane,
+		"the same plane: nothing about the chips changed, so nothing re-primed it",
+	);
+	assert.equal(
+		plane.style.getPropertyValue("--lo-credential-scroll-range"),
+		"279px",
+		"an edit that moves no chip still refreshes the scroll range (391 - 112)",
 	);
 
 	// The run leaves the frame: no chip, so the wash is the run's again.
@@ -5949,11 +5984,6 @@ test("the chip plane's scroll timeline, range variable and chipped attribute are
 	);
 });
 
-/*
- * THE LIVE CHIP IS NEUTRAL (operator report 2026-11-27: the `info` blue box read as "really ugly
- * and out of theme"). The roles are pinned by name because the contrast contract asserts the
- * fills it lists: a chip quietly repainted in a colour no row measures would stay green.
- */
 /*
  * THE LIVE CHIP IS NEUTRAL (operator report 2026-11-27: the `info` blue box read as "really ugly
  * and out of theme"). The fill, edge and material roles are pinned in

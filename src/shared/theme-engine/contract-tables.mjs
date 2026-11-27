@@ -1593,6 +1593,13 @@ export const CONTROLS = [
 		// The composer's ground (`elevated`) and the sent bubble's (`messageSurface`)
 		// are listed beside the two grounds the row had: the chip is painted on both,
 		// and a green row about grounds it is not drawn on is not evidence.
+		//
+		// `sunken` IS THE LIGHT FILL. In a dark palette the chip wears the raised mix
+		// `.lo-chip-surface` builds (`ink` 6% over `elevated`), which no palette key
+		// names; the three "credential chip (dark fill)" `MIXED_FILLS` rows measure it
+		// there. These rows keep measuring `sunken` in dark too - stricter than
+		// needed, and a pair that is not drawn - rather than gain a scheme switch,
+		// so the dark-fill rows are the ones that carry the dark claim.
 		on: ["canvas", "surface", "elevated", "messageSurface"],
 		fill: "sunken",
 		border: null,
@@ -1601,9 +1608,11 @@ export const CONTROLS = [
 	},
 	{
 		// The key glyph, the chip's one colour (`credential-chip.tsx`): `accent` on the
-		// chip's own `sunken` fill, which has to clear the text floor because the
+		// light chip's `sunken` fill, which has to clear the text floor because the
 		// glyph is the only thing that says what the chip is before it is read.
-		// 4.50:1 at worst (`solarizedLight`).
+		// 4.50:1 at worst (`solarizedLight`). On the dark chip's raised fill the glyph
+		// is held to the 3:1 icon floor instead - the "credential chip (dark fill) key
+		// glyph" `MIXED_FILLS` row - because four dark palettes fall under 4.5 there.
 		name: "credential chip key glyph",
 		on: ["canvas", "surface", "elevated", "messageSurface"],
 		fill: "sunken",
@@ -4278,7 +4287,9 @@ export const LINE_SEPARATION_FLOOR = 4.0;
  * Pairs whose GROUND is a `color-mix`, asserted in the palette loop's "MIXED
  * FILLS" block. `mix` is `[A, B, A's share]`, exactly as the class spells it;
  * `apartFrom` lists the neighbouring states the fill must not be confused with,
- * each with its ΔE00 floor.
+ * each with its ΔE00 floor. An optional `mode` scopes a row to one colour scheme
+ * (`"dark"` / `"light"`), for a fill the stylesheet mixes under one arm of
+ * `light-dark()` only.
  */
 export const MIXED_FILLS = [
 	{
@@ -4316,6 +4327,58 @@ export const MIXED_FILLS = [
 		ink: "ink",
 		floor: FLOOR.nonText,
 		apartFrom: [[["accentWash", "accent", 0.8], FIELD_SEPARATION_FLOOR]],
+	},
+	/*
+	 * THE CREDENTIAL CHIP'S DARK FILL (`.lo-chip-surface`, `styles/index.css`;
+	 * `credential-chip.tsx`; design round 1, D1). In a dark palette the chip is the
+	 * composer's raised, lit material: `ink` 6% over `elevated`, LIGHTER than the
+	 * bubble and the composer it sits on, where the `sunken` it first wore was a
+	 * darker hole in them (1.18:1 below the bubble). In light the fill is `sunken`
+	 * and the `credential chip*` CONTROLS rows measure it, so these rows are dark
+	 * only. Three rows because the chip paints three inks on it, each with its own
+	 * floor, 41 dark palettes:
+	 *
+	 *  - THE KEY GLYPH, `accent`, at the 3:1 NON-TEXT floor. It is an icon (WCAG
+	 *    1.4.11), `aria-hidden`, with the sentence in the `title` and the screen-
+	 *    reader text, like the voice toggle's glyph above. The raised fill takes it
+	 *    under 4.5:1 in four palettes (duskfox 3.95, nightfox 4.49, outrun 4.48,
+	 *    synth 4.46) and no lower than 3.95 anywhere, so 3:1 holds with 0.95 spare.
+	 *    The fill's STEP off its grounds - the chip's whole boundary now that it has no
+	 *    edge: ΔE00 >= 2.58 off `elevated` (1.118:1), >= 3.06 off `messageSurface`
+	 *    (1.147:1), >= 4.66 off `surface` - is NOT an `apartFrom` here, on purpose:
+	 *    this table also drives the contrast engine's solver at every Soft..High
+	 *    level, and a step floor in it made ayuDark's Soft level raise its ink (the
+	 *    order test "ink on canvas is non-decreasing Soft -> High" failed, 8.89 ->
+	 *    8.78). The step is asserted on the 59 shipped palettes by
+	 *    `scripts/credential-chip-surface.test.mjs` S-4, the way the sunken chip's
+	 *    was before this row existed.
+	 *  - THE NAME, `ink`, at the text floor (7.27:1 at worst).
+	 *  - THE COUNT AND THE CLEAR CONTROL, `inkMuted`, at the text floor (5.97:1 at
+	 *    worst).
+	 *
+	 * The 6% is the stylesheet's literal; `scripts/credential-chip-surface.test.mjs`
+	 * reads it back from `index.css` and fails when the two disagree.
+	 */
+	{
+		name: "credential chip (dark fill) key glyph",
+		mode: "dark",
+		mix: ["ink", "elevated", 0.06],
+		ink: "accent",
+		floor: FLOOR.nonText,
+	},
+	{
+		name: "credential chip (dark fill) name",
+		mode: "dark",
+		mix: ["ink", "elevated", 0.06],
+		ink: "ink",
+		floor: FLOOR.text,
+	},
+	{
+		name: "credential chip (dark fill) count and clear",
+		mode: "dark",
+		mix: ["ink", "elevated", 0.06],
+		ink: "inkMuted",
+		floor: FLOOR.text,
 	},
 ];
 

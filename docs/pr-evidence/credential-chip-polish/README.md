@@ -16,16 +16,29 @@ viewport (1024x300, or 440 where named), same themes: `localOperatorDark`, `loca
 `rig/lag.mjs` drives the `credential-pill-scrolled` story in a private headless Chrome over CDP (mock keychain, scratch
 profile), wheel-scrolls the textarea with `Input.synthesizeScrollGesture` (a compositor-driven gesture, not a
 `scrollTop` write), records the real presented frames with `Page.startScreencast`, paints the field's glyphs pure red
-and the chip's edge pure green, and reads, per frame, how far the text sits from the chip box (a cross-correlation of
-the red row profile against the at-rest frame; lines repeat every 17px, so the value is folded into 0-17).
-A `getBoundingClientRect` probe cannot see this: the main thread's own view of both boxes agrees in every frame.
+and the chip's edge pure green, and reads, per frame, where the marker's ink sits inside the chip box, against the
+same measure at rest. A `getBoundingClientRect` probe cannot see this: the main thread's own view of both boxes agrees
+in every frame.
+
+The field holds ONE line of ink (the marker, with blank lines around it), so the red glyphs inside the chip box's
+columns can only be the marker at any displacement. The first version of the rig used repeating filler prose, so a
+shift was only defined modulo the 17px line pitch and was folded into 0-17 px; it could not report a lag of 17 px or
+more and could not tell a chip that trails from one that leads (QA round 1, Q1). The lag is now SIGNED and UNFOLDED:
+positive when the chip trails the text, negative when it leads it, `maxTrailPx` / `maxLeadPx` are reported
+separately, and `travelPx` is the chip's own travel for scale. `before-lag.json` was taken with the folded metric (on
+`origin/main`, which no longer exists as a build here) and is kept as the original claim, not re-derived; the
+`after-*` files are re-taken with the new metric on this head.
 
     node scripts/with-storybook.mjs -- node docs/pr-evidence/credential-chip-polish/rig/lag.mjs <label> <outdir>
 
-| build | gesture speed | frames with a chip | median lag | max lag |
+| build | gesture speed | frames with a chip (moved) | median lag | max trail / max lead |
 |---|---|---|---|---|
-| before (`origin/main`) | 240 px/s | 25 | 3 px | 5 px |
-| before (`origin/main`) | 480 px/s | 14 | 10 px | 16 px |
-| after | 240 px/s | 26 | 0 px | 0 px |
-| after | 480 px/s | 16 | 0 px | 0 px |
-| after, scroll timeline switched off (negative control, `FALLBACK=1`) | 240 / 480 px/s | 24 / 14 | 1 / 3 px | 4 / 6 px |
+| before (`origin/main`), folded metric, original claim | 240 px/s | 25 | 3 px | 5 px (folded) |
+| before (`origin/main`), folded metric, original claim | 480 px/s | 14 | 10 px | 16 px (folded) |
+| after (this head) | 240 px/s | 24 (19) | 0 px | 0 / 0 px, 0 non-zero frames |
+| after (this head) | 480 px/s | 15 (12) | 0 px | 0 / 0 px, 0 non-zero frames |
+| after, scroll timeline switched off (negative control, `FALLBACK=1`) | 240 px/s | 25 (21) | 4 px | 8 / 0 px, 21 non-zero frames |
+| after, scroll timeline switched off (negative control, `FALLBACK=1`) | 480 px/s | 15 (11) | 7 px | 10 / 0 px, 12 non-zero frames |
+
+The negative control (the listener-driven path, which is what the old build did) trails by up to 10 px and never
+leads, which is what a one-frame-late repaint does; the compositor-driven build is exactly 0 in every frame.

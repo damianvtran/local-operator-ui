@@ -22,6 +22,13 @@ div[aria-hidden='true'].-z-10 { visibility: hidden !important; }
 [data-credential-chips] span[title] { background: transparent !important; outline: 1px solid #00ff00 !important; border-radius: 0 !important; }
 [data-credential-chips] span[title] * { visibility: hidden !important; }
 `;
+// THE FIELD HOLDS ONE LINE OF INK. Everything else is blank lines, so the red glyphs inside
+// the chip box's own columns can only be the marker the chip covers - at any displacement.
+// With ordinary filler prose the other lines look like the marker and a shift is only defined
+// modulo the line pitch (the first version of this rig folded it into [0, 17), which could
+// not report a lag of 17px or more nor tell a trailing chip from a leading one: QA round 1,
+// Q1). The marker is kept exactly as the composer writes it so its payload still backs it.
+const MARKER_TEXT = `${"\n".repeat(12)}deploy with [Credential #1, 19 chars] to the staging box${"\n".repeat(16)}`;
 const FALLBACK = process.env.FALLBACK === "1"; // negative control: switch the scroll-driven animation off
 const results = { label, speeds: {} };
 try {
@@ -31,17 +38,11 @@ try {
 		cdp,
 		`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(TEST_CSS + (FALLBACK ? "[data-credential-chips]{animation:none !important}" : ""))}; document.head.appendChild(s); })()`,
 	);
-	// Put the marker in the MIDDLE of the buffer so the chip has a long run of visible travel.
+	// Blank lines above and below the marker so the chip has a long run of visible travel.
 	await evaluate(
 		cdp,
-		`(() => { const f = document.querySelector('textarea'); f.focus(); f.setSelectionRange(f.value.length, f.value.length); })()`,
+		`(() => { const f = document.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(f, ${JSON.stringify(MARKER_TEXT)}); f.dispatchEvent(new Event('input', { bubbles: true })); })()`,
 	);
-	await cdp.send("Input.insertText", {
-		text: `\n${Array.from(
-			{ length: 16 },
-			(_, i) => `tail line ${i + 1} of trailing prose here`,
-		).join("\n")}`,
-	});
 	await sleep(300);
 	const setup = `(async () => {
 		const f = document.querySelector('textarea');
@@ -90,7 +91,7 @@ try {
 		};
 	}
 	// Analysis
-	const analyse = (png) => {
+	const analyse = (png, band) => {
 		const { w, h, bpp, px } = decodePng(png);
 		const at = (x, y) => {
 			const i = (y * w + x) * bpp;
@@ -123,43 +124,43 @@ try {
 		const g1 = rows[rows.length - 1].y;
 		const bx0 = rows[0].x0;
 		const bx1 = rows[0].x1;
-		const prof = new Array(120).fill(0); // y' = y - g0 + 40
-		for (let y = Math.max(0, g0 - 40); y < Math.min(h, g0 + 80); y++) {
+		// The marker's own ink: the first red row, inside the field, in the columns the chip
+		// box spans. The field holds no other ink there (see MARKER_TEXT), so this is the
+		// marker at any displacement, and `textTop - g0` is where the text sits in the box.
+		let textTop = -1;
+		for (
+			let y = Math.max(0, Math.ceil(band[0]));
+			y < Math.min(h, Math.floor(band[1]));
+			y++
+		) {
 			let n = 0;
 			for (let x = bx0 + 3; x < bx1 - 3; x++) if (red(x, y)) n++;
-			prof[y - g0 + 40] = n;
+			if (n >= 3) {
+				textTop = y;
+				break;
+			}
 		}
-		return { g0, g1, bx0, bx1, prof };
-	};
-	const corr = (a, b, s) => {
-		let c = 0;
-		for (let i = 0; i < a.length; i++) {
-			const j = i - s;
-			if (j >= 0 && j < b.length) c += a[i] * b[j];
-		}
-		return c;
+		return textTop < 0 ? null : { g0, g1, bx0, bx1, textTop };
 	};
 	const { readFileSync } = await import("node:fs");
 	for (const speed of Object.keys(results.speeds)) {
 		const R = results.speeds[speed];
-		const tmpl = analyse(readFileSync(`${outdir}/${label}-rest-${speed}.png`));
+		const band = [R.start.rect[1], R.start.rect[1] + R.start.rect[3]];
+		const tmpl = analyse(
+			readFileSync(`${outdir}/${label}-rest-${speed}.png`),
+			band,
+		);
 		R.templateBox = tmpl && { g0: tmpl.g0, g1: tmpl.g1 };
 		const per = [];
 		for (const f of R.frameData) {
-			const a = analyse(Buffer.from(f.data, "base64"));
+			const a = analyse(Buffer.from(f.data, "base64"), band);
 			if (!a || !tmpl) {
 				per.push({ t: f.t, chip: false });
 				continue;
 			}
-			let best = 0;
-			let bs = 0;
-			for (let s = -16; s <= 16; s++) {
-				const c = corr(a.prof, tmpl.prof, s);
-				if (c > best) {
-					best = c;
-					bs = s;
-				}
-			}
+			// Where the text sits in the box, against the same measure at rest: positive means the
+			// text is LOWER in the box than it was. Signed and unbounded, no fold.
+			const bs = a.textTop - a.g0 - (tmpl.textTop - tmpl.g0);
 			per.push({
 				t: +f.t.toFixed(4),
 				chip: true,
@@ -170,10 +171,20 @@ try {
 		}
 		R.perFrame = per;
 		R.frameData = undefined;
-		// The filler lines repeat every 17px (one line pitch), so a shift is only defined modulo 17; the chip can only TRAIL
-		// the text here (it is repositioned after the textarea already moved), so the lag is the shift folded into [0,17).
+		// SIGNED, UNFOLDED LAG. `textShiftVsBox` (s) is where the text sits relative to the
+		// chip box, against the same frame at rest: s > 0 means the text is LOWER in the box
+		// than at rest. Which way that is "behind" depends on the direction of travel: scrolling
+		// down moves the text up and a trailing chip is left BELOW it (s < 0); scrolling up is
+		// the mirror. So the lag is s times the sign of the box's own travel, positive when the
+		// chip TRAILS the text and negative when it LEADS it.
+		const travel = per
+			.filter((p) => p.chip)
+			.map((p) => p.boxTop - tmpl.g0)
+			.reduce((m, v) => (Math.abs(v) > Math.abs(m) ? v : m), 0);
+		R.travelPx = travel;
+		const dir = Math.sign(travel) || 1;
 		for (const p of per) {
-			if (p.chip) p.lagPx = ((p.textShiftVsBox % 17) + 17) % 17;
+			if (p.chip) p.lagPx = p.textShiftVsBox * dir;
 		}
 		const moving = per.filter(
 			(p, i) =>
@@ -189,7 +200,9 @@ try {
 				? +((ts.length - 1) / (ts[ts.length - 1] - ts[0])).toFixed(1)
 				: null;
 		R.framesWithChip = lags.length;
-		R.maxLagPx = Math.max(0, ...lags);
+		R.maxLagPx = Math.max(0, ...lags.map(Math.abs));
+		R.maxTrailPx = Math.max(0, ...lags);
+		R.maxLeadPx = Math.max(0, ...lags.map((v) => -v));
 		R.medianLagPx = lags.slice().sort((a, b) => a - b)[
 			Math.floor(lags.length / 2)
 		];

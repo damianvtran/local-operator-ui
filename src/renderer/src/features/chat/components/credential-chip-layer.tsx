@@ -410,6 +410,18 @@ export const CredentialChipLayer = ({
 		};
 		syncPlaneRef.current = syncPlane;
 		measure();
+		/*
+		 * THE RANGE IS REFRESHED ON EVERY MEASURE, not only on a scroll or a chip move
+		 * (code review round 1, R1-1). This effect re-runs when the text, the payloads
+		 * or the capture change, and an edit BELOW a visible chip while the field is
+		 * scrolled changes `scrollHeight` and nothing else: the run keeps its rect, the
+		 * field keeps its `scrollTop`, so no scroll event fires, no chip box changes and
+		 * the prime effect below (keyed on `boxes`) never runs. Without this call the
+		 * animation would keep mapping progress onto the OLD range and park the plane
+		 * `scrollTop * (1 - oldRange / newRange)` px off the glyphs until the next scroll.
+		 * A no-op where there is no plane yet; the prime effect covers that mount.
+		 */
+		syncPlane();
 		field.addEventListener("scroll", onScroll);
 		/*
 		 * AND ON A RESIZE (code review round 1, R1-3), which the scroll listener
@@ -544,6 +556,10 @@ export const CredentialChipLayer = ({
 							label={chip.label}
 							chars={chip.chars}
 							tone={unbacked ? "warning" : "live"}
+							// `#N` is an identifier in both registers (R1-4): the not-stored chip
+							// here is labelled by the same ordinal, unlike the transcript's
+							// sentence.
+							identifier
 							// Only a run a payload backs has a value to throw away. An unbacked
 							// marker is a citation of a value this composer cannot reach any more,
 							// so there is nothing behind its control to clear and it gets none —

@@ -74,6 +74,46 @@ try {
 			const clip = await clipOf("textarea", 14);
 			await shot(cdp, `${outdir}/${label}-${theme}-${name}.png`, clip);
 		}
+		// Only with EXTRAS=1 (the dark and light themes): the 4x zoom of the composer chip's
+		// corners over the marker's bracket glyphs, and a marker that wraps (it keeps the wash
+		// and draws no chip). Re-shot with the raised dark fill because both show the material.
+		if (process.env.EXTRAS === "1") {
+			await openStory(cdp, "chat-message-input--credential-pill-mid-prose", {
+				theme,
+				width: 1024,
+				height: 300,
+				ready: "[data-credential-chips],[data-credential-run]",
+			});
+			await sleep(300);
+			await evaluate(cdp, "document.activeElement?.blur?.(); 0");
+			const chip = await clipOf("[data-credential-chips] span[title]", 6);
+			await shot(
+				cdp,
+				`${outdir}/${label}-${theme}-composer-zoom4x.png`,
+				chip,
+				4,
+			);
+			await openStory(cdp, "chat-message-input--credential-pill-mid-prose", {
+				theme,
+				width: 1024,
+				height: 300,
+				ready: "[data-credential-chips],[data-credential-run]",
+			});
+			await evaluate(
+				cdp,
+				"(() => { const f = document.querySelector('textarea'); f.focus(); f.setSelectionRange(0, 0); 0; })()",
+			);
+			await cdp.send("Input.insertText", {
+				text: "Please walk through every step of the staging rollout carefully and then ",
+			});
+			await sleep(300);
+			await evaluate(cdp, "document.activeElement?.blur?.(); 0");
+			await shot(
+				cdp,
+				`${outdir}/${label}-${theme}-wrapped-run.png`,
+				await clipOf("textarea", 14),
+			);
+		}
 		// scrolled
 		await openStory(cdp, "chat-message-input--credential-pill-scrolled", {
 			theme,

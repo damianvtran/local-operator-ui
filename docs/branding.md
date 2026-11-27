@@ -492,7 +492,10 @@ forced colors.
 credential chip** (`.lo-chip-surface`, `styles/index.css`; operator, 2026-11-27).
 The chip is in-flow, yet it carries a single low contact shadow (`0 1px 2px` in
 `--lo-shadow-contact`, the same scrim-derived colour `shadow-overlay`'s contact layer
-is built from, nothing new) and a half-strength copy of the composer's sheen. The rule
+is built from, nothing new; in a dark scheme the same one layer in the scrim at 70%,
+because the contact colour is 1.09:1 off a dark bubble and does not read there) and a
+half-strength copy of the composer's sheen. Its fill steps the way the composer's does:
+lighter than its ground in dark (`ink` 6% over `elevated`), `sunken` in light. The rule
 exists because an in-flow card can take the next ground instead; a chip painted ON a
 run of text has neither a free ground to step to nor an edge (the operator removed
 it, and a border would also shift the box the composer measures it against), so the
@@ -502,8 +505,10 @@ becomes an ambient halo. The not-stored register stays flat (no sheen, no shadow
 which is one of the two non-colour channels that separate it from a live chip
 (the other is the triangle glyph). Forced colours drops the sheen and the shadow and
 draws an outline in their place.
-`scripts/credential-chip-surface.test.mjs` holds the ink floors on the sheen and the
-fill's step off each ground in all 59 palettes.
+`scripts/credential-chip-surface.test.mjs` holds the ink floors on the sheen (read from
+the stylesheet) and the fill's step off each ground in all 59 palettes; the key glyph is
+an icon and is held to the 3:1 non-text floor on the raised dark fill (4 palettes fall
+under 4.5:1 there).
 
 ### The four inks
 
