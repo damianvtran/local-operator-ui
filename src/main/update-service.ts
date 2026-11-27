@@ -218,6 +218,10 @@ import {
 	zipMainExecutableEntry,
 } from "./update-install";
 import {
+	acquireUpdateOperation,
+	currentUpdateOperation,
+} from "./update-operation";
+import {
 	DITTO_PATH,
 	EXTRACTION_TIMEOUT_MS,
 	type StagedBundleReading,
@@ -2617,15 +2621,6 @@ export class UpdateService {
 	private inFlightQuitWatchdogEnsured = false;
 
 	/**
-	 * True while `quit-and-install` is running its pre-flight.
-	 *
-	 * The pre-flight can take seconds over a large bundle and artifact, and the
-	 * whole point of it is that a second request must not run beside the first (see
-	 * the handler).
-	 */
-	private installPreflightInFlight = false;
-
-	/**
 	 * How long the rebuild install leg may hold back for the fleet, and how often
 	 * it re-reads it.
 	 *
@@ -4931,9 +4926,10 @@ export class UpdateService {
 		// rest of them.
 		this.stopInstallInFlightRecheck();
 
-		// And a download's stall watchdog, for the same reason: it would otherwise
-		// survive the service and fire into a token whose download this window no
-		// longer owns.
+		// This window is about to lose its download-progress listener. Cancel the
+		// abandoned attempt through its token before disarming the watchdog, or a
+		// stalled download would keep the process-wide lease with no way to time out.
+		this.downloadCancellationToken?.cancel();
 		this.clearDownloadStallWatchdog();
 
 		// Remove all autoUpdater event listeners
@@ -4995,6 +4991,9 @@ export class UpdateService {
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
 		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
+		// A reopened window must not change the process-wide feed under a download.
+		const owner = currentUpdateOperation();
+		if (owner === "app" || owner === "combined") return null;
 		const epoch = this.appFeedFetchEpoch + 1;
 		this.appFeedFetchEpoch = epoch;
 		const sequence = this.runAppFeedAttempts(fetchFeed, epoch);
@@ -5447,6 +5446,27 @@ export class UpdateService {
 		this.failedVerificationVersions.clear();
 	}
 
+	/** Both app actions use the same lease, but the IPC refusal contracts differ. */
+	private registerStandaloneAppOperation(
+		channel: "download-update" | "quit-and-install",
+		run: () => Promise<unknown>,
+	): void {
+		ipcMain.handle(channel, async () => {
+			const release = acquireUpdateOperation("app");
+			if (!release) {
+				if (channel === "quit-and-install") return false;
+				throw new Error(
+					t("ui.common.updates.update_notification.failure_remedy_lock"),
+				);
+			}
+			try {
+				return await run();
+			} finally {
+				release();
+			}
+		});
+	}
+
 	public setupIpcHandlers(): void {
 		// Check for UI updates
 		ipcMain.handle(
@@ -5649,8 +5669,7 @@ export class UpdateService {
 			},
 		);
 
-		// Download update
-		ipcMain.handle("download-update", async () => {
+		this.registerStandaloneAppOperation("download-update", async () => {
 			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
 			this.updateStage = "downloading";
 			/*
@@ -5718,27 +5737,8 @@ export class UpdateService {
 			}
 		});
 
-		// Quit and install update
-		//
-		// Async, and deliberately capable of refusing: this is the only place an
-		// install starts, and it starts only after the installed bundle and the
-		// staged artifact have been checked (see runInstallPreflight).
-		//
-		// One install at a time. The pre-flight can run `codesign` over a 1 GiB
-		// bundle and hash a 350 MB artifact, and for those seconds the panel used to
-		// look untouched with its primary button still live - so a second click
-		// re-entered the whole thing, spawned a second watchdog and overwrote the
-		// first marker's pid (review U5). The renderer also shows a pending state;
-		// this is the half that has to hold when something else calls in.
-		ipcMain.handle("quit-and-install", async () => {
-			if (this.installPreflightInFlight) {
-				logger.info(
-					"Ignoring a second install request while the pre-flight is still running.",
-					LogFileType.UPDATE_SERVICE,
-				);
-				return false;
-			}
-
+		// The lease spans pre-flight, backend cleanup and the installer handoff.
+		this.registerStandaloneAppOperation("quit-and-install", async () => {
 			/*
 			 * An unpackaged instance never starts an install, and stating it here is what
 			 * makes that more than a detail: the marker below goes into the shared
@@ -5753,12 +5753,13 @@ export class UpdateService {
 				);
 				return false;
 			}
+			// The lease ends at handoff; the marker protects an installer already running.
+			if (this.livePendingInstallMarker()) return false;
 			logger.info(
 				"Preparing to quit and install the update...",
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			this.installPreflightInFlight = true;
 			this.updateStage = "installing";
 			let block: InstallBlock | null = null;
 			let handoff: InstallerHandoff | null = null;
@@ -5799,8 +5800,6 @@ export class UpdateService {
 					error,
 				);
 				return false;
-			} finally {
-				this.installPreflightInFlight = false;
 			}
 			if (block) {
 				this.updateStage = "idle";
@@ -5942,31 +5941,46 @@ export class UpdateService {
 		 * instance of the target app is running before it swaps.
 		 */
 		ipcMain.handle("quit-for-update-install", () => {
-			const marker = readPendingInstallMarker(this.markerDir());
-			logger.info(
-				"Quitting so the in-flight update install can finish.",
-				LogFileType.UPDATE_SERVICE,
-			);
-			/*
-			 * Recorded the way `quitForInFlightInstall` records it, and before the
-			 * ensure rather than after: this handler IS the decision, and this app's
-			 * quit runs the other one again on the way out (`before-quit` asks the
-			 * same question). Without the flag the second answer finds
-			 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
-			 * two decisions and two watchdogs for one quit, where the window-close
-			 * gesture has always been one (UX U8). The flag is what makes "one
-			 * decision per quit" a property of the service rather than of which
-			 * gesture reached it.
-			 */
-			if (marker && !this.inFlightQuitWatchdogEnsured) {
-				this.inFlightQuitWatchdogEnsured = true;
-				this.ensureWatchdogAfterInFlightQuit(marker);
+			const release = acquireUpdateOperation("app");
+			if (!release) return false;
+			// Keep the lease through the deferred quit, not just the IPC reply.
+			let quitScheduled = false;
+			try {
+				const marker = readPendingInstallMarker(this.markerDir());
+				logger.info(
+					"Quitting so the in-flight update install can finish.",
+					LogFileType.UPDATE_SERVICE,
+				);
+				/*
+				 * Recorded the way `quitForInFlightInstall` records it, and before the
+				 * ensure rather than after: this handler IS the decision, and this app's
+				 * quit runs the other one again on the way out (`before-quit` asks the
+				 * same question). Without the flag the second answer finds
+				 * `inFlightQuitWatchdogEnsured` false, decides again and ensures again -
+				 * two decisions and two watchdogs for one quit, where the window-close
+				 * gesture has always been one (UX U8). The flag is what makes "one
+				 * decision per quit" a property of the service rather than of which
+				 * gesture reached it.
+				 */
+				if (marker && !this.inFlightQuitWatchdogEnsured) {
+					this.inFlightQuitWatchdogEnsured = true;
+					this.ensureWatchdogAfterInFlightQuit(marker);
+				}
+				// Deferred so the reply reaches the renderer first: the button that
+				// asked for this reports a failure if the app quits mid-request, and
+				// the quit it asked for is happening either way.
+				setImmediate(() => {
+					try {
+						app.quit();
+					} finally {
+						release();
+					}
+				});
+				quitScheduled = true;
+				return true;
+			} finally {
+				if (!quitScheduled) release();
 			}
-			// Deferred so the reply reaches the renderer first: the button that
-			// asked for this reports a failure if the app quits mid-request, and
-			// the quit it asked for is happening either way.
-			setImmediate(() => app.quit());
-			return true;
 		});
 	}
 
@@ -10335,6 +10349,27 @@ export class UpdateService {
 	}
 
 	public async updateBackend(targetVersion?: string): Promise<boolean> {
+		const release = acquireUpdateOperation("backend");
+		if (!release) return this.reportServerUpdateBusy();
+		try {
+			return await this.runBackendUpdate(targetVersion);
+		} finally {
+			release();
+		}
+	}
+
+	private reportServerUpdateBusy(): false {
+		logger.warn("An update is already running", LogFileType.UPDATE_SERVICE);
+		this.sendToRenderer("backend-update-error", {
+			message: t("ui.common.updates.update_notification.failure_remedy_lock"),
+			phase: "update",
+			authored: "message",
+			logPath: serverUpdateLogPath(),
+		});
+		return false;
+	}
+
+	private async runBackendUpdate(targetVersion?: string): Promise<boolean> {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 		/*
 		 * THE UPDATE-IN-FLIGHT HOLD COVERS THE WHOLE PRESS, NOT JUST THE RESTART
@@ -10354,12 +10389,9 @@ export class UpdateService {
 		 * deliberate stop is not an "exited unexpectedly" dialog, and recovery does
 		 * not race a restart that is already scheduled (`recoverFromDetachment`).
 		 *
-		 * WHAT THIS DOES NOT DO IS CLEAR A HOLD IT DID NOT TAKE: a second press
-		 * reaches here too - the surfaces that ask for an update hold per-surface
-		 * flags - and it is answered by the install group guard below, so clearing
-		 * unconditionally on its way out would drop the flag under the first press.
-		 * The same reading guards the drain ledger: only the press that opened the
-		 * window may start its ten minutes.
+		 * The process lease prevents a second press from reaching this work, but
+		 * the manager may already own its own hold. Do not clear that hold or
+		 * reset its drain ledger.
 		 */
 		const backend = this.backendService;
 		/*

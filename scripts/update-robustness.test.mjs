@@ -7490,7 +7490,7 @@ const loadUpdateServiceModule = async ({
 			 * pass while the function the app calls answered something else.
 			 */
 			contents:
-				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift"; export * from "./src/main/desktop-stream";',
+				'export * from "./src/main/update-service"; export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/venv-paths"; export * from "./src/main/backend-version-drift"; export * from "./src/main/desktop-stream"; export * from "./src/main/update-operation";',
 			resolveDir: process.cwd(),
 		},
 		bundle: true,
@@ -7585,7 +7585,7 @@ const loadUpdateServiceModule = async ({
 									whenReady: async () => {},
 									on: () => app,
 									once: () => app,
-									quit: () => {},
+									quit: () => globalThis.__loTestAppQuit?.(),
 									relaunch: () => {},
 									exit: () => {},
 									isReady: () => true,
@@ -8019,6 +8019,219 @@ test("a failed update-backend reports on backend-update-error and resolves false
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
 	}
+});
+
+// Drive registered handlers on both sides of dispose/reopen. The gates replace
+// native or filesystem effects, not the IPC, lease, or backend update routing.
+test("registered update IPC shares one owner across reopened windows", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "lo-update-operation-"));
+	globalThis.__loTestPaths = {
+		home: root,
+		userData: root,
+		appData: root,
+		temp: root,
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const appCleanup = Promise.withResolvers();
+	const appCleanupEntered = Promise.withResolvers();
+	const backendWork = Promise.withResolvers();
+	const backendWorkEntered = Promise.withResolvers();
+	const sent = [];
+	const actions = [];
+	let windowService;
+	let autoUpdating = false;
+	let failHold = false;
+	const backend = {
+		getStartupMode: () => service.LocalOperatorStartupMode.APP_BUNDLED_VENV,
+		checkIsAutoUpdating: () => autoUpdating,
+		isUsingExternalBackend: () => false,
+		setAutoUpdating: (held) => {
+			if (failHold) throw Error("backend hold failed");
+			autoUpdating = held;
+		},
+		stop: (keepBackend) => {
+			actions.push(["stop", keepBackend]);
+			appCleanupEntered.resolve();
+			return appCleanup.promise;
+		},
+	};
+	const open = () => {
+		windowService?.dispose();
+		windowService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					isDestroyed: () => false,
+					send: (channel, payload) => sent.push([channel, payload]),
+				},
+			},
+			backend,
+			{ quietReason: "test" },
+		);
+		windowService.lastUpdateInfo = { version: "9.9.9" };
+		windowService.runInstallPreflight = async () => null;
+		windowService.stageInstallerHandoff = async () => ({ kind: "fallback" });
+		windowService.launchWatchdog = (version) => {
+			actions.push(["watchdog", version]);
+			return null;
+		};
+		windowService.readRunningBackend = async () => ({ version: "1.0.0" });
+		windowService.readServingInstall = () => ({ appOwned: true });
+		windowService.runAppOwnedUpdateAttempt = async (target) => {
+			actions.push(["backend", target]);
+			// A missing lease must fail as an unexpected result, not hang the test.
+			if (target !== "1.0.1") return true;
+			backendWorkEntered.resolve();
+			return backendWork.promise;
+		};
+		windowService.setupIpcHandlers();
+	};
+	t.after(() => {
+		appCleanup.resolve();
+		backendWork.resolve(false);
+		windowService?.dispose();
+		globalThis.__loTestPaths = undefined;
+		globalThis.__loTestAppCheck = undefined;
+		globalThis.__loTestDownload = undefined;
+		globalThis.__loTestAppQuit = undefined;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(root, { recursive: true, force: true });
+	});
+	const invoke = (channel, arg) => globalThis.__loIpcHandlers[channel]({}, arg);
+	const feed = { isUpdateAvailable: true, updateInfo: { version: "9.9.9" } };
+	let feeds = 0;
+	globalThis.__loTestAppCheck = async () => {
+		feeds++;
+		return feed;
+	};
+
+	open();
+	const appInstall = invoke("quit-and-install");
+	await appCleanupEntered.promise;
+	open();
+	assert.equal(await invoke("update-backend", "loser"), false);
+	assert.equal(await invoke("quit-for-update-install"), false);
+	assert.equal(await invoke("check-for-updates", { manual: true }), null);
+	assert.equal(feeds, 0);
+	const backendOffer = { latestVersion: "1.0.1" };
+	windowService.checkForBackendUpdates = async () => ({ info: backendOffer });
+	assert.equal(await invoke("check-for-backend-updates"), backendOffer);
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.deepEqual(actions, [["stop", false]]);
+	assert.equal(autoUpdating, false);
+	assert.ok(
+		sent.some(
+			([channel, payload]) =>
+				channel === "backend-update-error" &&
+				payload.authored === "message" &&
+				payload.phase === "update",
+		),
+	);
+	appCleanup.reject(Error("owned cleanup refused"));
+	assert.equal(await appInstall, false);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"app→backend after reopen: false, authored busy event, no backend mutation; refused app cleanup releases ownership",
+	);
+
+	const backendInstall = invoke("update-backend", "1.0.1");
+	await backendWorkEntered.promise;
+	open();
+	assert.equal(await invoke("quit-and-install"), false);
+	assert.equal(await invoke("quit-for-update-install"), false);
+	await assert.rejects(invoke("download-update"));
+	assert.equal(await invoke("update-backend", "another loser"), false);
+	assert.equal(await invoke("check-for-updates", { manual: true }), feed);
+	assert.equal(feeds, 1);
+	assert.equal(service.currentUpdateOperation(), "backend");
+	assert.equal(autoUpdating, true);
+	assert.deepEqual(actions, [
+		["stop", false],
+		["backend", "1.0.1"],
+	]);
+	backendWork.resolve(true);
+	assert.equal(await backendInstall, true);
+	assert.equal(service.currentUpdateOperation(), null);
+	assert.equal(autoUpdating, false);
+	t.diagnostic(
+		"backend→app after reopen: install/quit false, download rejects, duplicate backend false; app feed still runs; original backend succeeds",
+	);
+
+	failHold = true;
+	await assert.rejects(invoke("update-backend"), {
+		message: "backend hold failed",
+	});
+	failHold = false;
+	assert.equal(service.currentUpdateOperation(), null);
+	const download = Promise.withResolvers();
+	globalThis.__loTestDownload = () => download.promise;
+	const downloading = invoke("download-update");
+	assert.equal(await invoke("update-backend"), false);
+	download.reject(Error("test download failed"));
+	await assert.rejects(downloading, { message: "test download failed" });
+	assert.equal(service.currentUpdateOperation(), null);
+
+	// Closing the download's window removes its progress listener. Request
+	// cancellation, but don't let another writer start before it has settled.
+	const cancelledDownload = Promise.withResolvers();
+	let cancellationRequested = false;
+	globalThis.__loTestDownload = (token) => {
+		token.onCancelRequested(() => {
+			cancellationRequested = true;
+		});
+		return cancelledDownload.promise;
+	};
+	const abandonedDownload = invoke("download-update");
+	open();
+	assert.equal(cancellationRequested, true);
+	assert.equal(await invoke("update-backend"), false);
+	cancelledDownload.reject(Error("cancelled"));
+	await assert.rejects(abandonedDownload, { message: "cancelled" });
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"closing a downloading window requests cancellation but leaves the lease held until the updater settles",
+	);
+
+	globalThis.__loTestDownload = async () => ["test-update.zip"];
+	assert.deepEqual(await invoke("download-update"), ["test-update.zip"]);
+	backend.stop = async () => actions.push(["stop again"]);
+	globalThis.__loAutoUpdater.quitAndInstall = (...args) =>
+		actions.push(["native fallback", ...args]);
+	assert.equal(await invoke("quit-and-install"), true);
+	assert.deepEqual(actions.slice(-3), [
+		["stop again"],
+		["watchdog", "9.9.9"],
+		["native fallback", false, true],
+	]);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"backend throw and app download rejection release ownership; standalone download returns its artifact and native fallback reaches the handoff",
+	);
+
+	globalThis.__loTestAppQuit = () =>
+		actions.push(["quit", service.currentUpdateOperation()]);
+	assert.equal(invoke("quit-for-update-install"), true);
+	assert.equal(await invoke("update-backend"), false);
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.notDeepEqual(actions.at(-1), ["quit", "app"]);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(actions.at(-1), ["quit", "app"]);
+	assert.equal(service.currentUpdateOperation(), null);
+	t.diagnostic(
+		"quit-only action owns the lease through its deferred app.quit, then releases",
+	);
+
+	const oldRelease = service.acquireUpdateOperation("app");
+	oldRelease();
+	const release = service.acquireUpdateOperation("app");
+	oldRelease();
+	assert.equal(service.currentUpdateOperation(), "app");
+	assert.equal(service.acquireUpdateOperation("overnight"), null);
+	release();
+	const releaseOvernight = service.acquireUpdateOperation("overnight");
+	assert.equal(service.acquireUpdateOperation("combined"), null);
+	releaseOvernight();
+	assert.equal(service.currentUpdateOperation(), null);
 });
 
 // ---------------------------------------------------------------------------
