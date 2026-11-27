@@ -61,14 +61,13 @@ const CREATE_TEAM_MARKED =
 const SELECTED_GROUND =
 	/background-color:\s*var\(--sidebar-conversation-current\)/;
 const HOVER_GROUND = /background-color:\s*var\(--sidebar-conversation-hover\)/;
-const CONVERSATION_LIGHT_DARK =
-	/--sidebar-conversation-hover:\s*light-dark\(\s*var\(--color-row-hover\),\s*color-mix\(in srgb, var\(--color-row-hover\), var\(--lo-ink\) 3%\)/;
-const OPAQUE_SELECTED_GROUND =
-	/--sidebar-conversation-current:\s*light-dark\(\s*var\(--color-row-selected\),\s*color-mix\(in srgb, var\(--color-row-selected\), var\(--lo-ink\) 3%\)/;
-const GLASS_DARK_HOVER =
-	/--sidebar-conversation-hover:\s*light-dark\(\s*var\(--color-row-hover\),\s*color-mix\(in srgb, var\(--color-row-hover\), var\(--color-row-selected\) 24%\)/;
-const GLASS_SELECTED_GROUND =
-	/--sidebar-conversation-current:\s*var\(--color-row-selected\)/;
+/* Each role is `light-dark(<authored light fill>, <dark fill>)`; the dark
+ * fill is the number under test. Opaque mixes ink INTO the palette's row fill,
+ * glass paints that ink at the same alpha over the glass. */
+const OPAQUE_DARK_MIX =
+	/^light-dark\(\s*var\(--color-row-(hover|selected)\),\s*color-mix\(in srgb, var\(--color-row-\1\), var\(--lo-ink\) (\d+)%\)\s*\)$/;
+const GLASS_DARK_MIX =
+	/^light-dark\(\s*var\(--color-row-(hover|selected)\),\s*color-mix\(in srgb, var\(--lo-ink\) (\d+)%, transparent\)\s*\)$/;
 const CONVERSATION_BUTTON_SEED = /\bdata-chat-row\s+data-session-row-button\b/;
 const SELECTOR_PAREN_WHITESPACE = /\( +| +\)/g;
 
@@ -357,6 +356,35 @@ test("current conversations keep one selected ground before and during hover", (
 	}
 });
 
+/* One `--sidebar-conversation-*` declaration's value, whitespace-normalised. */
+function conversationToken(body, name) {
+	const m = body.match(
+		new RegExp(`--sidebar-conversation-${name}:\\s*([^;]+);`),
+	);
+	return m?.[1].replace(/\s+/g, " ").replace(/\( /g, "(").replace(/ \)/g, ")");
+}
+
+function conversationMixes(rule, pattern) {
+	const out = {};
+	for (const name of ["hover", "current"]) {
+		const m = conversationToken(rule?.body ?? "", name)?.match(pattern);
+		assert.ok(m, `${name} must match ${pattern}`);
+		// The light half is the authored role of the same kind: hover->row-hover.
+		assert.equal(m[1], name === "hover" ? "hover" : "selected");
+		out[name] = Number(m[2]);
+	}
+	return out;
+}
+
+/* Operator 2026-11-27 ("Brighter hover, same as selected when translucent";
+ * contrast contract's SIDEBAR_CONVERSATION_ROW_FLOORS names the exemption).
+ * `scripts/contrast-contract.mjs` proves every value passes on the 41 dark
+ * palettes; this pins WHICH values, so a tweak cannot drift without the
+ * derivation numbers being re-read. */
+const OPAQUE_HOVER_MIX = 10;
+const OPAQUE_CURRENT_MIX = 14;
+const GLASS_ROW_MIX = 9;
+
 test("conversation grounds use the sidebar's opaque and glass roles", () => {
 	const shell = "[data-workspace-shell]";
 	const sidebar = '[data-chat-region="sidebar"]';
@@ -367,10 +395,39 @@ test("conversation grounds use the sidebar's opaque and glass roles", () => {
 			prelude.startsWith('html[data-glass~="sidebar"]') &&
 			prelude.includes(`${sidebar}[data-glass-region="sidebar"]`),
 	);
-	assert.match(opaque?.body ?? "", CONVERSATION_LIGHT_DARK);
-	assert.match(opaque?.body ?? "", OPAQUE_SELECTED_GROUND);
-	assert.match(glass?.body ?? "", GLASS_DARK_HOVER);
-	assert.match(glass?.body ?? "", GLASS_SELECTED_GROUND);
+	const opaqueMix = conversationMixes(opaque, OPAQUE_DARK_MIX);
+	const glassMix = conversationMixes(glass, GLASS_DARK_MIX);
+	assert.deepEqual(opaqueMix, {
+		hover: OPAQUE_HOVER_MIX,
+		current: OPAQUE_CURRENT_MIX,
+	});
+	assert.deepEqual(glassMix, { hover: GLASS_ROW_MIX, current: GLASS_ROW_MIX });
+});
+
+test("ordering: glass hover equals current; opaque hover sits below current; both above rest", () => {
+	const rules = unlayeredRules(css);
+	const opaque = conversationMixes(
+		rules.find(
+			({ prelude }) =>
+				prelude === '[data-workspace-shell] [data-chat-region="sidebar"]',
+		),
+		OPAQUE_DARK_MIX,
+	);
+	const glass = conversationMixes(
+		rules.find(({ prelude }) =>
+			prelude.includes(
+				'[data-chat-region="sidebar"][data-glass-region="sidebar"]',
+			),
+		),
+		GLASS_DARK_MIX,
+	);
+	// Glass: the operator's "same as selected" - the fill does not rank the two.
+	assert.equal(glass.hover, glass.current);
+	// Opaque: the selection still outranks the hover, and a rest row is 0.
+	assert.ok(opaque.hover < opaque.current, "opaque hover < current");
+	assert.ok(opaque.hover > 0 && glass.hover > 0, "both above the rest fill");
+	// Glass hover is brighter than main's published 5% hover ink.
+	assert.ok(glass.hover > 5, "brighter than main's 5% hover");
 });
 
 test("only pointer paints require hover capability; a menu holds its ground on touch", () => {

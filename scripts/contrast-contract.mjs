@@ -166,6 +166,7 @@ import {
 	GLASS_OVERLAY_INKS,
 	GLASS_ROLES,
 	GLASS_STATE_DIM_FLOOR,
+	GLASS_STATE_STEP,
 	LANE_ALPHA_CEILING,
 	derive as deriveGlassFloors,
 	deriveOverlayEdgeMix,
@@ -2378,6 +2379,156 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	console.log(
 		`Window glass states: tightest step ΔE00 off the ground - hover ${r2(stepMin.hover)}, selected ${r2(stepMin.selected)}, field ${r2(stepMin.field)}.`,
 	);
+}
+
+/*
+ * THE SIDEBAR'S CONVERSATION ROW FILLS - A NAMED, SCOPED EXEMPTION.
+ *
+ * Operator decision, 2026-11-27 (ask a-88ca), after "the brightness of the hover
+ * highlight on dark mode is too dim, I can barely see it": "Brighter hover, same
+ * as selected when translucent." Brighter dark fills spend text contrast, so the
+ * two tokens the chat sidebar paints its conversation rows with
+ * (`--sidebar-conversation-hover` / `--sidebar-conversation-current` in
+ * `styles/index.css`) are held to plain WCAG AA - 4.5 `ink`, 4.5 `inkMuted`, and
+ * the stated 3.5 for `inkDim` - which are the floors glass has always used for
+ * its row states, instead of the flat roles' 7.0 / 5.5 / 5.0 on `rowHover` /
+ * `rowSelected`. The exemption is exactly these two tokens, dark only (light is
+ * the authored fill, unchanged): the palette roles keep every flat floor asserted
+ * above, and no other surface reads these floors.
+ *
+ * The CSS is the source of truth - this block parses the percentages out of it,
+ * so raising a mix past what the palettes can afford fails here, not on a
+ * reader's screen. Measured on the 41 dark palettes when set (opaque 10% / 14%,
+ * glass 9% / 9%): current inkDim 3.59 (dune) vs 3.5; current-hover >= 3.74 L*
+ * (tokyoNightStorm); glass 9% passes `derive()` at the committed floors where
+ * 10% would need 0.63 / 0.75 / 0.81.
+ *
+ *   - opaque: `rowHover` + ink at HOVER%, `rowSelected` + ink at CURRENT%,
+ *     composited as the browser does; all three inks clear the exempt floors,
+ *     both fills sit above the panel's `surface` in L*, and the selection ranks
+ *     above the hover by ROW_STATE_HOVER_RANK.
+ *   - glass: one ink alpha for BOTH rows (the operator's "same as selected"), on
+ *     each ground and tier at the committed floors over the measured backdrop,
+ *     the exempt floors again, and the step off the ground (hover's own floor).
+ */
+const SIDEBAR_CONVERSATION_ROW_FLOORS = {
+	ink: GLASS_INK_FLOOR,
+	inkMuted: GLASS_INK_FLOOR,
+	inkDim: GLASS_STATE_DIM_FLOOR,
+};
+{
+	const css = readFileSync(
+		join(ROOT, "src/renderer/src/styles/index.css"),
+		"utf8",
+	);
+	const OPAQUE =
+		/--sidebar-conversation-(hover|current):\s*light-dark\(\s*var\(--color-row-(?:hover|selected)\),\s*color-mix\(in srgb, var\(--color-row-(?:hover|selected)\), var\(--lo-ink\) (\d+)%\)\s*\)/g;
+	const GLASS =
+		/--sidebar-conversation-(hover|current):\s*light-dark\(\s*var\(--color-row-(?:hover|selected)\),\s*color-mix\(in srgb, var\(--lo-ink\) (\d+)%, transparent\)\s*\)/g;
+	const block = (head) => {
+		const at = css.indexOf(head);
+		return at < 0 ? "" : css.slice(at, css.indexOf("}", at));
+	};
+	const mixes = (text, re) =>
+		Object.fromEntries(
+			[...text.matchAll(re)].map(([, name, pct]) => [name, Number(pct) / 100]),
+		);
+	const opaqueMix = mixes(
+		block('[data-workspace-shell] [data-chat-region="sidebar"] {'),
+		OPAQUE,
+	);
+	const glassMix = mixes(
+		block('[data-chat-region="sidebar"][data-glass-region="sidebar"] {'),
+		GLASS,
+	);
+	authoredRun.assertions++;
+	if (
+		opaqueMix.hover === undefined ||
+		opaqueMix.current === undefined ||
+		glassMix.hover === undefined ||
+		glassMix.current === undefined
+	)
+		authoredRun.fail(
+			"sidebar conversation row fills: could not read the opaque/glass ink percentages from styles/index.css - the contract measures what the CSS paints, so its shape must stay `light-dark(var(--color-row-*), color-mix(...))`",
+		);
+	else {
+		const committed = JSON.parse(
+			readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+		);
+		let minGap = Number.POSITIVE_INFINITY;
+		let minDim = Number.POSITIVE_INFINITY;
+		for (const { id, palette } of palettes) {
+			if (glassSchemeOf(palette) !== "dark") continue;
+			const L = (hex) => toLab(hex)[0];
+			const fills = {
+				hover: over(palette.ink, palette.rowHover, opaqueMix.hover),
+				current: over(palette.ink, palette.rowSelected, opaqueMix.current),
+			};
+			for (const [state, fill] of Object.entries(fills)) {
+				for (const [ink, floor] of Object.entries(
+					SIDEBAR_CONVERSATION_ROW_FLOORS,
+				)) {
+					authoredRun.assertions++;
+					const r = glassRatio(palette[ink], fill);
+					if (state === "current" && ink === "inkDim")
+						minDim = Math.min(minDim, r);
+					if (r < floor)
+						authoredRun.fail(
+							`${id}: sidebar conversation ${state} fill (opaque, dark) ${ink} is ${r2(r)}:1, exempt floor ${floor} - lower its ink mix in styles/index.css`,
+						);
+				}
+				authoredRun.assertions++;
+				if (L(fill) <= L(palette.surface))
+					authoredRun.fail(
+						`${id}: sidebar conversation ${state} fill (opaque, dark) is not above the panel surface in L*`,
+					);
+			}
+			authoredRun.assertions++;
+			const gap = L(fills.current) - L(fills.hover);
+			minGap = Math.min(minGap, gap);
+			if (gap < ROW_STATE_HOVER_RANK)
+				authoredRun.fail(
+					`${id}: sidebar conversation current is ${r2(gap)} L* above hover (opaque, dark), need ${ROW_STATE_HOVER_RANK} - the selection must still rank above the hover`,
+				);
+			for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+				const floors = committed.alphaFloor[tier].dark;
+				const backdrop = glassGray(byScheme.dark);
+				for (const ground of ["surface", "canvas"]) {
+					const groundHex = glassComposite(
+						palette[ground],
+						floors[ground],
+						backdrop,
+					);
+					for (const state of ["hover", "current"]) {
+						const fill = glassComposite(
+							palette.ink,
+							glassMix[state],
+							groundHex,
+						);
+						for (const [ink, floor] of Object.entries(
+							SIDEBAR_CONVERSATION_ROW_FLOORS,
+						)) {
+							authoredRun.assertions++;
+							const r = glassRatio(palette[ink], fill);
+							if (r < floor)
+								authoredRun.fail(
+									`${id}: sidebar conversation ${state} fill (glass ${tier}, dark) ${ink} over ${ground} is ${r2(r)}:1, exempt floor ${floor} - the glass mix may not exceed what the committed alpha floors afford`,
+								);
+						}
+						authoredRun.assertions++;
+						const step = deltaE(fill, groundHex);
+						if (step < GLASS_STATE_STEP.hover)
+							authoredRun.fail(
+								`${id}: sidebar conversation ${state} fill (glass ${tier}, dark) over ${ground} is ΔE00 ${r2(step)} off its ground, floor ${GLASS_STATE_STEP.hover}`,
+							);
+					}
+				}
+			}
+		}
+		console.log(
+			`Sidebar conversation rows (named exemption, 4.5/4.5/3.5): opaque dark hover ${Math.round(opaqueMix.hover * 100)}% / current ${Math.round(opaqueMix.current * 100)}% - tightest current inkDim ${r2(minDim)}:1, tightest current-hover ${r2(minGap)} L*; glass dark ${Math.round(glassMix.hover * 100)}% / ${Math.round(glassMix.current * 100)}%.`,
+		);
+	}
 }
 
 /*
