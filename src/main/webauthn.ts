@@ -72,8 +72,11 @@ import { type Session, app } from "electron";
  * proof that a native ceremony completes.
  *
  * WHAT THE USER SEES: `src/main/browser/passkey-notice.ts` (design section 3.6)
- * observes pending requests only when this module did not configure Touch ID.
- * Optional NotAllowed recovery remains armed in both states: configuring a
+ * observes pending requests in both states: after 3 s when this module did not
+ * configure Touch ID, after a 15 s grace when it did, because a configured
+ * Touch ID authenticator does not serve every request (a `get()` naming only
+ * usb/hybrid credentials never reaches it and stays pending; measured on the
+ * signed v0.64.15, 2026-11-27). NotAllowed recovery is armed in both states: configuring a
  * device-bound provider does not make existing cloud passkeys accessible.
  */
 

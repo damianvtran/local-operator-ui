@@ -125,6 +125,8 @@ import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
 import { buildPageContextMenuItems } from "./page-context-menu";
 import {
+	PASSKEY_PENDING_MS,
+	PASSKEY_PENDING_WITH_PLATFORM_MS,
 	PasskeyNotices,
 	type PasskeyOpenOutcome,
 	continuePasskeyNoticeInUserTab,
@@ -2645,7 +2647,12 @@ async function initializeBrowserHost(
 								tabId,
 								`${frame.processId}:${frame.routingId}`,
 							),
-							!webauthnInstall.configured,
+							// Pending is observed in BOTH gate states: a configured
+							// Touch ID authenticator does not serve every request
+							// (usb/hybrid-only allowCredentials never reach it).
+							webauthnInstall.configured
+								? PASSKEY_PENDING_WITH_PLATFORM_MS
+								: PASSKEY_PENDING_MS,
 						),
 					)
 					.catch(() => {

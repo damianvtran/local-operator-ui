@@ -36,6 +36,7 @@ const {
 	PASSKEY_NOTICE_MIN_GAP_MS,
 	PASSKEY_NOTICE_TTL_MS,
 	PASSKEY_PENDING_MS,
+	PASSKEY_PENDING_WITH_PLATFORM_MS,
 	PASSKEY_SIGNAL_SENTINEL,
 	NativePasskeyNotice,
 	PasskeyNotices,
@@ -50,7 +51,7 @@ const {
  * records, and timers the test advances by hand. */
 function page(
 	nonce = "n-1",
-	observePending = true,
+	pendingMs = PASSKEY_PENDING_MS,
 	resultFactory = () => new Promise(() => {}),
 ) {
 	const lines = [];
@@ -78,7 +79,7 @@ function page(
 			return timers.length;
 		},
 	});
-	vm.runInContext(passkeyShimSource(nonce, observePending), context);
+	vm.runInContext(passkeyShimSource(nonce, pendingMs), context);
 	return {
 		container: new CredentialsContainer(),
 		CredentialsContainer,
@@ -195,15 +196,51 @@ test("settled calls distinguish success from optional NotAllowed recovery", asyn
 	);
 });
 
-test("configured Touch ID observes rejection but never announces a pending native sheet", async () => {
-	const pending = page("native", false);
+test("configured Touch ID still announces a request nothing serves, after the longer grace", async () => {
+	// Regression (operator report 2026-11-27): with Touch ID configured, a get()
+	// whose allowCredentials name only usb/hybrid never reaches Touch ID and stays
+	// pending forever (measured on the signed v0.64.15). It used to raise nothing.
+	const pending = page("native", PASSKEY_PENDING_WITH_PLATFORM_MS);
 	pending.container.get({ publicKey: {} });
+	assert.equal(pending.timers[0].ms, PASSKEY_PENDING_MS);
 	await pending.fire();
-	assert.deepEqual(pending.lines, []);
+	assert.deepEqual(
+		pending.lines,
+		[],
+		"not at the short delay: a live Touch ID sheet may be what is pending",
+	);
+	assert.equal(pending.timers.length, 1, "a second, longer check is armed");
+	assert.equal(
+		pending.timers[0].ms,
+		PASSKEY_PENDING_WITH_PLATFORM_MS - PASSKEY_PENDING_MS,
+	);
+	await pending.fire();
+	assert.deepEqual(pending.lines, [`${PASSKEY_SIGNAL_SENTINEL}native:get`]);
+	// A request that settles inside the grace (the person touched the sensor)
+	// is never called pending.
+	let resolve;
+	const served = page(
+		"served",
+		PASSKEY_PENDING_WITH_PLATFORM_MS,
+		() =>
+			new Promise((yes) => {
+				resolve = yes;
+			}),
+	);
+	served.container.get({ publicKey: {} });
+	await served.fire();
+	resolve({ id: "cred" });
+	// Real timers run after the settle's reactions; let them run first here.
+	await new Promise((next) => setImmediate(next));
+	await served.fire();
+	assert.deepEqual(served.lines, []);
+});
+
+test("configured Touch ID observes rejection without a pending verdict", async () => {
 	let reject;
 	const failed = page(
 		"native",
-		false,
+		PASSKEY_PENDING_WITH_PLATFORM_MS,
 		() =>
 			new Promise((_, no) => {
 				reject = no;
@@ -219,6 +256,8 @@ test("configured Touch ID observes rejection but never announces a pending nativ
 	reject(cancellationOrMissingCredential);
 	await assert.rejects(promise, cancellationOrMissingCredential);
 	await new Promise((resolve) => setImmediate(resolve));
+	// The armed longer check finds the call settled: no pending line follows.
+	await failed.fire();
 	assert.deepEqual(failed.lines, [
 		`${PASSKEY_SIGNAL_SENTINEL}native:get:not-allowed`,
 	]);
@@ -236,20 +275,25 @@ test("abort, validation, and security errors remain silent; success remains unch
 		"InvalidStateError",
 	]) {
 		const error = new DOMException("not exported", name);
-		const p = page("abort", true, () => Promise.reject(error));
+		const p = page("abort", PASSKEY_PENDING_MS, () => Promise.reject(error));
 		await assert.rejects(p.container.get({ publicKey: {} }), error);
 		await p.fire();
 		assert.deepEqual(p.lines, [], name);
 	}
 	const credential = { id: "private", response: {} };
-	const success = page("ok", false, () => Promise.resolve(credential));
+	const success = page("ok", PASSKEY_PENDING_WITH_PLATFORM_MS, () =>
+		Promise.resolve(credential),
+	);
 	assert.equal(await success.container.get({ publicKey: {} }), credential);
 	await success.fire();
 	assert.deepEqual(success.lines, []);
 });
 
 test("an explicit aborted signal never produces recovery even for NotAllowedError", async () => {
-	for (const pending of [true, false]) {
+	for (const pending of [
+		PASSKEY_PENDING_MS,
+		PASSKEY_PENDING_WITH_PLATFORM_MS,
+	]) {
 		const controller = new AbortController();
 		const error = new DOMException("cancelled", "NotAllowedError");
 		const p = page("cancel", pending, () => Promise.reject(error));
@@ -269,7 +313,7 @@ test("page-controlled rejection metadata cannot make the observer throw", async 
 			throw new Error("page getter must not escape");
 		},
 	});
-	const p = page("hostile", true, () => Promise.reject(error));
+	const p = page("hostile", PASSKEY_PENDING_MS, () => Promise.reject(error));
 	await p.container
 		.get({ publicKey: {} })
 		.catch((actual) => assert.equal(actual, error));

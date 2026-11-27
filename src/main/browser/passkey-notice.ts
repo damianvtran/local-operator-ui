@@ -25,8 +25,9 @@ import {
  * with the original arguments and returns the original promise unchanged: it
  * never rejects, never resolves and never fakes a credential. It does attach one
  * reaction to the promise, but only AFTER `PASSKEY_PENDING_MS`, to learn
- * whether the call has settled. Only pending requests (when native Touch ID is
- * off) and NotAllowedError rejections offer recovery. Abort, validation and
+ * whether the call has settled. Only pending requests (after a longer grace
+ * when native Touch ID is configured, `PASSKEY_PENDING_WITH_PLATFORM_MS`) and
+ * NotAllowedError rejections offer recovery. Abort, validation and
  * origin errors stay silent. Attaching later rather than
  * at call time keeps the page's own `unhandledrejection` behaviour for every
  * call that settles inside the window; the one residue is a call that stays
@@ -100,6 +101,30 @@ export const PASSKEY_SIGNAL_SENTINEL = "local-operator:passkey-pending:";
  * value only matters to the ones that would have. */
 export const PASSKEY_PENDING_MS = 3_000;
 
+/**
+ * How long a call must stay unsettled before the shim signals PENDING when the
+ * Touch ID platform authenticator IS configured (a signed release).
+ *
+ * WHY PENDING IS OBSERVED IN THIS STATE TOO (operator report 2026-11-27, a
+ * Stripe passkey sign-in in an agent tab spinning with no notice and no sheet).
+ * Configuring Touch ID does not make every request reach it: measured on the
+ * installed, signed v0.64.15, a `get()` whose `allowCredentials` name only
+ * `usb` or `hybrid` transports never dispatches to the Touch ID authenticator,
+ * nothing else can serve it (Electron has no hybrid discovery and no request
+ * UI), and the promise was still pending at 82 s despite a 60 s `timeout`.
+ * With pending observation switched off in this state, that request had no
+ * notice at all, so neither the person nor the agent had a way out.
+ *
+ * WHY A LONGER GRACE THAN `PASSKEY_PENDING_MS`. In this state a pending request
+ * may instead be a real Touch ID sheet a person is in the middle of answering,
+ * and the notice should not narrate over it. Fifteen seconds is ample for a
+ * touch and still short enough to be a notice rather than a post-mortem. A
+ * NotAllowedError keeps the shorter delay: only the pending verdict waits.
+ * The pending copy ("asked for a passkey and may be waiting") claims nothing
+ * about a missing provider, so it stays true in both gate states.
+ */
+export const PASSKEY_PENDING_WITH_PLATFORM_MS = 15_000;
+
 /** Minimum gap between two notices for the SAME tab. A page that calls
  * `create()` in a loop produces one notice, not a stream; the dropped ones are
  * counted so the log can say so. */
@@ -119,9 +144,11 @@ export const PASSKEY_NOTICE_MIN_GAP_MS = 30_000;
  */
 export function passkeyShimSource(
 	nonce: string,
-	observePending = true,
+	/** When a still-pending call is announced, from the call (ms). At least
+	 * `PASSKEY_PENDING_MS`, the first check; longer waits on from there. */
+	pendingMs: number = PASSKEY_PENDING_MS,
 ): string {
-	return `(function (nonce, sentinel, delay, observePending) {
+	return `(function (nonce, sentinel, delay, pendingMs) {
   var container = typeof CredentialsContainer === "function" ? CredentialsContainer.prototype : null;
   if (!container) return;
   var marker = Symbol.for("local-operator.passkey-notice");
@@ -160,7 +187,12 @@ export function passkeyShimSource(
     // FIFO), so by the second hop done is true for it and false for a pending one.
     observe.call(settle, function () {
       observe.call(settle, function () {
-        if (!done && observePending) announce("pending");
+        if (done) return;
+        // Past the first check only when a platform authenticator may be
+        // serving the call (see PASSKEY_PENDING_WITH_PLATFORM_MS); a rejection
+        // in the meantime still announces through rejected() above.
+        if (pendingMs > delay) later(function () { if (!done) announce("pending"); }, pendingMs - delay);
+        else announce("pending");
       });
     });
   }
@@ -184,7 +216,7 @@ export function passkeyShimSource(
     }[kind];
     Object.defineProperty(container, kind, { value: wrapper, writable: true, configurable: true, enumerable: true });
   });
-})(${JSON.stringify(nonce)}, ${JSON.stringify(PASSKEY_SIGNAL_SENTINEL)}, ${PASSKEY_PENDING_MS}, ${JSON.stringify(observePending)});`;
+})(${JSON.stringify(nonce)}, ${JSON.stringify(PASSKEY_SIGNAL_SENTINEL)}, ${PASSKEY_PENDING_MS}, ${JSON.stringify(Math.max(PASSKEY_PENDING_MS, Number(pendingMs) || 0))});`;
 }
 
 /** Frames remembered per tab. A page can create frames without bound, so the
