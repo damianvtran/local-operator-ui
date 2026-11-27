@@ -17,7 +17,14 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
+import {
+	expect,
+	fn,
+	screen,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
 import { useArgs } from "storybook/internal/preview-api";
 import {
@@ -2801,7 +2808,11 @@ const SESSION_READINGS = {
 	} as CanonicalFrontendState,
 };
 
-const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
+const populatedRail = (
+	width: number,
+	dir: "ltr" | "rtl" = "ltr",
+	onCommand: (invocation: SlashCommandInvocation) => void = () => undefined,
+) => {
 	const conversation = `story-populated-composer-rail-${width}`;
 	return (
 		<div className="bg-canvas p-6" dir={dir}>
@@ -2817,7 +2828,7 @@ const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
 						conversationId={conversation}
 						cwd="/Users/you"
 						cwdWritePath={MOVING_CWD}
-						sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+						sessionStatus={{ ...SESSION_READINGS, onCommand }}
 						recordingProbe={{
 							canUseRadientSpeech: true,
 							speechBlock: "checking",
@@ -2910,6 +2921,186 @@ export const PopulatedRailRtl: Story = {
 export const PopulatedRailFloor: Story = {
 	render: () => populatedRail(240),
 	play: assertDock,
+};
+
+const dispatchDockCommand = fn();
+const CWD_TRIGGER_NAME = /^Working directory:/;
+const MODEL_TRIGGER_NAME = /^Model:/;
+const EFFORT_TRIGGER_NAME = /^Reasoning effort:/;
+const SRGB_FUNCTION = /^rgba?\(/;
+
+// Chromium serializes a transparent color-mix as color(srgb ... / alpha),
+// not rgba(). Keep fractional channels so compositing does not round twice.
+const dockPaint = (color: string) => {
+	const srgb = color.startsWith("color(srgb ");
+	if (!srgb && !SRGB_FUNCTION.test(color)) {
+		throw new Error(`Unsupported dock paint: ${color}`);
+	}
+	const [r, g, b, alpha = 1] = color.match(/[\d.]+/g)?.map(Number) ?? [];
+	return { rgb: [r, g, b].map((channel) => channel * (srgb ? 255 : 1)), alpha };
+};
+
+const compositeDockPaint = (foreground: string, background: number[]) => {
+	const { rgb, alpha } = dockPaint(foreground);
+	return rgb.map((channel, i) => channel * alpha + background[i] * (1 - alpha));
+};
+
+/** The tooltip is portaled out of the dock, but must keep the dock's paint policy. */
+export const PopulatedRailGlassKeyboard: Story = {
+	args: { glass: "on", glassCoverage: "full" },
+	render: () => populatedRail(1024, "ltr", dispatchDockCommand),
+	play: async (context) => {
+		await assertDock(context);
+		dispatchDockCommand.mockClear();
+		const { canvasElement } = context;
+		await expect(canvasElement.ownerDocument.documentElement).toHaveAttribute(
+			"data-glass",
+		);
+		const canvas = within(canvasElement);
+		const portals = within(canvasElement.ownerDocument.body);
+		const cwd = canvas.getByRole("button", { name: CWD_TRIGGER_NAME });
+		const model = canvas.getByRole("button", { name: MODEL_TRIGGER_NAME });
+		const effort = canvas.getByRole("button", { name: EFFORT_TRIGGER_NAME });
+		await userEvent.tab(); // Establish keyboard modality before moving focus.
+		for (const trigger of [cwd, model, effort]) {
+			trigger.focus();
+			await expect(trigger).toHaveFocus();
+			await expect(getComputedStyle(trigger).outlineStyle).toBe("solid");
+			const description = await portals.findByRole("tooltip");
+			const panel = description.closest("[data-lo-tooltip-panel]");
+			if (!panel) throw new Error("Missing tooltip panel");
+			const style = getComputedStyle(panel);
+			await expect(style.backdropFilter).toBe("none");
+			await expect(dockPaint(style.backgroundColor).alpha).toBe(1);
+			await expect(style.pointerEvents).toBe("none");
+			await userEvent.keyboard("{Escape}");
+			await waitFor(() => expect(portals.queryByRole("tooltip")).toBeNull());
+		}
+
+		cwd.focus();
+		await expect(dockPaint(getComputedStyle(cwd).backgroundColor).alpha).toBe(
+			0,
+		);
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() => expect(portals.getByRole("menu")).toBeVisible());
+		await expect(cwd).toHaveAttribute("aria-expanded", "true");
+		await waitFor(() =>
+			expect(dockPaint(getComputedStyle(cwd).backgroundColor).alpha).toBe(0.08),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(portals.queryByRole("menu")).toBeNull());
+		await expect(cwd).toHaveFocus();
+
+		for (const trigger of [model, effort]) {
+			trigger.focus();
+			await userEvent.keyboard("{Enter}");
+			await userEvent.click(trigger);
+		}
+		await expect(dispatchDockCommand.mock.calls).toEqual([
+			[{ name: "model", args: "" }],
+			[{ name: "model", args: "" }],
+			[{ name: "effort", args: "" }],
+			[{ name: "effort", args: "" }],
+		]);
+	},
+};
+
+const INVALID_STAGED_PATH = "/does-not-exist";
+const CUSTOM_PATH_MENU_ITEM = /^Enter custom path/;
+
+const StagedDirectoryDock = () => {
+	const [cwd, setCwd] = useState("/Users/you");
+	return (
+		<main className="bg-canvas p-6" data-glass-region="canvas-backing">
+			<MessageInput
+				isLoading={false}
+				messages={[]}
+				conversationId="story-staged-directory-dock"
+				cwd={cwd}
+				cwdWritePath={{ kind: "stage", commit: setCwd }}
+				onSendMessage={async () => true}
+			/>
+		</main>
+	);
+};
+
+/** Reopening recovery by keyboard must not wash out the actual path label. */
+export const StagedInvalidDirectoryDock: Story = {
+	args: { theme: "dune", locale: "en" },
+	render: () => <StagedDirectoryDock />,
+	play: async ({ canvasElement }) => {
+		const view = canvasElement.ownerDocument.defaultView;
+		if (!view) throw new Error("Missing Storybook preview window");
+		const canvas = within(canvasElement);
+		const portals = within(canvasElement.ownerDocument.body);
+		const original = view.api.directoryExists;
+		view.api.directoryExists = async (path) => path !== INVALID_STAGED_PATH;
+		try {
+			const trigger = canvas.getByRole("button", { name: CWD_TRIGGER_NAME });
+			trigger.focus();
+			await userEvent.keyboard("{Enter}");
+			const enterPath = await portals.findByRole("menuitem", {
+				name: CUSTOM_PATH_MENU_ITEM,
+			});
+			enterPath.focus();
+			await userEvent.keyboard("{Enter}");
+			const input = await canvas.findByRole("textbox", {
+				name: "Working directory path",
+			});
+			await userEvent.clear(input);
+			await userEvent.type(input, INVALID_STAGED_PATH);
+			await userEvent.keyboard("{Enter}");
+
+			const cwd = await canvas.findByRole("button", { name: CWD_TRIGGER_NAME });
+			await waitFor(() => expect(cwd).toHaveAttribute("aria-invalid", "true"));
+			const path = within(cwd).getByText(INVALID_STAGED_PATH);
+			const dock = cwd.closest(".composer-dock");
+			const backing = dock?.closest('[data-glass-region="canvas-backing"]');
+			if (!dock || !backing) throw new Error("Missing dock paint layers");
+			const material = canvasElement.ownerDocument.querySelector(
+				"[data-story-glass-backdrop]",
+			);
+			const backingPaint = getComputedStyle(backing).backgroundColor;
+			// The path is below the shelf's one-pixel gloss and above its bottom seam.
+			const ground = compositeDockPaint(
+				getComputedStyle(dock, "::after").backgroundColor,
+				material
+					? compositeDockPaint(
+							backingPaint,
+							dockPaint(getComputedStyle(material).backgroundColor).rgb,
+						)
+					: dockPaint(backingPaint).rgb,
+			);
+			const ratio = () =>
+				contrastRatio(
+					`rgb(${dockPaint(getComputedStyle(path).color).rgb.join(",")})`,
+					`rgb(${compositeDockPaint(getComputedStyle(cwd).backgroundColor, ground).join(",")})`,
+				);
+
+			cwd.focus();
+			await settle();
+			await Promise.all(cwd.getAnimations().map(({ finished }) => finished));
+			const closedInk = getComputedStyle(path).color;
+			const closedFill = getComputedStyle(cwd).backgroundColor;
+			await expect(dockPaint(closedFill).alpha).toBe(0);
+			if (!material) await expect(ratio()).toBeGreaterThanOrEqual(4.5);
+			await userEvent.keyboard("{Enter}");
+			await expect(await portals.findByRole("menu")).toBeVisible();
+			await expect(cwd).toHaveAttribute("aria-expanded", "true");
+			await settle();
+			await Promise.all(cwd.getAnimations().map(({ finished }) => finished));
+			await expect(getComputedStyle(cwd).backgroundColor).not.toBe(closedFill);
+			await expect(getComputedStyle(path).color).toBe(closedInk);
+			await expect(ratio()).toBeGreaterThanOrEqual(4.5);
+		} finally {
+			view.api.directoryExists = original;
+		}
+	},
+};
+
+export const StagedInvalidDirectoryDockLight: Story = {
+	...StagedInvalidDirectoryDock,
+	args: { ...StagedInvalidDirectoryDock.args, theme: "rosePineDawn" },
 };
 
 /**

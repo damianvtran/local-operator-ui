@@ -852,7 +852,10 @@ const Reading: FC<{
 	);
 	const PickerIcon = picker === "model" ? Cpu : SlidersHorizontal;
 	return onOpen ? (
-		<Tooltip content={body} className={tooltipClassName}>
+		<Tooltip
+			content={body}
+			className={cn(tooltipClassName, picker && "composer-dock-tooltip")}
+		>
 			<button
 				type="button"
 				onClick={(event) => onOpen(picker ? event.currentTarget : undefined)}
