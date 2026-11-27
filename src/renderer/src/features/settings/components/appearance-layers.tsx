@@ -46,6 +46,16 @@ import { ContrastControl } from "./contrast-control";
 /** The `<style>` the drag and chip previews are written into. */
 const PREVIEW_STYLE_ID = "lo-appearance-preview";
 
+// The strips read computed roles only after these writes: a moving draft
+// changes the CSS under a stable `data-theme` id, not the committed palette.
+const scopedPaletteListeners = new Set<() => void>();
+const subscribeScopedPalette = (read: () => void) => {
+	scopedPaletteListeners.add(read);
+	return () => {
+		scopedPaletteListeners.delete(read);
+	};
+};
+
 /**
  * Upsert the scoped preview blocks. Pure CSS text from `previewCss`, which only
  * emits ids and values that pass the same grammar `applyAppearance` enforces.
@@ -62,7 +72,9 @@ const writePreviewStyle = (css: string): void => {
 		style.id = PREVIEW_STYLE_ID;
 		document.head.appendChild(style);
 	}
-	if (style.textContent !== css) style.textContent = css;
+	if (style.textContent === css) return;
+	style.textContent = css;
+	for (const read of scopedPaletteListeners) read();
 };
 
 /** The composed accent roles, carried over drag candidates. */
@@ -173,6 +185,7 @@ export const AppearancePreviewSection: FC<{
 			<AppearancePreviewStrip
 				glass={glass}
 				previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
+				subscribeScopedPalette={subscribeScopedPalette}
 			/>
 		</div>
 	);
@@ -244,6 +257,7 @@ const CompanionPreview: FC<{ glass?: WindowGlassState | null }> = ({
 			   for the whole drag while the strip ~1000px above previews the
 			   candidate: the one sample the user is looking at was the stale one. */
 			previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
+			subscribeScopedPalette={subscribeScopedPalette}
 			className="lg:order-2"
 		/>
 	);
