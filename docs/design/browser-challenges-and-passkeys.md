@@ -759,8 +759,9 @@ request that had already rejected. A baseline execution of the original shim
 returned the page's `NotAllowedError` unchanged but emitted zero recovery
 signals. Recovery now observes explicit `create`/`get` requests in both gate
 states. It keeps the existing three-second courtesy delay (no synchronous
-interruption of the site's cancellation UX); only gate-off pending requests
-raise a pending notice. A `NotAllowedError` instead carries the typed
+interruption of the site's cancellation UX). Pending requests raise a pending
+notice in both gate states: after 3 s with the gate off, after a 15 s grace
+with Touch ID configured (see the 2026-11-27 entry below). A `NotAllowedError` instead carries the typed
 `outcome: "not-allowed"` and says the request did not complete. Native
 cancellation and an unavailable credential have the same error name: neither
 is diagnosed as a broken or missing provider. Successful requests, conditional
@@ -828,10 +829,29 @@ identity (`at`); main reads the URL from the tab itself, so no URL travels from
 the renderer, and a stale or replaced notice is refused. Measured: a loopback
 page is refused by the door with its own reason and never reaches the opener.
 
-**Off when the platform authenticator is on.** The shim is registered only when
-`installWebauthn` did not configure the authenticator. With a signed build whose
-entitlement the gate accepted, the OS sheet is the UX and the existing chooser
-stays.
+**Pending is observed with the platform authenticator on, too (2026-11-27).**
+Historically the shim was registered only when `installWebauthn` did not
+configure the authenticator, on the reasoning that the OS sheet is the UX; the
+later recovery change kept pending silent in that state. Operator report: a
+Stripe passkey sign-in in an agent tab spun with no notice and no sheet.
+Measured on the installed, signed v0.64.15 (gate on) against a synthetic
+`rp.test` fixture: every `get()` the Touch ID authenticator receives and cannot
+serve rejects `NotAllowedError` in under 0.2 s ("status 2 from
+TouchIdAuthenticator") and the not-allowed notice is raised, but a `get()`
+whose `allowCredentials` name only `usb` or only `hybrid` transports never
+reaches Touch ID, nothing else serves it, and it was still pending at 82 s
+despite a 60 s `timeout`, with no notice. The same shapes with the gate off
+raise the pending notice at 3 s. The pending check therefore runs in both
+states; with Touch ID configured it waits `PASSKEY_PENDING_WITH_PLATFORM_MS`
+(15 s) so a person answering a real Touch ID sheet is not narrated over. The
+pending copy ("may be waiting") claims nothing about a missing provider, so it
+holds in both states. The existing chooser is unchanged.
+
+Still silent, by design or as a known limit: conditional mediation (pending is
+its normal state; it is excluded in both gate states), `mediation: "immediate"`
+(Electron 45 rejects it with `TypeError` at once), and a call made through a
+pristine `CredentialsContainer.prototype.get` taken from an `about:blank`
+frame's realm, which the shim never wraps (it injects http(s) frames only).
 
 **Limits.** (1) A call made before the shim lands (an inline script at parse time)
 is not observed. (2) A cross-origin frame may only call `create()` under user
