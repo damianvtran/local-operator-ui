@@ -13954,7 +13954,7 @@ test("continue-in-user-tab: an agent tab already gone is not refreshed and nothi
 		host.passkeyContinueLinks.deps.log = log;
 		assert.equal(agent.view.webContents.loadCalls.length, 0);
 		assert.equal(host.passkeyContinueLinks.size, 0);
-		assert.match(logs.join("\n"), /source-gone/);
+		assert.ok(logs.join("\n").includes("source-gone"));
 		assert.deepEqual(fixture.requests, [
 			"POST /login?next=%2Fhome",
 			"GET /home",
@@ -13977,7 +13977,10 @@ test("continue-in-user-tab: an agent tab that is loading, driven, moved or showi
 			if (state === "driven")
 				void registry.lane(
 					agent.tabId,
-					() => new Promise((resolve) => (releaseLane = resolve)),
+					() =>
+						new Promise((resolve) => {
+							releaseLane = resolve;
+						}),
 				);
 			if (state === "moved")
 				agent.view.webContents.url = `${fixture.origin}/elsewhere`;
@@ -13994,15 +13997,13 @@ test("continue-in-user-tab: an agent tab that is loading, driven, moved or showi
 			releaseLane();
 			assert.equal(agent.view.webContents.loadCalls.length, 0, state);
 			assert.equal(host.passkeyContinueLinks.size, 0, `${state}: released`);
-			assert.match(
-				logs.join("\n"),
-				{
-					loading: /source-loading/,
-					driven: /source-busy/,
-					moved: /source-moved/,
-					prompt: /source-prompt/,
-				}[state],
-			);
+			const expected = {
+				loading: "source-loading",
+				driven: "source-busy",
+				moved: "source-moved",
+				prompt: "source-prompt",
+			}[state];
+			assert.ok(logs.join("\n").includes(expected), state);
 			fixture.requests.length = 0;
 		}
 	} finally {
