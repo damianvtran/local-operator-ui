@@ -23,7 +23,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { BrowserPasskeyNotice } from "./src/renderer/src/features/browser/components/browser-passkey-notice";',
+			'export { BrowserPasskeyNotice, BrowserPasskeyContinuedStrip } from "./src/renderer/src/features/browser/components/browser-passkey-notice";',
 			'export { t } from "./src/renderer/src/shared/i18n";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
 			'export { createElement, act } from "react";',
@@ -77,6 +77,7 @@ try {
 }
 const {
 	BrowserPasskeyNotice,
+	BrowserPasskeyContinuedStrip,
 	t,
 	renderToStaticMarkup,
 	createElement,
@@ -122,15 +123,30 @@ test("an agent tab's notice offers Continue in your own tab, says why, and keeps
 	// (the message line already says it), and it names the step that remains.
 	// Narrowed with passkey custody: some managers CAN now show their window in
 	// an agent tab, so the sentence covers only one that can't.
-	assert.ok(AGENT_WHY.startsWith("If your password manager can’t show"));
+	// D3: the instruction the user must not miss leads, ahead of the "If…".
+	assert.ok(
+		AGENT_WHY.startsWith(
+			"Keep this tab open. If your password manager can’t show",
+		),
+	);
 	assert.ok(!AGENT_WHY.includes(CONTINUE), "the button label is not repeated");
 	assert.ok(!AGENT_WHY.includes("agent-driven"));
 	// Incident a-7942: the user must learn that THIS (the agent's) tab stays and
 	// must be kept, and that it reloads on its own once they have signed in —
 	// main now refreshes it on a finished sign-in (`passkey-continue-link.ts`),
 	// so the old "ask the agent to reload this page" step is no longer the ask.
-	assert.ok(AGENT_WHY.includes("Keep this tab open"));
-	assert.ok(AGENT_WHY.includes("reloads for the agent once you’ve signed in"));
+	// Review U1 / audit: the reload is not promised (main cannot always tell
+	// the sign-in finished, and a reloaded sign-in URL may still show its form),
+	// so the sentence says "should" and names the fallback that works.
+	assert.ok(
+		AGENT_WHY.includes("should reload for the agent once you’ve signed in"),
+	);
+	assert.ok(!AGENT_WHY.includes("ask the agent to reload"));
+	assert.ok(
+		AGENT_WHY.includes(
+			"if it still shows the sign-in page afterwards, tell the agent you’ve signed in",
+		),
+	);
 	assert.ok(
 		!html.includes(t("ui.browser.browser_passkey_notice.explanation")),
 		"one hint, not two",
@@ -301,5 +317,71 @@ test("a successful continue does not take focus from wherever the user moved on 
 		await view.unmount();
 		elsewhere.remove();
 		window.close();
+	}
+});
+
+// ---- the copy tab's strip (review Q1/D1) -----------------------------------
+//
+// The "keep the agent's tab open" reminder used to be a toast, which on the
+// Browser route lies under the page view and was never seen. It is now a band
+// in the chrome above the page, rendered from main's `passkeyContinued`.
+
+const CONTINUED = t("ui.browser.browser_passkey_notice.continued_here");
+
+test("the copy's strip says finish here, keep the agent's tab, and the fallback", () => {
+	assert.equal(
+		CONTINUED,
+		"Finish signing in here. Keep the agent’s tab open: it reloads once you’re signed in. If it still shows the sign-in page, tell the agent you’ve signed in.",
+	);
+	const html = renderToStaticMarkup(
+		createElement(BrowserPasskeyContinuedStrip, {
+			view: { tabId: 7 },
+			onDismiss: () => {},
+		}),
+	);
+	assert.ok(html.includes('data-tour-tag="browser-passkey-continued"'));
+	assert.ok(html.includes(CONTINUED));
+	assert.ok(html.includes('aria-live="polite"'));
+	assert.ok(
+		html.includes(
+			`aria-label="${t("ui.browser.browser_passkey_notice.dismiss")}"`,
+		),
+		"dismissible",
+	);
+	for (const view of [null, undefined])
+		assert.equal(
+			renderToStaticMarkup(
+				createElement(BrowserPasskeyContinuedStrip, {
+					view,
+					onDismiss: () => {},
+				}),
+			),
+			"",
+		);
+});
+
+test("the strip's Dismiss names its own tab", async () => {
+	const dismissed = [];
+	const slot = document.createElement("div");
+	document.body.append(slot);
+	const root = createRoot(slot);
+	try {
+		await act(async () =>
+			root.render(
+				createElement(BrowserPasskeyContinuedStrip, {
+					view: { tabId: 12 },
+					onDismiss: (tabId) => dismissed.push(tabId),
+				}),
+			),
+		);
+		const strip = slot.querySelector(
+			'[data-tour-tag="browser-passkey-continued"]',
+		);
+		assert.ok(strip, "still shown");
+		await act(async () => strip.querySelector("button").click());
+		assert.deepEqual(dismissed, [12]);
+	} finally {
+		await act(async () => root.unmount());
+		slot.remove();
 	}
 });

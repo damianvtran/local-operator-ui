@@ -1,7 +1,7 @@
 import type { WaitingOnUserInput } from "@shared/browser-user-attention";
 import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
-import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	AddressHistoryRequest,
@@ -190,6 +190,10 @@ export interface BrowserChromeState {
 	 * provide" notice, or null. Main's facts only (origin, owner); see
 	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
 	passkeyNotice?: PasskeyNoticeView | null;
+	/** Set while the ACTIVE tab is the user's copy from a passkey notice's
+	 * "Continue in your own tab" and its strip has not been dismissed (main's
+	 * `passkey-continue-link.ts`). Optional for a host that predates it. */
+	passkeyContinued?: { tabId: number } | null;
 	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
 	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
 	 * that predates it. */
@@ -513,6 +517,8 @@ export interface BrowserChrome {
 	revealDownloads: () => Promise<void>;
 	/** Dismiss the passkey notice. Main ignores a stale `at`. */
 	dismissPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** Hide the copy tab's "finish signing in here" strip. */
+	dismissPasskeyContinued: (tabId: number) => Promise<void>;
 	/** Open the notice's page in the system browser. Reports its own refusal, for
 	 * the reason `revealDownloads` does: the door answers instead of throwing. */
 	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
@@ -955,6 +961,8 @@ export function useBrowserChrome(): BrowserChrome {
 			clearData: (what) => runVoid(() => api?.clearData(what)),
 			dismissPasskeyNotice: (tabId, at) =>
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			dismissPasskeyContinued: (tabId) =>
+				runVoid(() => api?.dismissPasskeyContinued?.(tabId)),
 			decideMediaPermission: (tabId, id, decision, trusted) =>
 				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
 			openMediaSystemSettings: (tabId, id) =>
@@ -974,18 +982,12 @@ export function useBrowserChrome(): BrowserChrome {
 				let continued = false;
 				await runVoid(async () => {
 					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
+					// What to do next is said in the copy's own strip (main projects
+					// it as `passkeyContinued`), not a toast: on the Browser route a
+					// toast sits under the page view and is never seen (review Q1/D1,
+					// `browser-view-policy.ts`).
 					if (answer?.ok === true) {
 						continued = true;
-						// The notice that explained the hand-off unmounts with the switch
-						// to the user's tab, so the one thing they must not do — close the
-						// agent's tab — is said again where they now are (incident
-						// a-7942: the agent tab went away and the agent reopened a stale
-						// login). Longer than Sonner's 4 s default because it is three
-						// short sentences read right after a tab switch.
-						showInfoToast(
-							t("ui.browser.use_browser_chrome.passkey_continued"),
-							{ duration: 10_000 },
-						);
 					} else if (answer && answer.ok === false) {
 						// `reason` is main's own localized sentence (review R2/U3).
 						showErrorToast(

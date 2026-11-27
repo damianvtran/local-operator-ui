@@ -656,6 +656,7 @@ export class BrowserHost implements BrowserActionContext {
 			busy: (tabId) => this.registry.isBusy(tabId),
 			authPromptPresent: (webContentsId) =>
 				this.registry.authPromptPresent(webContentsId),
+			active: (tabId) => this.registry.activeTab?.tabId === tabId,
 			log: (message) => this.log(message),
 		});
 		this.facts = options.facts;
@@ -1274,6 +1275,17 @@ export class BrowserHost implements BrowserActionContext {
 				active && !this.pendingAuthRequest?.(active.tabId)
 					? (this.passkeyNotice?.(active.tabId) ?? null)
 					: null,
+			// The ACTIVE tab's "finish signing in here, keep the agent's tab open"
+			// strip, when it is a passkey-continue copy that is still the user's
+			// (`passkey-continue-link.ts`, "THE COPY'S STRIP"). Scoped to the active
+			// tab like the notice: it describes the page the user is looking at.
+			passkeyContinued:
+				active &&
+				active.owner === "user" &&
+				active.handedTo === null &&
+				this.passkeyContinueLinks.stripFor(active.tabId)
+					? { tabId: active.tabId }
+					: null,
 			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
 			// notice: a background tab's request waits (its callback held) until the
 			// user switches to it, rather than asking about a page they cannot see.
@@ -1435,7 +1447,7 @@ export class BrowserHost implements BrowserActionContext {
 					created.tabId = record.tabId;
 				},
 			);
-			this.linkPasskeyContinue(record, copy.tabId, url);
+			this.linkPasskeyContinue(record, copy.tabId, url, true);
 			return { ok: true, tabId: copy.tabId };
 		} catch {
 			if (created.tabId === null)
@@ -1445,7 +1457,9 @@ export class BrowserHost implements BrowserActionContext {
 				};
 			// Linked on this path too: the user can retry the sign-in in the tab
 			// that shows its own failure, and that retry finishing is the same signal.
-			this.linkPasskeyContinue(record, created.tabId, url);
+			// No strip here (review R3): "finish signing in here" over a failure page
+			// would contradict what the tab shows.
+			this.linkPasskeyContinue(record, created.tabId, url, false);
 			// The tab exists, is active and is the user's: that is the success the
 			// user asked for (review U3). Same as `duplicate`, the load failure stays
 			// in the tab for them to see, rather than a toast saying the tab they
@@ -1461,21 +1475,42 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/** Armed after the copy's own load, so that load's commit never counts as
-	 * the end of the sign-in. A copy already gone by now links nothing. */
+	 * the end of the sign-in. A copy already gone by now links nothing, and
+	 * neither does an agent tab that closed during that load (review R4): its
+	 * `releaseTab` has already run, so a link made now would wait for nothing,
+	 * and the copy's strip would ask the user to keep a tab that is gone. */
 	private linkPasskeyContinue(
 		source: TabRecord,
 		copyTabId: number,
 		signInUrl: string,
+		strip: boolean,
 	): void {
 		const copy = this.registry.get(copyTabId);
 		if (!copy || copy.view.webContents.isDestroyed()) return;
+		const live = this.registry.get(source.tabId);
+		if (
+			!live ||
+			live.view.webContents.isDestroyed() ||
+			live.view.webContents.id !== source.view.webContents.id
+		)
+			return;
 		this.passkeyContinueLinks.link({
+			strip,
 			sourceTabId: source.tabId,
 			sourceWebContentsId: source.view.webContents.id,
 			signInUrl,
 			copyTabId,
 			copyContents: copy.view.webContents,
 		});
+		if (strip) this.onChanged();
+	}
+
+	/** The copy strip's Dismiss (`browser-passkey-continued-dismiss`). Takes only
+	 * a tab id; a tab with no strip is a no-op answering false. */
+	dismissPasskeyContinued(tabId: number): boolean {
+		const dismissed = this.passkeyContinueLinks.dismissStrip(tabId);
+		if (dismissed) this.onChanged();
+		return dismissed;
 	}
 
 	/** Human duplicates copy URL ONLY. Session attribution is not a capability,

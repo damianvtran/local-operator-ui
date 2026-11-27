@@ -26,6 +26,11 @@
  * - It never refreshes a tab that is busy: a command in the agent's lane, a
  *   load in progress, a provider prompt present, or an agent that has since
  *   navigated the tab elsewhere all mean "leave it alone".
+ * - It never reloads the tab the user is LOOKING AT (review R2): if they went
+ *   back to the agent's tab before the copy's sign-in finished (a phone or QR
+ *   passkey can finish seconds later), a reload would swap the page under them
+ *   and lose anything typed. That case is logged `source-active` and left to
+ *   the copy's strip, whose fallback tells the user to tell the agent.
  *
  * THE COMPLETION SIGNAL, and why it is this one. Main cannot see whether a
  * sign-in "succeeded" — no site tells the browser. What it CAN see, from its own
@@ -46,8 +51,25 @@
  *      path segment naming one (`/login`, `/mfa`, `/oauth/callback`, ...). An
  *      MFA or password step on the same site is the middle of a sign-in, not
  *      its end.
+ * Steps that are not a sign-in's end but sit on the same site count as auth
+ * steps too (review R1/U2): creating an account (`/signup`, `/register`,
+ * `/join`, `/create`), recovering one (`/forgot`, `/reset`), an error page that
+ * answered 200 (`/error`), and a step carried in the query rather than the path
+ * (`/?step=mfa`, `?challenge=…`), because a click on "Create account" or a
+ * same-URL MFA step would otherwise spend the one-shot link before the user has
+ * signed in.
  * The signal is one-shot: the link is dropped the moment it fires (or decides
  * not to act), so later browsing in the copy cannot reload the agent's tab.
+ *
+ * THE COPY'S STRIP (review Q1/D1). The user is told what happens next in the
+ * copy itself: main records the copy tab here when a continue SUCCEEDED (the
+ * copy loaded and the link was made), and the chrome projects it for the
+ * active tab as `passkeyContinued`, rendered as a band above the page — a
+ * toast would sit under the page view (`browser-view-policy.ts`). The strip
+ * outlives the link on purpose: its fallback ("if it still shows the sign-in
+ * page, tell the agent") is most useful after the refresh. It ends when the
+ * user dismisses it, the copy closes, or a newer continue from the same agent
+ * tab replaces this copy's link (its promise would no longer be true).
  *
  * WHICH URL THE REFRESH LOADS: the agent tab's OWN current top-level URL, read
  * from its webContents at refresh time and required to equal the URL that was
@@ -120,6 +142,28 @@ const AUTH_SEGMENTS: ReadonlySet<string> = new Set([
 	"signout",
 	"consent",
 	"idp",
+	// Same-site pages that are not the end of a sign-in (review R1/U2).
+	"signup",
+	"register",
+	"registration",
+	"join",
+	"create",
+	"forgot",
+	"error",
+	"errors",
+]);
+
+/** Query keys and values that mark a sign-in step carried in the query string
+ * (`/?step=mfa`, `/?challenge=webauthn`). A KEY in `AUTH_QUERY_KEYS` counts
+ * whatever its value; any other key counts when its value is a word from
+ * `AUTH_SEGMENTS` (`?view=login`, `?page=signup`). */
+const AUTH_QUERY_KEYS: ReadonlySet<string> = new Set([
+	"step",
+	"mfa",
+	"2fa",
+	"otp",
+	"challenge",
+	"error",
 ]);
 
 /** First host labels of dedicated sign-in hosts (`login.microsoftonline.com`,
@@ -150,13 +194,24 @@ function parseHttp(value: string): URL | null {
 	}
 }
 
+/** Word separators inside a path segment or query value. */
+const WORD_SEPARATORS = /[/._-]+/;
+
+function hasAuthWord(value: string): boolean {
+	return value
+		.toLowerCase()
+		.split(WORD_SEPARATORS)
+		.some((segment) => segment !== "" && AUTH_SEGMENTS.has(segment));
+}
+
 function looksLikeAuthStep(url: URL): boolean {
 	const firstLabel = url.hostname.split(".")[0] ?? "";
 	if (AUTH_HOST_LABELS.has(firstLabel)) return true;
-	return url.pathname
-		.toLowerCase()
-		.split(/[/._-]+/)
-		.some((segment) => segment !== "" && AUTH_SEGMENTS.has(segment));
+	if (hasAuthWord(url.pathname)) return true;
+	for (const [key, value] of url.searchParams)
+		if (AUTH_QUERY_KEYS.has(key.toLowerCase()) || hasAuthWord(value))
+			return true;
+	return false;
 }
 
 /** Same site for this purpose: same origin, or the same scheme and the same
@@ -206,6 +261,9 @@ export interface PasskeyContinueLinkDeps {
 	busy(tabId: number): boolean;
 	/** True while a password-manager prompt frame is present in the view. */
 	authPromptPresent(webContentsId: number): boolean;
+	/** True while this tab is the one shown (`registry.activeTab`): a reload
+	 * there would happen in front of the user (review R2). */
+	active(tabId: number): boolean;
 	log(message: string): void;
 }
 
@@ -224,6 +282,7 @@ export type ContinueLinkOutcome =
 	| "source-gone"
 	| "source-not-agent"
 	| "source-moved"
+	| "source-active"
 	| "source-loading"
 	| "source-busy"
 	| "source-prompt"
@@ -235,12 +294,24 @@ export class PasskeyContinueLinks {
 	 * second continue from the same tab replaces the first rather than stacking
 	 * listeners on two copies. */
 	private readonly bySource = new Map<number, Link>();
+	/** Copy tabs whose strip is showing (module header, "THE COPY'S STRIP"). */
+	private readonly strips = new Set<number>();
 
 	constructor(private readonly deps: PasskeyContinueLinkDeps) {}
 
 	/** Live links, for the no-leak tests. */
 	get size(): number {
 		return this.bySource.size;
+	}
+
+	/** Whether `tabId` is a copy whose "keep the agent's tab open" strip shows. */
+	stripFor(tabId: number): boolean {
+		return this.strips.has(tabId);
+	}
+
+	/** The user's Dismiss on the strip. True when there was one to dismiss. */
+	dismissStrip(tabId: number): boolean {
+		return this.strips.delete(tabId);
 	}
 
 	/**
@@ -254,8 +325,16 @@ export class PasskeyContinueLinks {
 		signInUrl: string;
 		copyTabId: number;
 		copyContents: DriveableWebContents;
+		/** Show the copy's strip: only when the continue succeeded, i.e. the copy
+		 * loaded (review R3). A copy showing its own load failure is still linked,
+		 * so a retried sign-in there refreshes, but is not told "finish here". */
+		strip: boolean;
 	}): void {
+		// A replaced copy's strip would promise a refresh its link no longer makes.
+		const replaced = this.bySource.get(options.sourceTabId);
+		if (replaced) this.strips.delete(replaced.copyTabId);
 		this.forgetSource(options.sourceTabId);
+		if (options.strip) this.strips.add(options.copyTabId);
 		const contents = options.copyContents;
 		const onNavigate = (_event: unknown, url: string, code: number) => {
 			if (!isSignInCompletion(options.signInUrl, url, code)) return;
@@ -289,6 +368,7 @@ export class PasskeyContinueLinks {
 	/** A tab closed (`releaseTab`): drop any link it is either end of. A closed
 	 * copy before a qualifying commit is the "no sign-in" case: no refresh. */
 	forgetTab(tabId: number): void {
+		this.strips.delete(tabId);
 		this.forgetSource(tabId);
 		for (const link of [...this.bySource.values()])
 			if (link.copyTabId === tabId) this.forgetSource(link.sourceTabId);
@@ -323,6 +403,7 @@ export class PasskeyContinueLinks {
 		// The agent moved its tab on since the copy: its current page is its own
 		// work, not the sign-in page, so there is nothing of ours to refresh.
 		if (current !== link.signInUrl) return "source-moved";
+		if (this.deps.active(link.sourceTabId)) return "source-active";
 		if (source.contents.isLoading()) return "source-loading";
 		if (this.deps.busy(link.sourceTabId)) return "source-busy";
 		if (this.deps.authPromptPresent(link.sourceWebContentsId))

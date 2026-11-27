@@ -1400,6 +1400,9 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
+		/** Dismiss the strip a passkey-continue copy shows. Tab id only. */
+		dismissPasskeyContinued: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-continued-dismiss", tabId),
 		/** A sidebar notification row's click: bring the tab an agent is waiting
 		 * on the user in forward, with its held popups (`user-attention.ts`). The
 		 * ONLY path that does; `false` when the tab is gone. */

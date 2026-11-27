@@ -394,6 +394,9 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** Dismiss the "finish signing in here" strip of a passkey-continue
+				 * copy. False when that tab had none. */
+				dismissPasskeyContinued: (tabId: number) => Promise<boolean>;
 				/** A sidebar notification row's click (`user-attention.ts`): the tab
 				 * becomes active and its held popups are presented. */
 				openUserAttention: (tabId: number) => Promise<unknown>;

@@ -79,7 +79,10 @@ import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
-import { BrowserPasskeyNotice } from "./browser-passkey-notice";
+import {
+	BrowserPasskeyContinuedStrip,
+	BrowserPasskeyNotice,
+} from "./browser-passkey-notice";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import {
 	type AddressDismissIntent,
@@ -1489,6 +1492,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onOpenExtensions={
 					activeTab?.owner === "user" ? openExtensionsPage : undefined
 				}
+			/>
+			{/* The user's own tab after "Continue in your own tab": what happens to
+			    the agent's tab, said above the page where it is seen (review Q1/D1). */}
+			<BrowserPasskeyContinuedStrip
+				view={chrome.state?.passkeyContinued}
+				onDismiss={(tabId) => void chrome.dismissPasskeyContinued(tabId)}
 			/>
 			{nativeApprovalsCard?.available && (
 				<output
