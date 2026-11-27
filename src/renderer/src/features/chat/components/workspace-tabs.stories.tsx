@@ -1,6 +1,7 @@
 import { TOOLTIP_DELAY_MS } from "@shared/components/ui/tooltip";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, waitFor } from "@storybook/test";
+import { useState } from "react";
 import { type WorkspaceTab, makeWorkspaceTab } from "../workspace-tabs-model";
 import { WorkspaceTabs } from "./workspace-tabs";
 
@@ -27,10 +28,12 @@ function Strip({
 	items,
 	rtl = false,
 	labels = titles,
+	activeTitle = null,
 }: {
 	items: WorkspaceTab[];
 	rtl?: boolean;
 	labels?: Record<string, string>;
+	activeTitle?: string | null;
 }) {
 	return (
 		<div dir={rtl ? "rtl" : "ltr"} className="w-full max-w-[460px]">
@@ -38,7 +41,7 @@ function Strip({
 				viewport={{ pinned: 0, regular: 0 }}
 				tabs={items}
 				activeKey={items.find((tab) => !tab.pinned)?.key}
-				activeTitle={null}
+				activeTitle={activeTitle}
 				titles={labels}
 				autoClose={false}
 				focusRequested={false}
@@ -219,6 +222,21 @@ export const TitlePanRegression: Story = {
 		);
 	},
 };
+
+function LiveTitleStrip() {
+	const [title, setTitle] = useState(hoverLabels[tabs[3].key]);
+	return (
+		<>
+			<Strip items={tabs.slice(3, 4)} activeTitle={title} />
+			{/* Focus and activate with the keyboard so the pointer stays on the tab. */}
+			<button type="button" data-story-rename onClick={() => setTitle("Notes")}>
+				Replace active title
+			</button>
+		</>
+	);
+}
+
+export const TitlePanLiveRename: Story = { render: () => <LiveTitleStrip /> };
 
 export const TitlePanReducedMotion: Story = {
 	args: TitlePan.args,

@@ -2,7 +2,13 @@ import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { TOOLTIP_DELAY_MS } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 /*
  * The conversation title: the clip box, the pan, and the edge fade.
@@ -94,6 +100,7 @@ export function ChatRowTitle({
 	const detachRef = useRef<(() => void) | null>(null);
 	const dwellRef = useRef<number | null>(null);
 	const frameRef = useRef<number | null>(null);
+	const panTitleRef = useRef(text);
 	/*
 	 * Whether a pan is RUNNING is React state, because it swaps two classes: the pan
 	 * drops `truncate`'s ellipsis (a static ellipsis painted over moving text is a
@@ -173,7 +180,7 @@ export function ChatRowTitle({
 				// A tab's trailing fade eases out as the last characters become
 				// readable, rather than dimming them at the held position.
 				const endFade = isTab ? Math.min(fade, overflow - distance) : fade;
-				const mask = `linear-gradient(to ${rtl ? "left" : "right"}, transparent 0, black ${Math.min(fade, distance)}px, black calc(100% - ${endFade}px), transparent 100%)`;
+				const mask = `linear-gradient(to ${rtl ? "left" : "right"}, transparent 0, black ${Math.min(fade, distance)}px, black calc(100% - ${endFade}px), transparent 100%)`; // i18n: ignore CSS gradient value, not user copy
 				box.style.setProperty("mask-image", mask);
 				box.style.setProperty("-webkit-mask-image", mask);
 				/*
@@ -245,6 +252,14 @@ export function ChatRowTitle({
 		if (reduceMotionRef.current) return;
 		dwellRef.current = window.setTimeout(startPan, TOOLTIP_DELAY_MS);
 	}, [resetPan, startPan]);
+
+	useLayoutEffect(() => {
+		if (!isTab || panTitleRef.current === text) return;
+		panTitleRef.current = text;
+		// Live tab names can change under a stationary pointer. The old title's
+		// dwell, travel and mask must not survive into the replacement's first paint.
+		resetPan();
+	}, [isTab, text, resetPan]);
 
 	useEffect(() => {
 		reduceMotionRef.current = reduceMotion;
