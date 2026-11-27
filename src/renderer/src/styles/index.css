@@ -4774,9 +4774,10 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	initial-value: 0px;
 }
 @supports (animation-timeline: scroll(self inline)) {
-	/* Each lane follows its own logical inline offset; the strip chevron is a
-	 * sibling and stays clear. Mask alpha lets native glass show through without
-	 * adding a painted strip. When a lane fits, its timeline is inactive and the
+	/* Fade the strip's outer edges using their lane's logical inline offset;
+	 * the strip chevron is a sibling and stays clear. Mask alpha lets native
+	 * glass show through without adding a painted strip. When a lane fits, its
+	 * timeline is inactive and the
 	 * zero-length stops leave it fully opaque. The 24px ramps can extend past
 	 * the timeline, so short overflow only softens by the actual hidden distance.
 	 * Round down to whole CSS pixels: Chromium can sample a fractional remainder
@@ -4784,15 +4785,19 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	 * leave a legible center. Like the transcript fade, this has no timed motion. */
 	:is([data-workspace-pinned], [data-workspace-regular]) {
 		--workspace-tab-mask-direction: to right;
+		--workspace-tab-start-stop: min(
+			round(down, var(--lo-workspace-tab-fade-start), 1px),
+			25%
+		);
+		--workspace-tab-end-stop: min(
+			round(down, var(--lo-workspace-tab-fade-end), 1px),
+			25%
+		);
 		mask-image: linear-gradient(
 			var(--workspace-tab-mask-direction),
 			transparent,
-			black min(round(down, var(--lo-workspace-tab-fade-start), 1px), 25%),
-			black
-				calc(
-					100% -
-					min(round(down, var(--lo-workspace-tab-fade-end), 1px), 25%)
-				),
+			black var(--workspace-tab-start-stop),
+			black calc(100% - var(--workspace-tab-end-stop)),
 			transparent
 		);
 		animation-name: workspace-tab-fade-start, workspace-tab-fade-end;
@@ -4800,6 +4805,14 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 		animation-fill-mode: both;
 		animation-timeline: scroll(self inline), scroll(self inline);
 		animation-range: 0px 24px, calc(100% - 24px) 100%;
+	}
+	/* Adjacent scrollports share a seam, not two edges of the strip. Keep
+	 * it opaque even if either offset reveals more tabs in that direction. */
+	[data-workspace-pinned]:has(+ [data-workspace-regular]) {
+		--workspace-tab-end-stop: 0px;
+	}
+	[data-workspace-pinned] + [data-workspace-regular] {
+		--workspace-tab-start-stop: 0px;
 	}
 	:is([data-workspace-pinned], [data-workspace-regular]):dir(rtl) {
 		--workspace-tab-mask-direction: to left;

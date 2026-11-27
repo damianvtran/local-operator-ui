@@ -18,6 +18,8 @@ const tabs = names.map((_, index) => ({
 	pinned: index < 3,
 }));
 const titles = Object.fromEntries(tabs.map(({ key }, i) => [key, names[i]]));
+const regularTabs = tabs.filter((tab) => !tab.pinned);
+const pinnedTabs = tabs.map((tab) => ({ ...tab, pinned: true }));
 const noop = () => {};
 
 function Strip({
@@ -75,18 +77,40 @@ const setPosition = (
 export const Overflow: Story = {};
 export const Middle: Story = { play: (context) => setPosition(0.5, context) };
 export const End: Story = { play: (context) => setPosition(1, context) };
+export const SingleLaneMiddle: Story = {
+	args: { items: regularTabs },
+	play: (context) => setPosition(0.5, context),
+};
 export const OverflowRtl: Story = { args: { rtl: true } };
 export const Fits: Story = { args: { items: [tabs[0], tabs[3]] } };
 export const Empty: Story = { args: { items: [] } };
 
-// Chromium owns scroll sampling. Assert the paint inputs after it samples, not
-// merely that the stylesheet contains keyframes or that scrollLeft changed.
-const transparentEnd = /(?:100%|calc\(100% - min\(0px, 25%\)\)), rgba?\(/;
-const fade = (lane: HTMLElement) => {
-	const style = getComputedStyle(lane);
-	return ["start", "end"].map((edge) =>
-		Number.parseFloat(
-			style.getPropertyValue(`--lo-workspace-tab-fade-${edge}`),
+// Inspect the gradient's opaque stops, not the timeline variables: those
+// variables can still animate at the seam even when it must paint fully opaque.
+const expectMask = (
+	lane: HTMLElement,
+	direction: "right" | "left",
+	start: number | readonly number[],
+	end: number | readonly number[],
+) => {
+	// Chromium can retain min(0px, 25%) in the gradient serialization; that
+	// zero-length ramp is equivalent to a stop directly on the edge.
+	const ramp = (px: number) => `min\\(${px}px, 25%\\)`;
+	const alternatives = (
+		value: number | readonly number[],
+		pattern: (px: number) => string,
+	) => (typeof value === "number" ? [value] : value).map(pattern).join("|");
+	const startStop = alternatives(start, (px) =>
+		px === 0 ? `0px|${ramp(0)}` : ramp(px),
+	);
+	const endStop = alternatives(end, (px) => {
+		const offset = `calc\\(100% - ${ramp(px)}\\)`;
+		return px === 0 ? `100%|${offset}` : offset;
+	});
+	const mask = getComputedStyle(lane).maskImage;
+	expect(mask).toMatch(
+		new RegExp(
+			`^linear-gradient\\(to ${direction}, rgba\\(0, 0, 0, 0\\), rgb\\(0, 0, 0\\) (?:${startStop}), rgb\\(0, 0, 0\\) (?:${endStop}), rgba\\(0, 0, 0, 0\\)\\)$`,
 		),
 	);
 };
@@ -96,6 +120,8 @@ export const ScrollFadeRegression: Story = {
 		<>
 			<Strip items={tabs} />
 			<Strip items={tabs} rtl />
+			<Strip items={regularTabs} />
+			<Strip items={pinnedTabs} />
 			<Strip items={[tabs[0], tabs[3]]} />
 			<Strip items={[]} />
 			<Strip items={tabs.slice(3, 5)} />
@@ -103,49 +129,68 @@ export const ScrollFadeRegression: Story = {
 	),
 	play: async ({ canvasElement, step }) => {
 		await canvasElement.ownerDocument.fonts.ready;
-		const [ltr, rtl, fit, empty, short] =
+		const [ltr, rtl, regular, pinned, fit, empty, short] =
 			canvasElement.querySelectorAll<HTMLElement>("[data-workspace-tabs]");
 		const lanes = (strip: HTMLElement) =>
 			strip.querySelectorAll<HTMLElement>(laneSelector);
-		for (const [strip, sign] of [
-			[ltr, 1],
-			[rtl, -1],
+		for (const [strip, sign, direction] of [
+			[ltr, 1, "right"],
+			[rtl, -1, "left"],
 		] as const) {
-			await step(sign === 1 ? "LTR lane edges" : "RTL lane edges", async () => {
-				for (const lane of lanes(strip)) {
-					const max = lane.scrollWidth - lane.clientWidth;
-					expect(max).toBeGreaterThan(48);
-					const neighbor = [...lanes(strip)].find((other) => other !== lane);
-					const otherOffset = neighbor?.scrollLeft;
+			await step(
+				`${sign === 1 ? "LTR" : "RTL"}: split seam stays opaque`,
+				async () => {
+					const [pins, sessions] = lanes(strip);
 					const chevron = strip.querySelector("[data-workspace-more]");
 					if (!chevron) throw new Error("Missing strip chevron");
 					const chevronBox = chevron.getBoundingClientRect().toJSON();
-					await waitFor(() => expect(fade(lane)).toEqual([0, 24]));
-					lane.scrollLeft = sign * (max / 2);
-					await waitFor(() => expect(fade(lane)).toEqual([24, 24]));
-					lane.scrollLeft = sign * lane.scrollWidth;
-					await waitFor(() => {
-						const [start, end] = fade(lane);
-						expect(start).toBe(24);
-						expect(end).toBeLessThan(1);
-						// The paint rounds the subpixel remainder away at the endpoint.
-						const mask = getComputedStyle(lane).maskImage;
-						expect(mask, mask).toMatch(transparentEnd);
-					});
-					expect(neighbor?.scrollLeft).toBe(otherOffset);
+					for (const [lane, neighbor, isPinned] of [
+						[pins, sessions, true],
+						[sessions, pins, false],
+					] as const) {
+						const max = lane.scrollWidth - lane.clientWidth;
+						expect(max).toBeGreaterThan(48);
+						const otherOffset = neighbor.scrollLeft;
+						await waitFor(() =>
+							expectMask(lane, direction, 0, isPinned ? 0 : 24),
+						);
+						lane.scrollLeft = sign * (max / 2);
+						await waitFor(() =>
+							expectMask(lane, direction, isPinned ? 24 : 0, isPinned ? 0 : 24),
+						);
+						lane.scrollLeft = sign * lane.scrollWidth;
+						await waitFor(() =>
+							expectMask(lane, direction, isPinned ? 24 : 0, 0),
+						);
+						expect(neighbor.scrollLeft).toBe(otherOffset);
+					}
 					expect(chevron.getBoundingClientRect().toJSON()).toEqual(chevronBox);
 					expect(getComputedStyle(chevron).maskImage).toBe("none");
-					expect(getComputedStyle(lane).maskImage).toContain(
-						sign === 1 ? "to right" : "to left",
-					);
-					lane.scrollLeft = 0;
-				}
-			});
+				},
+			);
 		}
+		await step(
+			"A single pinned or regular lane fades at both outer edges",
+			async () => {
+				for (const strip of [pinned, regular]) {
+					expect(lanes(strip)).toHaveLength(1);
+					const [lane] = lanes(strip);
+					const max = lane.scrollWidth - lane.clientWidth;
+					expect(max).toBeGreaterThan(48);
+					await waitFor(() => expectMask(lane, "right", 0, 24));
+					lane.scrollLeft = 8;
+					await waitFor(() => expectMask(lane, "right", 8, 24));
+					lane.scrollLeft = max / 2;
+					await waitFor(() => expectMask(lane, "right", 24, 24));
+					lane.scrollLeft = lane.scrollWidth;
+					await waitFor(() => expectMask(lane, "right", 24, 0));
+				}
+			},
+		);
 		await step("Fitting and empty lanes have no fade", async () => {
 			for (const lane of lanes(fit)) {
 				expect(lane.scrollWidth).toBe(lane.clientWidth);
-				expect(fade(lane)).toEqual([0, 0]);
+				expectMask(lane, "right", 0, 0);
 			}
 			expect(lanes(empty)).toHaveLength(0);
 		});
@@ -163,17 +208,11 @@ export const ScrollFadeRegression: Story = {
 			wrapper.style.width = `${short.getBoundingClientRect().width - spare - 8}px`;
 			await waitFor(() => {
 				expect(lane.scrollWidth - lane.clientWidth).toBe(8);
-				const [start, end] = fade(lane);
-				expect(start).toBe(0);
-				expect(end).toBeCloseTo(8, 0);
+				// CSS floors the paint stop; CSSOM rounds the measured range.
+				expectMask(lane, "right", 0, [7, 8]);
 			});
 			lane.scrollLeft = lane.scrollWidth;
-			await waitFor(() => {
-				const [start, end] = fade(lane);
-				expect(start).toBeCloseTo(8, 0);
-				expect(end).toBeLessThan(1);
-				expect(getComputedStyle(lane).maskImage).toMatch(transparentEnd);
-			});
+			await waitFor(() => expectMask(lane, "right", [7, 8], 0));
 		});
 	},
 };
