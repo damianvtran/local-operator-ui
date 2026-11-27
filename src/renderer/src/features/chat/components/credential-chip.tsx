@@ -23,18 +23,49 @@ import type { CSSProperties, FC } from "react";
  * beside the component that renders ink on it is what stops the wash and the
  * chip drifting apart.
  *
- * WHY THE EDGE IS AN OUTLINE AND NOT A BORDER, which is a pixel requirement
- * rather than a style choice: every chip paints over a run of text whose box it
- * must cover EXACTLY. A 1px border adds 2px to the box and the chip would sit
- * off the characters it is over — the same property the composer's mirror
- * documents for its own spans, and the reason branding.md forbids box-shadow
- * rings in this app. `outline-solid` is required: `outline-width` alone leaves
- * `outline-style: none` and paints nothing.
+ * WHY THERE IS NO EDGE AT ALL (operator, 2026-11-27: "remove the border"; the
+ * first neutral pass drew a `hairline-strong` outline and it still read as rough).
+ * Every chip paints over a run of text whose box it must cover EXACTLY, which is
+ * why it never had a `border` (1px adds 2px to the box and the chip would sit off
+ * the characters it is over) and drew an `outline` instead. It draws neither now:
+ * the chip is a FILL with a soft contact shadow, and both are painted outside the
+ * layout box, so the box the composer measures is the box the chip covers.
+ *
+ * WHY THE LIVE CHIP IS A NEUTRAL `sunken` WELL WITH THE ACCENT ON THE GLYPH ONLY
+ * (operator report 2026-11-27: "really ugly and out of theme"). It used to be the
+ * `info` pair - a saturated blue wash and a cyan 1px edge - a hue the app's own
+ * surfaces never carry: against a violet-grey user bubble it read as a foreign
+ * widget, and a blue box is a status colour ("information") where a credential
+ * reference is just an object in the sentence. `sunken` takes its tone from the
+ * theme's own ground ladder in every one of the 59 themes, and it is the fill that
+ * steps furthest from the grounds a chip sits on - ΔE00 >= 4.0 off `surface` (the
+ * composer's ground), >= 5.1 off `message-surface` (the sent bubble), >= 6.1 off
+ * `elevated`, measured over all 59 palettes - which is what lets the fill be the
+ * chip's whole boundary now that no edge exists. The one colour on the chip is the
+ * key glyph, in `accent` (>= 4.50:1 on `sunken` in every palette), which is what
+ * makes it belong to the theme rather than to a status.
+ *
+ * THE MATERIAL IS THE COMPOSER'S, AT ABOUT HALF STRENGTH (`.lo-chip-surface` in
+ * `styles/index.css`, where the numbers and the one recorded shadow exception
+ * live): a faint vertical sheen and a top gleam over the fill, and one low contact
+ * shadow. In-flow things normally take "the next ground, not a shadow"
+ * (`branding.md`, Floating panels); a chip that sits ON a run of text has no ground
+ * step to borrow once its edge is gone, so the shadow is what lifts it off the line.
+ *
+ * The role carries one more job than its looks: the fill is what HIDES the marker
+ * characters the textarea paints under the composer's chip, so it has to stay a
+ * flat, opaque palette value. `sunken` is one in every palette; a palette change
+ * that gave it an alpha channel would let the raw marker text show through.
  */
 export const CREDENTIAL_CHIP_ROLE = cn(
-	"rounded-xs bg-info-wash",
-	"outline-1 outline-solid outline-info-border",
-	// A chip that wraps draws its edge on each line rather than one stretched box
+	// 3px AND NOT `rounded-sm` (6px), which is a measurement. The composer's chip
+	// covers the marker `[Credential #1, 19 chars]` and the textarea paints its glyphs
+	// underneath: a bracket's ink runs to the corners of the run box, and a 6px (and
+	// even a 4px) corner leaves the bracket's foot showing as a speck at the chip's
+	// bottom corners (seen in the zoomed frame, dark theme). 3px covers it, and is
+	// still visibly softer than the 2px `rounded-xs` the chip had.
+	"rounded-[3px] bg-sunken lo-chip-surface",
+	// A chip that wraps draws its fill on each line rather than one stretched box
 	// across the break, which is how an inline chip behaves everywhere else. It is
 	// also what makes a wrapped run's fallback (the composer keeps the wash and
 	// draws no chip there) the same shape as the chip it stands in for.
@@ -51,29 +82,31 @@ export const CREDENTIAL_CHIP_ROLE = cn(
  * operator found out only after pressing Enter, from the citation the model
  * received (UX round 3, U13).
  *
- * WHY THE EDGE IS DASHED, which is the round-4 half of the same finding (design
- * round 4, D2; code review round 4, MINOR 2; UX round 4, U17). The warning pair
- * against the info pair separates the two states by HUE and almost nothing
- * else: measured over the generated palettes, the two washes sit at a fill
- * contrast of **1.00-1.63** (forty of the fifty-nine at or under 1.06), the two
- * edges at **1.00-1.72**, and a greyscale reading of the two fills is **34 vs
- * 35 of 255**. Desaturated, the live chip and the not-stored one are the same
- * patch with the same glyphs — so an operator who cannot separate a warm brown
- * from a cool blue would have no cue at all before pressing Enter, and the
- * app's own doctrine (the warning role on the unredacted sentence exists
- * precisely because the TUI's amber fails a monochrome terminal) says a state
- * must not rest on colour alone. A dash style costs no new token and survives
- * monochrome.
+ * WHAT SEPARATES IT WITHOUT COLOUR (2026-11-27, replacing the dashed edge). Round 4
+ * (design D2, code review MINOR 2, UX U17) measured the warning wash against the
+ * `info` wash it then stood beside at a fill contrast of 1.00-1.63 and a greyscale
+ * reading of 34 vs 35 of 255: separated by HUE and almost nothing else, so a dashed
+ * edge carried the state for a reader who cannot separate a warm brown from a cool
+ * blue, on the app's own doctrine that a state must not rest on colour alone. The
+ * operator has since asked for no edge on either register, so the non-hue channels
+ * are now two that need no stroke:
  *
- * THE GLYPH CHANGES TOO, which is the second channel and the one that survives a
- * reader who sees neither the hue nor the dash: a key says "a credential is
- * here", and a triangle says "this one is not usable". The composer's ARMED
- * token shares this wash and has no edge and no glyph of its own at all, so the
- * three registers stay one dash and one glyph apart.
+ *  - THE GLYPH, the one that survives a reader who sees no hue at all: a key says "a
+ *    credential is here", a triangle says "this one is not usable" (shape, not
+ *    colour, and the larger mark on the chip);
+ *  - THE MATERIAL: the live chip is raised (sheen and contact shadow, see the live
+ *    role) and this one is FLAT, a plain wash with neither - the reference nothing
+ *    backs has no object behind it to lift.
+ *
+ * The wash steps off every ground the chip sits on by ΔE00 >= 2.35 (`surface`,
+ * `catppuccinMacchiato`), >= 3.58 on `message-surface` and >= 3.80 on `elevated`
+ * over all 59 palettes, so it keeps a boundary without an edge. The composer's
+ * ARMED token shares this wash and has no glyph of its own at all, so the three
+ * registers stay one glyph and one material apart.
  */
 export const CREDENTIAL_NOT_STORED_ROLE = cn(
-	"rounded-xs bg-warning-wash",
-	"outline-1 outline-dashed outline-warning-border",
+	// The same 3px as the live chip, for the same bracket-corner reason.
+	"rounded-[3px] bg-warning-wash",
 	"box-decoration-clone",
 );
 
@@ -151,7 +184,14 @@ export type CredentialChipProps = {
 const CredentialChipChars: FC<{ chars: number }> = ({ chars }) => {
 	useI18nLocale();
 	return (
-		<span className="shrink-0">
+		// MUTED AND TABULAR, SO THE NAME LEADS (operator report 2026-11-27). The name
+		// and the count were one ink at one weight, which made "· 107 chars" as loud
+		// as the reference it qualifies. The count is the integrity check, not the
+		// identity, so it steps down to `ink-muted` (>= 5.53:1 on `sunken` in all 59
+		// palettes, `warning-wash` 5.55:1) - still text-legal, and the same ink the
+		// clear control rests at - and uses tabular figures so two chips of different
+		// lengths line their digits up when they sit in one message.
+		<span className="shrink-0 text-ink-muted tabular-nums">
 			{t("ui.chat.credential_notice.chip_chars", { chars })}
 		</span>
 	);
@@ -216,12 +256,36 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 		title={title}
 		style={style}
 	>
+		{/* THE GLYPH IS THE CHIP'S ONE COLOUR, and the register's second channel (see
+		    the not-stored role): `accent` for a key the app holds, `warning` for the
+		    triangle on a reference nothing backs. Both are text-legal on their own fill in
+		    every palette (accent on `sunken` >= 4.50:1, warning on `warning-wash`
+		    >= 4.54:1), and `size-3.5` rather than the old 12px because a coloured glyph
+		    is the chip's only mark and 12px read as a speck. It sits inside the run's
+		    line box (14px in 16-17px), so it changes no box metric. */}
 		{tone === "warning" ? (
-			<TriangleAlert aria-hidden="true" className="size-3 shrink-0" />
+			<TriangleAlert
+				aria-hidden="true"
+				className="size-3.5 shrink-0 text-warning"
+			/>
 		) : (
-			<Key aria-hidden="true" className="size-3 shrink-0" />
+			<Key aria-hidden="true" className="size-3.5 shrink-0 text-accent" />
 		)}
-		<span className="min-w-0 truncate">{label}</span>
+		{/* A LIVE reference's name is a machine identifier (`LOP_SECRET_…`, `#1`), which
+		    is what the app's monospace is for ("monospace is machine voice only",
+		    `AGENTS.md`), and it makes a 19-character key read as one token rather than
+		    prose. The not-stored register keeps the interface face: its label is a
+		    translated sentence ("Credential not stored"), which is prose, not an
+		    identifier. `tracking-tight` offsets mono's wide advance so the chip stays
+		    inside the run box the composer fixes (see the layer's `min-width`). */}
+		<span
+			className={cn(
+				"min-w-0 truncate",
+				tone === "live" && "font-mono tracking-tight",
+			)}
+		>
+			{label}
+		</span>
 		{chars !== null && (
 			// NO `ml-auto` HERE IN EITHER REGISTER (design round 1, D1; round 2, D8).
 			// The composer's chip is painted in a box the MINT fixed
@@ -271,34 +335,29 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// rather than left silent: 16x16 against WCAG 2.2 SC 2.5.8's 24x24, with
 				// the box the constraint (see the design record's §7.1).
 				//
-				// THE INK STEPS, THE GROUND IS THE APP'S GHOST PAIR (design round 1,
-				// D3). `hover:bg-elevated` alone was the only feedback, and measured
-				// across the palettes it is 1.00-1.33:1 against the chip's fill (16 of
-				// 59 at or under 1.05:1; `obsidian` ΔE00 0.77, the default theme
-				// greyscale-identical) - a state resting on hue, which this app's
-				// doctrine forbids. The perceivable step is therefore the INK, from
-				// `ink-muted` (4.56:1 at worst on this fill, over all 59) to `ink`
-				// (6.99:1 at worst), which is also the working-directory chip's own
-				// prune-control idiom. `hover:bg-elevated active:bg-sunken` is the
-				// button primitive's ghost pair, kept as the second channel and as the
-				// pressed state the control had none of.
+				// THE INK STEPS AND THE GROUND STEPS, BOTH PERCEIVABLE (design round 1, D3;
+				// re-measured 2026-11-27 for the `sunken` chip). The control rests at
+				// `ink-muted` and steps TO `ink` on hover, which is also the working-
+				// directory chip's own prune-control idiom, with the app's ghost pair as
+				// the second channel: `hover:bg-elevated`, and `active:bg-surface` for the
+				// pressed state.
 				//
-				// THE STEP'S FLOOR IS NOT MET IN EVERY PALETTE, RECORDED RATHER THAN
-				// CLAIMED AWAY (design round 2, D9). D3 asked for a step "perceivable by
-				// luminance in every theme", and the channel moved and the default theme
-				// plus the photographed worst cases are genuinely fixed - but measured over
-				// all 59 palettes with the repo's own `deltaE`/`loadPalettes`: the ink step
-				// is at or under 1.10:1 in 12 of 59, the ground step in 28 of 59, and BOTH
-				// channels are at or under 1.10:1 in 7 of 59 (`everforest` exactly 1.000 -
-				// hue moves, luminance does not - `ayuMirage` 1.017, `catppuccinFrappe`
-				// 1.038, `oneDark` 1.070, `tokyoNight` 1.076, `gruvbox` 1.087,
-				// `tokyoNightStorm` 1.095). So this is a RECORDED DEVIATION from that rule,
-				// not a pass: in those seven the perceivable feedback is the focus ring and
-				// the pointer cursor rather than the fill. The sentences above are about the
-				// control's LEGIBILITY against the fill (4.6:1 at worst on the warning fill,
-				// 5.51:1 on the info fill), which holds everywhere; the step's magnitude is a
-				// palette-contract question and is deliberately NOT answered by a change in
-				// this component.
+				// WHY `active:bg-surface` AND NOT THE PRIMITIVE'S `active:bg-sunken`: the
+				// chip's own ground IS `sunken` now, so `sunken` would paint the pressed
+				// state as the resting one. `surface` sits between the chip and the hover
+				// fill, which keeps the three states distinct.
+				//
+				// MEASURED over all 59 palettes with the repo's own `deltaE`/`loadPalettes`:
+				// the hover ground is a real luminance step off the chip - ΔE00 >= 6.07
+				// (`iceberg`), contrast ratio >= 1.16:1, no palette at or under 1.10:1 -
+				// where the `info` chip it replaces left 7 of 59 with BOTH steps at or
+				// under 1.10:1 (design round 2, D9's recorded deviation, which this
+				// closes rather than repeats). The pressed ground is ΔE00 >= 3.96 off the
+				// chip and >= 2.0 off the hover fill. The INK step is ΔE00(ink, ink-muted)
+				// >= 2.01 (`catppuccinFrappe`), the contract's own floor. Legibility holds
+				// at every state: `ink-muted` on `sunken` 5.53:1 at worst (`kanagawaLotus`),
+				// `ink` on `sunken` 7.10:1, `ink` on the hover fill 8.13:1, `ink-muted` on
+				// the pressed fill 6.92:1.
 				//
 				// `focus-visible:outline-offset-1!` is the primitive's dense-size
 				// offset, for the primitive's reason: the global `:focus-visible` rule
@@ -306,7 +365,7 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 				// past its box - out over the chip's own edge and into the words beside
 				// it. `!` because the global rule and a utility carry the same
 				// specificity, exactly as `button.tsx` spells it.
-				className="pointer-events-auto -mr-1 flex shrink-0 cursor-pointer items-center rounded-xs p-0.5 text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline-offset-1! active:bg-sunken"
+				className="pointer-events-auto -mr-1 flex shrink-0 cursor-pointer items-center rounded-xs p-0.5 text-ink-muted hover:bg-elevated hover:text-ink focus-visible:outline-offset-1! active:bg-surface"
 			>
 				<X aria-hidden="true" className="size-3" />
 			</button>

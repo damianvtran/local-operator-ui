@@ -1487,10 +1487,11 @@ export const CONTROLS = [
 		 * marker's characters are the textarea's, and this element is a
 		 * background-only mirror behind them — so what `ink` measures here is the
 		 * real pair on screen (the textarea's own ink over the wash the pill puts
-		 * behind it). The wash and the edge are the `info` family rather than a new
-		 * role: the pill states a FACT ("a credential is referenced here"), which is
-		 * what that triple means, and reusing it is what lets this row assert on the
-		 * composer's own ground with the rows above.
+		 * behind it). The wash is `sunken`, the live chip's own fill (the `info` pair
+		 * it wore until 2026-11-27 read as a foreign blue box against the app's
+		 * violet-grey surfaces; see `credential-chip.tsx`), so what is measured is the
+		 * composer's own ground ladder - `sunken` off `canvas` and `elevated` - with
+		 * the textarea's `ink` over it.
 		 *
 		 * The EDGE is painted as a 1px `outline`, not a border, and the measurement
 		 * is the same one: an outline does not participate in layout, so the mirror's
@@ -1518,19 +1519,25 @@ export const CONTROLS = [
 		 */
 		name: "credential pill",
 		on: ["canvas", "elevated"],
-		fill: "infoWash",
-		border: "infoBorder",
+		fill: "sunken",
+		// `edge: false`: the chip draws no edge at all (operator, 2026-11-27) - its
+		// boundary is the fill's step off the ground (ΔE00 >= 2.0 on `canvas`, >= 6.1
+		// on `elevated`) plus a contact shadow - exactly like the tonal button's and
+		// the reaction pills' rows. The EDGE a row measures at 3:1 belongs to a
+		// stroke; there is none, and the step itself is asserted where a step is, in
+		// `scripts/credential-chip-surface.test.mjs`.
+		border: null,
 		ink: "ink",
+		edge: false,
 	},
 	/*
 	 * The not-stored chip's own treatment — the SAME chip, in the warning role
 	 * (`credential-overlay.tsx`'s `CREDENTIAL_NOT_STORED_ROLE`, UX round 3, U13).
 	 *
 	 * A row of its own rather than a second note on the pill's, because it is a
-	 * second component triple with its own fill and its own edge (branding.md §
-	 * "adding a component with its own fill and border means adding a row"): the
-	 * marker text the textarea paints sits on `warningWash` with `warningBorder`
-	 * drawn as its 1px outline, and both halves have to clear their floors on the
+	 * second component triple with its own fill (branding.md § "adding a component
+	 * with its own fill and border means adding a row"): the marker text the
+	 * textarea paints sits on `warningWash`, which has to clear its ink floor on the
 	 * two grounds the composer can sit on. The pill's row above says nothing about
 	 * this pair — a green run over there is not evidence about a chip nobody listed.
 	 *
@@ -1538,26 +1545,20 @@ export const CONTROLS = [
 	 * visible text at all, so `ink` here measures the pair actually on screen — the
 	 * textarea's own glyphs over the wash the overlay puts behind them.
 	 *
-	 * ITS EDGE IS DASHED, and that is a rule of the component rather than a taste
-	 * choice the colours can carry (design round 4, D2; code review round 4, MINOR
-	 * 2; UX round 4, U17). This row measures two TRIPLES, and the two registers
-	 * sitting inside their own floors says nothing about whether a reader can tell
-	 * them apart: measured over the twelve palettes, `warningWash` against
-	 * `infoWash` is a fill contrast of **1.01-1.11** (ten of the twelve at or below
-	 * 1.06), the two edges **1.00-1.72**, and a greyscale reading of the two fills
-	 * is **34 vs 35 of 255**. They are separated by hue and almost nothing else, so
-	 * the dash is what carries the state for a reader who cannot separate a warm
-	 * brown from a cool blue — the same doctrine the TUI's amber is measured
-	 * against in the design record's §7.1. A dash is also the only channel here
-	 * that survives monochrome without a new token: the armed token shares this
-	 * wash and has no edge at all.
+	 * IT DRAWS NO EDGE EITHER (operator, 2026-11-27), so the row is `edge: false`: the
+	 * state is separated from a live chip by its glyph (a triangle for a key) and its
+	 * material (flat, where the live chip is raised), not by a dashed stroke - see
+	 * `CREDENTIAL_NOT_STORED_ROLE`, which keeps the round-4 doctrine (D2, U17) that a
+	 * state must not rest on colour alone. The armed token shares this wash and has
+	 * no edge or glyph at all.
 	 */
 	{
 		name: "credential pill (unbacked)",
 		on: ["canvas", "elevated"],
 		fill: "warningWash",
-		border: "warningBorder",
+		border: null,
 		ink: "ink",
+		edge: false,
 	},
 	/*
 	 * THE CHIP ITSELF (`credential-chip.tsx`, operator report 2026-09-17).
@@ -1580,25 +1581,53 @@ export const CONTROLS = [
 	 * state that rests on hue is the same class of separation the round-4 dash rule
 	 * rejected for the two registers. The perceivable step is the INK now
 	 * (`inkMuted` -> `ink`), which is also the working-directory chip's own
-	 * prune-control idiom, and `hover:bg-elevated active:bg-sunken` stays as the
-	 * primitive's ghost pair and as the pressed state the control had none of. Both
+	 * prune-control idiom, and `hover:bg-elevated active:bg-surface` is the
+	 * primitive's ghost pair with the pressed fill moved off `sunken` (the chip's own
+	 * fill now). Both
 	 * registers are listed because both are chipped — a live reference and one nothing
 	 * backs — and the transcript draws the same two chips inside the user bubble's
 	 * `surface`.
 	 */
 	{
 		name: "credential chip",
-		on: ["canvas", "surface"],
-		fill: "infoWash",
-		border: "infoBorder",
+		// The composer's ground (`elevated`) and the sent bubble's (`messageSurface`)
+		// are listed beside the two grounds the row had: the chip is painted on both,
+		// and a green row about grounds it is not drawn on is not evidence.
+		on: ["canvas", "surface", "elevated", "messageSurface"],
+		fill: "sunken",
+		border: null,
 		ink: "ink",
+		edge: false,
+	},
+	{
+		// The key glyph, the chip's one colour (`credential-chip.tsx`): `accent` on the
+		// chip's own `sunken` fill, which has to clear the text floor because the
+		// glyph is the only thing that says what the chip is before it is read.
+		// 4.50:1 at worst (`solarizedLight`).
+		name: "credential chip key glyph",
+		on: ["canvas", "surface", "elevated", "messageSurface"],
+		fill: "sunken",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		// The not-stored glyph, the same rule in the warning role: `warning` on its
+		// own wash, 4.54:1 at worst (`everforestLight`).
+		name: "credential chip warning glyph",
+		on: ["canvas", "surface", "elevated", "messageSurface"],
+		fill: "warningWash",
+		border: null,
+		ink: "warning",
+		edge: false,
 	},
 	{
 		name: "credential chip (unbacked)",
-		on: ["canvas", "surface"],
+		on: ["canvas", "surface", "elevated", "messageSurface"],
 		fill: "warningWash",
-		border: "warningBorder",
+		border: null,
 		ink: "ink",
+		edge: false,
 	},
 	{
 		/*
@@ -1609,22 +1638,25 @@ export const CONTROLS = [
 		 * here — 4.07:1 in the weakest palette, under this app's 4.5 text floor — so the
 		 * control rests at the lightest role that is legal on this fill and steps TO
 		 * `ink` on hover, and the two rows below are what hold that claim across all
-		 * fifty-nine palettes. The hover and pressed grounds (`elevated`, `sunken`) need
+		 * fifty-nine palettes. The hover and pressed grounds (`elevated`, `surface`) need
 		 * no row beyond the INKS loop's, which already asserts `ink` on both at the
-		 * strong-text floor.
+		 * strong-text floor. The same pair is the chip's COUNT ("· 107 chars"), which
+		 * is set in `inkMuted` so the name leads.
 		 */
 		name: "credential chip clear",
-		on: ["canvas", "surface"],
-		fill: "infoWash",
-		border: "infoBorder",
+		on: ["canvas", "surface", "elevated", "messageSurface"],
+		fill: "sunken",
+		border: null,
 		ink: "inkMuted",
+		edge: false,
 	},
 	{
 		name: "credential chip clear (unbacked)",
-		on: ["canvas", "surface"],
+		on: ["canvas", "surface", "elevated", "messageSurface"],
 		fill: "warningWash",
-		border: "warningBorder",
+		border: null,
 		ink: "inkMuted",
+		edge: false,
 	},
 	/*
 	 * The `ask` gate's option buttons (`trace/ask-options.tsx`).

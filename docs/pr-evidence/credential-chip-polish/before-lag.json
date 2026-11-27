@@ -1,0 +1,406 @@
+{
+ "label": "before",
+ "speeds": {
+  "240": {
+   "start": {
+    "scrollTop": 304,
+    "max": 572,
+    "x": 536,
+    "y": 128.390625,
+    "rect": [
+     144,
+     72.390625,
+     784,
+     112
+    ],
+    "chips": 1
+   },
+   "endScrollTop": 219,
+   "frames": 25,
+   "fps": 43.7,
+   "templateBox": {
+    "g0": 79,
+    "g1": 97
+   },
+   "perFrame": [
+    {
+     "t": 1795795072.3743,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    },
+    {
+     "t": 1795795072.4899,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    },
+    {
+     "t": 1795795072.5399,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": 4,
+     "lagPx": 4
+    },
+    {
+     "t": 1795795072.5566,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": -12,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795072.5732,
+     "chip": true,
+     "boxTop": 83,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.5899,
+     "chip": true,
+     "boxTop": 89,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.6066,
+     "chip": true,
+     "boxTop": 91,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.6232,
+     "chip": true,
+     "boxTop": 97,
+     "boxH": 18,
+     "textShiftVsBox": -16,
+     "lagPx": 1
+    },
+    {
+     "t": 1795795072.6399,
+     "chip": true,
+     "boxTop": 99,
+     "boxH": 18,
+     "textShiftVsBox": -12,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795072.6566,
+     "chip": true,
+     "boxTop": 103,
+     "boxH": 18,
+     "textShiftVsBox": -12,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795072.6732,
+     "chip": true,
+     "boxTop": 109,
+     "boxH": 18,
+     "textShiftVsBox": -15,
+     "lagPx": 2
+    },
+    {
+     "t": 1795795072.6899,
+     "chip": true,
+     "boxTop": 113,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.7066,
+     "chip": true,
+     "boxTop": 116,
+     "boxH": 18,
+     "textShiftVsBox": -13,
+     "lagPx": 4
+    },
+    {
+     "t": 1795795072.7232,
+     "chip": true,
+     "boxTop": 121,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.7399,
+     "chip": true,
+     "boxTop": 125,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.7566,
+     "chip": true,
+     "boxTop": 129,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.7732,
+     "chip": true,
+     "boxTop": 133,
+     "boxH": 18,
+     "textShiftVsBox": -14,
+     "lagPx": 3
+    },
+    {
+     "t": 1795795072.7899,
+     "chip": true,
+     "boxTop": 137,
+     "boxH": 18,
+     "textShiftVsBox": -16,
+     "lagPx": 1
+    },
+    {
+     "t": 1795795072.8066,
+     "chip": true,
+     "boxTop": 141,
+     "boxH": 18,
+     "textShiftVsBox": -16,
+     "lagPx": 1
+    },
+    {
+     "t": 1795795072.8232,
+     "chip": true,
+     "boxTop": 141,
+     "boxH": 18,
+     "textShiftVsBox": -12,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795072.8399,
+     "chip": true,
+     "boxTop": 147,
+     "boxH": 18,
+     "textShiftVsBox": -15,
+     "lagPx": 2
+    },
+    {
+     "t": 1795795072.8566,
+     "chip": true,
+     "boxTop": 151,
+     "boxH": 18,
+     "textShiftVsBox": -16,
+     "lagPx": 1
+    },
+    {
+     "t": 1795795072.8732,
+     "chip": true,
+     "boxTop": 154,
+     "boxH": 18,
+     "textShiftVsBox": -12,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795072.9066,
+     "chip": true,
+     "boxTop": 164,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    },
+    {
+     "t": 1795795072.9232,
+     "chip": true,
+     "boxTop": 164,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    }
+   ],
+   "chipStepPx": [
+    4,
+    6,
+    2,
+    6,
+    2,
+    4,
+    6,
+    4,
+    3,
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    6,
+    4,
+    3,
+    10
+   ],
+   "framesWithChip": 25,
+   "maxLagPx": 5,
+   "medianLagPx": 3,
+   "meanLagPx": 2.6
+  },
+  "480": {
+   "start": {
+    "scrollTop": 304,
+    "max": 572,
+    "x": 536,
+    "y": 128.390625,
+    "rect": [
+     144,
+     72.390625,
+     784,
+     112
+    ],
+    "chips": 1
+   },
+   "endScrollTop": 219,
+   "frames": 14,
+   "fps": 38.7,
+   "templateBox": {
+    "g0": 79,
+    "g1": 97
+   },
+   "perFrame": [
+    {
+     "t": 1795795073.7202,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    },
+    {
+     "t": 1795795073.8565,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": 5,
+     "lagPx": 5
+    },
+    {
+     "t": 1795795073.8732,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": -9,
+     "lagPx": 8
+    },
+    {
+     "t": 1795795073.8899,
+     "chip": true,
+     "boxTop": 79,
+     "boxH": 18,
+     "textShiftVsBox": -1,
+     "lagPx": 16
+    },
+    {
+     "t": 1795795073.9065,
+     "chip": true,
+     "boxTop": 92,
+     "boxH": 18,
+     "textShiftVsBox": -7,
+     "lagPx": 10
+    },
+    {
+     "t": 1795795073.9232,
+     "chip": true,
+     "boxTop": 100,
+     "boxH": 18,
+     "textShiftVsBox": -7,
+     "lagPx": 10
+    },
+    {
+     "t": 1795795073.9399,
+     "chip": true,
+     "boxTop": 107,
+     "boxH": 18,
+     "textShiftVsBox": -6,
+     "lagPx": 11
+    },
+    {
+     "t": 1795795073.9565,
+     "chip": true,
+     "boxTop": 115,
+     "boxH": 18,
+     "textShiftVsBox": -6,
+     "lagPx": 11
+    },
+    {
+     "t": 1795795073.9732,
+     "chip": true,
+     "boxTop": 123,
+     "boxH": 18,
+     "textShiftVsBox": -5,
+     "lagPx": 12
+    },
+    {
+     "t": 1795795073.9899,
+     "chip": true,
+     "boxTop": 131,
+     "boxH": 18,
+     "textShiftVsBox": -5,
+     "lagPx": 12
+    },
+    {
+     "t": 1795795074.0065,
+     "chip": true,
+     "boxTop": 140,
+     "boxH": 18,
+     "textShiftVsBox": -7,
+     "lagPx": 10
+    },
+    {
+     "t": 1795795074.0232,
+     "chip": true,
+     "boxTop": 148,
+     "boxH": 18,
+     "textShiftVsBox": -6,
+     "lagPx": 11
+    },
+    {
+     "t": 1795795074.0399,
+     "chip": true,
+     "boxTop": 155,
+     "boxH": 18,
+     "textShiftVsBox": -13,
+     "lagPx": 4
+    },
+    {
+     "t": 1795795074.0565,
+     "chip": true,
+     "boxTop": 164,
+     "boxH": 18,
+     "textShiftVsBox": 0,
+     "lagPx": 0
+    }
+   ],
+   "chipStepPx": [
+    13,
+    8,
+    7,
+    8,
+    8,
+    8,
+    9,
+    8,
+    7,
+    9
+   ],
+   "framesWithChip": 14,
+   "maxLagPx": 16,
+   "medianLagPx": 10,
+   "meanLagPx": 8.57
+  }
+ }
+}

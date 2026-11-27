@@ -161,6 +161,9 @@ const PROBE = `(() => {
 		return { left: round(r.left), top: round(r.top), width: round(r.width), height: round(r.height) };
 	};
 	const layer = document.querySelector("[data-credential-chips]");
+	// The CLIP is the element focus could scroll (the plane inside it is moved by
+	// a CSS translate, never by scroll), so the layer-scroll numbers are read from it.
+	const clip = document.querySelector("[data-credential-chip-clip]");
 	const mirror = [...document.querySelectorAll("div[aria-hidden='true']")]
 		.find((el) => el.classList.contains("-z-10"));
 	if (!mirror) return { error: "no mirror" };
@@ -226,9 +229,9 @@ const PROBE = `(() => {
 		 * makes that structural rather than a coincidence - and fieldScrollTop is the
 		 * position the run and the chip are both measured against.
 		 */
-		layerScrollTop: layer ? layer.scrollTop : null,
-		layerScrollHeight: layer ? layer.scrollHeight : null,
-		layerClientHeight: layer ? layer.clientHeight : null,
+		layerScrollTop: clip ? clip.scrollTop : null,
+		layerScrollHeight: clip ? clip.scrollHeight : null,
+		layerClientHeight: clip ? clip.clientHeight : null,
 		fieldScrollTop: field ? field.scrollTop : null,
 	};
 })()`;
@@ -776,7 +779,8 @@ const main = async () => {
 						let strip = 0;
 						if (layer && layer.firstElementChild) {
 							const chip = layer.firstElementChild.getBoundingClientRect();
-							const clip = layer.getBoundingClientRect();
+							// The CLIP, not the plane: the plane is translated by the field's scroll, the clip is the box that stays.
+							const clip = document.querySelector("[data-credential-chip-clip]").getBoundingClientRect();
 							strip = Math.max(
 								0,
 								Math.min(chip.bottom, clip.bottom) - Math.max(chip.top, clip.top),

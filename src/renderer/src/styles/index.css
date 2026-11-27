@@ -3500,6 +3500,146 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	}
 }
 
+/*
+ * THE CREDENTIAL CHIP'S SURFACE (operator, 2026-11-27: "remove the border, maybe
+ * have it have the same subtle gradient fill with sheen that the composer has, but
+ * subtler sheen so it's not overdone, subtle drop shadow").
+ *
+ * The composer's own material, at about half strength, on the live chip's `sunken`
+ * fill (`CREDENTIAL_CHIP_ROLE`, `credential-chip.tsx`, which sets the fill):
+ *
+ *   - THE SHEEN is `.composer-dock-editor`'s vertical wash (dark: 4% white fading
+ *     to nothing) at 2%, and its top gleam (a 1px highlight over the middle of the
+ *     top edge) at 30% and 8.5% instead of 60% and 17%. `light-dark()` follows the
+ *     palette's colour scheme, exactly as the composer's and the dialog's finish
+ *     do. LIGHT PALETTES DEPART FROM THE COMPOSER IN DIRECTION: the composer tints
+ *     its top DARKER there (a 6% ink wash), which on the chip's `sunken` fill took
+ *     the `accent` key below the 4.5:1 text floor in 9 palettes (4.30:1 at worst,
+ *     `catppuccinLatte`; `scripts/credential-chip-surface.test.mjs` S-3 caught it),
+ *     so the light sheen is a 20% WHITE lift instead, which can only raise ink
+ *     contrast on a dark-on-light fill.
+ *   - THE SHADOW is one contact layer, `0 1px 2px` in `--lo-shadow-contact` (the
+ *     palette `scrim`, derived at 45%: alpha ~0.16-0.29), the same colour the one
+ *     `--shadow-overlay` is built from and nothing new.
+ *
+ * A RECORDED EXCEPTION to "the ground provides separation; a shadow is for things
+ * that leave the flow" (`docs/branding.md`, Floating panels). The rule's reason is
+ * that an in-flow card can take the next ground instead. A chip that sits ON a run
+ * of text cannot: it has no edge any more (the operator removed it) and no free
+ * ground to step to, so a contact shadow of this size is the smallest thing that
+ * lifts it off the line. It is a single low layer, never an ambient halo, and it is
+ * recorded in branding.md beside the rule it excepts.
+ *
+ * WHY BOTH ARE SAFE OVER THE COMPOSER'S TEXT. The chip is painted over a measured
+ * run, in a layer that clips to the field (`overflow-clip`). A box-shadow and a
+ * background-image are painted outside the layout box, so neither moves the box the
+ * chip must cover exactly (the reason it never had a border); the shadow reaches 3px
+ * below and 2px to each side, which is inside the line's own leading and the space
+ * beside the run, and is clipped, not scrolled, at the field's edge.
+ *
+ * In `components`, so a caller's utility wins: the composer's mirror switches the
+ * whole surface off under a run that has a chip (`bg-none shadow-none`). The
+ * not-stored chip does not wear this class: flat is one of the two non-colour
+ * channels that separate it from a live chip (`credential-chip.tsx`).
+ *
+ * FORCED COLOURS drops the sheen and the shadow, and gives the chip the one edge
+ * the system palette can still show, an outline (which, like the shadow, is outside
+ * the layout box).
+ */
+@layer components {
+	.lo-chip-surface {
+		background-image: linear-gradient(
+				90deg,
+				transparent,
+				light-dark(rgb(255 255 255 / 30%), rgb(255 255 255 / 8.5%)) 36% 60%,
+				transparent
+			),
+			linear-gradient(
+				180deg,
+				light-dark(rgb(255 255 255 / 20%), rgb(255 255 255 / 2%)),
+				transparent
+			);
+		background-position: 9% top, center top;
+		background-size: 61% 1px, 100% 100%;
+		background-repeat: no-repeat;
+		box-shadow: 0 1px 2px var(--lo-shadow-contact);
+	}
+}
+
+@media (forced-colors: active) {
+	.lo-chip-surface {
+		background-image: none;
+		box-shadow: none;
+		outline: 1px solid CanvasText;
+	}
+
+	/* The mirror's wash under a run that has a chip: the chip draws the edge. */
+	.lo-chip-surface[data-credential-chipped] {
+		outline: none;
+	}
+}
+
+/*
+ * THE COMPOSER'S CREDENTIAL CHIPS FOLLOW THE FIELD'S SCROLL ON THE COMPOSITOR
+ * (operator report 2026-11-27: the chip "is a frame behind when scrolling").
+ *
+ * WHY IT IS CSS AND NOT A LISTENER. A wheel or trackpad scroll of the `<textarea>`
+ * is performed by the compositor, so the field's glyphs move in the frame the
+ * gesture lands in and the main thread hears of it a frame later through the
+ * `scroll` event. Anything that answers that event - a `scroll` listener writing
+ * a transform included - is by construction one presented frame late, and
+ * `credential-chip-layer.tsx` measured exactly that (a wheel gesture over CDP,
+ * real screencast frames: a median 3px behind the text at 240px/s and 10px at
+ * 480px/s). A scroll-driven animation is evaluated from the same scroll offset the
+ * glyphs use, on the compositor, so the two cannot disagree.
+ *
+ * THE WIRING, three pieces:
+ *   - the textarea DECLARES a named scroll timeline (`scroll-timeline`), because
+ *     `scroll()` can only name an ancestor scroller and the chips' plane is the
+ *     field's SIBLING, not its descendant;
+ *   - `.composer-dock-field`, the wrapper both live in, takes `timeline-scope` so
+ *     the sibling may reference that name;
+ *   - the plane (`[data-credential-chips]`) animates `translate` from 0 to minus
+ *     the field's scrollable distance, which the chip layer writes into
+ *     `--lo-credential-scroll-range` (it changes with the text and the box, never
+ *     while scrolling). Linear progress times that distance is exactly `scrollTop`.
+ *
+ * LONGHANDS ONLY, as the transcript's and the sidebar's scroll-driven rules above
+ * do and for their recorded reason: the `animation` shorthand resets
+ * `animation-timeline`. No `prefers-reduced-motion` branch: this is not motion,
+ * it is the chip staying on the words it covers.
+ *
+ * WITHOUT SCROLL TIMELINES the whole block is skipped and the chip layer writes the
+ * same `translate` inline from its `scroll` listener - the one-frame trail it has
+ * always had, never worse.
+ */
+@supports (animation-timeline: scroll()) {
+	.composer-dock-field {
+		timeline-scope: --lo-composer-field-scroll;
+	}
+
+	.composer-dock-field .composer-dock-textarea {
+		scroll-timeline: --lo-composer-field-scroll block;
+	}
+
+	.composer-dock-field [data-credential-chips] {
+		animation-name: lo-credential-chips-scroll;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: --lo-composer-field-scroll;
+	}
+
+	@keyframes lo-credential-chips-scroll {
+		from {
+			translate: 0 0;
+		}
+
+		to {
+			translate: 0 calc(var(--lo-credential-scroll-range, 0px) * -1);
+		}
+	}
+}
+
 @media (forced-colors: active) {
 	.composer-dock::before,
 	.composer-dock::after {
