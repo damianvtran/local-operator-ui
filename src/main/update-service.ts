@@ -2334,9 +2334,26 @@ function defaultStartRelaunchWatchdog(
 	});
 }
 
-// The native ZIP fetch belongs to the updater singleton, not to the window
-// whose IPC started it. On reopen, do not reap its not-yet-live marker as failed.
-let nativeFallbackMarker: PendingInstallMarker | null = null;
+// The native handoff belongs to the updater singleton, not to the window that
+// started it. Recovering windows preserve its early marker; only a prepared,
+// live handoff can let an explicit Quit cooperate with the existing lease.
+let nativeFallback: {
+	marker: PendingInstallMarker;
+	downloaded: boolean;
+	quit: "idle" | "scheduled" | "started";
+} | null = null;
+
+function sameInstallAttempt(
+	marker: PendingInstallMarker,
+	expected: PendingInstallMarker,
+): boolean {
+	return (
+		marker.startedAt === expected.startedAt &&
+		marker.targetVersion === expected.targetVersion &&
+		marker.artifactPath === expected.artifactPath &&
+		marker.installerPid === expected.installerPid
+	);
+}
 
 /**
  * Service to handle application updates using electron-updater
@@ -3003,10 +3020,9 @@ export class UpdateService {
 		});
 		if (
 			marker &&
-			nativeFallbackMarker &&
+			nativeFallback &&
 			!installInFlight &&
-			marker.startedAt === nativeFallbackMarker.startedAt &&
-			marker.targetVersion === nativeFallbackMarker.targetVersion
+			sameInstallAttempt(marker, nativeFallback.marker)
 		)
 			return;
 		/*
@@ -3600,7 +3616,13 @@ export class UpdateService {
 	public quitForInFlightInstall(context: string): boolean {
 		const marker = this.livePendingInstallMarker();
 		if (!marker) return false;
-		if (this.inFlightQuitWatchdogEnsured) return true;
+		if (
+			this.inFlightQuitWatchdogEnsured ||
+			(nativeFallback &&
+				nativeFallback.quit !== "idle" &&
+				sameInstallAttempt(marker, nativeFallback.marker))
+		)
+			return true;
 		this.inFlightQuitWatchdogEnsured = true;
 		logger.info(
 			`Quitting so the in-flight update install can finish (${context}).`,
@@ -3623,7 +3645,9 @@ export class UpdateService {
 	 * `app.relaunch` at the quit terminal) must stand down while this is true.
 	 */
 	public inFlightInstallOwnsRelaunch(): boolean {
-		return this.inFlightQuitWatchdogEnsured;
+		return (
+			this.inFlightQuitWatchdogEnsured || nativeFallback?.quit === "started"
+		);
 	}
 
 	/**
@@ -5295,8 +5319,7 @@ export class UpdateService {
 
 			// A download or an install that dies is not an availability problem:
 			// the user asked for something and it failed, so it has to be shown.
-			const actionable =
-				this.updateStage !== "idle" || nativeFallbackMarker !== null;
+			const actionable = this.updateStage !== "idle" || nativeFallback !== null;
 			/*
 			 * ONE OWNER PER FAILURE. This handler and the check that provoked the
 			 * error are two producers of one message, and until this gate existed
@@ -5495,8 +5518,12 @@ export class UpdateService {
 		backendHeld: boolean,
 	): void {
 		const native = electron.autoUpdater;
-		nativeFallbackMarker = marker;
-		let downloaded = false;
+		const handoff: NonNullable<typeof nativeFallback> = {
+			marker,
+			downloaded: false,
+			quit: "idle",
+		};
+		nativeFallback = handoff;
 		let finished = false;
 		const finish = (quitting: boolean) => {
 			if (finished) return;
@@ -5505,7 +5532,7 @@ export class UpdateService {
 			native.removeListener("update-not-available", onUnavailable);
 			native.removeListener("error", onError);
 			app.removeListener("quit", onQuit);
-			nativeFallbackMarker = null;
+			nativeFallback = null;
 			this.updateStage = "idle";
 			try {
 				if (!quitting && !backendHeld)
@@ -5514,9 +5541,13 @@ export class UpdateService {
 				release();
 			}
 		};
-		const onError = () => finish(false);
+		const onError = () => {
+			// Before the ordinary quit starts, a native terminal cancels the handoff.
+			// Once teardown actually begins, only final app quit may release it.
+			if (handoff.quit !== "started") finish(false);
+		};
 		const onUnavailable = () => {
-			if (finished || downloaded) return;
+			if (finished || handoff.downloaded) return;
 			logger.warn(
 				"Squirrel found no update in the configured local feed",
 				LogFileType.UPDATE_SERVICE,
@@ -5534,8 +5565,8 @@ export class UpdateService {
 		};
 		const onQuit = () => finish(true);
 		const onDownloaded = () => {
-			if (finished || downloaded) return;
-			downloaded = true;
+			if (finished || handoff.downloaded) return;
+			handoff.downloaded = true;
 			try {
 				autoUpdater.quitAndInstall(false, true);
 			} catch (error) {
@@ -5572,6 +5603,49 @@ export class UpdateService {
 			finish(false);
 			throw error;
 		}
+	}
+
+	/**
+	 * Native quit may stall while closing a window (e.g. the macOS mini view
+	 * hides instead of closing). An ordinary app.quit runs the teardown that
+	 * removes that veto. This is an exit only, not another installer handoff:
+	 * the exact native attempt must still hold the app lease and be live.
+	 */
+	private quitForPreparedNativeInstall(): boolean {
+		const handoff = nativeFallback;
+		if (!handoff?.downloaded) return false;
+		const liveMarker = () => {
+			if (nativeFallback !== handoff || currentUpdateOperation() !== "app")
+				return null;
+			const marker = readPendingInstallMarker(this.markerDir());
+			if (!marker || !sameInstallAttempt(marker, handoff.marker)) return null;
+			const liveness = this.installLiveness(marker);
+			return liveness.jobState === "running" &&
+				isInstallInFlight({ marker, ...liveness })
+				? marker
+				: null;
+		};
+		const marker = liveMarker();
+		if (!marker) return false;
+		if (handoff.quit !== "idle") return true;
+		if (!this.inFlightQuitWatchdogEnsured)
+			this.ensureWatchdogAfterInFlightQuit(marker);
+		handoff.quit = "scheduled";
+		setImmediate(() => {
+			// A native terminal event may release the token before this deferred
+			// quit runs. Do not quit on behalf of a replacement owner or marker.
+			if (!liveMarker()) {
+				handoff.quit = "idle";
+				return;
+			}
+			handoff.quit = "started";
+			logger.info(
+				"Quitting so the in-flight native update install can finish.",
+				LogFileType.UPDATE_SERVICE,
+			);
+			app.quit(); // Only the final quit event releases the native lease.
+		});
+		return true;
 	}
 
 	/** Reject busy IPCs once; the existing renderer catches own the message. */
@@ -6080,7 +6154,10 @@ export class UpdateService {
 		 */
 		ipcMain.handle("quit-for-update-install", () => {
 			const release = acquireUpdateOperation("app");
-			if (!release) return this.appUpdateBusy();
+			if (!release) {
+				if (this.quitForPreparedNativeInstall()) return true;
+				return this.appUpdateBusy();
+			}
 			// Keep the lease through the deferred quit, not just the IPC reply.
 			let quitScheduled = false;
 			try {

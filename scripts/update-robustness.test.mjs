@@ -8278,11 +8278,83 @@ test("registered update IPC shares one owner across reopened windows", async (t)
 		oldDownloaded();
 		assert.equal(service.currentUpdateOperation(), "app");
 		assert.deepEqual(actions.at(-1), ["native fetch"]);
+		const preparedMarker = readPendingInstallMarker(root);
+		assert.ok(preparedMarker);
+		const squirrelRunning = () => ({
+			jobState: "running",
+			installerRunning: false,
+		});
+		open();
+		windowService.installLiveness = squirrelRunning;
+		// ShipIt can be live just before the native notification. Its marker alone
+		// is not yet permission to leave while the native fetch is pending.
+		await assertBusyClick("quit-for-update-install");
 		native.emit("update-downloaded");
 		assert.deepEqual(actions.at(-1), ["native fallback", false, true]);
 		assert.equal(service.currentUpdateOperation(), "app");
+		globalThis.__loTestAppQuit = () => {
+			actions.push(["native explicit quit", service.currentUpdateOperation()]);
+			assert.equal(windowService.quitForInFlightInstall("before-quit"), true);
+			assert.equal(windowService.inFlightInstallOwnsRelaunch(), true);
+		};
+		const quitStart = actions.length;
+		// A running launchd job by itself says nothing about which attempt owns it.
+		for (const unrelatedMarker of [
+			{ ...preparedMarker, startedAt: "2000-01-01T00:00:00.000Z" },
+			{ ...preparedMarker, targetVersion: "9.9.8" },
+		]) {
+			writePendingInstallMarker(root, unrelatedMarker);
+			await assertBusyClick("quit-for-update-install");
+		}
+		rmSync(pendingInstallMarkerPath(root));
+		await assertBusyClick("quit-for-update-install");
+		writePendingInstallMarker(root, preparedMarker);
+		windowService.installLiveness = () => ({
+			jobState: "registered",
+			installerRunning: false,
+		});
+		await assertBusyClick("quit-for-update-install");
+		windowService.installLiveness = squirrelRunning;
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(actions.length, quitStart, "refusals did not queue a quit");
+
+		assert.equal(invoke("quit-for-update-install"), true);
+		open();
+		windowService.installLiveness = squirrelRunning;
+		assert.equal(invoke("quit-for-update-install"), true);
+		await assertBusyClick("quit-and-install");
+		await assertBusyClick("download-update");
+		assert.equal(await invoke("update-backend", "native live loser"), false);
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.deepEqual(actions.slice(quitStart), [
+			["watchdog", preparedMarker.targetVersion],
+			["native explicit quit", "app"],
+		]);
+		assert.deepEqual(readPendingInstallMarker(root), preparedMarker);
+		native.emit("error", Error("late native error during ordinary quit"));
+		assert.equal(service.currentUpdateOperation(), "app");
+		assert.equal(service.acquireUpdateOperation("combined"), null);
+		assert.equal(service.acquireUpdateOperation("overnight"), null);
 		appEvents.emit("quit");
 		assert.equal(service.currentUpdateOperation(), null);
+		// The same marker can survive into another process or owner. It no longer
+		// confers the narrow exception once the original native token is gone.
+		for (const owner of ["app", "backend"]) {
+			const release = service.acquireUpdateOperation(owner);
+			assert.ok(release);
+			try {
+				await assertBusyClick("quit-for-update-install");
+				assert.equal(service.currentUpdateOperation(), owner);
+			} finally {
+				release();
+			}
+		}
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(actions.length, quitStart + 2);
+		assert.deepEqual(readPendingInstallMarker(root), preparedMarker);
+		t.diagnostic(
+			"prepared live native quit: one watchdog and one quit across reopen, no other writer; early, missing, registered, stale, wrong-target and unrelated-owner controls refused",
+		);
 		t.diagnostic(
 			"native: reply and reopen preserve the marker and owner; only native terminal error or final app quit releases; stale callbacks do not install or release",
 		);
@@ -12707,6 +12779,27 @@ test("an update failure says what happened, and keeps the machine's words subord
 		 * is the machine's, on its own line. Asserted from the SHIPPED module, so
 		 * a reworded sentence cannot pass an assertion that repeats old words.
 		 */
+		const busy =
+			"Another update is running on this machine. Wait for it to finish, then try again.";
+		for (const [label, channel] of [
+			["Error starting the update", "quit-and-install"],
+			["Error quitting for the update", "quit-for-update-install"],
+		]) {
+			const wrapped = new Error(
+				`Error invoking remote method '${channel}': Error: ${busy}`,
+			);
+			const detail = copy.updateMessageOf(wrapped);
+			assert.deepEqual(copy.updateErrorCopy(`${label}: ${detail}`), {
+				sentence: busy,
+				detail: null,
+				action: null,
+			});
+			const unrelated = `Unexpected installer response: ${detail}`;
+			const generic = copy.updateErrorCopy(`${label}: ${unrelated}`);
+			assert.notEqual(generic.sentence, busy);
+			assert.equal(generic.detail, unrelated);
+			assert.equal(generic.action, null);
+		}
 		const bare = copy.updateErrorCopy("net::ERR_INTERNET_DISCONNECTED");
 		assert.match(bare.sentence, /update server/i);
 		assert.match(bare.sentence, /connection/i);
