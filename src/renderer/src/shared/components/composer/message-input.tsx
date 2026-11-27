@@ -106,7 +106,7 @@ import {
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
 import type { SessionAskFrame } from "@features/chat/session-asks";
-import { ApprovalModeChip } from "@features/chat/session-status/approval-mode-chip";
+import { ApprovalModePicker } from "@features/chat/session-status/approval-mode";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
@@ -10061,13 +10061,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										}
 										costChannels={sessionStatus.costChannels}
 									/>
-									{/*
-									 * The approval mode, beside the readings and only for a live
-									 * session: a draft has no runtime gate to report or switch.
-									 */}
-									{slashSessionId && !sessionStatus.draft ? (
-										<ApprovalModeChip sessionId={slashSessionId} />
-									) : null}
 								</ErrorBoundary>
 							)}
 						</div>
@@ -10788,10 +10781,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									</span>
 								</Tooltip>
 
-								<div
-									className="composer-dock-pickers"
-									ref={setComposerPickerHost}
-								/>
+								<div className="composer-dock-pickers">
+									{/* Keep one flex group, but a separate portal target so a
+									    late-mounted reading never appends after Approvals in Tab order. */}
+									<div
+										className="composer-dock-picker-host contents"
+										ref={setComposerPickerHost}
+									/>
+									{slashSessionId && sessionStatus && !sessionStatus.draft ? (
+										<ErrorBoundary fallback={null}>
+											<ApprovalModePicker sessionId={slashSessionId} />
+										</ErrorBoundary>
+									) : null}
+								</div>
 								<div
 									data-lo-composer-controls={true}
 									onFocus={() => {

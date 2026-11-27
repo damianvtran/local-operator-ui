@@ -126,7 +126,7 @@ import {
 	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
-import { invalidateApprovalMode } from "../session-status/approval-mode-chip";
+import { invalidateApprovalMode } from "../session-status/approval-mode";
 import type { Message } from "../types/message";
 import { commandBudgetRefusal } from "../utils/message-budget";
 import {

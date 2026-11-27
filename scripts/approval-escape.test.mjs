@@ -37,12 +37,9 @@ import { build } from "esbuild";
  *    `answering`/`answer` inputs. The approval-card render below asserts the
  *    pair stays enabled while the handles are present.
  *
- * ## Why no DOM
- *
- * There is no jsdom in this tree. `ApprovalEscapeControls` is presentational, so
- * a server render is the whole state matrix; the connected half is exercised
- * through `runApprovalEscape` with substituted ports, which is the same
- * function the component calls.
+ * The card controls are presentational, so this file can server-render their
+ * state matrix and exercise `runApprovalEscape` through substituted ports. The
+ * connected composer picker is mounted separately in approval-mode-live.test.mjs.
  */
 
 const bundle = await build({
@@ -50,9 +47,9 @@ const bundle = await build({
 		contents: [
 			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { ApprovalModePickerView, approvalModeFrom, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode";',
 			'export { runSessionCommand } from "./src/renderer/src/features/chat/pickers/use-picker-backend";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { ApprovalModeChipView, approvalModeFrom, approvalToggleArgs, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode-chip";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -78,9 +75,8 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const {
-	ApprovalModeChipView,
+	ApprovalModePickerView,
 	approvalModeFrom,
-	approvalToggleArgs,
 	approvalModeKey,
 	invalidateApprovalMode,
 	runApprovalEscape,
@@ -761,34 +757,43 @@ test("the card says guardrails and dangerous-delete review still apply in auto",
 	);
 });
 
-test("the mode chip reads only the backend's row and toggles to the opposite mode", () => {
+test("the picker accepts only the backend's known mode values", () => {
 	assert.equal(approvalModeFrom("auto"), "auto");
 	assert.equal(approvalModeFrom("ask"), "ask");
 	assert.equal(approvalModeFrom(undefined), null);
 	assert.equal(approvalModeFrom("yolo"), null);
-	assert.equal(approvalToggleArgs("auto"), "ask");
-	assert.equal(approvalToggleArgs("ask"), "auto");
-	const none = renderToStaticMarkup(
-		createElement(ApprovalModeChipView, { mode: null, onToggle: () => {} }),
-	);
-	assert.equal(none, "", "an unknown mode hides the chip");
-	const auto = renderToStaticMarkup(
-		createElement(ApprovalModeChipView, { mode: "auto", onToggle: () => {} }),
-	);
-	assert.match(auto, /Approvals: Auto/);
-	assert.match(auto, /data-mode="auto"/);
-	assert.match(
-		auto,
-		/dangerous-delete review/,
-		"the tooltip carries the guardrail note",
-	);
-	const ask = renderToStaticMarkup(
-		createElement(ApprovalModeChipView, { mode: "ask", onToggle: () => {} }),
-	);
-	assert.match(ask, /Approvals: Ask/);
 });
 
-test("every approvals receipt invalidates the chip's query key", () => {
+test("the trigger renders in every mode, including unknown, and never as a switch", () => {
+	const render = (props) =>
+		renderToStaticMarkup(
+			createElement(ApprovalModePickerView, {
+				open: false,
+				onOpenChange: () => {},
+				onChoose: () => {},
+				...props,
+			}),
+		);
+	const none = render({ mode: null, loading: true });
+	assert.match(
+		none,
+		/data-approval-mode-trigger/,
+		"an unknown mode keeps the trigger",
+	);
+	assert.match(none, /data-mode="unknown"/);
+	assert.match(none, />Approvals</);
+	const auto = render({ mode: "auto" });
+	assert.match(auto, /data-mode="auto"/);
+	assert.match(auto, /aria-label="Approvals: Auto"/);
+	assert.match(auto, /aria-haspopup="dialog"/);
+	assert.match(auto, /text-warning/, "auto keeps the warning tint");
+	assert.match(auto, /data-composer-picker="approvals"/);
+	const ask = render({ mode: "ask" });
+	assert.match(ask, /aria-label="Approvals: Ask"/);
+	assert.doesNotMatch(ask, /text-warning/);
+});
+
+test("every approvals receipt invalidates the picker's query key", () => {
 	const seen = [];
 	invalidateApprovalMode(
 		{ invalidateQueries: async (filter) => seen.push(filter.queryKey) },
