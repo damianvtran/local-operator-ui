@@ -1,7 +1,7 @@
 import type { WaitingOnUserInput } from "@shared/browser-user-attention";
 import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	AddressHistoryRequest,
@@ -974,8 +974,19 @@ export function useBrowserChrome(): BrowserChrome {
 				let continued = false;
 				await runVoid(async () => {
 					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
-					if (answer?.ok === true) continued = true;
-					else if (answer && answer.ok === false) {
+					if (answer?.ok === true) {
+						continued = true;
+						// The notice that explained the hand-off unmounts with the switch
+						// to the user's tab, so the one thing they must not do — close the
+						// agent's tab — is said again where they now are (incident
+						// a-7942: the agent tab went away and the agent reopened a stale
+						// login). Longer than Sonner's 4 s default because it is three
+						// short sentences read right after a tab switch.
+						showInfoToast(
+							t("ui.browser.use_browser_chrome.passkey_continued"),
+							{ duration: 10_000 },
+						);
+					} else if (answer && answer.ok === false) {
 						// `reason` is main's own localized sentence (review R2/U3).
 						showErrorToast(
 							t("ui.browser.use_browser_chrome.passkey_continue_failed", {

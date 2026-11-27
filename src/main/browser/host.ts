@@ -44,6 +44,7 @@ import {
 	internalPageOf,
 } from "./internal-pages";
 import { PageControls, type PageZoomCommand } from "./page-controls";
+import { PasskeyContinueLinks } from "./passkey-continue-link";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
 import { redactToken, surfaceToken } from "./registry";
@@ -563,6 +564,11 @@ export class BrowserHost implements BrowserActionContext {
 	 * (`new X(() => ...)`) or sitting inside an object/array literal value is
 	 * refused by the same rule (2026-10-18). */
 	readonly tabAudio: TabAudioTracker;
+	/** Agent tab -> the user's passkey-continue copy, and the one safe refresh
+	 * the copy's finished sign-in earns the agent's tab
+	 * (`passkey-continue-link.ts`). Constructed in the constructor for the
+	 * `vite:bytecode` reason above. */
+	readonly passkeyContinueLinks: PasskeyContinueLinks;
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
@@ -626,6 +632,32 @@ export class BrowserHost implements BrowserActionContext {
 		// See the field's doc comment: an arrow in a class-property initialiser is
 		// the one shape `vite:bytecode` cannot transform (v0.35.0 publish failure).
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
+		// Every answer is read live from the registry when the copy commits, never
+		// captured at continue time: the agent tab may have closed, changed owner
+		// or started a command since.
+		this.passkeyContinueLinks = new PasskeyContinueLinks({
+			source: (tabId) => {
+				const record = this.registry.get(tabId);
+				return record
+					? { owner: record.owner, contents: record.view.webContents }
+					: null;
+			},
+			copy: (tabId) => {
+				const record = this.registry.get(tabId);
+				return record
+					? {
+							userOwned:
+								record.owner === "user" &&
+								record.handedTo === null &&
+								record.nonce === null,
+						}
+					: null;
+			},
+			busy: (tabId) => this.registry.isBusy(tabId),
+			authPromptPresent: (webContentsId) =>
+				this.registry.authPromptPresent(webContentsId),
+			log: (message) => this.log(message),
+		});
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
@@ -1348,6 +1380,12 @@ export class BrowserHost implements BrowserActionContext {
 	 * or read them. So an agent tab can never finish a 1Password passkey sign-in.
 	 * A user tab can, and every tab shares the one persistent profile, so the
 	 * cookies the sign-in sets are the agent tab's cookies too once it reloads.
+	 * That reload is `passkeyContinueLinks`' job: the copy is linked to this tab
+	 * here, in main, and only a finished sign-in in the copy (a same-site,
+	 * non-auth 2xx commit) refreshes this tab with a background GET of its own
+	 * URL — never activated, never closed, never while it is busy. Before that
+	 * link, nothing reloaded it (incident a-7942: the agent later reopened the
+	 * stale login and the user's signed-in tab was orphaned).
 	 *
 	 * THE URL IS READ HERE from the tab's own top-level webContents: never a
 	 * renderer-supplied value, never the requesting iframe's URL (an embedded
@@ -1397,6 +1435,7 @@ export class BrowserHost implements BrowserActionContext {
 					created.tabId = record.tabId;
 				},
 			);
+			this.linkPasskeyContinue(record, copy.tabId, url);
 			return { ok: true, tabId: copy.tabId };
 		} catch {
 			if (created.tabId === null)
@@ -1404,6 +1443,9 @@ export class BrowserHost implements BrowserActionContext {
 					ok: false,
 					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
 				};
+			// Linked on this path too: the user can retry the sign-in in the tab
+			// that shows its own failure, and that retry finishing is the same signal.
+			this.linkPasskeyContinue(record, created.tabId, url);
 			// The tab exists, is active and is the user's: that is the success the
 			// user asked for (review U3). Same as `duplicate`, the load failure stays
 			// in the tab for them to see, rather than a toast saying the tab they
@@ -1416,6 +1458,24 @@ export class BrowserHost implements BrowserActionContext {
 			this.onChanged();
 			return { ok: true, tabId: created.tabId };
 		}
+	}
+
+	/** Armed after the copy's own load, so that load's commit never counts as
+	 * the end of the sign-in. A copy already gone by now links nothing. */
+	private linkPasskeyContinue(
+		source: TabRecord,
+		copyTabId: number,
+		signInUrl: string,
+	): void {
+		const copy = this.registry.get(copyTabId);
+		if (!copy || copy.view.webContents.isDestroyed()) return;
+		this.passkeyContinueLinks.link({
+			sourceTabId: source.tabId,
+			sourceWebContentsId: source.view.webContents.id,
+			signInUrl,
+			copyTabId,
+			copyContents: copy.view.webContents,
+		});
 	}
 
 	/** Human duplicates copy URL ONLY. Session attribution is not a capability,

@@ -1237,7 +1237,7 @@
 	"ui.browser.browser_passkey_notice.agent_explanation": {
 		"role": "explanatory text — passkey notice strip, agent-driven tab only",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Conditional, not a diagnosis, and now narrower: some password managers CAN show their passkey window in an agent tab (the user answers it there), so the sentence covers only one that can't. Also conditional because the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If…'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt — translate as a window/dialog, not the glossary's 'prompt' (提示词/промпт). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
+		"note": "Conditional, not a diagnosis: some password managers CAN show their passkey window in an agent tab, so the sentence covers only one that can't; keep the 'If…'. 'Its passkey window' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt — translate as a window/dialog. 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. 'This tab' is the agent's tab the notice sits on: it stays open, and the app reloads it for the agent once the sign-in in the other tab finishes, because both tabs share this browser's sign-in (cookies). 'Keep this tab open' is the instruction the user must not miss. Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
 	},
 	"ui.browser.browser_passkey_notice.continue_refused_stale": {
 		"role": "error reason — passkey notice continue toast",
@@ -1278,6 +1278,12 @@
 		"role": "error text — browser toolbar toast",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Shown when opening the agent tab's page in a new user tab was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
+	},
+	"ui.browser.use_browser_chrome.passkey_continued": {
+		"role": "status text — browser toolbar toast, shown once in the user's new tab right after 'Continue in your own tab'",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "'Here' is the user's own tab that just opened; 'the agent's tab' is the original agent-driven tab, which stays open in the strip. The app reloads that tab by itself only after it sees the sign-in finish (the site moves on to a normal page), so keep the condition and the fallback: if it does not reload, the user asks the agent. Do not promise the sign-in will succeed. Toast: keep near the English length.",
+		"placeholders": {}
 	},
 	"ui.browser.browser_url_bar.reload_shortcut": {
 		"role": "Tooltip of the browser pane's reload button, with its keyboard shortcut",

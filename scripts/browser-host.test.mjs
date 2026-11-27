@@ -29,6 +29,7 @@ import {
 	statSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer } from "node:http";
 import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
@@ -76,6 +77,8 @@ const bundle = await build({
 			'export * from "./src/main/browser/extensions/auth-request";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/native-passkey-notice";',
+			// The continue-in-user-tab link's completion predicate, tested on its own.
+			'export * from "./src/main/browser/passkey-continue-link";',
 			'export { WebauthnChooser } from "./src/main/webauthn";',
 			// The download capture and the file-transfer policy pair. Bundled so the
 			// arm-gated save path, the name refusal and the caps can be driven against a
@@ -192,6 +195,7 @@ const {
 	CdpPool,
 	isReportableLoadFailure,
 	configurePslRules,
+	isSignInCompletion,
 	domainScopeAvailable,
 	registrableDomain,
 	safeHttpUrl,
@@ -13722,6 +13726,441 @@ test("continue-in-user-tab refusals are their own localized sentences (review R2
 		ok: false,
 		reason: "Only web pages can open in your own tab.",
 	});
+});
+
+/*
+ * The continue link (incident a-7942): the agent tab stays linked to its copy in
+ * main, and ONLY a finished sign-in in the copy refreshes it — a background GET of
+ * its own URL, never focus, never a POST replay, never while it is busy. The
+ * fixture is a synthetic loopback site (a login page that answers a POST with a
+ * 303 to a post-login page); no real site and no credential is involved. The fake
+ * views do not load pages, so the copy's commit is the `did-navigate` a real
+ * webContents emits after following that 303, with the status the fixture really
+ * answered; the agent tab's refresh really requests the fixture, so its request
+ * log proves the method.
+ */
+async function startSignInFixture() {
+	const requests = [];
+	const server = createServer((request, response) => {
+		requests.push(`${request.method} ${request.url}`);
+		if (request.url?.startsWith("/login") && request.method === "POST") {
+			response.writeHead(303, {
+				location: "/home",
+				"set-cookie": "fixture_session=synthetic; Path=/; HttpOnly",
+			});
+			response.end();
+			return;
+		}
+		const path = request.url?.split("?")[0];
+		if (path === "/login" || path === "/home") {
+			response.writeHead(200, { "content-type": "text/html" });
+			response.end(
+				path === "/login"
+					? '<form method="post" action="/login"><button>Sign in</button></form>'
+					: "<p>Signed in</p>",
+			);
+			return;
+		}
+		response.writeHead(404);
+		response.end();
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const origin = `http://127.0.0.1:${server.address().port}`;
+	return {
+		origin,
+		requests,
+		close: () => new Promise((resolve) => server.close(resolve)),
+		/** The user's sign-in in the copy: the form POST, the 303 followed, and
+		 * the final commit's URL and status as `did-navigate` reports them. */
+		signIn: async () => {
+			const answer = await fetch(`${origin}/login?next=%2Fhome`, {
+				method: "POST",
+			});
+			await answer.text();
+			return { url: answer.url, status: answer.status };
+		},
+	};
+}
+
+/** An agent tab at the fixture's login page whose loads really hit the fixture,
+ * recording each call's arguments (a `postData` option would be a POST). */
+async function agentAtFixtureLogin(registry, fixture) {
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	const contents = agent.view.webContents;
+	contents.loadCalls = [];
+	contents.reloads = 0;
+	const fakeLoad = contents.loadURL.bind(contents);
+	contents.loadURL = async (url, options) => {
+		contents.loadCalls.push({ url, options });
+		await fakeLoad(url);
+		if (url.startsWith(fixture.origin)) await (await fetch(url)).text();
+	};
+	contents.reload = () => {
+		contents.reloads += 1;
+	};
+	await contents.loadURL(`${fixture.origin}/login?next=%2Fhome`);
+	contents.loadCalls.length = 0;
+	fixture.requests.length = 0;
+	return agent;
+}
+
+/** What a user tab the host opened WITHOUT a continue link listens to. */
+async function plainUserTabListeners(host, registry) {
+	await host.newTab(null);
+	const contents = registry.activeTab.view.webContents;
+	return {
+		navigate: contents.listenerCount("did-navigate"),
+		destroyed: contents.listenerCount("destroyed"),
+	};
+}
+
+async function settleContinueLink() {
+	await new Promise((resolve) => setImmediate(resolve));
+	await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+test("continue-in-user-tab: a finished sign-in in the copy refreshes the agent tab with a background GET of its own URL", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		const { host, registry } = makeHost();
+		const agent = await agentAtFixtureLogin(registry, fixture);
+		const signInUrl = agent.view.webContents.getURL();
+		const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+		assert.equal(outcome.ok, true);
+		const copy = registry.get(outcome.tabId);
+		assert.equal(host.passkeyContinueLinks.size, 1, "linked in main");
+		const activations = [];
+		const activate = registry.activate.bind(registry);
+		registry.activate = (tabId) => {
+			activations.push(tabId);
+			return activate(tabId);
+		};
+
+		const landed = await fixture.signIn();
+		assert.deepEqual(landed, { url: `${fixture.origin}/home`, status: 200 });
+		copy.view.webContents.emit("did-navigate", {}, landed.url, landed.status);
+		await settleContinueLink();
+
+		const calls = agent.view.webContents.loadCalls;
+		assert.deepEqual(
+			calls.map((call) => call.url),
+			[signInUrl],
+			"exactly one load, of the agent tab's own URL (not the copy's landing)",
+		);
+		assert.equal(calls[0].options, undefined, "no postData: a GET");
+		assert.equal(agent.view.webContents.reloads, 0, "never reload()");
+		assert.deepEqual(
+			fixture.requests,
+			["POST /login?next=%2Fhome", "GET /home", "GET /login?next=%2Fhome"],
+			"the copy's POST happened once; the agent tab's refresh is a GET",
+		);
+		assert.deepEqual(activations, [], "nothing activated");
+		assert.equal(
+			registry.activeTab,
+			copy,
+			"the user's tab stays the one shown",
+		);
+		assert.equal(
+			registry.get(agent.tabId),
+			agent,
+			"the agent tab is not closed",
+		);
+		assert.equal(agent.owner, "agent");
+		assert.equal(host.passkeyContinueLinks.size, 0, "one-shot");
+
+		// No adoption: the copy is still the user's and no agent may drive it.
+		assert.equal(copy.owner, "user");
+		assert.equal(copy.nonce, null);
+		assert.equal(copy.handedTo, null);
+		for (const session of ["synthetic-s1", "synthetic-other"])
+			assert.equal(registry.mayDrive(copy, session), false, session);
+
+		// Later browsing in the copy never reaches the agent tab again.
+		copy.view.webContents.emit(
+			"did-navigate",
+			{},
+			`${fixture.origin}/home`,
+			200,
+		);
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 1);
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab: no refresh without a finished sign-in (auth step, cross-site, error status, copy closed)", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		const { host, registry } = makeHost();
+		const agent = await agentAtFixtureLogin(registry, fixture);
+		const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+		const copy = registry.get(outcome.tabId);
+		const emit = (url, status) =>
+			copy.view.webContents.emit("did-navigate", {}, url, status);
+		emit(`${fixture.origin}/login?next=%2Fhome`, 200); // the same sign-in page
+		emit(`${fixture.origin}/login/mfa`, 200); // the middle of a sign-in
+		emit("https://idp.example.test/authorize?client=x", 200); // federated IdP
+		emit("https://unrelated.example.test/home", 200); // cross-site
+		emit(`${fixture.origin}/home`, 500); // an error page is not a session
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 0);
+		assert.equal(host.passkeyContinueLinks.size, 1, "still waiting");
+
+		// The user closes the copy without signing in (the cancel path): the link
+		// ends, and nothing it later hears could refresh the agent tab.
+		registry.destroy(copy.tabId);
+		host.passkeyContinueLinks.forgetTab(copy.tabId); // index.ts releaseTab
+		assert.equal(host.passkeyContinueLinks.size, 0);
+		assert.equal(
+			copy.view.webContents.listenerCount("did-navigate"),
+			(await plainUserTabListeners(host, registry)).navigate,
+		);
+		emit(`${fixture.origin}/home`, 200);
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 0);
+		assert.equal(registry.get(agent.tabId), agent, "the agent tab is kept");
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab: the copy's own destroyed event also ends the link", async () => {
+	const { host, registry } = makeHost();
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	await agent.view.webContents.loadURL("https://app.example.test/login");
+	const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+	const copy = registry.get(outcome.tabId);
+	copy.view.webContents.close();
+	assert.equal(host.passkeyContinueLinks.size, 0);
+});
+
+test("continue-in-user-tab: an agent tab already gone is not refreshed and nothing throws", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		const { host, registry } = makeHost();
+		const agent = await agentAtFixtureLogin(registry, fixture);
+		const logs = [];
+		const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+		const copy = registry.get(outcome.tabId);
+		// Closed by something else; `releaseTab` is deliberately NOT called here, so
+		// the decision-time liveness read is what is under test.
+		registry.destroy(agent.tabId);
+		const log = host.log;
+		host.passkeyContinueLinks.deps.log = (message) => logs.push(message);
+		const landed = await fixture.signIn();
+		copy.view.webContents.emit("did-navigate", {}, landed.url, landed.status);
+		await settleContinueLink();
+		host.passkeyContinueLinks.deps.log = log;
+		assert.equal(agent.view.webContents.loadCalls.length, 0);
+		assert.equal(host.passkeyContinueLinks.size, 0);
+		assert.match(logs.join("\n"), /source-gone/);
+		assert.deepEqual(fixture.requests, [
+			"POST /login?next=%2Fhome",
+			"GET /home",
+		]);
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab: an agent tab that is loading, driven, moved or showing a provider prompt is not refreshed", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		for (const state of ["loading", "driven", "moved", "prompt"]) {
+			const { host, registry } = makeHost();
+			const agent = await agentAtFixtureLogin(registry, fixture);
+			const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+			const copy = registry.get(outcome.tabId);
+			let releaseLane = () => {};
+			if (state === "loading") agent.view.webContents.isLoading = () => true;
+			if (state === "driven")
+				void registry.lane(
+					agent.tabId,
+					() => new Promise((resolve) => (releaseLane = resolve)),
+				);
+			if (state === "moved")
+				agent.view.webContents.url = `${fixture.origin}/elsewhere`;
+			if (state === "prompt")
+				registry.setAuthRequestGate({
+					conflict: () => null,
+					promptPresent: (id) => id === agent.view.webContents.id,
+				});
+			const logs = [];
+			host.passkeyContinueLinks.deps.log = (message) => logs.push(message);
+			const landed = await fixture.signIn();
+			copy.view.webContents.emit("did-navigate", {}, landed.url, landed.status);
+			await settleContinueLink();
+			releaseLane();
+			assert.equal(agent.view.webContents.loadCalls.length, 0, state);
+			assert.equal(host.passkeyContinueLinks.size, 0, `${state}: released`);
+			assert.match(
+				logs.join("\n"),
+				{
+					loading: /source-loading/,
+					driven: /source-busy/,
+					moved: /source-moved/,
+					prompt: /source-prompt/,
+				}[state],
+			);
+			fixture.requests.length = 0;
+		}
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab: a copy handed to an agent is not the user's sign-in and refreshes nothing", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		const { host, registry } = makeHost();
+		const agent = await agentAtFixtureLogin(registry, fixture);
+		const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+		const copy = registry.get(outcome.tabId);
+		host.handOver(copy.tabId, "synthetic-s2");
+		copy.view.webContents.emit(
+			"did-navigate",
+			{},
+			`${fixture.origin}/home`,
+			200,
+		);
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 0);
+		assert.equal(host.passkeyContinueLinks.size, 0);
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab: repeated continues keep one link and leave no listeners behind", async () => {
+	const fixture = await startSignInFixture();
+	try {
+		const { host, registry } = makeHost();
+		const agent = await agentAtFixtureLogin(registry, fixture);
+		const first = registry.get(
+			(await host.continueAgentTabInUserTab(agent.tabId)).tabId,
+		);
+		const second = registry.get(
+			(await host.continueAgentTabInUserTab(agent.tabId)).tabId,
+		);
+		const third = registry.get(
+			(await host.continueAgentTabInUserTab(agent.tabId)).tabId,
+		);
+		assert.equal(host.passkeyContinueLinks.size, 1);
+		// Measured against a plain user tab, so the host's own per-tab wiring
+		// (which is not this link's) does not count.
+		const plain = await plainUserTabListeners(host, registry);
+		for (const copy of [first, second]) {
+			assert.equal(
+				copy.view.webContents.listenerCount("did-navigate"),
+				plain.navigate,
+			);
+			assert.equal(
+				copy.view.webContents.listenerCount("destroyed"),
+				plain.destroyed,
+			);
+		}
+		assert.equal(
+			third.view.webContents.listenerCount("did-navigate"),
+			plain.navigate + 1,
+		);
+		// A replaced copy finishing a sign-in is no longer the agent tab's link.
+		first.view.webContents.emit(
+			"did-navigate",
+			{},
+			`${fixture.origin}/home`,
+			200,
+		);
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 0);
+		third.view.webContents.emit(
+			"did-navigate",
+			{},
+			`${fixture.origin}/home`,
+			200,
+		);
+		await settleContinueLink();
+		assert.equal(agent.view.webContents.loadCalls.length, 1);
+		assert.equal(
+			third.view.webContents.listenerCount("did-navigate"),
+			plain.navigate,
+		);
+		assert.equal(host.passkeyContinueLinks.size, 0);
+	} finally {
+		await fixture.close();
+	}
+});
+
+test("continue-in-user-tab on a user-owned tab is refused and links nothing", async () => {
+	const { host, registry } = makeHost();
+	const user = registry.create({ owner: "user" });
+	await user.view.webContents.loadURL("https://app.example.test/login");
+	const outcome = await host.continueAgentTabInUserTab(user.tabId);
+	assert.equal(outcome.ok, false);
+	assert.equal(host.passkeyContinueLinks.size, 0);
+});
+
+test("isSignInCompletion: a same-site, non-auth 2xx landing away from the sign-in page, and nothing else", () => {
+	const login = "https://app.example.com/login?next=%2Fcontacts";
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/contacts", 200),
+		true,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/login", 200),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/user/sign-in", 200),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/oauth2/callback", 200),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/contacts", 302),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://app.example.com/contacts", 404),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "http://app.example.com/contacts", 200),
+		false,
+		"downgrade",
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://evil.test/contacts", 200),
+		false,
+	);
+	assert.equal(
+		isSignInCompletion(login, "https://login.example.com/x", 200),
+		false,
+		"auth host",
+	);
+	assert.equal(isSignInCompletion(login, "about:blank", 200), false);
+	// Without PSL data, a sibling host is not "same site" (fail closed)...
+	configurePslRules(null);
+	assert.equal(
+		isSignInCompletion(login, "https://www.example.com/home", 200),
+		false,
+	);
+	// ...and with it, the registrable domain decides.
+	configurePslRules("com\n");
+	try {
+		assert.equal(
+			isSignInCompletion(login, "https://www.example.com/home", 200),
+			true,
+		);
+		assert.equal(
+			isSignInCompletion(login, "https://www.example.org/home", 200),
+			false,
+		);
+	} finally {
+		configurePslRules(null);
+	}
 });
 
 test("the continue-in-user-tab IPC channel admits only the app renderer and passes ids, not URLs", async () => {

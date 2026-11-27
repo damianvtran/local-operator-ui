@@ -125,7 +125,12 @@ test("an agent tab's notice offers Continue in your own tab, says why, and keeps
 	assert.ok(AGENT_WHY.startsWith("If your password manager can’t show"));
 	assert.ok(!AGENT_WHY.includes(CONTINUE), "the button label is not repeated");
 	assert.ok(!AGENT_WHY.includes("agent-driven"));
-	assert.ok(AGENT_WHY.includes("ask the agent to reload this page"));
+	// Incident a-7942: the user must learn that THIS (the agent's) tab stays and
+	// must be kept, and that it reloads on its own once they have signed in —
+	// main now refreshes it on a finished sign-in (`passkey-continue-link.ts`),
+	// so the old "ask the agent to reload this page" step is no longer the ask.
+	assert.ok(AGENT_WHY.includes("Keep this tab open"));
+	assert.ok(AGENT_WHY.includes("reloads for the agent once you’ve signed in"));
 	assert.ok(
 		!html.includes(t("ui.browser.browser_passkey_notice.explanation")),
 		"one hint, not two",
