@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "scope": "Second independent desktop audit: 77 values per locale x 7 locales at PR #2156 head; 72 byte-identical to audited core tui.guard.",
+  "reviewed_head": "a8f7b16b40fa48f7551969114d7f34c723fd656e",
+  "auditor": "copy-reviewer",
+  "session": "b8a8ac1e52df",
+  "actual_model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-27",
+  "first_audit_manifest": "i18n/audits/evidence/pr2156-ui-guard-first-audit-manifest.json",
+  "catalogue_edits": 0,
+  "canonical_evidence_root": "i18n/audits/evidence/",
+  "equivalent_evidence_root": "i18n/receipts/",
+  "rendered": "Storybook locale frames for ur (prompt + Settings) and ru (prompt); ur shows a render-layer dir=auto defect, reported to the PR as a code finding. Other locales: ICU text output only.",
+  "records": [
+    {
+      "locale": "es",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-es.json",
+      "sha256": "24aaeddabdae511b2c0883de7ef3c93e0b977431156494c8713df106b498c632",
+      "result": "clean"
+    },
+    {
+      "locale": "fr",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-fr.json",
+      "sha256": "4f02ebaa31eda53c8fae76cd318e6b3c025e1826314f96b1c9dda24c087211a7",
+      "result": "clean"
+    },
+    {
+      "locale": "hi",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-hi.json",
+      "sha256": "767b5f45c2ec53c311e1c2d7093c8ce7400dae2b206477be6176d64059e5fb05",
+      "result": "clean"
+    },
+    {
+      "locale": "ru",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ru.json",
+      "sha256": "f8cc31d4725df3c9521eb78db3bcced7c09401d0c150e4d7ccc2364ad839989a",
+      "result": "clean"
+    },
+    {
+      "locale": "ur",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ur.json",
+      "sha256": "f2b1c91bf0f2419b351ef487c7749e92f025f3275fccc4fa9547475115fc2641",
+      "result": "clean"
+    },
+    {
+      "locale": "vi",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-vi.json",
+      "sha256": "b20a063896d324cbaad08d56453944e248f067cfb8bc3401e724d1079a9a23cb",
+      "result": "clean"
+    },
+    {
+      "locale": "zh-CN",
+      "receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-zh-cn.json",
+      "sha256": "a66332a82d254d16f5ffa9a266cbd5bfccc303cadff2b644be3d82f5c4da3026",
+      "result": "clean-with-findings"
+    }
+  ]
+}
