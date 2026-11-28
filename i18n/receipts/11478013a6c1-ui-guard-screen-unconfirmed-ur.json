@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "locale": "ur",
+  "audit_id": "11478013a6c1-ui-guard-screen-unconfirmed-ur",
+  "instance": "11478013a6c1-ui-guard-screen-unconfirmed-ur",
+  "auditor": "copy-reviewer",
+  "session": "11478013a6c1",
+  "model": "openai/gpt-6.2-sol",
+  "model_provenance": "Runtime model declaration; no provider fallback observed.",
+  "date": "2026-11-27",
+  "status": "passed",
+  "result": "clean",
+  "independence": "Auditor 1 is independent of the coder translator. Auditor 2 must independently review the new string, including any corrective edit. Historical audits are not counted against the changed key.",
+  "reviewed_head": "4dc2a81cd3c849f298c99ae9d7735a00194d24d3",
+  "scope": "ui.guard.screen_unconfirmed",
+  "source_path": "src/i18n/catalogues/en/ui.guard.json",
+  "source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+  "context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+  "context_sha256": "a754dd5194105d3902f22dfca8b8ec8d9f5d99b363669494363de4525c233317",
+  "target_path": "src/i18n/catalogues/ur/ui.guard.json",
+  "target_sha256": "cbbb337e26a8c4e9ff26fa9b5311d066cdb13d88c20d15d9cc43e1778e48141a",
+  "translation_input": {
+    "target_sha256": "cbbb337e26a8c4e9ff26fa9b5311d066cdb13d88c20d15d9cc43e1778e48141a",
+    "translator": {
+      "agent": "coder",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-11-27"
+    }
+  },
+  "core_revision": "817e94cf2f274d7ea37f9ebcc732996724c50652",
+  "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style_guide_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+  "tui_reference": {
+    "path": "local_operator/i18n/catalogues/ur/tui.guard.json",
+    "sha256": "2e415bc5c462d0b1d3da56ee24a097cb417ae8ebbe6329289c9fe518ebe5af9b",
+    "note": "TUI has no equivalent Settings-directed unconfirmed receipt; compared choice/retry register, not the distinct screen_failed or screen_unavailable outcome. The desktop shell catalogue owns the Settings label."
+  },
+  "retained_keys": {
+    "count": 77,
+    "baseline": "8a450d7334bbd490a9cfd08bdd6472d8954a66ff",
+    "sha256_after_removing_new_line": "e2bcaeca200b20b29cd076dd7cae5b677c2e2e2000cba13d50614bfadb6b58c9",
+    "evidence": "All other target raw lines are byte-identical to baseline; superseded receipt hashes verify."
+  },
+  "checks": [
+    "Polite آپ register and imperative, Urdu full stops, exact ترتیبات label, logical order and no manual bidi controls.",
+    "Copy scan of all eight Guard catalogues: 548 candidates, 0 findings.",
+    "No ICU arguments or format controls. Copy/codepoint audit only; no rendered frame or fit claim.",
+    "The choice could not be confirmed; check Guard in Settings before retrying. No claim about sharing, sending, or saving."
+  ],
+  "findings": []
+}

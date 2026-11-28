@@ -72,7 +72,7 @@
 	"ui.guard.screen_declined": "Данные не передаются {org}.",
 	"ui.guard.screen_revoked": "Передача данных {org} прекращена.",
 	"ui.guard.screen_unavailable": "Guard не может прочитать свои настройки на этом компьютере. С этого экрана ничего не передано и не отправлено.",
-	"ui.guard.screen_unconfirmed": "Не удалось подтвердить ваш выбор. Проверьте Guard в настройках, прежде чем пробовать снова.",
+	"ui.guard.screen_unconfirmed": "Не удалось подтвердить ваш выбор. Проверьте Guard в разделе «Настройки», прежде чем повторить попытку.",
 	"ui.guard.screen_prompt_changed": "В {org} изменили этот запрос. Посмотрите новый ниже.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# вопрос Guard ждёт вашего ответа} few {# вопроса Guard ждут вашего ответа} many {# вопросов Guard ждут вашего ответа} other {# вопроса Guard ждут вашего ответа}}",
 	"ui.guard.card_ask_owner": "Попросите владельца организации перейти на тариф Radient Team",

@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "locale": "ru",
+  "audit_id": "11478013a6c1-ui-guard-screen-unconfirmed-ru",
+  "instance": "11478013a6c1-ui-guard-screen-unconfirmed-ru",
+  "auditor": "copy-reviewer",
+  "session": "11478013a6c1",
+  "model": "openai/gpt-6.2-sol",
+  "model_provenance": "Runtime model declaration; no provider fallback observed.",
+  "date": "2026-11-27",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "independence": "Auditor 1 is independent of the coder translator. Auditor 2 must independently review the new string, including any corrective edit. Historical audits are not counted against the changed key.",
+  "reviewed_head": "4dc2a81cd3c849f298c99ae9d7735a00194d24d3",
+  "scope": "ui.guard.screen_unconfirmed",
+  "source_path": "src/i18n/catalogues/en/ui.guard.json",
+  "source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+  "context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+  "context_sha256": "a754dd5194105d3902f22dfca8b8ec8d9f5d99b363669494363de4525c233317",
+  "target_path": "src/i18n/catalogues/ru/ui.guard.json",
+  "target_sha256": "7ba13f706c4e286c3051915d6901e7fa3e36ece4d02b733a2c5cc1bd70d36b89",
+  "translation_input": {
+    "target_sha256": "da4a447d78474143d9da1fbc4383f07dc72275a4d7344a6897d99e60c6cfdb94",
+    "translator": {
+      "agent": "coder",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-11-27"
+    }
+  },
+  "core_revision": "817e94cf2f274d7ea37f9ebcc732996724c50652",
+  "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+  "tui_reference": {
+    "path": "local_operator/i18n/catalogues/ru/tui.guard.json",
+    "sha256": "4a2bd49ed9c2e5dcdfcdc5b0fc5b3af75aa6290dc9caa23a9a158ec0ba352b73",
+    "note": "TUI has no equivalent Settings-directed unconfirmed receipt; compared choice/retry register, not the distinct screen_failed or screen_unavailable outcome. The desktop shell catalogue owns the Settings label."
+  },
+  "retained_keys": {
+    "count": 77,
+    "baseline": "8a450d7334bbd490a9cfd08bdd6472d8954a66ff",
+    "sha256_after_removing_new_line": "cd3002a220e76167f8c3d13e3c25776d54d0ab4e9f99142880a9ccda44932f6a",
+    "evidence": "All other target raw lines are byte-identical to baseline; superseded receipt hashes verify."
+  },
+  "checks": [
+    "Impersonal opening and polite register. The corrective edit quotes the exact Settings label and uses the idiomatic повторить попытку.",
+    "Copy scan of all eight Guard catalogues: 548 candidates, 0 findings.",
+    "No ICU arguments or format controls. Copy/codepoint audit only; no rendered frame or fit claim.",
+    "The choice could not be confirmed; check Guard in Settings before retrying. No claim about sharing, sending, or saving."
+  ],
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "minor",
+      "key": "ui.guard.screen_unconfirmed",
+      "current": "Не удалось подтвердить ваш выбор. Проверьте Guard в настройках, прежде чем пробовать снова.",
+      "replacement": "Не удалось подтвердить ваш выбор. Проверьте Guard в разделе «Настройки», прежде чем повторить попытку.",
+      "why": "Use the exact desktop label «Настройки» so the reader can find it; повторить попытку is the idiomatic retry instruction.",
+      "disposition": "fixed in this receipt’s target bytes; auditor 2 must confirm the correction independently"
+    }
+  ]
+}
