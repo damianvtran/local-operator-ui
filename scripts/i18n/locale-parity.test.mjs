@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.guard.screen_title",
+		"Product name (Radient Guard), kept as the brand in every locale; the Guard section's title in Settings. Byte-identical to the already-audited `tui.guard.screen_title` in local-operator (local-operator-ui #2156).",
+	],
+	[
 		"fr:ui.teamBridge.edit.topic",
 		"French cognate « Description », the native label, not an English stub; independently audited in i18n/receipts/d76a8497b66e-tb-edit-fr.json (all 70 target values read across seven locales). Scoped to this locale/key only.",
 	],

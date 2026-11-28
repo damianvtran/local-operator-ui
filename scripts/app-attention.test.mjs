@@ -371,6 +371,51 @@ test("service resolves the enabled Aida rail and rechecks it after local control
 	service.stop();
 });
 
+test("a pending Guard consent in the HTTP approvals list does not light the native attention mark; an ordinary approval still does", async () => {
+	// RFC v0.9 §5.2.3: the Guard prompt "never takes focus" and sends no push, so
+	// it should not surface through the Dock/taskbar dot either. SCOPE OF THIS PIN:
+	// the HTTP list only. A live `approvals` feed frame with `pending: true` still
+	// lights the mark, because the host's `_approval_snapshot` counts every
+	// `requested` record, the guard mirror included (S-3; a host-side open item).
+	// The gear's corner count is the prompt's own mark. The row is identified the way the host serves it: by
+	// the typed block's `operation` (there is no `kind` key on the wire).
+	const guard = {
+		approval_id: "ap_guard",
+		state: "requested",
+		typed_approval: { operation: "guard_consent" },
+	};
+	const device = { approval_id: "ap_device", state: "requested" };
+	const run = async (rows) => {
+		const output = [];
+		const service = new AppAttentionService({
+			request: async (input) => {
+				const result =
+					input.op === "capabilities"
+						? { features: { approvals: 1 } }
+						: input.op === "approvals.list"
+							? { approvals: rows }
+							: input.op === "team_bridge.status"
+								? { state: "signed_out", account_id: null }
+								: {};
+				return { status: 200, body: { result } };
+			},
+			publish: (snapshot) => output.push(snapshot),
+			clear: () => {},
+		});
+		service.observe(open({}));
+		await flush();
+		service.stop();
+		return output.at(-1);
+	};
+	assert.equal((await run([guard]))?.pending ?? false, false);
+	assert.equal((await run([device]))?.pending, true, "control: the mark works");
+	assert.equal(
+		(await run([guard, device]))?.pending,
+		true,
+		"a Guard row beside an ordinary approval changes nothing for the ordinary one",
+	);
+});
+
 test("Bridge uses one authorized account total and rejects a write-racing stale snapshot", async () => {
 	const output = [];
 	const requests = [];

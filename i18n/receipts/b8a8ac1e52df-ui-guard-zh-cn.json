@@ -1,0 +1,53 @@
+{
+	"schema": 1,
+	"namespace": "ui.guard",
+	"locale": "zh-CN",
+	"audit_id": "b8a8ac1e52df-ui-guard-zh-cn",
+	"instance": "b8a8ac1e52df-ui-guard-zh-cn",
+	"auditor": "copy-reviewer",
+	"agent_detail": "radientdev copy-reviewer acting as independent i18n auditor #2 (PR #2156)",
+	"session": "b8a8ac1e52df",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no provider fallback or model switch observed.",
+	"date": "2026-11-27",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"independence": "Second independent desktop i18n audit. Distinct session from translator (coder, anthropic/claude-sonnet-5-5) and auditor #1 (copy-reviewer session 563c806ab66e, openai/gpt-6.2-sol). Made no edits to any catalogue.",
+	"reviewed_head": "a8f7b16b40fa48f7551969114d7f34c723fd656e",
+	"first_auditor_receipt": "i18n/receipts/563c806ab66e-ui-guard-zh-cn.json",
+	"first_auditor_receipt_sha256": "ab435e78b2cf5e93dde2e2fcec31941ff16b8093375f3a554a74b3d8f8724e46",
+	"source_path": "src/i18n/catalogues/en/ui.guard.json",
+	"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+	"context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+	"context_sha256": "b78bdedca210b719a2f587d8aee35221120b21c106fd071cd3a9480019b2d4e2",
+	"target_path": "src/i18n/catalogues/zh-CN/ui.guard.json",
+	"target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
+	"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+	"style_guide_path": "~/local-operator/i18n/style-guides/zh-CN.md",
+	"style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+	"core_revision": "498066e8c8270ad5c02bbb053186252ed6981212",
+	"scope": "All 77 messages read against English and context; 72 byte-identical to audited core tui.guard at core_revision (re-verified, core unchanged on origin/main); 5 desktop-authored values and auditor #1's corrective edits re-read individually.",
+	"first_auditor_edits_verified": {
+		"ui.guard.card_ask_owner": "请联系组织所有者升级到Radient Team"
+	},
+	"findings": [
+		{
+			"id": "C2",
+			"severity": "nit",
+			"key": "ui.guard.badge_waiting_aria",
+			"current": "{count, plural, other {有 # 个 Guard 问题等你回答}}",
+			"replacement": "{count, plural, other {有#个Guard问题等你回答}}",
+			"why": "zh-CN style guide: no space between Chinese and Latin/digit runs; every other zh-CN ui.guard value follows it. Screen-reader-only text, so not visible.",
+			"disposition": "deferred: a byte change would supersede auditor #1's receipt on this row for an invisible NIT; fold into the next audited ui.guard round."
+		}
+	],
+	"semantic_checks": [
+		"Never-sent list complete (paths, commands, prompts, code, model output, tool arguments).",
+		"Minimums intact: totals at least 5 contributors; setup-check estimates at least 20; reports grouped only for a kind at least 5 people sent that day.",
+		"Retention intact: timing 14 days, stats 90, reports 180; {backup_days} dynamic and unmodified.",
+		"Revocation: stops from all computers now; step timing deleted; past totals stay published and never show the person alone.",
+		"Desktop Settings label matches ui.settings.page.title in this locale; Console and product names verbatim."
+	],
+	"mechanical_checks": "77/77 keys; placeholder sets and digits equal to English; all 77 values parse with IntlMessageFormat; badge_waiting_aria formatted at 0,1,2,3,5,21,1000000 against Intl.PluralRules categories; NFC; no manual bidi controls; no stray whitespace. zh-CN CJK/Latin spacing checked.",
+	"rendered_evidence": "Not rendered for this locale; ICU text output only."
+}

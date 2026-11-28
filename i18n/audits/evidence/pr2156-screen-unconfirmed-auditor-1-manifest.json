@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "scope": "Auditor 1: ui.guard.screen_unconfirmed only, across seven locales.",
+  "reviewed_head": "4dc2a81cd3c849f298c99ae9d7735a00194d24d3",
+  "audited_target_commit": "a1277060a2ff23c75d8b3ca6d99078d40d019e52",
+  "auditor": "copy-reviewer",
+  "session": "11478013a6c1",
+  "actual_model": "openai/gpt-6.2-sol",
+  "date": "2026-11-27",
+  "canonical_evidence_root": "i18n/audits/evidence/",
+  "equivalent_evidence_root": "i18n/receipts/",
+  "remaining_requirement": "Second independent audit of the final consent copy across all seven locales. No rendered layout claim.",
+  "records": [
+    {
+      "locale": "es",
+      "canonical_record": "i18n/audits/evidence/es/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-es/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-es.json",
+      "sha256": "6e459175b13d451420f588f1f6ae39d587aa32204fd2eef04c34f0f9c1c34ce7",
+      "result": "clean"
+    },
+    {
+      "locale": "fr",
+      "canonical_record": "i18n/audits/evidence/fr/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-fr/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-fr.json",
+      "sha256": "b39c4edc3590cbfe429a212751c7f8ed9e3ccfa71ceb9f2f72f35833c748c67d",
+      "result": "clean"
+    },
+    {
+      "locale": "hi",
+      "canonical_record": "i18n/audits/evidence/hi/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-hi/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-hi.json",
+      "sha256": "39a83b650cfce29e6dea48a16353f5fc168c5021aefcb81c1075a844ce483427",
+      "result": "clean"
+    },
+    {
+      "locale": "ru",
+      "canonical_record": "i18n/audits/evidence/ru/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-ru/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-ru.json",
+      "sha256": "1f30dff58638e17f1f1700eb4918a126addd13e6243f2b5b52ef5dce1d9ac98d",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "ur",
+      "canonical_record": "i18n/audits/evidence/ur/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-ur/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-ur.json",
+      "sha256": "3bfd6677e645da86f7d4bb4f9a3cf6a4a0857971a20a68b1ac2ac5cea743a286",
+      "result": "clean"
+    },
+    {
+      "locale": "vi",
+      "canonical_record": "i18n/audits/evidence/vi/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-vi/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-vi.json",
+      "sha256": "02a9ba5fe98580a1bb79ae344858a37e58cfef40fe8fbcfcc2ab151ea5af2a03",
+      "result": "clean"
+    },
+    {
+      "locale": "zh-CN",
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.guard/11478013a6c1-ui-guard-screen-unconfirmed-zh-cn/record.json",
+      "receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-zh-cn.json",
+      "sha256": "a38aca8177ea7058eef26f2fb7969b85c7baa9c4c406077152fa289d7b993c7d",
+      "result": "clean"
+    }
+  ]
+}

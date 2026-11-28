@@ -1,0 +1,392 @@
+{
+	"ui.guard.indicator_paused_plain": {
+		"role": "TUI passive Guard indicator for an unknown pause reason (copy C3)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "No placeholders; never name a cause."
+	},
+	"ui.guard.indicator_sharing": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.indicator_sharing_pending": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.indicator_paused": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{reason} is one of the reason_* strings (already localized), lower-case continuation."
+	},
+	"ui.guard.indicator_waiting": {
+		"role": "Guard's passive indicator in Settings (RFC §5.3, §13.3'): the org asked and nothing is shared yet",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim. Desktop variant of the terminal string: no slash command."
+	},
+	"ui.guard.indicator_not_sharing": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.indicator_will_ask": {
+		"role": "TUI passive Guard indicator after Share again, before the org's next prompt arrives (UX U2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.reason_entitlement_lapsed": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Continues 'Guard: paused, …' so starts lower-case."
+	},
+	"ui.guard.reason_org_off": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim. Continues 'Guard: paused, …' so starts lower-case."
+	},
+	"ui.guard.reason_membership_ended": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim. Continues 'Guard: paused, …' so starts lower-case."
+	},
+	"ui.guard.reason_scope_revoked": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Continues 'Guard: paused, …' so starts lower-case."
+	},
+	"ui.guard.reason_revoke_pending": {
+		"role": "TUI passive Guard indicator / status-bar badge (RFC §5.3, §13.3')",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Continues 'Guard: paused, …' so starts lower-case."
+	},
+	"ui.guard.reason_console_revoked": {
+		"role": "Pause reason after a Console revoke (RFC §15.4' C10), continues 'Guard: paused, '",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{date} is an ISO date (YYYY-MM-DD). Lower-case continuation."
+	},
+	"ui.guard.prompt_title": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.prompt_reason_new_org": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.prompt_reason_widened": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim. {scopes} is a comma-separated list of already-localized scope names."
+	},
+	"ui.guard.prompt_reason_reactivated": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.prompt_reason_plan_gap": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.prompt_reason_new_device": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_reason_rejoined": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.prompt_would_send": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_decisions": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_posture": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_task_time": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_review_cycles": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_reports": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.scope_trace_detail": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.scope_admin_share": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.scope_label_decisions": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_posture": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_task_time": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_review_cycles": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_reports": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_trace_detail": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.scope_label_admin_share": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": " Lower-case list item inside a sentence."
+	},
+	"ui.guard.prompt_never_sent": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_visibility": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_visibility_posture": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_visibility_admin_share": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_visibility_admin_share_posture": {
+		"role": "TUI /guard consent card text (RFC §15.4' C4, copy-reviewer approved verbatim)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.prompt_background": {
+		"role": "Last line of the Guard consent prompt on the desktop (RFC §15.4 C4)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Desktop variant of the terminal string: Settings replaces the /guard slash command. Console is a product name and stays verbatim."
+	},
+	"ui.guard.button_dont_share": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_decide_later": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_share": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_keep_current": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_share_new": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_stop_sharing": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_share_again": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.button_keep_sharing": {
+		"role": "TUI button label",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.answered_on": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{surface} is one of the surface_* strings (already localized), e.g. 'the desktop app'."
+	},
+	"ui.guard.screen_close": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.surface_desktop": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Completes 'Answered on {surface}'."
+	},
+	"ui.guard.surface_mobile": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Completes 'Answered on {surface}'."
+	},
+	"ui.guard.surface_tui": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Completes 'Answered on {surface}'."
+	},
+	"ui.guard.screen_title": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.screen_none": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.revoke_title": {
+		"role": "TUI revoke confirmation (RFC §15.4' C2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.revoke_body": {
+		"role": "TUI revoke confirmation (RFC §15.4' C2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.revoke_body_trace": {
+		"role": "TUI revoke confirmation (RFC §15.4' C2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{backup_days} is a whole number of days (RFC §5.4 X). Not rendered until X is measured."
+	},
+	"ui.guard.revoke_retained": {
+		"role": "TUI revoke confirmation (RFC §15.4' C2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.revoke_totals": {
+		"role": "TUI revoke confirmation (RFC §15.4' C2)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.card_title": {
+		"role": "TUI non-Team card (RFC §15.4' C1)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.card_body": {
+		"role": "TUI non-Team card (RFC §15.4' C1)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.card_cta_trial": {
+		"role": "TUI non-Team card (RFC §15.4' C1)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{trial_days} is a whole number of days from the server (e.g. 30); never a literal."
+	},
+	"ui.guard.card_cta_see": {
+		"role": "TUI non-Team card (RFC §15.4' C1)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.card_footer": {
+		"role": "TUI non-Team card (RFC §15.4' C1)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the display name of the organization this card is about (one that is not on Radient Team). The line is scoped to that org on purpose: the same account may share with a different Team org from this computer."
+	},
+	"ui.guard.card_cta_loading": {
+		"role": "Placeholder label on the non-Team card's CTA while trial eligibility loads (design D4)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "Short; fits the same button as 'Start 30-day free trial'."
+	},
+	"ui.guard.screen_working": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": ""
+	},
+	"ui.guard.screen_failed": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "No placeholders."
+	},
+	"ui.guard.screen_shared": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.screen_declined": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.screen_revoked": {
+		"role": "TUI /guard screen text",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name, verbatim."
+	},
+	"ui.guard.screen_unavailable": {
+		"role": "Guard screen body when the local consent or report store can't be read (review R1-3)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "No placeholders. Says only what this screen did not do; a local stop may already have been saved."
+	},
+	"ui.guard.screen_unconfirmed": {
+		"role": "Guard consent dialog alert (and a not-sent card's summary when the host gave no reason) when the answer may or may not have landed and a re-read could not tell",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "No placeholders. Deliberately asserts nothing about the outcome - it must NOT say nothing was shared or sent (the answer may have landed); only that the choice could not be confirmed and where to look. 'Guard' is the product name and 'Settings' is the app's Settings."
+	},
+	"ui.guard.screen_prompt_changed": {
+		"role": "TUI /guard prompt card line when the org replaced the request between showing it and the answer (review R2-3)",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "{org} is the organization's display name. The new request is rendered directly below this line."
+	},
+	"ui.guard.card_ask_owner": {
+		"role": "Stands where the non-Team card's call to action would be, for an org admin who is not the owner (RFC §14' C11)",
+		"tone": "Short imperative, sentence case",
+		"note": "Addressed to an admin, who cannot upgrade the plan themselves; the owner can."
+	},
+	"ui.guard.badge_waiting_aria": {
+		"role": "Screen-reader text beside the corner count on the Settings gear: how many Guard consent questions wait",
+		"tone": "plain, calm, factual",
+		"note": "ICU plural on {count}; give every CLDR plural category the language needs. Nothing is shared until the person answers in Settings."
+	},
+	"ui.guard.entry_review": {
+		"role": "Button on the passive Guard entry that opens the full consent prompt",
+		"tone": "Short label, sentence case",
+		"note": "Opens the prompt for review; it does not answer it. One word, an imperative."
+	}
+}

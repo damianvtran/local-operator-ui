@@ -399,6 +399,8 @@ const remoteRunDirectory = z.string().min(1).max(4096);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/** A Guard org id: the agent-server tenant id, opaque, never a path fragment. */
+const guardTenant = z.string().regex(/^[A-Za-z0-9_-]{1,160}$/);
 /** Core's pairing id/nonce grammar (`network/pairing_attest.py` `_ID`). */
 export const MESH_PAIRING_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 /**
@@ -5608,6 +5610,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("approvals.list") }).strict(),
+	/*
+	 * RADIENT GUARD (`features.guard`, core `server/routes/desktop_guard.py`, design
+	 * `docs/design/guard-desktop-routes.md`). Reads and the two SAFE-DIRECTION writes
+	 * the terminal's /guard screen also has: stop sharing, and lift a sticky answer.
+	 * THERE IS NO GRANT OP HERE, deliberately: a grant is answered only by the typed
+	 * `guard_consent` approval card (`approvals.approveOperation`), so nothing in this
+	 * family can carry a scope, a digest or a signature. `tenant` is an org id the
+	 * backend gave this app; it is pattern-bounded and `encodeURIComponent`ed into
+	 * the path, never composed into a fragment.
+	 */
+	z
+		.object({ op: z.literal("guard.status") })
+		.strict(),
+	z.object({ op: z.literal("guard.nonTeamCard") }).strict(),
+	z.object({ op: z.literal("guard.revoke"), tenant: guardTenant }).strict(),
+	z.object({ op: z.literal("guard.shareAgain"), tenant: guardTenant }).strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
@@ -5620,7 +5638,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.object({
 					op: z.literal(op),
 					approvalId,
-					operation: z.enum(["profile_save", "pair_phone"]),
+					operation: z.enum(["profile_save", "pair_phone", "guard_consent"]),
 					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 				})
@@ -8773,6 +8791,21 @@ export function desktopRequestDeadlineMs(
 		request.operation === "pair_phone"
 	)
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	/*
+	 * A GUARD CONSENT'S ACCEPT SIGNS THEN SENDS (security review U1 r1, S-4). The host
+	 * signs with the same presence-gated key (`guard/consent_op.py`: "A presence key
+	 * signs as well", so an OS prompt can outlive the 20 s control budget) and then
+	 * POSTs the grant to Radient inside the same request. A client that gave up at 20 s
+	 * while the host went on to sign and send would tell the member "nothing changed"
+	 * about a grant that then landed. The retry (`applyOperation`) never signs and keeps
+	 * the control budget, exactly like every other typed op.
+	 */
+	if (
+		typeof request !== "string" &&
+		request.op === "approvals.approveOperation" &&
+		request.operation === "guard_consent"
+	)
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "devices.remove" || op === "operator.setup.run")
 		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "legacy.agent.editFile") return INLINE_EDIT_DEADLINE_MS;
@@ -8908,6 +8941,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
 	"approvals.list",
+	"guard.status",
+	"guard.nonTeamCard",
 	"profileProposals.list",
 	"profileProposals.get",
 	"commands.entities",
@@ -10941,6 +10976,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * client's check, and a hand-built request must not be able to turn an id
 		 * into a path fragment (the same rule the mesh writes state).
 		 */
+		case "guard.status":
+			return { path: "/v1/desktop/guard", method: "GET" };
+		case "guard.nonTeamCard":
+			return { path: "/v1/desktop/guard/non-team-card", method: "GET" };
+		case "guard.revoke":
+		case "guard.shareAgain":
+			return {
+				path: `/v1/desktop/guard/orgs/${encodeURIComponent(request.tenant)}/${request.op === "guard.revoke" ? "revoke" : "share-again"}`,
+				method: "POST",
+			};
 		case "approvals.approve":
 			return {
 				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/approve`,

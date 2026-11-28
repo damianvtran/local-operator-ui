@@ -1129,6 +1129,17 @@ export type DesktopFeature =
 	 */
 	| "phone_pairing"
 	/**
+	 * RADIENT GUARD (`features.guard`, core `desktop_guard.py`, desktop-only): the
+	 * status/indicator read, the non-Team card read, stop sharing and share again
+	 * under `/v1/desktop/guard`. A grant is NOT in this family - it is the
+	 * `guard_consent` approvals card.
+	 *
+	 * ITS OWN KEY because a backend without it has no such routes. Absent ⇒ the
+	 * Settings section draws the calm "unavailable" line and sends nothing, and the
+	 * pending-prompt entry (which rides `features.approvals`) still works.
+	 */
+	| "guard"
+	/**
 	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
 	 * `GET /v1/desktop/mesh/pairings`, the attested
 	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's

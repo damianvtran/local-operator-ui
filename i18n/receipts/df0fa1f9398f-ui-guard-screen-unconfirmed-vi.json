@@ -1,0 +1,49 @@
+{
+	"schema": 1,
+	"namespace": "ui.guard",
+	"locale": "vi",
+	"audit_id": "df0fa1f9398f-ui-guard-screen-unconfirmed-vi",
+	"instance": "df0fa1f9398f-ui-guard-screen-unconfirmed-vi",
+	"auditor": "copy-reviewer",
+	"agent_detail": "radientdev copy-reviewer acting as independent i18n auditor #2 for ui.guard.screen_unconfirmed (PR #2156)",
+	"session": "df0fa1f9398f",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no provider fallback or model switch observed.",
+	"date": "2026-11-27",
+	"status": "passed",
+	"result": "clean",
+	"independence": "Second independent audit of the new key. Distinct session and model from the translator (coder, anthropic/claude-sonnet-5-5) and auditor 1 (copy-reviewer session 11478013a6c1, openai/gpt-6.2-sol). Read the bytes at head fresh; made no catalogue edits.",
+	"reviewed_head": "6b8b75435eec99fc12d00f297e335fb36d2afe62",
+	"scope": "ui.guard.screen_unconfirmed",
+	"first_auditor_receipt": "i18n/receipts/11478013a6c1-ui-guard-screen-unconfirmed-vi.json",
+	"first_auditor_receipt_sha256": "02a9ba5fe98580a1bb79ae344858a37e58cfef40fe8fbcfcc2ab151ea5af2a03",
+	"source_path": "src/i18n/catalogues/en/ui.guard.json",
+	"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+	"context_path": "src/i18n/catalogues/en/ui.guard.context.json",
+	"context_sha256": "a754dd5194105d3902f22dfca8b8ec8d9f5d99b363669494363de4525c233317",
+	"target_path": "src/i18n/catalogues/vi/ui.guard.json",
+	"target_sha256": "7038c787253d670f7f4e01d1ea82ace7fed7a31e0787b2554da3523a1c7a2d93",
+	"audited_value": "Không thể xác nhận lựa chọn của bạn. Hãy kiểm tra Guard trong Cài đặt trước khi thử lại.",
+	"core_revision": "817e94cf2f274d7ea37f9ebcc732996724c50652",
+	"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+	"style_guide_path": "~/local-operator/i18n/style-guides/vi.md",
+	"style_guide_sha256": "99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51",
+	"tui_reference": {
+		"path": "local_operator/i18n/catalogues/vi/tui.guard.json",
+		"sha256_prefix": "dff382b0830f",
+		"note": "Core has no Settings-directed unconfirmed key; compared choice and retry vocabulary with tui.guard.screen_failed and screen_unavailable (byte-identical to ui.guard's)."
+	},
+	"retained_keys": {
+		"baseline": "8a450d7334bbd490a9cfd08bdd6472d8954a66ff",
+		"evidence": "git diff 8a450d73..head over src/i18n/catalogues: only the screen_unconfirmed line added per locale (plus its en context entry); the ru line is auditor 1's corrected value."
+	},
+	"semantic_checks": [
+		"Says the choice could not be confirmed; directs the reader to Guard in Settings before retrying; asserts nothing about whether anything was shared, sent or saved (context note honoured).",
+		"Settings label 'Cài đặt' equals ui.settings.page.title and ui.shell.sidebar_navigation.settings in this locale; 'Guard' kept verbatim.",
+		"Works for both contexts in the context file (consent dialog alert and not-sent card summary).",
+		"'lựa chọn' and 'thử lại' match screen_failed; 'Hãy' imperative matches neighbours; NFC precomposed."
+	],
+	"mechanical_checks": "Key present; no ICU placeholders in English or target; NFC; no Cf/bidi controls, no non-ASCII spaces, no double or edge whitespace; no ASCII apostrophe. copy_scan.py over src/i18n/catalogues/<locale>/ui.guard.json: 0 findings (all 8 catalogues).",
+	"rendered_evidence": "None. Text/codepoint audit only; no rendered frame or fit claim (host had 859 MiB free, below the 1.5 GB rig floor).",
+	"findings": []
+}

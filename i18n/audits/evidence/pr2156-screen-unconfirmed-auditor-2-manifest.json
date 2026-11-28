@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "namespace": "ui.guard",
+  "scope": "Auditor 2: ui.guard.screen_unconfirmed only, across seven locales, at PR #2156 head.",
+  "reviewed_head": "6b8b75435eec99fc12d00f297e335fb36d2afe62",
+  "auditor": "copy-reviewer",
+  "session": "df0fa1f9398f",
+  "actual_model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-27",
+  "first_audit_manifest": "i18n/audits/evidence/pr2156-screen-unconfirmed-auditor-1-manifest.json",
+  "catalogue_edits": 0,
+  "canonical_evidence_root": "i18n/audits/evidence/",
+  "equivalent_evidence_root": "i18n/receipts/",
+  "rendered": "None. Text/codepoint audit only: the host disk was critically low (859 MiB free), so no Storybook or Electron frame was captured and no fit claim is made.",
+  "records": [
+    {
+      "locale": "es",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-es.json",
+      "sha256": "20e44a711af73ef9df51371eb11332ae9cce0dfa5f908e0903b31675a44e7c44",
+      "result": "clean"
+    },
+    {
+      "locale": "fr",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-fr.json",
+      "sha256": "b9825350d26718a2cbcd68592afb927a55716dd7e64dbb425765180dd2249930",
+      "result": "clean"
+    },
+    {
+      "locale": "hi",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-hi.json",
+      "sha256": "b8441c6533f729791244ba5e24eeb6a1e8a2d79f9e6c881d1f30c98e483fbb17",
+      "result": "clean"
+    },
+    {
+      "locale": "ru",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-ru.json",
+      "sha256": "f1cefa42f8ef69d09761ca4ae1a6a50c787afb4781aa8657150000982041500c",
+      "result": "clean"
+    },
+    {
+      "locale": "ur",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-ur.json",
+      "sha256": "3ebb7ed2a783410a3c6c7391ade17e60b1a89b76e467c06c7db2ae543291e040",
+      "result": "clean"
+    },
+    {
+      "locale": "vi",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-vi.json",
+      "sha256": "8dfce13068d3a20b2eea1adef848d5b6375d30944541d1f8f9523f0a2d233c5e",
+      "result": "clean"
+    },
+    {
+      "locale": "zh-CN",
+      "receipt": "i18n/receipts/df0fa1f9398f-ui-guard-screen-unconfirmed-zh-cn.json",
+      "sha256": "beb45ece73bed374bbb695b530fcd1418ab18073f3934639473f37ff73202cfb",
+      "result": "clean"
+    }
+  ]
+}
