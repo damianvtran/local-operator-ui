@@ -132,27 +132,27 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 				}}
 				showClose={false}
 			>
+				{/*
+				 * No `dir="auto"` anywhere in Guard's translated text: auto resolves from
+				 * the FIRST strong character, and an Urdu sentence that opens with the
+				 * Latin word "Guard" or an org name would lay out left-to-right and
+				 * reorder its own clauses (i18n audit 2, C1). The text inherits the page
+				 * direction the locale store writes to <html dir>. Standalone org names
+				 * keep their own <bdi> isolation (see the Settings view).
+				 */}
 				<DialogHeader>
-					<DialogTitle dir="auto">{view.title}</DialogTitle>
-					<DialogDescription dir="auto">{view.reasonLine}</DialogDescription>
+					<DialogTitle>{view.title}</DialogTitle>
+					<DialogDescription>{view.reasonLine}</DialogDescription>
 				</DialogHeader>
 
 				{notice && !settled ? (
-					<p
-						className="text-body-sm text-ink"
-						data-testid="guard-notice"
-						dir="auto"
-					>
+					<p className="text-body-sm text-ink" data-testid="guard-notice">
 						{notice}
 					</p>
 				) : null}
 
 				{settled ? (
-					<p
-						className="text-body-sm text-ink"
-						data-testid="guard-outcome"
-						dir="auto"
-					>
+					<p className="text-body-sm text-ink" data-testid="guard-outcome">
 						{phase === "shared"
 							? t("ui.guard.screen_shared", { org: view.org })
 							: phase === "declined"
@@ -160,7 +160,7 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 								: t("ui.guard.answered_on", { surface: answeredOn ?? "" })}
 					</p>
 				) : (
-					<div className="flex flex-col gap-3" dir="auto">
+					<div className="flex flex-col gap-3">
 						<p className="text-body-sm text-ink">{view.wouldSend}</p>
 						<ul className="flex list-disc flex-col gap-1.5 ps-5 text-body-sm text-ink">
 							{view.scopeLines.map((line) => (

@@ -50,7 +50,7 @@ export const GuardPromptEntry: FC<{
 				className="mt-0.5 size-4 shrink-0 text-ink-muted"
 				aria-hidden="true"
 			/>
-			<div className="flex min-w-0 flex-1 flex-col gap-0.5" dir="auto">
+			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 				<p id={headingId} className="text-body-sm text-ink">
 					{view.title}
 				</p>

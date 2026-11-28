@@ -129,6 +129,7 @@ const bundle = await build({
 			export { approvalRows, approvalDecisionRequest, canApproveApproval, meshRowsWithoutProfileProposals } from "./src/renderer/src/features/mesh/mesh-approvals";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 			export { guardStatus } from "./src/shared/guard-status";
+			export { setLocale, textDirectionFor } from "./src/renderer/src/shared/i18n";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -185,6 +186,8 @@ const {
 	approvalDecisionRequest,
 	canApproveApproval,
 	meshRowsWithoutProfileProposals,
+	setLocale,
+	textDirectionFor,
 	desktopEndpoint,
 	desktopRequestSchema,
 	guardStatus,
@@ -1309,3 +1312,106 @@ test("status parsing: an unknown state fails the whole read into the unavailable
 	assert.equal(guardStatus({ mode: "weird" }), null);
 	assert.equal(guardStatus(status()).orgs[0].scopes_shared.length, 2);
 });
+
+/* ------------------------------------------------- page direction (U1, i18n C1) */
+
+/*
+ * `dir="auto"` on translated text resolves from the FIRST strong character, so an
+ * Urdu sentence opening with the Latin word "Guard" or an org name laid out
+ * left-to-right and reordered its own clauses. Guard's text must inherit the page
+ * direction (<html dir>, written by the locale store); only a standalone value that
+ * is user data may isolate itself, and that is a <bdi>, never a `dir` attribute on
+ * translated copy. The assertion is the resolved direction of every text-bearing
+ * element, not a grep for an attribute: it also fails on any future `dir="ltr"`
+ * pinned onto Guard copy.
+ */
+function resolvedDirection(element) {
+	return element.closest("[dir]")?.getAttribute("dir") ?? "ltr";
+}
+function assertInheritsPageDirection(expected, where) {
+	assert.equal(document.documentElement.dir, expected, `${where}: page dir`);
+	assert.deepEqual(
+		[...document.querySelectorAll('[dir="auto"]')].map((el) =>
+			el.outerHTML.slice(0, 80),
+		),
+		[],
+		`${where}: no dir=auto on Guard text`,
+	);
+	const walker = document.createTreeWalker(document.body, 4);
+	const wrong = [];
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (!node.textContent.trim()) continue;
+		const owner = node.parentElement;
+		// A <bdi> is the sanctioned isolation for a standalone user value.
+		if (owner.closest("bdi")) continue;
+		if (resolvedDirection(owner) !== expected)
+			wrong.push(
+				`${resolvedDirection(owner)}: ${node.textContent.slice(0, 40)}`,
+			);
+	}
+	assert.deepEqual(wrong, [], `${where}: text resolves to the page direction`);
+}
+
+for (const locale of ["ur", "en"]) {
+	test(`Guard text inherits the page direction in ${locale}: entry, consent dialog, Settings, revoke confirm, non-Team card`, async () => {
+		const direction = textDirectionFor(locale);
+		setLocale(locale);
+		document.documentElement.dir = direction;
+		try {
+			script = {
+				capabilities: caps(GUARD_PLANE),
+				"approvals.list": list(guardRow()),
+				"guard.status": ok(status({ mode: "none", orgs: [] })),
+			};
+			await render(createElement(GuardPromptEntries));
+			await until(() => q('[data-testid="guard-entry"]'), "the entry");
+			assertInheritsPageDirection(direction, "approvals entry");
+
+			await click(q('[data-testid="guard-review"]'));
+			await until(
+				() => q('[data-testid="guard-consent-dialog"]'),
+				"the dialog",
+			);
+			assertInheritsPageDirection(direction, "consent dialog");
+			await act(async () => root.unmount());
+			root = undefined;
+			document.body.innerHTML = "";
+			container = document.createElement("div");
+			document.body.append(container);
+
+			// Two orgs so the standalone org-name line (a <bdi>) is drawn too.
+			await render(
+				view({
+					status: status({
+						orgs: [org(), org({ tenant: "t2", org: "Initech" })],
+					}),
+				}),
+			);
+			assertInheritsPageDirection(direction, "Settings section");
+			await click(q('[data-testid="guard-stop"]'));
+			await until(
+				() => q('[data-testid="guard-revoke-dialog"]'),
+				"revoke confirm",
+			);
+			assertInheritsPageDirection(direction, "revoke confirm");
+			await act(async () => root.unmount());
+			root = undefined;
+			document.body.innerHTML = "";
+			container = document.createElement("div");
+			document.body.append(container);
+
+			await render(
+				view({
+					status: status({ mode: "non_team", orgs: [] }),
+					role: "admin",
+					nonTeamCard: { trial_days: null, org: "Pat", url: null },
+				}),
+			);
+			assertInheritsPageDirection(direction, "non-Team card");
+		} finally {
+			// Inside act: the mounted components subscribe to the locale store.
+			await act(async () => setLocale("en"));
+			document.documentElement.removeAttribute("dir");
+		}
+	});
+}

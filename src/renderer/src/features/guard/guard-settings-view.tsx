@@ -167,18 +167,13 @@ export const GuardNonTeamCardView: FC<{
 			data-testid="guard-non-team-card"
 			className="flex flex-col gap-2 rounded-sm border border-hairline bg-surface p-3"
 		>
-			<p className="text-body-sm text-ink" dir="auto">
-				{t("ui.guard.card_title")}
-			</p>
-			<p className="text-body-sm text-ink-muted" dir="auto">
-				{t("ui.guard.card_body")}
-			</p>
+			<p className="text-body-sm text-ink">{t("ui.guard.card_title")}</p>
+			<p className="text-body-sm text-ink-muted">{t("ui.guard.card_body")}</p>
 			<div className="flex items-center gap-3">
 				{role === "admin" ? (
 					<p
 						className="text-body-sm text-ink-muted"
 						data-testid="guard-ask-owner"
-						dir="auto"
 					>
 						{t("ui.guard.card_ask_owner")}
 					</p>
@@ -199,7 +194,7 @@ export const GuardNonTeamCardView: FC<{
 				)}
 			</div>
 			{card?.org ? (
-				<p className="text-meta text-ink-dim" dir="auto">
+				<p className="text-meta text-ink-dim">
 					{t("ui.guard.card_footer", { org: card.org })}
 				</p>
 			) : null}
@@ -242,7 +237,6 @@ const OrgBlock: FC<{
 			data-testid="guard-org"
 			data-state={org.state}
 			className="flex flex-col gap-2"
-			dir="auto"
 		>
 			{/*
 			 * With more than one org the paused sentences ("you stopped sharing") name no
@@ -414,11 +408,11 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 					{confirmOrg && status ? (
 						<>
 							<DialogHeader>
-								<DialogTitle dir="auto">
+								<DialogTitle>
 									{t("ui.guard.revoke_title", { org: confirmOrg.org })}
 								</DialogTitle>
 								<DialogDescription asChild>
-									<div className="flex flex-col gap-2" dir="auto">
+									<div className="flex flex-col gap-2">
 										{guardRevokeBody(confirmOrg, status.backup_days).map(
 											(line) => (
 												<p key={line}>{line}</p>
