@@ -170,7 +170,8 @@ export function resolveSessionAskFrame(
 		const tally = canonical?.asks_open;
 		if (typeof tally === "number" && tally > 0 && aggregate.rows !== null) {
 			const mine = sessionId ? rowsForSession(aggregate.rows, sessionId) : [];
-			if (mine.length > 0) return aggregateFrame(mine, tally);
+			const fill = aggregateFrame(mine, tally);
+			if (fill.asks !== null) return fill;
 		}
 		return {
 			asks: null,
@@ -243,9 +244,27 @@ function aggregateFrame(
 	rows: readonly PendingAsk[],
 	asksOpen?: number,
 ): SessionAskFrame {
+	// The shared index also serves Requests, fleet, and signing; exclude native
+	// Team Bridge requests only when projecting it into this conversation.
+	// Site consent can have a signed question_id too, but not this bridge kind.
+	const visible = rows.filter(
+		(row) =>
+			!row.questions?.some((question) => {
+				const { bridge, question_id } = question;
+				return (
+					typeof bridge === "object" &&
+					bridge !== null &&
+					"kind" in bridge &&
+					bridge.kind === "bridge" &&
+					typeof question_id === "string" &&
+					question_id.length > 0
+				);
+			}),
+	);
 	return {
-		asks: rows.length > 0 ? [...rows] : null,
-		asks_open: asksOpen ?? openCount(rows),
+		asks: visible.length > 0 ? visible : null,
+		asks_open: asksOpen ?? openCount(visible),
+		// The cap applies before filtering: hidden rows can occupy the prefix.
 		asks_truncated: rows.length >= ASK_AGGREGATE_SESSION_CAP,
 	};
 }
