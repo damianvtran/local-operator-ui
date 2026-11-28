@@ -28,6 +28,7 @@ import {
 	type GuardScope,
 } from "../../../../shared/guard-consent";
 import type { MeshApprovalRow } from "../mesh/mesh-approvals";
+import { ORG_MARK } from "./guard-org-mark";
 
 /** `sha256:<64 hex>` - the exact pattern the host's closed body model accepts. */
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -37,9 +38,13 @@ export type GuardScopeLine = { scope: GuardScope; text: string };
 export type GuardPromptView = {
 	approvalId: string;
 	tenant: string;
-	/** The org's display name, verbatim and untrusted: render inside `<bdi>`. */
+	/** The org's display name: untrusted, sanitised on parse, drawn inside `<bdi>`. */
 	org: string;
 	widening: boolean;
+	/**
+	 * `title`, `reasonLine` and each scope line carry `ORG_MARK` where the org name
+	 * goes: draw them with `<OrgText>` (bdi isolation) or `plainOrgText` (plain text).
+	 */
 	title: string;
 	reasonLine: string;
 	wouldSend: string;
@@ -51,6 +56,8 @@ export type GuardPromptView = {
 	noLabel: string;
 	laterLabel: string;
 	yesLabel: string;
+	/** Epoch seconds the card's windows end (the disclosure's, the record's); `null` when neither says. */
+	expiresAt: readonly (number | null)[];
 	/** `null` unless the host says it may sign this exact card. */
 	shareRequest: DesktopRequest | null;
 	/** Always available: a decline is the safe direction and never signs. */
@@ -123,7 +130,7 @@ function reasonLine(
  * by what this prompt asks: a widening that adds only `task_time` still tells a
  * member who is sharing `admin_share` that admins can see their own timing.
  */
-function visibilityLine(offered: ReadonlySet<GuardScope>): string {
+export function guardVisibilityLine(offered: ReadonlySet<GuardScope>): string {
 	const posture = offered.has("posture");
 	const share = offered.has("admin_share");
 	if (posture && share)
@@ -166,6 +173,19 @@ export function guardShareRequest(row: MeshApprovalRow): DesktopRequest | null {
 }
 
 /**
+ * The apply retry for a card that was signed but not sent: the SAME two digests the
+ * accept carried, on the route that re-applies and never signs. `null` when the view
+ * never had a Share request (nothing was ever signed from here).
+ */
+export function guardApplyRequest(
+	view: GuardPromptView,
+): DesktopRequest | null {
+	const accept = view.shareRequest;
+	if (!accept || accept.op !== "approvals.approveOperation") return null;
+	return { ...accept, op: "approvals.applyOperation" };
+}
+
+/**
  * The prompt view for a guard row, or `null` when the row carries no parseable
  * disclosure (an opaque card draws no disclosure rather than an invented one).
  */
@@ -182,15 +202,17 @@ export function guardPromptView(row: MeshApprovalRow): GuardPromptView | null {
 		tenant: disclosure.tenant,
 		org,
 		widening,
-		title: t("ui.guard.prompt_title", { org }),
-		reasonLine: reasonLine(disclosure.reason, org, labels),
+		title: t("ui.guard.prompt_title", { org: ORG_MARK }),
+		reasonLine: reasonLine(disclosure.reason, ORG_MARK, labels),
 		wouldSend: t("ui.guard.prompt_would_send"),
 		scopeLines: ordered.map((scope) => ({
 			scope,
-			text: scopeLine(scope, org),
+			text: scopeLine(scope, ORG_MARK),
 		})),
 		neverSent: t("ui.guard.prompt_never_sent"),
-		visibility: visibilityLine(new Set<GuardScope>(disclosure.grant_scopes)),
+		visibility: guardVisibilityLine(
+			new Set<GuardScope>(disclosure.grant_scopes),
+		),
 		background: t("ui.guard.prompt_background"),
 		noLabel: widening
 			? t("ui.guard.button_keep_current")
@@ -199,6 +221,7 @@ export function guardPromptView(row: MeshApprovalRow): GuardPromptView | null {
 		yesLabel: widening
 			? t("ui.guard.button_share_new")
 			: t("ui.guard.button_share"),
+		expiresAt: [disclosure.expires_at ?? null, row.expiresAt],
 		shareRequest: guardShareRequest(row),
 		declineRequest: { op: "approvals.deny", approvalId: row.approvalId },
 	};
@@ -220,4 +243,14 @@ export function guardWaitingViews(
 		if (view) views.push(view);
 	}
 	return views;
+}
+
+/**
+ * Where the Settings gear goes (UX U1). The Guard prompt lives in Settings → Radient
+ * account, and a bare `/settings` opens on General, so while a prompt waits the gear
+ * (whose corner count announces it) opens that section; otherwise it is the plain
+ * gear. `?section=radient` is the deep-link form provider errors already use.
+ */
+export function guardSettingsRoute(waiting: number): string {
+	return waiting > 0 ? "/settings?section=radient" : "/settings";
 }

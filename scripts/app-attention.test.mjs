@@ -371,10 +371,13 @@ test("service resolves the enabled Aida rail and rechecks it after local control
 	service.stop();
 });
 
-test("a pending Guard consent never lights the native attention mark; an ordinary approval still does", async () => {
+test("a pending Guard consent in the HTTP approvals list does not light the native attention mark; an ordinary approval still does", async () => {
 	// RFC v0.9 §5.2.3: the Guard prompt "never takes focus" and sends no push, so
-	// it must not surface through the Dock/taskbar dot either. The gear's corner
-	// count is its one mark. The row is identified the way the host serves it: by
+	// it should not surface through the Dock/taskbar dot either. SCOPE OF THIS PIN:
+	// the HTTP list only. A live `approvals` feed frame with `pending: true` still
+	// lights the mark, because the host's `_approval_snapshot` counts every
+	// `requested` record, the guard mirror included (S-3; a host-side open item).
+	// The gear's corner count is the prompt's own mark. The row is identified the way the host serves it: by
 	// the typed block's `operation` (there is no `kind` key on the wire).
 	const guard = {
 		approval_id: "ap_guard",

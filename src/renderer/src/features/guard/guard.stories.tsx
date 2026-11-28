@@ -31,7 +31,9 @@ import { approvalRows } from "../mesh/mesh-approvals";
 import {
 	GuardConsentDialog,
 	type GuardDialogPhase,
+	type GuardUnsent,
 } from "./guard-consent-dialog";
+import { ORG_MARK } from "./guard-org-mark";
 import { GuardPromptEntry } from "./guard-prompt-entries";
 import { type GuardPromptView, guardPromptView } from "./guard-prompt-model";
 import { GuardSettingsView, type GuardViewerRole } from "./guard-settings-view";
@@ -147,7 +149,11 @@ type Story = StoryObj<typeof meta>;
 const dialog = (
 	view: GuardPromptView,
 	phase: GuardDialogPhase = "idle",
-	extra: { notice?: string; answeredOn?: string } = {},
+	extra: {
+		notice?: string;
+		answeredOn?: string;
+		unsent?: GuardUnsent;
+	} = {},
 ) => (
 	<GuardConsentDialog
 		view={view}
@@ -155,6 +161,8 @@ const dialog = (
 		phase={phase}
 		notice={extra.notice}
 		answeredOn={extra.answeredOn}
+		unsent={extra.unsent}
+		onRetry={noop}
 		onShare={noop}
 		onDecline={noop}
 		onLater={noop}
@@ -218,8 +226,59 @@ export const PromptAnsweredElsewhere: Story = {
 export const PromptChanged: Story = {
 	render: () =>
 		dialog(viewOf({ reason: "reactivated" }), "idle", {
-			notice: "Acme Robotics changed this request. Check the new one below.",
+			notice: `${ORG_MARK} changed this request. Check the new one below.`,
 		}),
+};
+
+/* Round 2: signed-not-sent (S-1), expired (S-6), unconfirmed (S-4). */
+export const PromptNotApplied: Story = {
+	render: () =>
+		dialog(viewOf(), "not_applied", {
+			unsent: {
+				reason:
+					"Radient could not be reached, so your choice has not been sent.",
+				remedy: "Check your connection, then try again.",
+				retryable: true,
+			},
+		}),
+};
+export const PromptExpired: Story = {
+	render: () => dialog(viewOf(), "expired"),
+};
+export const PromptUnconfirmed: Story = {
+	render: () => dialog(viewOf(), "unconfirmed"),
+};
+
+/* Round 2 D6: long names. The dialog and the entry must wrap, never overflow. */
+const LONG_ORG =
+	"Northwind Traders International Holdings and Subsidiary Operating Companies Ltd";
+const UNBROKEN_ORG = "Northwind-Traders-International-Holdings-Ltd";
+export const PromptLongOrg: Story = {
+	render: () => dialog(viewOf({ org: LONG_ORG })),
+};
+export const PromptUnbrokenOrg: Story = {
+	render: () => dialog(viewOf({ org: UNBROKEN_ORG })),
+};
+export const EntryLongOrgs: Story = {
+	render: () => (
+		<Frame>
+			<div className="flex flex-col gap-3">
+				<GuardPromptEntry view={viewOf({ org: LONG_ORG })} onReview={noop} />
+				<GuardPromptEntry
+					view={viewOf({ org: UNBROKEN_ORG })}
+					onReview={noop}
+				/>
+			</div>
+		</Frame>
+	),
+};
+/** 320 px: the Review button wraps under the text instead of squeezing it (D7). */
+export const EntryNarrow: Story = {
+	render: () => (
+		<div className="w-[320px] bg-surface p-3">
+			<GuardPromptEntry view={viewOf({ org: LONG_ORG })} onReview={noop} />
+		</div>
+	),
 };
 
 /* ----------------------------------------------------------- the settings */

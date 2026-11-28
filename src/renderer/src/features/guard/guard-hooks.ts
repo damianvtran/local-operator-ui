@@ -24,13 +24,22 @@
  * non-Team card read is made only while that card is on screen.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DesktopRequest } from "../../../../shared/desktop-contract";
+import {
+	type GuardAnswerOutcome,
+	guardAcceptOutcome,
+	guardApplyOutcome,
+	guardApplyRefusal,
+} from "../../../../shared/guard-consent";
 import {
 	type GuardNonTeamCard,
 	type GuardRevokeResult,
@@ -128,17 +137,43 @@ export function useGuardNonTeamCard(enabled: boolean) {
 }
 
 /**
- * Answer a consent card: the typed accept or the decline. The LIST stays the one
- * authority for what happened (settle invalidates it), so there is no second copy
- * of "accepted" to disagree with the store. No automatic retry: a replayed accept
- * would sign twice.
+ * Answer a consent card: the typed accept, its retry, or the decline. The LIST stays
+ * the one authority for what happened (settle invalidates it), so there is no second
+ * copy of "accepted" to disagree with the store. No automatic retry: a replayed
+ * accept would sign twice; the one retry is `approvals.applyOperation`, which never
+ * signs and which the person asks for.
+ *
+ * THE RESULT IS READ, NOT ASSUMED (S-1, security review U1 r1). A 200 from the typed
+ * accept means the host SIGNED; whether it could SEND the grant is `applied.ok`. A
+ * grant is "done" only when both phases say so (`guardAcceptOutcome`); a signed card
+ * whose apply was refused comes back as `not_applied` with the host's own sentence,
+ * and a reply this build cannot read is `unreadable`, never success.
  */
 export function useGuardAnswer() {
 	const client = useQueryClient();
 	return useMutation({
 		retry: false,
-		mutationFn: async (request: DesktopRequest): Promise<void> => {
+		mutationFn: async (
+			request: DesktopRequest,
+		): Promise<GuardAnswerOutcome> => {
+			if (request.op === "approvals.approveOperation")
+				return guardAcceptOutcome(await desktopResult<unknown>(request));
+			if (request.op === "approvals.applyOperation") {
+				try {
+					return guardApplyOutcome(await desktopResult<unknown>(request));
+				} catch (error) {
+					// An apply refusal is a 409 whose `detail.apply_outcome` says whether
+					// another try can work; anything else is a real failure.
+					const refusal =
+						error instanceof DesktopControlError
+							? guardApplyRefusal(error.detail)
+							: null;
+					if (refusal) return refusal;
+					throw error;
+				}
+			}
 			await desktopResult<unknown>(request);
+			return { kind: "done" };
 		},
 		onSettled: () => {
 			void client.invalidateQueries({ queryKey: meshApprovalKeys.approvals });

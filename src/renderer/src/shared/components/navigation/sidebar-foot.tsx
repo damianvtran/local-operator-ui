@@ -1,4 +1,5 @@
 import { useGuardWaitingCount } from "@features/guard/guard-hooks";
+import { guardSettingsRoute } from "@features/guard/guard-prompt-model";
 import { PhoneAccessOffer } from "@features/providers/phone-access-offer";
 import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
@@ -68,6 +69,14 @@ export const SettingsGear: FC = () => {
 	 * `aria-hidden` with the same fact stated in words beside it for a screen reader.
 	 */
 	const guardWaiting = useGuardWaitingCount();
+	/*
+	 * THE COUNT LEADS WHERE THE QUESTION IS (UX U1). The prompt lives in Settings →
+	 * Radient account, and a bare `/settings` opens on General, so a member who
+	 * follows the mark would land on a page that does not show it. While a prompt
+	 * waits the gear opens that section (`?section=radient`, the same deep-link form
+	 * provider errors use); with nothing waiting it is the plain gear.
+	 */
+	const settingsTarget = guardSettingsRoute(guardWaiting);
 	return (
 		<BrowserSafeTooltip
 			content={
@@ -80,7 +89,7 @@ export const SettingsGear: FC = () => {
 			<button
 				type="button"
 				data-tour-tag="nav-item-settings"
-				onClick={() => (isOpen ? closeSettings() : navigate("/settings"))}
+				onClick={() => (isOpen ? closeSettings() : navigate(settingsTarget))}
 				aria-current={isOpen ? "page" : undefined}
 				aria-label={t("ui.shell.sidebar_navigation.settings")}
 				aria-describedby={isOpen ? SETTINGS_GEAR_DIRECTION_ID : undefined}

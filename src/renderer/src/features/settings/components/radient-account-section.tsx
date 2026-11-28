@@ -200,9 +200,8 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 * account's other "what does this computer do for others" blocks, above the
 				 * plan line and sign-out, because it is account state, not a sign-in action.
 				 */}
-				<div className="mt-8">
-					<GuardSettingsSection />
-				</div>
+				{/* The section carries its own top margin, so a section that draws nothing leaves no gap (design D2). */}
+				<GuardSettingsSection />
 
 				{/*
 				 * THE ONE PLACE THE TEAM PLAN IS DESCRIBED OUTSIDE A GATE (onboarding

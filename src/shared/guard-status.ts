@@ -18,7 +18,7 @@
  */
 
 import { z } from "zod";
-import { GUARD_SCOPE_ORDER } from "./guard-consent";
+import { GUARD_SCOPE_ORDER, sanitizeOrgName } from "./guard-consent";
 
 const scope = z.enum(GUARD_SCOPE_ORDER);
 
@@ -45,7 +45,8 @@ export type GuardPauseReason = (typeof GUARD_PAUSE_REASONS)[number];
 
 export const guardOrgSchema = z.object({
 	tenant: z.string().min(1).max(160),
-	org: z.string().max(256),
+	/** Admin-chosen text: invisible formatting stripped on parse (see `sanitizeOrgName`). */
+	org: z.string().max(256).transform(sanitizeOrgName),
 	role: z.string().max(32),
 	state: z.enum(GUARD_ORG_STATES),
 	reason: z.string().max(64).default(""),
@@ -78,7 +79,7 @@ export const guardStatusSchema = z.object({
 		.array(
 			z.object({
 				tenant: z.string().min(1).max(160),
-				org: z.string().max(256),
+				org: z.string().max(256).transform(sanitizeOrgName),
 				url: z.string().max(2048),
 			}),
 		)
@@ -99,7 +100,7 @@ export function guardStatus(value: unknown): GuardStatus | null {
 
 export const guardNonTeamCardSchema = z.object({
 	trial_days: z.number().int().positive().nullable().default(null),
-	org: z.string().max(256).nullable().default(null),
+	org: z.string().max(256).transform(sanitizeOrgName).nullable().default(null),
 	url: z.string().max(2048).default(""),
 });
 export type GuardNonTeamCard = z.infer<typeof guardNonTeamCardSchema>;

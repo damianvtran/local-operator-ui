@@ -38,10 +38,20 @@ interface ServicePorts {
 
 /**
  * A pending Radient Guard consent is the member's own privacy decision, filed on
- * the approvals plane only because the host has one pending-record store. It must
- * NOT light the Dock/taskbar mark: the Guard RFC (v0.9 §5.2.3) puts the prompt in
- * the app, "never takes focus", and sends no push, so a native attention mark would
- * be the very interruption it rules out (the gear's corner count is its one mark).
+ * the approvals plane only because the host has one pending-record store. The Guard
+ * RFC (v0.9 §5.2.3) puts the prompt in the app, "never takes focus", and sends no
+ * push, so a native attention mark would be the very interruption it rules out (the
+ * gear's corner count is its one mark).
+ *
+ * WHAT THIS DOES AND DOES NOT COVER (security review U1 r1, S-3). It keeps a guard
+ * row out of the mark when the mark is computed from the HTTP approvals LIST, which
+ * is the read this service makes. It does NOT keep the mark off when the host's live
+ * `approvals` feed frame says `pending: true`: `DesktopFeed._approval_snapshot` sets
+ * `pending` for ANY `requested` record, the `guard_consent` mirror card included, and
+ * that frame also feeds this service. So a waiting Guard card can still light the
+ * badge dot (no focus, no bounce, no push) until the host excludes the kind from that
+ * predicate. That is a host-side change (core `desktop_feed.py`), recorded as an open
+ * item on the RFC ledger rather than worked around here.
  *
  * Matched on the typed block's `operation`, the only marker the host's approvals
  * row carries (`kind` is absent on the wire). The literal is repeated from

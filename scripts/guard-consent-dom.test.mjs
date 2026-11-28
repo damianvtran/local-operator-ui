@@ -125,9 +125,11 @@ const bundle = await build({
 			export { GuardPromptEntries } from "./src/renderer/src/features/guard/guard-prompt-entries";
 			export { GuardSettingsView, GuardNonTeamCardView, guardRevokeBody, guardIndicatorText, guardViewerRole } from "./src/renderer/src/features/guard/guard-settings-view";
 			export { useGuardStatus, useGuardNonTeamCard, useGuardRevoke, useGuardWaitingCount } from "./src/renderer/src/features/guard/guard-hooks";
-			export { guardPromptView, guardShareRequest, guardWaitingViews } from "./src/renderer/src/features/guard/guard-prompt-model";
+			export { guardPromptView, guardShareRequest, guardWaitingViews, guardApplyRequest, guardSettingsRoute } from "./src/renderer/src/features/guard/guard-prompt-model";
+			export { plainOrgText } from "./src/renderer/src/features/guard/guard-org-mark";
+			export { sanitizeOrgName, guardAcceptOutcome, guardApplyOutcome, guardCardExpired } from "./src/shared/guard-consent";
 			export { approvalRows, approvalDecisionRequest, canApproveApproval, meshRowsWithoutProfileProposals } from "./src/renderer/src/features/mesh/mesh-approvals";
-			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
+			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";
 			export { guardStatus } from "./src/shared/guard-status";
 			export { setLocale, textDirectionFor } from "./src/renderer/src/shared/i18n";
 			export { createElement };
@@ -182,6 +184,14 @@ const {
 	guardPromptView,
 	guardShareRequest,
 	guardWaitingViews,
+	guardApplyRequest,
+	guardSettingsRoute,
+	plainOrgText,
+	sanitizeOrgName,
+	guardAcceptOutcome,
+	guardApplyOutcome,
+	guardCardExpired,
+	desktopRequestDeadlineMs,
 	approvalRows,
 	approvalDecisionRequest,
 	canApproveApproval,
@@ -245,6 +255,30 @@ const guardRow = (over = {}, disclosure = {}, typed = {}) => ({
 	...over,
 });
 const list = (...rows) => ok({ approvals: rows });
+/** The host's reply to a typed accept it signed AND sent (`approve_and_apply`). */
+const SIGNED_AND_SENT = {
+	approval_id: ID,
+	operation: "guard_consent",
+	signed: { ok: true, key_id: "k" },
+	applied: { ok: true, code: "" },
+	state: "connected",
+};
+/** ... signed, but the grant could not be sent (200, `applied.ok` false). */
+const SIGNED_NOT_SENT = (over = {}) => ({
+	approval_id: ID,
+	operation: "guard_consent",
+	signed: { ok: true, key_id: "k" },
+	applied: {
+		ok: false,
+		code: "radient_unreachable",
+		message: "cli-shaped text",
+		retryable: true,
+		reason: "Radient could not be reached, so your choice has not been sent.",
+		remedy: "Check your connection, then try again.",
+		...over,
+	},
+	state: "failed",
+});
 
 const org = (over = {}) => ({
 	tenant: "ten_acme",
@@ -357,19 +391,27 @@ test("the prompt composes the RFC C4 lines in the C4 scope order, per reason", (
 		approvals: [guardRow({}, { asked_scopes: ["task_time", "decisions"] })],
 	});
 	const view = guardPromptView(rows[0]);
-	assert.equal(view.title, "Share Guard stats with Acme?");
-	assert.equal(view.reasonLine, "Acme turned on Radient Guard.");
+	// The model carries ORG_MARK where the org goes so the renderer can isolate the
+	// name in <bdi>; plainOrgText is the same sentence as text.
+	assert.equal(
+		plainOrgText(view.title, view.org),
+		"Share Guard stats with Acme?",
+	);
+	assert.equal(
+		plainOrgText(view.reasonLine, view.org),
+		"Acme turned on Radient Guard.",
+	);
 	assert.deepEqual(
 		view.scopeLines.map((l) => l.scope),
 		["decisions", "task_time"],
 		"the C4 order, not the queue's",
 	);
 	assert.equal(
-		view.scopeLines[0].text,
+		plainOrgText(view.scopeLines[0].text, view.org),
 		"Guardrail results: whether each check allowed, asked or blocked, and the rule type",
 	);
 	assert.equal(
-		view.scopeLines[1].text,
+		plainOrgText(view.scopeLines[1].text, view.org),
 		"Task time, in ranges such as 5–15 min",
 	);
 	assert.equal(
@@ -411,7 +453,8 @@ test("all six reasons render their RFC sentence", () => {
 				),
 			],
 		});
-		assert.equal(guardPromptView(row).reasonLine, sentence, reason);
+		const built = guardPromptView(row);
+		assert.equal(plainOrgText(built.reasonLine, built.org), sentence, reason);
 	}
 });
 
@@ -437,7 +480,7 @@ test("a widening says Keep current / Share the new items; posture and admin_shar
 		"Admins see totals only when at least 5 people contributed, and setup-check estimates only when at least 20 did. With step-by-step timing shared, they can also see your own timing, but not what the steps contained.",
 	);
 	assert.equal(
-		view.scopeLines[0].text,
+		plainOrgText(view.scopeLines[0].text, view.org),
 		"Let Acme admins see your step-by-step timing",
 	);
 });
@@ -660,7 +703,7 @@ test("Esc while an answer is in flight keeps the dialog, so its outcome is read"
 		"guard.status": ok(status({ mode: "none", orgs: [] })),
 		"approvals.approveOperation": () =>
 			new Promise((resolve) => {
-				release = () => resolve(ok({ applied: { ok: true } }));
+				release = () => resolve(ok(SIGNED_AND_SENT));
 			}),
 	};
 	await render(createElement(GuardPromptEntries));
@@ -685,7 +728,7 @@ test("input inside the first 500 ms is ignored; Share then sends the one typed a
 		capabilities: caps(GUARD_PLANE),
 		"approvals.list": list(guardRow()),
 		"guard.status": ok(status({ mode: "none", orgs: [] })),
-		"approvals.approveOperation": ok({ applied: { ok: true } }),
+		"approvals.approveOperation": ok(SIGNED_AND_SENT),
 	};
 	await render(createElement(GuardPromptEntries));
 	await until(() => q('[data-testid="guard-review"]'), "the entry");
@@ -842,7 +885,7 @@ test("a prompt swapped in under an open dialog re-arms the 500 ms window", async
 		capabilities: caps(GUARD_PLANE),
 		"approvals.list": list(guardRow()),
 		"guard.status": ok(status({ mode: "none", orgs: [] })),
-		"approvals.approveOperation": ok({ applied: { ok: true } }),
+		"approvals.approveOperation": ok(SIGNED_AND_SENT),
 	};
 	await render(createElement(GuardPromptEntries));
 	await until(() => q('[data-testid="guard-review"]'), "the entry");
@@ -1415,3 +1458,714 @@ for (const locale of ["ur", "en"]) {
 		}
 	});
 }
+
+/* ======================================================================
+ * ROUND 2 REMEDIATION (security S-1..S-6, design D1-D7, UX U1-U3, U6)
+ * ====================================================================== */
+
+/*
+ * NEVER `assert.equal` two DOM nodes: on a mismatch node:assert inspects both, and a
+ * jsdom element's object graph is the whole window (a failing focus check ran the
+ * machine out of memory). Compare identity and report a tag/testid instead.
+ */
+function describeNode(node) {
+	return node
+		? `${node.tagName}#${node.getAttribute?.("data-testid") ?? ""}`
+		: String(node);
+}
+function focusIs(expected, message = "focus") {
+	const actual = document.activeElement;
+	assert.ok(
+		actual === expected,
+		`${message}: focus is on ${describeNode(actual)}, expected ${describeNode(expected)}`,
+	);
+}
+
+/** Open the prompt dialog from its entry and wait out the 500 ms typed-ahead window. */
+async function openPrompt() {
+	await until(() => q('[data-testid="guard-review"]'), "the entry");
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	await wall(600);
+}
+const accepts = () => sent.filter((r) => r.op === "approvals.approveOperation");
+const applies = () => sent.filter((r) => r.op === "approvals.applyOperation");
+
+/* ---- S-1: a signed accept the host could not SEND is not "Sharing" ---- */
+
+test("S-1: a 200 with applied.ok=false is not a grant: the host's reason shows, Try again re-applies the signed card, and the row survives a close", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		// The card leaves `requested` once signed (state failed), exactly as the host does.
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_NOT_SENT());
+		},
+		"approvals.applyOperation": ok({
+			approval_id: ID,
+			operation: "guard_consent",
+			state: "connected",
+			applied: { ok: true, code: "" },
+		}),
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the not-sent line",
+	);
+	const body = text();
+	assert.ok(!body.includes("Sharing with Acme"), "no false consent receipt");
+	assert.equal(q('[data-testid="guard-outcome"]'), null);
+	assert.ok(
+		body.includes(
+			"Radient could not be reached, so your choice has not been sent.",
+		),
+		"the host's own reason",
+	);
+	assert.ok(
+		body.includes("Check your connection, then try again."),
+		"and remedy",
+	);
+	assert.equal(
+		q('[data-testid="guard-not-applied"]').getAttribute("role"),
+		"alert",
+		"announced",
+	);
+	assert.ok(q('[data-testid="guard-retry"]'), "Try again is offered");
+	assert.equal(accepts().length, 1);
+
+	// Closing does not lose the decision: the list row is gone but a row remains.
+	await click(q('[data-testid="guard-done"]'));
+	assert.equal(q('[data-testid="guard-consent-dialog"]'), null);
+	await until(() => q('[data-testid="guard-entry"]'), "the unsent row");
+	assert.ok(text().includes("Radient could not be reached"));
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-retry"]'), "the dialog again");
+
+	await click(q('[data-testid="guard-retry"]'));
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+	assert.deepEqual(applies(), [
+		{
+			op: "approvals.applyOperation",
+			approvalId: ID,
+			operation: "guard_consent",
+			requestDigest: sha("a"),
+			disclosureDigest: sha("b"),
+		},
+	]);
+	assert.equal(accepts().length, 1, "the retry never signs again");
+	assert.equal(
+		q('[data-testid="guard-outcome"]').textContent,
+		"Sharing with Acme from this computer.",
+	);
+	await click(q('[data-testid="guard-done"]'));
+	assert.equal(q('[data-testid="guard-entry"]'), null, "settled: row cleared");
+});
+
+test("S-1: a non-retryable apply refusal draws no Try again; a retry that fails keeps the host's words", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(
+				SIGNED_NOT_SENT({
+					retryable: false,
+					reason: "Acme turned Guard off before this could be sent.",
+					remedy: "",
+				}),
+			);
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the not-sent line",
+	);
+	assert.equal(
+		q('[data-testid="guard-retry"]'),
+		null,
+		"no retry that cannot work",
+	);
+	assert.ok(
+		text().includes("Acme turned Guard off before this could be sent."),
+	);
+});
+
+test("S-1: a retry the host refuses (409 with apply_outcome) stays on the host's sentence, never Sharing", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_NOT_SENT());
+		},
+		"approvals.applyOperation": {
+			status: 409,
+			body: {
+				detail: {
+					code: "x",
+					text: "refused",
+					apply_outcome: {
+						code: "revocation_stale",
+						retryable: false,
+						reason: "Your earlier stop is newer than this choice.",
+						remedy: "Choose again when Acme asks.",
+					},
+				},
+			},
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-retry"]'), "Try again");
+	await click(q('[data-testid="guard-retry"]'));
+	await until(
+		() => text().includes("Your earlier stop is newer than this choice."),
+		"the refusal's sentence",
+	);
+	assert.equal(
+		q('[data-testid="guard-retry"]'),
+		null,
+		"retryable:false removes it",
+	);
+	assert.ok(!text().includes("Sharing with Acme"));
+});
+
+test("S-1: a 200 this build cannot read as signed-and-sent is never 'Sharing' (negative controls)", async () => {
+	for (const reply of [
+		{ applied: { ok: true } }, // no `signed`
+		{ signed: { ok: true } }, // no `applied`
+		{ signed: { ok: false }, applied: { ok: true } },
+		{},
+		null,
+	]) {
+		sent = [];
+		script = {
+			capabilities: caps(GUARD_PLANE),
+			"approvals.list": list(guardRow()),
+			"guard.status": ok(status({ mode: "none", orgs: [] })),
+			"approvals.approveOperation": ok(reply),
+		};
+		await render(createElement(GuardPromptEntries));
+		await openPrompt();
+		await click(q('[data-testid="guard-yes"]'));
+		await settle(10);
+		assert.ok(
+			!text().includes("Sharing with Acme"),
+			`${JSON.stringify(reply)} is not a grant`,
+		);
+		await act(async () => root.unmount());
+		root = undefined;
+		document.body.innerHTML = "";
+		container = document.createElement("div");
+		document.body.append(container);
+	}
+	// And the parser itself, both phases.
+	assert.equal(guardAcceptOutcome(SIGNED_AND_SENT).kind, "done");
+	assert.equal(guardAcceptOutcome(SIGNED_NOT_SENT()).kind, "not_applied");
+	assert.equal(guardApplyOutcome({ applied: { ok: true } }).kind, "done");
+	assert.equal(guardApplyOutcome({}).kind, "unreadable");
+});
+
+/* ---- S-2: the org name is sanitised and isolated ---- */
+
+test("S-2: invisible bidi/format characters are stripped from the org name; ZWNJ and real text survive", () => {
+	assert.equal(sanitizeOrgName("\u202eEvil\u202c\n\u200bAcme"), "Evil Acme");
+	assert.equal(sanitizeOrgName("A\u2066b\u2069c"), "Abc");
+	assert.equal(sanitizeOrgName("  Acme \t Robotics  "), "Acme Robotics");
+	assert.equal(
+		sanitizeOrgName("x\uE000y"),
+		"xy",
+		"the renderer's own marker cannot be forged",
+	);
+	assert.equal(
+		sanitizeOrgName("می\u200cخواهم"),
+		"می\u200cخواهم",
+		"ZWNJ is spelling in Persian/Urdu names",
+	);
+	const [row] = approvalRows({
+		approvals: [
+			guardRow({}, { org_display_name: "\u202eEvil\u202c\n\u200bAcme" }),
+		],
+	});
+	assert.equal(row.guard.disclosure.org_display_name, "Evil Acme");
+	// A name that is ONLY invisible characters leaves the card opaque: no Share.
+	assert.deepEqual(
+		guardWaitingViews(
+			approvalRows({
+				approvals: [guardRow({}, { org_display_name: "\u202e\u200b" })],
+			}),
+		),
+		[],
+	);
+	assert.equal(
+		guardStatus({ ...status(), orgs: [org({ org: "\u202eAcme\u202c" })] })
+			.orgs[0].org,
+		"Acme",
+		"the Settings read inherits the same sanitising",
+	);
+});
+
+test("S-2: the org name is in <bdi> in the entry and the dialog (title, reason, scope lines, outcome)", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(
+			guardRow(
+				{},
+				{
+					org_display_name: "\u202eEvil\u202c Acme",
+					asked_scopes: ["decisions", "reports"],
+				},
+			),
+		),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": ok(SIGNED_AND_SENT),
+	};
+	await render(createElement(GuardPromptEntries));
+	await until(() => q('[data-testid="guard-entry"]'), "the entry");
+	const entryBdi = [
+		...q('[data-testid="guard-entry"]').querySelectorAll("bdi"),
+	];
+	assert.equal(entryBdi.length, 2, "title and reason line");
+	assert.ok(entryBdi.every((b) => b.textContent === "Evil Acme"));
+	assert.ok(!q('[data-testid="guard-entry"]').textContent.includes("\u202e"));
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	const dialog = q('[data-testid="guard-consent-dialog"]');
+	// title + reason + the reports scope line (which names the org)
+	assert.ok(dialog.querySelectorAll("bdi").length >= 3);
+	assert.ok(dialog.querySelector("h2 bdi"), "the title isolates the name");
+	assert.ok(!dialog.textContent.includes("\u202e"));
+	assert.ok(
+		!dialog.textContent.includes("\uE000"),
+		"no marker leaks into the DOM",
+	);
+	await wall(600);
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+	assert.ok(q('[data-testid="guard-outcome"] bdi'));
+});
+
+/* ---- S-4: the accept gets the gesture budget; a failure is not worded as "nothing changed" when unknown ---- */
+
+test("S-4: the guard_consent accept has the presence-gesture budget; its retry and other typed ops keep the control budget", () => {
+	const base = {
+		approvalId: ID,
+		requestDigest: sha("a"),
+		disclosureDigest: sha("b"),
+	};
+	const accept = desktopRequestDeadlineMs({
+		op: "approvals.approveOperation",
+		operation: "guard_consent",
+		...base,
+	});
+	assert.equal(accept, 195_000, "180 s gesture + 15 s");
+	assert.ok(accept > 20_000);
+	assert.equal(
+		desktopRequestDeadlineMs({
+			op: "approvals.applyOperation",
+			operation: "guard_consent",
+			...base,
+		}),
+		20_000,
+		"the retry never signs",
+	);
+	assert.equal(
+		desktopRequestDeadlineMs({
+			op: "approvals.approveOperation",
+			operation: "profile_save",
+			...base,
+		}),
+		20_000,
+		"profile_save keeps the budget it always had",
+	);
+});
+
+test("S-4: a failed accept whose re-read ALSO fails says it could not confirm, never 'nothing changed'", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = { status: 500, body: { detail: "down" } };
+			return { status: 504, body: { detail: "timed out" } };
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-unconfirmed"]'),
+		"the unconfirmed line",
+	);
+	assert.ok(
+		!text().includes("nothing changed"),
+		"an unknown outcome is not 'nothing changed'",
+	);
+	assert.ok(!text().includes("Sharing with Acme"));
+	assert.equal(
+		q('[data-testid="guard-unconfirmed"]').getAttribute("role"),
+		"alert",
+	);
+});
+
+test("S-4: after a failed accept the record is re-read first: still waiting says nothing changed; gone is worded by the reconcile (not 'nothing changed')", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(
+			status({
+				mode: "orgs",
+				orgs: [org({ answered_via: "desktop", state: "sharing" })],
+			}),
+		),
+		// The host signed and sent, then the response was lost: the card is gone.
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return { status: 504, body: { detail: "timed out" } };
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	const before = sent.filter((r) => r.op === "approvals.list").length;
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-outcome"]'),
+		"the reconciled outcome",
+	);
+	assert.ok(
+		sent.filter((r) => r.op === "approvals.list").length > before,
+		"the list was re-read before the failure was worded",
+	);
+	assert.ok(!text().includes("nothing changed"));
+	assert.equal(
+		q('[data-testid="guard-outcome"]').textContent,
+		"Answered on the desktop app",
+	);
+});
+
+/* ---- S-5: one answer at a time ---- */
+
+test("S-5: two Share clicks in one tick send exactly one accept", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": ok(SIGNED_AND_SENT),
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	const yes = q('[data-testid="guard-yes"]');
+	await act(async () => {
+		for (let n = 0; n < 2; n++)
+			yes.dispatchEvent(
+				new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+			);
+	});
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+	assert.equal(accepts().length, 1);
+	assert.equal(
+		q('[data-testid="guard-outcome"]').textContent,
+		"Sharing with Acme from this computer.",
+		"the outcome is the one answer's",
+	);
+});
+
+/* ---- S-6: an ended card sends nothing ---- */
+
+test("S-6: a card whose window ended sends nothing and says the request changed; a live window still sends", async () => {
+	const past = Math.floor(Date.now() / 1000) - 60;
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow({}, { expires_at: past })),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": ok(SIGNED_AND_SENT),
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-outcome"]'), "the changed line");
+	assert.equal(accepts().length, 0, "nothing was sent for an ended card");
+	assert.equal(
+		q('[data-testid="guard-outcome"]').textContent,
+		"Acme changed this request. Check the new one below.",
+	);
+	assert.equal(guardCardExpired([null, undefined, 0], Date.now()), false);
+	assert.equal(
+		guardCardExpired([null, past], Date.now()),
+		true,
+		"the record's own window counts",
+	);
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+	sent = [];
+	script["approvals.list"] = list(
+		guardRow({}, { expires_at: Math.floor(Date.now() / 1000) + 3600 }),
+	);
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+	assert.equal(accepts().length, 1, "control: a live card sends");
+});
+
+/* ---- D1/D2/D3/D5/D7: layout and states ---- */
+
+test("D1/D7: the dialog caps to the viewport with a pinned header and footer and a scrolling, focusable body; the entry row wraps", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+	};
+	await render(createElement(GuardPromptEntries));
+	await until(() => q('[data-testid="guard-entry"]'), "the entry");
+	assert.ok(
+		q('[data-testid="guard-entry"]').className.includes("flex-wrap"),
+		"D7",
+	);
+	await click(q('[data-testid="guard-review"]'));
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	const dialog = q('[data-testid="guard-consent-dialog"]');
+	assert.ok(
+		dialog.className.includes("max-h-[calc(100dvh-2rem)]"),
+		"capped to the viewport",
+	);
+	assert.ok(
+		dialog.className.includes("max-w-[min(32rem,calc(100vw-2rem))]"),
+		"keeps a gutter at 320 px",
+	);
+	const body = q('[data-testid="guard-body"]');
+	assert.ok(
+		body.className.includes("overflow-y-auto") &&
+			body.className.includes("min-h-0"),
+	);
+	assert.equal(body.getAttribute("tabindex"), "0", "keyboard-scrollable");
+	assert.ok(
+		body.contains(q('[data-testid="guard-notice"]') ?? q("[data-scope]")),
+	);
+	const header = dialog.querySelector("h2").parentElement;
+	assert.ok(header.className.includes("shrink-0"), "header pinned");
+	const footer = q('[data-testid="guard-no"]').parentElement;
+	assert.ok(footer.className.includes("shrink-0"), "answers pinned");
+	assert.ok(
+		!body.contains(q('[data-testid="guard-yes"]')),
+		"the answers are outside the scroller",
+	);
+});
+
+test("D2: a non-Team member with nothing waiting draws nothing at all, not even the heading", async () => {
+	await render(
+		view({ status: status({ mode: "non_team", orgs: [] }), role: "member" }),
+	);
+	assert.equal(q('[data-testid="guard-section"]'), null);
+	assert.equal(container.textContent, "");
+	// Control: the owner still sees the section and its card.
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+	await render(
+		view({ status: status({ mode: "non_team", orgs: [] }), role: "owner" }),
+	);
+	assert.ok(q('[data-testid="guard-non-team-card"]'));
+	assert.ok(q('[data-guard-heading="true"]'));
+});
+
+test("D3/D5: the heading matches 'Paired phones'; a plain read says Checking…, not Working…", async () => {
+	await render(view({ load: "loading", status: null }));
+	const heading = q('[data-guard-heading="true"]');
+	assert.ok(
+		heading.className.includes("font-medium") &&
+			heading.className.includes("text-body "),
+	);
+	assert.equal(q('[data-testid="guard-loading"]').textContent, "Checking…");
+	assert.ok(!text().includes("Working…"));
+});
+
+/* ---- U1: the gear leads to the section that holds the prompt ---- */
+
+test("U1: with a prompt waiting the gear opens Radient account; otherwise the plain gear", () => {
+	assert.equal(guardSettingsRoute(0), "/settings");
+	assert.equal(guardSettingsRoute(1), "/settings?section=radient");
+	assert.equal(guardSettingsRoute(3), "/settings?section=radient");
+});
+
+/* ---- U2/U3: focus returns, outcomes are announced ---- */
+
+test("U2/U3: Esc returns focus to Review; Share moves focus to Close; closing puts focus on the Guard heading when the card is gone", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_AND_SENT);
+		},
+	};
+	await render(
+		createElement(
+			"div",
+			null,
+			createElement(
+				"h3",
+				{ "data-guard-heading": "true", tabIndex: -1 },
+				"Radient Guard",
+			),
+			createElement(GuardPromptEntries),
+		),
+	);
+	await until(() => q('[data-testid="guard-review"]'), "the entry");
+	const review = q('[data-testid="guard-review"]');
+	review.focus();
+	await click(review);
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog");
+	await press("Escape");
+	assert.equal(q('[data-testid="guard-consent-dialog"]'), null);
+	await settle(4);
+	focusIs(review, "Esc: back on Review");
+
+	review.focus();
+	await click(review);
+	await until(() => q('[data-testid="guard-yes"]'), "the dialog again");
+	await wall(600);
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+	focusIs(q('[data-testid="guard-done"]'), "focus on Close");
+	assert.equal(
+		q('[data-testid="guard-outcome"]').tagName,
+		"OUTPUT",
+		"a status region",
+	);
+	await click(q('[data-testid="guard-done"]'));
+	await settle(4);
+	focusIs(
+		q('[data-guard-heading="true"]'),
+		"the card is gone: focus lands on the Guard heading, not <body>",
+	);
+});
+
+test("U3: a failed accept is announced (role=alert) and focus returns to the NON-sharing answer", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": {
+			status: 409,
+			body: { detail: { code: "x", text: "no" } },
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-failed"]'), "the failure");
+	assert.equal(q('[data-testid="guard-failed"]').getAttribute("role"), "alert");
+	focusIs(q('[data-testid="guard-no"]'), "never on Share");
+});
+
+test("U2: confirming Stop sharing and pressing Share again leave focus on the Guard heading, not <body>", async () => {
+	await render(
+		view({
+			status: status({
+				orgs: [
+					org({
+						can_share_again: true,
+						state: "not_sharing",
+						can_revoke: false,
+					}),
+				],
+			}),
+		}),
+	);
+	q('[data-testid="guard-share-again"]').focus();
+	await click(q('[data-testid="guard-share-again"]'));
+	focusIs(q('[data-guard-heading="true"]'));
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+
+	await render(view());
+	q('[data-testid="guard-stop"]').focus();
+	await click(q('[data-testid="guard-stop"]'));
+	await until(() => q('[data-testid="guard-confirm-stop"]'), "the confirm");
+	await click(q('[data-testid="guard-confirm-stop"]'));
+	await settle(4);
+	focusIs(q('[data-guard-heading="true"]'));
+});
+
+test("U2: Keep sharing returns focus to the Stop button that opened the confirm", async () => {
+	await render(view());
+	const stop = q('[data-testid="guard-stop"]');
+	stop.focus();
+	await click(stop);
+	await until(() => q('[data-testid="guard-keep"]'), "the confirm");
+	await click(q('[data-testid="guard-keep"]'));
+	await settle(4);
+	focusIs(stop);
+});
+
+/* ---- U3: Settings failures and outcomes are announced ---- */
+
+test("U3: Settings' write failure is role=alert and the stopped line is a status region", async () => {
+	await render(view({ failedTenant: "ten_acme" }));
+	assert.equal(
+		q('[data-testid="guard-write-failed"]').getAttribute("role"),
+		"alert",
+	);
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+	await render(
+		view({
+			status: status({
+				orgs: [org({ state: "not_sharing", can_revoke: false })],
+			}),
+			revoked: { tenant: "ten_acme", status: "revoked" },
+		}),
+	);
+	assert.equal(q('[data-testid="guard-revoked"]').tagName, "OUTPUT");
+});
+
+/* ---- U6: who sees the data, from existing strings ---- */
+
+test("U6: while sharing, Settings says who sees the data (the prompt's own visibility sentence, by what is shared)", async () => {
+	await render(view());
+	assert.equal(
+		q('[data-testid="guard-visibility"]').textContent,
+		"Admins see totals only when at least 5 people contributed, never your own numbers.",
+	);
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+	await render(
+		view({
+			status: status({
+				orgs: [org({ scopes_shared: ["decisions", "posture", "admin_share"] })],
+			}),
+		}),
+	);
+	assert.ok(
+		q('[data-testid="guard-visibility"]').textContent.includes(
+			"With step-by-step timing shared, they can also see your own timing",
+		),
+	);
+});

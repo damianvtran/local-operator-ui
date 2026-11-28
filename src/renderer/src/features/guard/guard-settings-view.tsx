@@ -51,6 +51,7 @@ import {
 	type GuardRevokeResult,
 	type GuardStatus,
 } from "../../../../shared/guard-status";
+import { guardVisibilityLine } from "./guard-prompt-model";
 
 /** Console's Team page: pinned, because a link a person follows to pay must not be steerable by a response. */
 export const GUARD_TEAM_URL = "https://console.radienthq.com/dashboard/team";
@@ -227,7 +228,7 @@ const OrgBlock: FC<{
 	busy: boolean;
 	failed: boolean;
 	revoked: GuardSettingsViewProps["revoked"];
-	onAskRevoke: (tenant: string) => void;
+	onAskRevoke: (tenant: string, opener: HTMLElement) => void;
 	onShareAgain: (tenant: string) => void;
 }> = ({ org, status, busy, failed, revoked, onAskRevoke, onShareAgain }) => {
 	const sharing = org.state === "sharing" || org.state === "sharing_pending";
@@ -281,6 +282,13 @@ const OrgBlock: FC<{
 					<p className="text-meta text-ink-dim">
 						{t("ui.guard.prompt_never_sent")}
 					</p>
+					{/*
+					 * WHO SEES IT (UX U6): the prompt's own visibility sentence, chosen by what is
+					 * actually shared, so a member who comes back to check has the answer here too.
+					 */}
+					<p className="text-meta text-ink-dim" data-testid="guard-visibility">
+						{guardVisibilityLine(new Set<GuardScope>(org.scopes_shared))}
+					</p>
 				</>
 			) : null}
 			{/*
@@ -289,12 +297,15 @@ const OrgBlock: FC<{
 			 * Radient confirms" - a second copy of the same sentence is two claims.
 			 */}
 			{revoked?.tenant === org.tenant && revoked.status === "revoked" ? (
-				<p className="text-meta text-ink-dim" data-testid="guard-revoked">
+				<output
+					className="block text-meta text-ink-dim"
+					data-testid="guard-revoked"
+				>
 					{t("ui.guard.screen_revoked", { org: org.org })}
-				</p>
+				</output>
 			) : null}
 			{failed ? (
-				<Alert variant="warning" data-testid="guard-write-failed">
+				<Alert variant="warning" role="alert" data-testid="guard-write-failed">
 					{t("ui.guard.screen_failed")}
 				</Alert>
 			) : null}
@@ -305,7 +316,7 @@ const OrgBlock: FC<{
 						size="sm"
 						disabled={busy}
 						data-testid="guard-stop"
-						onClick={() => onAskRevoke(org.tenant)}
+						onClick={(event) => onAskRevoke(org.tenant, event.currentTarget)}
 					>
 						{t("ui.guard.button_stop_sharing")}
 					</Button>
@@ -347,17 +358,50 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 	useI18nLocale();
 	const [confirm, setConfirm] = useState<string | null>(null);
 	const keepRef = useRef<HTMLButtonElement>(null);
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	/** Set when Stop sharing is CONFIRMED: the Stop button is about to leave, so focus goes to the heading. */
+	const confirmedStop = useRef(false);
+	/**
+	 * The Stop button that opened the confirm. A Radix dialog returns focus to its
+	 * `Trigger` and this one has none (it is opened from state), so without this the
+	 * Esc / Keep sharing paths dropped focus to <body> (UX U2).
+	 */
+	const stopOpener = useRef<HTMLElement | null>(null);
+	// Non-Team member with nothing waiting: nothing Guard to say (design D2). The live
+	// section returns null first; this keeps the presentational view honest in stories.
+	if (
+		load === "ready" &&
+		status?.mode === "non_team" &&
+		role === "member" &&
+		!prompts
+	)
+		return null;
 	const confirmOrg = status?.orgs.find((o) => o.tenant === confirm) ?? null;
 	return (
-		<div className="flex flex-col gap-4" data-testid="guard-section">
+		<div className="mt-8 flex flex-col gap-4" data-testid="guard-section">
 			<div className="flex items-center gap-2">
 				<Shield className="size-4 shrink-0 text-ink-dim" aria-hidden="true" />
-				<h3 className="text-body-sm text-ink">{t("ui.guard.screen_title")}</h3>
+				{/*
+				 * Same weight as the sibling "Paired phones" heading (design D3), and a
+				 * focus target: when the control a person just used leaves the screen
+				 * (Stop sharing, Share again, a closed prompt) focus lands here, not on
+				 * the document root (UX U2).
+				 */}
+				<h3
+					ref={headingRef}
+					tabIndex={-1}
+					data-guard-heading="true"
+					className="font-medium text-body text-ink outline-none"
+				>
+					{t("ui.guard.screen_title")}
+				</h3>
 			</div>
 			{prompts}
 			{load === "loading" ? (
-				<output className="text-meta text-ink-dim">
-					{t("ui.guard.screen_working")}
+				// A plain read, not an action: "Working…" here read as if something was
+				// being sent (design D5). The neutral "Checking…" already exists.
+				<output className="text-meta text-ink-dim" data-testid="guard-loading">
+					{t("ui.guard.card_cta_loading")}
 				</output>
 			) : load === "unavailable" || !status || status.mode === "unavailable" ? (
 				<p
@@ -385,8 +429,16 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 						busy={busyTenant === org.tenant}
 						failed={failedTenant === org.tenant}
 						revoked={revoked}
-						onAskRevoke={setConfirm}
-						onShareAgain={onShareAgain}
+						onAskRevoke={(tenant, opener) => {
+							stopOpener.current = opener;
+							setConfirm(tenant);
+						}}
+						onShareAgain={(tenant) => {
+							// The Share again button leaves once the host re-raises the prompt;
+							// keep focus on a stable anchor instead of letting it fall to <body>.
+							headingRef.current?.focus();
+							onShareAgain(tenant);
+						}}
 					/>
 				))
 			)}
@@ -400,6 +452,20 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 				<DialogContent
 					data-testid="guard-revoke-dialog"
 					showClose={false}
+					onCloseAutoFocus={(event) => {
+						// Radix would focus a Trigger this dialog does not have. Keep sharing /
+						// Esc return to the Stop button; after a CONFIRMED stop that button is
+						// leaving, so the heading takes focus instead (UX U2).
+						event.preventDefault();
+						const target = confirmedStop.current
+							? headingRef.current
+							: stopOpener.current?.isConnected
+								? stopOpener.current
+								: headingRef.current;
+						confirmedStop.current = false;
+						stopOpener.current = null;
+						target?.focus();
+					}}
 					onOpenAutoFocus={(event) => {
 						event.preventDefault();
 						keepRef.current?.focus();
@@ -435,6 +501,7 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 									data-testid="guard-confirm-stop"
 									onClick={() => {
 										const tenant = confirmOrg.tenant;
+										confirmedStop.current = true;
 										setConfirm(null);
 										onRevoke(tenant);
 									}}

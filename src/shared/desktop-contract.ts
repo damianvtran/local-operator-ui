@@ -8791,6 +8791,21 @@ export function desktopRequestDeadlineMs(
 		request.operation === "pair_phone"
 	)
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	/*
+	 * A GUARD CONSENT'S ACCEPT SIGNS THEN SENDS (security review U1 r1, S-4). The host
+	 * signs with the same presence-gated key (`guard/consent_op.py`: "A presence key
+	 * signs as well", so an OS prompt can outlive the 20 s control budget) and then
+	 * POSTs the grant to Radient inside the same request. A client that gave up at 20 s
+	 * while the host went on to sign and send would tell the member "nothing changed"
+	 * about a grant that then landed. The retry (`applyOperation`) never signs and keeps
+	 * the control budget, exactly like every other typed op.
+	 */
+	if (
+		typeof request !== "string" &&
+		request.op === "approvals.approveOperation" &&
+		request.operation === "guard_consent"
+	)
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "devices.remove" || op === "operator.setup.run")
 		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "legacy.agent.editFile") return INLINE_EDIT_DEADLINE_MS;
