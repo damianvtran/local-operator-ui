@@ -304,7 +304,17 @@ export const GuardPromptEntries: FC = () => {
 		onFailed: () => void,
 	) => {
 		answersInFlight.add(approvalId);
-		answer.mutateAsync(request).then(
+		// N-3: a synchronous throw from mutateAsync (not a rejected promise) would
+		// otherwise leave the latch set for good and the card un-answerable.
+		let pending: Promise<GuardAnswerOutcome>;
+		try {
+			pending = answer.mutateAsync(request);
+		} catch {
+			answersInFlight.delete(approvalId);
+			onFailed();
+			return;
+		}
+		pending.then(
 			(outcome) => {
 				answersInFlight.delete(approvalId);
 				onDone(outcome);
@@ -419,7 +429,14 @@ export const GuardPromptEntries: FC = () => {
 		);
 		setSession(
 			unsent && !views.some((v) => v.approvalId === view.approvalId)
-				? { view, phase: "not_applied", unsent: unsent.unsent }
+				? {
+						view,
+						phase: "not_applied",
+						unsent: unsent.unsent,
+						// N-2: a retry started before this row was closed is still running;
+						// Try again must say so instead of pressing into the latch silently.
+						retrying: answersInFlight.has(view.approvalId),
+					}
 				: { view, phase: "idle" },
 		);
 	};

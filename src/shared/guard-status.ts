@@ -55,8 +55,21 @@ const nameOrTenant = <T extends { org: string; tenant: string }>(
 	row: T,
 ): T => ({
 	...row,
-	org: row.org || row.tenant,
+	org: row.org || tenantLabel(row.tenant),
 });
+
+/**
+ * The tenant id as a display name goes through the SAME sanitiser as an admin's
+ * name (security r3 S-12 / review r4): the host issues it, but it is the one string
+ * that reached a sentence slot unfiltered and could carry bidi controls or the
+ * renderer's own org marker (U+E000).
+ *
+ * If even that sanitises to nothing the label is an em dash: a language-neutral
+ * placeholder, so Settings still draws a row with "Stop sharing". A translated
+ * "your organization" would need a catalogue key, and the catalogues are frozen for
+ * audit in this round: deferred (a follow-up that adds the key and its audits).
+ */
+const tenantLabel = (tenant: string): string => sanitizeOrgName(tenant) || "—";
 
 export const guardOrgSchema = z
 	.object({

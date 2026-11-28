@@ -52,7 +52,7 @@ import {
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { type FC, useCallback, useEffect, useRef } from "react";
+import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { GUARD_DEBOUNCE_MS } from "../../../../shared/guard-consent";
 import { ORG_MARK } from "./guard-org-mark";
 import { OrgText } from "./guard-org-text";
@@ -168,6 +168,21 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 	const busy = phase === "working";
 
 	/*
+	 * A SECOND FAILURE IS ANNOUNCED AGAIN (UX U9). A live region speaks only when its
+	 * content changes, and a Try again that fails with the same host sentence changes
+	 * nothing, so the person would press it and hear silence. Each finished retry
+	 * remounts the alert (a new `key`), which a screen reader announces as a fresh
+	 * insertion. Derived during render (not in an effect) so the remount lands in the
+	 * same commit as the new result instead of one commit later.
+	 */
+	const [wasRetrying, setWasRetrying] = useState(retrying);
+	const [alertRound, setAlertRound] = useState(0);
+	if (wasRetrying !== retrying) {
+		setWasRetrying(retrying);
+		if (wasRetrying) setAlertRound((n) => n + 1);
+	}
+
+	/*
 	 * FOCUS FOLLOWS THE STATE (UX U3). Pressing Share/Don't share disables the buttons
 	 * for the length of the request, and a disabled element cannot hold focus, so
 	 * without this the cursor drops to the dialog container and a screen reader hears
@@ -202,9 +217,13 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 				className="max-h-[calc(100dvh-2rem)] max-w-[min(32rem,calc(100vw-2rem))]"
 				// Radix would focus the first tab stop; the RFC puts focus on the
 				// non-sharing answer, so the dialog's own open-focus is replaced.
+				// Reopening a signed-not-sent card (or any outcome) shows ONLY Close: there is
+				// no non-sharing answer to focus, and leaving focus on the Review button
+				// behind the modal would put it in an aria-hidden area (UX U8).
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
-					noRef.current?.focus();
+					if (settled || unsentShown) doneRef.current?.focus();
+					else noRef.current?.focus();
 				}}
 				// Radix's own return-focus would aim at whatever was focused when it
 				// mounted, which is gone once the card leaves the list; the owner decides.
@@ -280,6 +299,7 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 						 */
 						<>
 							<Alert
+								key={alertRound}
 								variant="warning"
 								role="alert"
 								data-testid="guard-not-applied"

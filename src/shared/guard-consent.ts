@@ -81,6 +81,12 @@ const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
  * review U1 r2, S-9: a hand list of these missed U+180E, U+2061-2064, the tag block and
  * the fillers.)
  *
+ * (security review U1 r3, S-11: the glyphs that remained invisible OUTSIDE `\p{Cf}`
+ * are stripped too: U+2800 braille blank, U+17B4/17B5 Khmer inherent vowels, U+180B-180D
+ * Mongolian free variation selectors and U+FFFC object replacement. A name left with
+ * nothing but marks, separators and other non-printing code points (`NO_VISIBLE_NAME`,
+ * e.g. a lone U+034F) is blank, not a name: a mark needs a base to be seen.)
+ *
  * ZWNJ and ZWJ (U+200C/D) are KEPT on purpose: Persian, Urdu and Indic names need
  * them to spell correctly, and neither reorders text. Variation selectors (U+FE0F
  * emoji presentation) and U+034F are marks, not format characters, and are kept.
@@ -89,16 +95,20 @@ const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
  */
 const ORG_NAME_STRIP =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point of this pattern.
-	/[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F]|(?![\u200C\u200D])\p{Cf}|[\u115F\u1160\u3164\uFFA0\uE000\u{E0000}-\u{E007F}]/gu;
+	/[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F]|(?![\u200C\u200D])\p{Cf}|[\u115F\u1160\u3164\uFFA0\uE000\u2800\uFFFC\u{E0000}-\u{E007F}]|\u17B4|\u17B5|\u180B|\u180C|\u180D/gu;
+
+/** Nothing printable survives: only marks (which need a base), separators and non-printing points. */
+const NO_VISIBLE_NAME = /^[\p{M}\p{Z}\p{C}]*$/u;
 
 /** The org's display name with invisible formatting removed and whitespace collapsed. */
 export function sanitizeOrgName(value: string): string {
 	// Line-ish controls (tab, newline, NEL, LS, PS) become a space so "a\nb" does not
 	// fuse into "ab"; invisible formatting is dropped without leaving a gap in a word.
-	return value
+	const name = value
 		.replace(ORG_NAME_STRIP, "")
 		.replace(/[\s\u0085]+/g, " ")
 		.trim();
+	return NO_VISIBLE_NAME.test(name) ? "" : name;
 }
 
 /**

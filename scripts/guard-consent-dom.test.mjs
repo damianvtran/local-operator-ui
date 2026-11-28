@@ -2259,34 +2259,40 @@ test("S-8: Esc is ignored while Try again is in flight, and a late result never 
 		},
 		"approvals.applyOperation": () => held.promise,
 	};
-	await render(createElement(GuardPromptEntries));
-	await openPrompt();
-	await click(q('[data-testid="guard-yes"]'));
-	await until(() => q('[data-testid="guard-retry"]'), "Try again");
-	await click(q('[data-testid="guard-retry"]'));
-	await until(() => applies().length === 1, "the retry in flight");
-	await press("Escape");
-	assert.ok(
-		q('[data-testid="guard-consent-dialog"]'),
-		"Esc does not close a dialog whose retry is running",
-	);
-	// Close (the button) can still be pressed; the late result must not undo it.
-	await click(q('[data-testid="guard-done"]'));
-	assert.equal(q('[data-testid="guard-consent-dialog"]'), null);
-	held.release(
-		ok({
-			approval_id: ID,
-			operation: "guard_consent",
-			state: "connected",
-			applied: { ok: true, code: "" },
-		}),
-	);
-	await settle(8);
-	assert.equal(
-		q('[data-testid="guard-consent-dialog"]'),
-		null,
-		"the dialog the person closed stays closed",
-	);
+	// T-1: release the held retry even when an assertion fails, so a failing run
+	// reads as the assertion and not as a hang plus a late unhandled rejection.
+	try {
+		await render(createElement(GuardPromptEntries));
+		await openPrompt();
+		await click(q('[data-testid="guard-yes"]'));
+		await until(() => q('[data-testid="guard-retry"]'), "Try again");
+		await click(q('[data-testid="guard-retry"]'));
+		await until(() => applies().length === 1, "the retry in flight");
+		await press("Escape");
+		assert.ok(
+			q('[data-testid="guard-consent-dialog"]'),
+			"Esc does not close a dialog whose retry is running",
+		);
+		// Close (the button) can still be pressed; the late result must not undo it.
+		await click(q('[data-testid="guard-done"]'));
+		assert.equal(q('[data-testid="guard-consent-dialog"]'), null);
+		held.release(
+			ok({
+				approval_id: ID,
+				operation: "guard_consent",
+				state: "connected",
+				applied: { ok: true, code: "" },
+			}),
+		);
+		await settle(8);
+		assert.equal(
+			q('[data-testid="guard-consent-dialog"]'),
+			null,
+			"the dialog the person closed stays closed",
+		);
+	} finally {
+		held.release(ok({}));
+	}
 });
 
 test("M-2: a Try again whose answer cannot be read, or that fails outright, says it could not confirm and stays retryable", async () => {
@@ -2529,4 +2535,169 @@ test("D8: the host's English reason and remedy are isolated in <bdi> so an RTL p
 			"Check your connection, then try again.",
 		],
 	);
+});
+
+/* ---- round 4: U8 / U9 / N-2 / S-11 / S-12 ---- */
+
+const RETRY_REFUSED = {
+	status: 409,
+	body: {
+		detail: {
+			code: "x",
+			text: "refused",
+			apply_outcome: {
+				code: "radient_unreachable",
+				retryable: true,
+				reason:
+					"Radient could not be reached, so your choice has not been sent.",
+				remedy: "Check your connection, then try again.",
+			},
+		},
+	},
+};
+const notSent = (retryReply) => ({
+	capabilities: caps(GUARD_PLANE),
+	"approvals.list": list(guardRow()),
+	"guard.status": ok(status({ mode: "none", orgs: [] })),
+	"approvals.approveOperation": () => {
+		script["approvals.list"] = list();
+		return ok(SIGNED_NOT_SENT());
+	},
+	"approvals.applyOperation": retryReply,
+});
+
+test("U8: reopening a not-sent card puts focus on Close inside the dialog, not on the Review button behind it", async () => {
+	script = notSent(RETRY_REFUSED);
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the not-sent line",
+	);
+	await click(q('[data-testid="guard-done"]'));
+	await until(() => q('[data-testid="guard-entry"]'), "the unsent row");
+	const review = q('[data-testid="guard-review"]');
+	review.focus();
+	await click(review);
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the reopened dialog",
+	);
+	await settle(4);
+	focusIs(
+		q('[data-testid="guard-done"]'),
+		"reopened not-sent card: focus is on Close, inside the dialog",
+	);
+	assert.ok(
+		q('[data-testid="guard-consent-dialog"]').contains(document.activeElement),
+		"focus is inside the modal, not in the aria-hidden area behind it",
+	);
+});
+
+test("U9: a second Try again that fails with the same sentence is announced again (the alert is a new live region)", async () => {
+	script = notSent(RETRY_REFUSED);
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-retry"]'), "Try again");
+	await click(q('[data-testid="guard-retry"]'));
+	await until(() => applies().length === 1, "the first retry");
+	await settle(4);
+	const first = q('[data-testid="guard-not-applied"]');
+	assert.equal(first.getAttribute("role"), "alert");
+	const sentence = first.textContent;
+	await click(q('[data-testid="guard-retry"]'));
+	await until(() => applies().length === 2, "the second retry");
+	await settle(4);
+	const second = q('[data-testid="guard-not-applied"]');
+	assert.equal(second.textContent, sentence, "the same message both times");
+	assert.notEqual(
+		second,
+		first,
+		"a new alert node: identical text in the same node would not be spoken again",
+	);
+});
+
+test("N-2: reopening the row while a retry is in flight shows Try again held, then free once it lands", async () => {
+	const held = HELD();
+	script = notSent(() => held.promise);
+	try {
+		await render(createElement(GuardPromptEntries));
+		await openPrompt();
+		await click(q('[data-testid="guard-yes"]'));
+		await until(() => q('[data-testid="guard-retry"]'), "Try again");
+		await click(q('[data-testid="guard-retry"]'));
+		await until(() => applies().length === 1, "the retry in flight");
+		await click(q('[data-testid="guard-done"]'));
+		await until(() => q('[data-testid="guard-entry"]'), "the unsent row");
+		await click(q('[data-testid="guard-review"]'));
+		await until(() => q('[data-testid="guard-retry"]'), "the reopened dialog");
+		assert.equal(
+			q('[data-testid="guard-retry"]').disabled,
+			true,
+			"Try again is held while the earlier retry runs",
+		);
+		assert.ok(text().includes("Working"), "and a status line says why");
+		held.release(RETRY_REFUSED);
+		await until(
+			() => q('[data-testid="guard-retry"]')?.disabled === false,
+			"Try again free after the late result",
+		);
+	} finally {
+		held.release(RETRY_REFUSED);
+	}
+});
+
+test("S-11: characters that stay invisible outside \\p{Cf} are stripped, and a name of only such characters is blank", () => {
+	for (const ch of [
+		"\u2800",
+		"\u17B4",
+		"\u17B5",
+		"\u180B",
+		"\u180C",
+		"\u180D",
+		"\uFFFC",
+	]) {
+		assert.equal(
+			sanitizeOrgName(`Ac${ch}me`),
+			"Acme",
+			`U+${ch.codePointAt(0).toString(16)} stripped`,
+		);
+		assert.equal(
+			sanitizeOrgName(ch),
+			"",
+			`a name of only U+${ch.codePointAt(0).toString(16)} is blank`,
+		);
+	}
+	assert.equal(
+		sanitizeOrgName("\u2800\u2800 \u034F"),
+		"",
+		"marks with no base are blank",
+	);
+	assert.equal(
+		sanitizeOrgName("e\u0301"),
+		"e\u0301",
+		"a mark with a base survives",
+	);
+	assert.deepEqual(
+		guardWaitingViews(
+			approvalRows({
+				approvals: [guardRow({}, { org_display_name: "\u2800\u2800" })],
+			}),
+		),
+		[],
+		"a braille-blank name leaves the card opaque: no Share",
+	);
+});
+
+test("S-12: a blank org name falls back to the SANITISED tenant id, and to a neutral dash when that is blank too", () => {
+	const read = (row) => guardStatus({ ...status(), orgs: [row] }).orgs[0].org;
+	assert.equal(read(org({ org: "\u2800", tenant: "ten_acme" })), "ten_acme");
+	assert.equal(
+		read(org({ org: "\u2800", tenant: "\u202eten\uE000_acme\u202c" })),
+		"ten_acme",
+		"bidi controls and the renderer's marker never reach the sentence slot",
+	);
+	assert.equal(read(org({ org: "", tenant: "\u2800\u200b" })), "\u2014");
 });
