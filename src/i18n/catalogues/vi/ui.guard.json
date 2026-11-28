@@ -72,6 +72,7 @@
 	"ui.guard.screen_declined": "Không chia sẻ với {org}.",
 	"ui.guard.screen_revoked": "Đã ngừng chia sẻ với {org}.",
 	"ui.guard.screen_unavailable": "Guard không đọc được cài đặt của mình trên máy tính này. Màn hình này chưa chia sẻ hay gửi gì.",
+	"ui.guard.screen_unconfirmed": "Không thể xác nhận lựa chọn của bạn. Hãy kiểm tra Guard trong Cài đặt trước khi thử lại.",
 	"ui.guard.screen_prompt_changed": "{org} đã thay đổi yêu cầu này. Hãy xem yêu cầu mới bên dưới.",
 	"ui.guard.badge_waiting_aria": "{count, plural, other {# câu hỏi của Guard đang chờ bạn trả lời}}",
 	"ui.guard.card_ask_owner": "Nhờ chủ sở hữu của tổ chức nâng cấp lên Radient Team",

@@ -72,6 +72,7 @@
 	"ui.guard.screen_declined": "未与{org}共享。",
 	"ui.guard.screen_revoked": "已停止与{org}共享。",
 	"ui.guard.screen_unavailable": "Guard无法读取这台电脑上的设置。此界面未共享或发送任何内容。",
+	"ui.guard.screen_unconfirmed": "无法确认你的选择。请先在设置中检查Guard，再重试。",
 	"ui.guard.screen_prompt_changed": "{org}更改了此请求。请查看下方的新请求。",
 	"ui.guard.badge_waiting_aria": "{count, plural, other {有 # 个 Guard 问题等你回答}}",
 	"ui.guard.card_ask_owner": "请联系组织所有者升级到Radient Team",

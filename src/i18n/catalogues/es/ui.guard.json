@@ -72,6 +72,7 @@
 	"ui.guard.screen_declined": "Sin compartir con {org}.",
 	"ui.guard.screen_revoked": "Dejaste de compartir con {org}.",
 	"ui.guard.screen_unavailable": "Guard no puede leer su configuración en esta máquina. No se compartió ni envió nada desde esta pantalla.",
+	"ui.guard.screen_unconfirmed": "No pudimos confirmar tu decisión. Revisa Guard en Ajustes antes de volver a intentarlo.",
 	"ui.guard.screen_prompt_changed": "{org} cambió esta solicitud. Revisa la nueva a continuación.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# pregunta de Guard espera tu respuesta} many {# preguntas de Guard esperan tu respuesta} other {# preguntas de Guard esperan tu respuesta}}",
 	"ui.guard.card_ask_owner": "Pide al propietario de la organización que cambie el plan a Radient Team",

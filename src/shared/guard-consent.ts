@@ -71,18 +71,25 @@ const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
  * prompt, so a name that reorders or hides its own neighbours changes what the
  * member believes they are agreeing to. Markup is already inert (React text), so
  * the residue is invisible formatting: C0/C1 controls, bidi overrides/embeddings/
- * isolates (U+202A-202E, U+2066-2069, U+200E/F, U+061C), zero-width space / word
- * joiner / BOM (U+200B, U+2060, U+FEFF), line and paragraph separators, and the
- * private-use code point the renderer uses as its own org marker (U+E000).
+ * isolates (U+202A-202E, U+2066-2069, U+200E/F, U+061C), every other format
+ * character (`\p{Cf}`: zero-width space, word joiner, BOM, soft hyphen, the invisible
+ * math operators U+2061-2064, U+180E, interlinear annotation marks, the tag block
+ * U+E0000-E007F that can smuggle a hidden payload through text), line and paragraph
+ * separators, the Hangul fillers (U+115F, U+1160, U+3164, U+FFA0: letters that RENDER
+ * blank, so a name made of one would pass a length check yet read as nothing), and the
+ * private-use code point the renderer uses as its own org marker (U+E000). (security
+ * review U1 r2, S-9: a hand list of these missed U+180E, U+2061-2064, the tag block and
+ * the fillers.)
  *
  * ZWNJ and ZWJ (U+200C/D) are KEPT on purpose: Persian, Urdu and Indic names need
- * them to spell correctly, and neither reorders text. Stripping happens once, here,
- * so every surface (entry, dialog, Settings, revoke confirm) inherits it; the
- * renderer additionally isolates the name in `<bdi>`.
+ * them to spell correctly, and neither reorders text. Variation selectors (U+FE0F
+ * emoji presentation) and U+034F are marks, not format characters, and are kept.
+ * Stripping happens once, here, so every surface (entry, dialog, Settings, revoke
+ * confirm) inherits it; the renderer additionally isolates the name in `<bdi>`.
  */
 const ORG_NAME_STRIP =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point of this pattern.
-	/[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F\u061C\u200B\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF\uE000]+/g;
+	/[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F]|(?![\u200C\u200D])\p{Cf}|[\u115F\u1160\u3164\uFFA0\uE000\u{E0000}-\u{E007F}]/gu;
 
 /** The org's display name with invisible formatting removed and whitespace collapsed. */
 export function sanitizeOrgName(value: string): string {

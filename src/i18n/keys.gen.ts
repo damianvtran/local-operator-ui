@@ -9965,6 +9965,7 @@ export type MessageParams = {
 	"ui.guard.screen_shared": { org: string };
 	"ui.guard.screen_title": undefined;
 	"ui.guard.screen_unavailable": undefined;
+	"ui.guard.screen_unconfirmed": undefined;
 	"ui.guard.screen_working": undefined;
 	"ui.guard.surface_desktop": undefined;
 	"ui.guard.surface_mobile": undefined;

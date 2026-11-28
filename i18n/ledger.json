@@ -135565,392 +135565,434 @@
 		{
 			"locale": "es",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "317175c1ddf5566c88eff481bb0111861ea215021fbbcc7fae8239a73df69796",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "388caa0b66699118b045b220189152d5e4b5af55d598582863b666bf7dd18a05",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-es.json",
-					"receipt_sha256": "5e1b424c23e11bde763d1175092e9b4e4ebb32a20a8205cc74bf145f1e523b50",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-es.json",
-					"receipt_sha256": "24aaeddabdae511b2c0883de7ef3c93e0b977431156494c8713df106b498c632",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "211c2a243210342e41b761451aec7a3a30f88f2fd5790c4856268645e5b31b0e",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "317175c1ddf5566c88eff481bb0111861ea215021fbbcc7fae8239a73df69796",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-es.json",
+							"receipt_sha256": "5e1b424c23e11bde763d1175092e9b4e4ebb32a20a8205cc74bf145f1e523b50",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-es.json",
+							"receipt_sha256": "24aaeddabdae511b2c0883de7ef3c93e0b977431156494c8713df106b498c632",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "a1d0297518accd991acd515500f85a589f5534a4dd3fd3350c076331c3cf9161",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "d3f0d2e763ef6db064c92752bdaac5cd84a258517d4d6b268c2ffb4d6a77dfe3",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-fr",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-fr.json",
-					"receipt_sha256": "48146038137991e8322df9545b89a4363242e038864c47a5542b960d38ba2240",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-fr",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-fr.json",
-					"receipt_sha256": "4f02ebaa31eda53c8fae76cd318e6b3c025e1826314f96b1c9dda24c087211a7",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "cae8ca05d328cf6e884c8e53e29c30273f57a4fbbdb902d4a1af47002679eaa5",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "a1d0297518accd991acd515500f85a589f5534a4dd3fd3350c076331c3cf9161",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-fr.json",
+							"receipt_sha256": "48146038137991e8322df9545b89a4363242e038864c47a5542b960d38ba2240",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-fr.json",
+							"receipt_sha256": "4f02ebaa31eda53c8fae76cd318e6b3c025e1826314f96b1c9dda24c087211a7",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "def5047072f8f5074130847a4b130e514c24753ccf1d3d00e7133ce6eca2141b",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "6a4f1fa9061ca4fcfba7b8bfa836f884f4437d5f6cab44521128f394e88d5494",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-hi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-hi.json",
-					"receipt_sha256": "92c75e0a07ad23b1a3899d0b119b8c175aa7326bf3fab335195dd8fa6aa56d1a",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-hi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-hi.json",
-					"receipt_sha256": "767b5f45c2ec53c311e1c2d7093c8ce7400dae2b206477be6176d64059e5fb05",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "df760fe4ad4e5cbfc1eabd12935bc7b1d33e2a01429b8577cfd96ca7ed29808e",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "def5047072f8f5074130847a4b130e514c24753ccf1d3d00e7133ce6eca2141b",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-hi.json",
+							"receipt_sha256": "92c75e0a07ad23b1a3899d0b119b8c175aa7326bf3fab335195dd8fa6aa56d1a",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-hi.json",
+							"receipt_sha256": "767b5f45c2ec53c311e1c2d7093c8ce7400dae2b206477be6176d64059e5fb05",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "cd3002a220e76167f8c3d13e3c25776d54d0ab4e9f99142880a9ccda44932f6a",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "da4a447d78474143d9da1fbc4383f07dc72275a4d7344a6897d99e60c6cfdb94",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-ru.json",
-					"receipt_sha256": "9d42212b0879178dbe7118a452da8160279043cc6295e3f5a35ba2e26bd1bf97",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ru.json",
-					"receipt_sha256": "f8cc31d4725df3c9521eb78db3bcced7c09401d0c150e4d7ccc2364ad839989a",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "94f6e61886385a2137dda953da11ebbb48fa22f909c74bbf5bd6fa0ecb55c2a2",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "cd3002a220e76167f8c3d13e3c25776d54d0ab4e9f99142880a9ccda44932f6a",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-ru.json",
+							"receipt_sha256": "9d42212b0879178dbe7118a452da8160279043cc6295e3f5a35ba2e26bd1bf97",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ru.json",
+							"receipt_sha256": "f8cc31d4725df3c9521eb78db3bcced7c09401d0c150e4d7ccc2364ad839989a",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "e2bcaeca200b20b29cd076dd7cae5b677c2e2e2000cba13d50614bfadb6b58c9",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "cbbb337e26a8c4e9ff26fa9b5311d066cdb13d88c20d15d9cc43e1778e48141a",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-ur",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-ur.json",
-					"receipt_sha256": "cad0af61581facfbdada11936045edf1634a3fcb6efe6233ddbb91ab1ca7eefd",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-ur",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ur.json",
-					"receipt_sha256": "f2b1c91bf0f2419b351ef487c7749e92f025f3275fccc4fa9547475115fc2641",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "46e16253d12366f522cd0330be617cd021f692809233e9842551f041ee759cd3",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "e2bcaeca200b20b29cd076dd7cae5b677c2e2e2000cba13d50614bfadb6b58c9",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-ur.json",
+							"receipt_sha256": "cad0af61581facfbdada11936045edf1634a3fcb6efe6233ddbb91ab1ca7eefd",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-ur.json",
+							"receipt_sha256": "f2b1c91bf0f2419b351ef487c7749e92f025f3275fccc4fa9547475115fc2641",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "83ae1f86624f2d36be6b451adfaf7c48209603acda5f32f10ba63e7cbed916f1",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "7038c787253d670f7f4e01d1ea82ace7fed7a31e0787b2554da3523a1c7a2d93",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 2,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-vi.json",
-					"receipt_sha256": "534bc6a07e826ae7326fc9b121c3a57a92a572e2df144030efca610fafc54b60",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean",
-					"instance": "b8a8ac1e52df-ui-guard-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-vi.json",
-					"receipt_sha256": "b20a063896d324cbaad08d56453944e248f067cfb8bc3401e724d1079a9a23cb",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "0661f8794f8380d90f7f0a1c776db7479b0ac5add18532f39fabd002e3b12df6",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "83ae1f86624f2d36be6b451adfaf7c48209603acda5f32f10ba63e7cbed916f1",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-vi.json",
+							"receipt_sha256": "534bc6a07e826ae7326fc9b121c3a57a92a572e2df144030efca610fafc54b60",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean",
+							"instance": "b8a8ac1e52df-ui-guard-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-vi.json",
+							"receipt_sha256": "b20a063896d324cbaad08d56453944e248f067cfb8bc3401e724d1079a9a23cb",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.guard",
-			"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
-			"target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
+			"source_sha256": "64aa9e024a037af25dff901f76290d0a83037d5f12ec9bdd7e7d9def051a35d4",
+			"target_sha256": "fd85b6e30f9232dd87bf318a540320a0fc4826feed23596e63867dfd1ad9ee6b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-27"
 			},
-			"auditors": [
-				{
-					"agent": "copy-reviewer",
-					"model": "openai/gpt-6.2-sol",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "563c806ab66e-ui-guard-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/563c806ab66e-ui-guard-zh-cn.json",
-					"receipt_sha256": "ab435e78b2cf5e93dde2e2fcec31941ff16b8093375f3a554a74b3d8f8724e46",
-					"scope": "First independent desktop audit, 77 keys",
-					"note": "High-visibility consent and privacy copy; second independent desktop audit required."
-				},
-				{
-					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-27",
-					"result": "clean-with-findings",
-					"instance": "b8a8ac1e52df-ui-guard-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-zh-cn.json",
-					"receipt_sha256": "a66332a82d254d16f5ffa9a266cbd5bfccc303cadff2b644be3d82f5c4da3026",
-					"scope": "Second independent desktop audit, 77 keys",
-					"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "translated",
 			"superseded": [
 				{
 					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
 					"target_sha256": "fa7087aea9a00a3ebba6d735814b97bb799d0b292b45da5b3c094411a9ef0509",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "e2417b02213d10caafa03ce1e7325332e88ee9218e94682b3ae082358fc19781",
+					"target_sha256": "227666f015d7781411b3bde0689e60a2ce4de4977086b9dcd0483970799abbc7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "563c806ab66e-ui-guard-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/563c806ab66e-ui-guard-zh-cn.json",
+							"receipt_sha256": "ab435e78b2cf5e93dde2e2fcec31941ff16b8093375f3a554a74b3d8f8724e46",
+							"scope": "First independent desktop audit, 77 keys",
+							"note": "High-visibility consent and privacy copy; second independent desktop audit required."
+						},
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-27",
+							"result": "clean-with-findings",
+							"instance": "b8a8ac1e52df-ui-guard-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/b8a8ac1e52df-ui-guard-zh-cn.json",
+							"receipt_sha256": "a66332a82d254d16f5ffa9a266cbd5bfccc303cadff2b644be3d82f5c4da3026",
+							"scope": "Second independent desktop audit, 77 keys",
+							"note": "High-visibility consent/privacy copy; second independent desktop audit at a8f7b16. ur render-layer dir=auto defect reported separately (code, not catalogue)."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		}

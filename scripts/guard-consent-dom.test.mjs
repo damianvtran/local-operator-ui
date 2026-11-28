@@ -130,7 +130,8 @@ const bundle = await build({
 			export { sanitizeOrgName, guardAcceptOutcome, guardApplyOutcome, guardCardExpired } from "./src/shared/guard-consent";
 			export { approvalRows, approvalDecisionRequest, canApproveApproval, meshRowsWithoutProfileProposals } from "./src/renderer/src/features/mesh/mesh-approvals";
 			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";
-			export { guardStatus } from "./src/shared/guard-status";
+			export { guardStatus, guardNonTeamCard } from "./src/shared/guard-status";
+			export { meshApprovalKeys } from "./src/renderer/src/features/mesh/mesh-approvals";
 			export { setLocale, textDirectionFor } from "./src/renderer/src/shared/i18n";
 			export { createElement };
 		`,
@@ -201,6 +202,8 @@ const {
 	desktopEndpoint,
 	desktopRequestSchema,
 	guardStatus,
+	guardNonTeamCard,
+	meshApprovalKeys,
 	createElement,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -1817,6 +1820,15 @@ test("S-4: a failed accept whose re-read ALSO fails says it could not confirm, n
 		q('[data-testid="guard-unconfirmed"]').getAttribute("role"),
 		"alert",
 	);
+	// S-7 (security r2): the unknown outcome must not assert a negative either.
+	// "Nothing was shared or sent" is false when the accept landed and only the
+	// answer was lost, so the dialog says only that the choice is unconfirmed.
+	assert.equal(
+		q('[data-testid="guard-unconfirmed"]').textContent,
+		"We couldn't confirm your choice. Check Guard in Settings before trying again.",
+	);
+	assert.ok(!text().includes("Nothing was shared"));
+	assert.ok(!text().includes("can't read its settings"));
 });
 
 test("S-4: after a failed accept the record is re-read first: still waiting says nothing changed; gone is worded by the reconcile (not 'nothing changed')", async () => {
@@ -2167,5 +2179,354 @@ test("U6: while sharing, Settings says who sees the data (the prompt's own visib
 		q('[data-testid="guard-visibility"]').textContent.includes(
 			"With step-by-step timing shared, they can also see your own timing",
 		),
+	);
+});
+
+/* ---- round 3: security r2 S-7..S-9, NIT-1/NIT-3; review r3 M-2/N-1; design r2 D8 ---- */
+
+const HELD = () => {
+	let release = () => {};
+	const promise = new Promise((resolve) => {
+		release = resolve;
+	});
+	return { promise, release };
+};
+const reopen = async () => {
+	await act(async () => root.unmount());
+	root = undefined;
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.append(container);
+};
+
+test("S-7: a not-sent card with no host reason says the choice is unconfirmed, never 'nothing was shared'", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_NOT_SENT({ reason: "", remedy: "" }));
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the not-sent line",
+	);
+	assert.equal(
+		q('[data-testid="guard-not-applied"]').textContent,
+		"We couldn't confirm your choice. Check Guard in Settings before trying again.",
+	);
+	assert.ok(!text().includes("Nothing was shared"));
+	// The row left behind after Close says the same, not the unavailable sentence.
+	await click(q('[data-testid="guard-done"]'));
+	await until(() => q('[data-testid="guard-entry"]'), "the unsent row");
+	assert.ok(text().includes("We couldn't confirm your choice."));
+	assert.ok(!text().includes("Nothing was shared"));
+});
+
+test("S-7: every locale carries the new key, translated and placeholder-free", async () => {
+	const { readFile } = await import("node:fs/promises");
+	const en = JSON.parse(
+		await readFile("src/i18n/catalogues/en/ui.guard.json", "utf8"),
+	)["ui.guard.screen_unconfirmed"];
+	assert.equal(
+		en,
+		"We couldn't confirm your choice. Check Guard in Settings before trying again.",
+	);
+	for (const locale of ["es", "fr", "hi", "ru", "ur", "vi", "zh-CN"]) {
+		const value = JSON.parse(
+			await readFile(`src/i18n/catalogues/${locale}/ui.guard.json`, "utf8"),
+		)["ui.guard.screen_unconfirmed"];
+		assert.ok(value && value !== en, `${locale} is translated`);
+		assert.ok(!value.includes("{"), `${locale} has no placeholder`);
+		assert.ok(value.includes("Guard"), `${locale} keeps the product name`);
+	}
+});
+
+test("S-8: Esc is ignored while Try again is in flight, and a late result never reopens a dialog the person closed", async () => {
+	const held = HELD();
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_NOT_SENT());
+		},
+		"approvals.applyOperation": () => held.promise,
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => q('[data-testid="guard-retry"]'), "Try again");
+	await click(q('[data-testid="guard-retry"]'));
+	await until(() => applies().length === 1, "the retry in flight");
+	await press("Escape");
+	assert.ok(
+		q('[data-testid="guard-consent-dialog"]'),
+		"Esc does not close a dialog whose retry is running",
+	);
+	// Close (the button) can still be pressed; the late result must not undo it.
+	await click(q('[data-testid="guard-done"]'));
+	assert.equal(q('[data-testid="guard-consent-dialog"]'), null);
+	held.release(
+		ok({
+			approval_id: ID,
+			operation: "guard_consent",
+			state: "connected",
+			applied: { ok: true, code: "" },
+		}),
+	);
+	await settle(8);
+	assert.equal(
+		q('[data-testid="guard-consent-dialog"]'),
+		null,
+		"the dialog the person closed stays closed",
+	);
+});
+
+test("M-2: a Try again whose answer cannot be read, or that fails outright, says it could not confirm and stays retryable", async () => {
+	for (const retryReply of [
+		ok({}), // a 200 this build cannot read
+		{ status: 500, body: { detail: "down" } }, // not an apply refusal
+	]) {
+		sent = [];
+		script = {
+			capabilities: caps(GUARD_PLANE),
+			"approvals.list": list(guardRow()),
+			"guard.status": ok(status({ mode: "none", orgs: [] })),
+			"approvals.approveOperation": () => {
+				script["approvals.list"] = list();
+				return ok(SIGNED_NOT_SENT());
+			},
+			"approvals.applyOperation": retryReply,
+		};
+		await render(createElement(GuardPromptEntries));
+		await openPrompt();
+		await click(q('[data-testid="guard-yes"]'));
+		await until(() => q('[data-testid="guard-retry"]'), "Try again");
+		await click(q('[data-testid="guard-retry"]'));
+		await until(
+			() =>
+				q('[data-testid="guard-not-applied"]')?.textContent.includes(
+					"We couldn't confirm your choice.",
+				),
+			"the unconfirmed line",
+		);
+		const alert = q('[data-testid="guard-not-applied"]');
+		assert.ok(
+			!alert.textContent.includes("Radient could not be reached"),
+			"the host's earlier sentence may no longer be true",
+		);
+		assert.ok(!text().includes("Sharing with Acme"));
+		assert.ok(
+			q('[data-testid="guard-retry"]') &&
+				!q('[data-testid="guard-retry"]').disabled,
+			"Try again is offered again",
+		);
+		assert.equal(accepts().length, 1, "never signs again");
+		await reopen();
+	}
+});
+
+test("N-1: an unconfirmed dialog recovers when the list does: gone is worded by the reconcile, still waiting reads 'nothing changed'", async () => {
+	for (const cardGone of [true, false]) {
+		sent = [];
+		script = {
+			capabilities: caps(GUARD_PLANE),
+			"approvals.list": list(guardRow()),
+			"guard.status": ok(
+				status({
+					mode: "orgs",
+					orgs: [org({ answered_via: "desktop", state: "sharing" })],
+				}),
+			),
+			"approvals.approveOperation": () => {
+				script["approvals.list"] = { status: 500, body: { detail: "down" } };
+				return { status: 504, body: { detail: "timed out" } };
+			},
+		};
+		const qc = await render(createElement(GuardPromptEntries));
+		await openPrompt();
+		await click(q('[data-testid="guard-yes"]'));
+		await until(() => q('[data-testid="guard-unconfirmed"]'), "unconfirmed");
+		// The host is reachable again.
+		script["approvals.list"] = cardGone ? list() : list(guardRow());
+		await act(async () => {
+			await qc.refetchQueries({ queryKey: meshApprovalKeys.approvals });
+		});
+		if (cardGone) {
+			await until(() => q('[data-testid="guard-outcome"]'), "the outcome");
+			assert.equal(
+				q('[data-testid="guard-outcome"]').textContent,
+				"Answered on the desktop app",
+			);
+		} else {
+			await until(() => q('[data-testid="guard-failed"]'), "failed");
+			assert.equal(q('[data-testid="guard-unconfirmed"]'), null);
+		}
+		await reopen();
+	}
+});
+
+test("S-9: tag characters, U+180E, invisible operators and Hangul fillers are stripped; a name blank after cleaning is missing", async () => {
+	assert.equal(sanitizeOrgName("Ac\u180Eme"), "Acme");
+	assert.equal(sanitizeOrgName("Ac\u2061\u2062\u2063\u2064me"), "Acme");
+	assert.equal(sanitizeOrgName("Ac\u{E0041}\u{E007F}\u{E0001}me"), "Acme");
+	assert.equal(sanitizeOrgName("Ac\u115F\u1160\u3164\uFFA0me"), "Acme");
+	assert.equal(sanitizeOrgName("Ac\u00ADme\uFFF9"), "Acme");
+	// Kept: ZWNJ/ZWJ (spelling) and the emoji variation selector (a mark, not formatting).
+	assert.equal(sanitizeOrgName("A\u200Cb\u200Dc"), "A\u200Cb\u200Dc");
+	assert.equal(sanitizeOrgName("Acme \u2764\uFE0F"), "Acme \u2764\uFE0F");
+	// Consent card: blank after cleaning leaves it opaque (no Share, not listed).
+	for (const blank of [
+		"\u3164",
+		"\u180E\u2061",
+		"\u{E0041}",
+		"\uFFA0 \u1160",
+	]) {
+		assert.deepEqual(
+			guardWaitingViews(
+				approvalRows({
+					approvals: [guardRow({}, { org_display_name: blank })],
+				}),
+			),
+			[],
+			`${JSON.stringify(blank)} is opaque`,
+		);
+	}
+	// Settings: never an empty name in a sentence; the tenant id names it.
+	const parsed = guardStatus({
+		...status(),
+		orgs: [org({ org: "\u3164", tenant: "ten_blank" })],
+	});
+	assert.equal(parsed.orgs[0].org, "ten_blank");
+	// The non-Team card: a blank org is absent, so no footer is drawn.
+	assert.equal(guardNonTeamCard({ org: "\u3164", url: "" }).org, null);
+	assert.equal(guardNonTeamCard({ org: "Acme", url: "" }).org, "Acme");
+});
+
+test("NIT-1: Settings isolates the org name in <bdi> in the indicator, shared line, scope lines, revoke title and stopped line", async () => {
+	const name = "\u202eEvil\u202c Acme";
+	await render(
+		view({
+			status: guardStatus(
+				status({
+					orgs: [org({ org: name, scopes_shared: ["decisions", "reports"] })],
+				}),
+			),
+		}),
+	);
+	const bdiText = (selector) =>
+		[...q(selector).querySelectorAll("bdi")].map((b) => b.textContent);
+	assert.deepEqual(bdiText('[data-testid="guard-indicator"]'), ["Evil Acme"]);
+	assert.ok(
+		bdiText('[data-testid="guard-shared"]').includes("Evil Acme"),
+		"the reports scope line names the org inside <bdi>",
+	);
+	assert.ok(
+		q('[data-testid="guard-org"]').textContent.includes(
+			"Sharing with Evil Acme from this computer.",
+		),
+	);
+	assert.ok(
+		[...q('[data-testid="guard-org"]').querySelectorAll("bdi")].length >= 3,
+		"indicator, shared sentence and the reports line",
+	);
+	assert.ok(!document.body.textContent.includes("\uE000"), "no marker leaks");
+	await click(q('[data-testid="guard-stop"]'));
+	await until(() => q('[data-testid="guard-revoke-dialog"]'), "the confirm");
+	assert.deepEqual(
+		[
+			...q('[data-testid="guard-revoke-dialog"] h2').querySelectorAll("bdi"),
+		].map((b) => b.textContent),
+		["Evil Acme"],
+	);
+	assert.ok(
+		q('[data-testid="guard-revoke-dialog"] h2').textContent.includes(
+			"Stop sharing with Evil Acme?",
+		),
+	);
+	await reopen();
+	await render(
+		view({
+			status: guardStatus(
+				status({
+					orgs: [org({ org: name, state: "not_sharing", can_revoke: false })],
+				}),
+			),
+			revoked: { tenant: "ten_acme", status: "revoked" },
+		}),
+	);
+	assert.deepEqual(bdiText('[data-testid="guard-revoked"]'), ["Evil Acme"]);
+});
+
+test("NIT-3: a second Share after the card's dialog was remounted mid-answer sends nothing, and the latch releases when the answer settles", async () => {
+	const held = HELD();
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => held.promise,
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(() => accepts().length === 1, "the first accept in flight");
+	// Leave and come back while the host is still answering.
+	await reopen();
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await settle(4);
+	assert.equal(
+		accepts().length,
+		1,
+		"the returning instance sent no second accept",
+	);
+	held.release(ok(SIGNED_AND_SENT));
+	await settle(8);
+	// The latch is released from the request's own promise, not from a callback the
+	// unmounted instance would have dropped: the card can be answered again.
+	await reopen();
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	script["approvals.approveOperation"] = ok(SIGNED_AND_SENT);
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => accepts().length === 2,
+		"a fresh accept after the first settled",
+	);
+});
+
+test("D8: the host's English reason and remedy are isolated in <bdi> so an RTL page keeps their punctuation", async () => {
+	script = {
+		capabilities: caps(GUARD_PLANE),
+		"approvals.list": list(guardRow()),
+		"guard.status": ok(status({ mode: "none", orgs: [] })),
+		"approvals.approveOperation": () => {
+			script["approvals.list"] = list();
+			return ok(SIGNED_NOT_SENT());
+		},
+	};
+	await render(createElement(GuardPromptEntries));
+	await openPrompt();
+	await click(q('[data-testid="guard-yes"]'));
+	await until(
+		() => q('[data-testid="guard-not-applied"]'),
+		"the not-sent line",
+	);
+	assert.deepEqual(
+		[...q('[data-testid="guard-not-applied"]').querySelectorAll("bdi")].map(
+			(b) => b.textContent,
+		),
+		[
+			"Radient could not be reached, so your choice has not been sent.",
+			"Check your connection, then try again.",
+		],
 	);
 });

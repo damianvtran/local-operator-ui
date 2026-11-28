@@ -51,6 +51,8 @@ import {
 	type GuardRevokeResult,
 	type GuardStatus,
 } from "../../../../shared/guard-status";
+import { ORG_MARK } from "./guard-org-mark";
+import { OrgText } from "./guard-org-text";
 import { guardVisibilityLine } from "./guard-prompt-model";
 
 /** Console's Team page: pinned, because a link a person follows to pay must not be steerable by a response. */
@@ -196,7 +198,10 @@ export const GuardNonTeamCardView: FC<{
 			</div>
 			{card?.org ? (
 				<p className="text-meta text-ink-dim">
-					{t("ui.guard.card_footer", { org: card.org })}
+					<OrgText
+						text={t("ui.guard.card_footer", { org: ORG_MARK })}
+						org={card.org}
+					/>
 				</p>
 			) : null}
 		</div>
@@ -250,7 +255,10 @@ const OrgBlock: FC<{
 				</p>
 			) : null}
 			<p className="text-body-sm text-ink" data-testid="guard-indicator">
-				{guardIndicatorText(org)}
+				<OrgText
+					text={guardIndicatorText({ ...org, org: ORG_MARK })}
+					org={org.org}
+				/>
 			</p>
 			{org.answered_via && org.answered_via !== "desktop" ? (
 				<p className="text-meta text-ink-dim">
@@ -267,7 +275,10 @@ const OrgBlock: FC<{
 			{sharing ? (
 				<>
 					<p className="text-body-sm text-ink-muted">
-						{t("ui.guard.screen_shared", { org: org.org })}
+						<OrgText
+							text={t("ui.guard.screen_shared", { org: ORG_MARK })}
+							org={org.org}
+						/>
 					</p>
 					<ul
 						className="flex list-disc flex-col gap-1 ps-5 text-body-sm text-ink-muted"
@@ -275,7 +286,7 @@ const OrgBlock: FC<{
 					>
 						{shared.map((scope) => (
 							<li key={scope} data-scope={scope}>
-								{scopeLine(scope, org.org)}
+								<OrgText text={scopeLine(scope, ORG_MARK)} org={org.org} />
 							</li>
 						))}
 					</ul>
@@ -301,7 +312,10 @@ const OrgBlock: FC<{
 					className="block text-meta text-ink-dim"
 					data-testid="guard-revoked"
 				>
-					{t("ui.guard.screen_revoked", { org: org.org })}
+					<OrgText
+						text={t("ui.guard.screen_revoked", { org: ORG_MARK })}
+						org={org.org}
+					/>
 				</output>
 			) : null}
 			{failed ? (
@@ -475,7 +489,10 @@ export const GuardSettingsView: FC<GuardSettingsViewProps> = ({
 						<>
 							<DialogHeader>
 								<DialogTitle>
-									{t("ui.guard.revoke_title", { org: confirmOrg.org })}
+									<OrgText
+										text={t("ui.guard.revoke_title", { org: ORG_MARK })}
+										org={confirmOrg.org}
+									/>
 								</DialogTitle>
 								<DialogDescription asChild>
 									<div className="flex flex-col gap-2">

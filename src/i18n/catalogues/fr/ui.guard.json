@@ -72,6 +72,7 @@
 	"ui.guard.screen_declined": "Pas de partage avec {org}.",
 	"ui.guard.screen_revoked": "Partage avec {org} arrêté.",
 	"ui.guard.screen_unavailable": "Guard ne peut pas lire ses paramètres sur cet ordinateur. Rien n’a été partagé ni envoyé depuis cet écran.",
+	"ui.guard.screen_unconfirmed": "Votre choix n’a pas pu être confirmé. Vérifiez Guard dans Paramètres avant de réessayer.",
 	"ui.guard.screen_prompt_changed": "{org} a modifié cette demande. Consultez la nouvelle ci-dessous.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# question de Guard attend votre réponse} many {# questions de Guard attendent votre réponse} other {# questions de Guard attendent votre réponse}}",
 	"ui.guard.card_ask_owner": "Demandez au propriétaire de l’organisation de passer à l’offre Radient Team",

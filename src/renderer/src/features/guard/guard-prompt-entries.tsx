@@ -75,6 +75,19 @@ import {
 	guardWaitingViews,
 } from "./guard-prompt-model";
 
+/**
+ * S-5 / NIT-3: the approvals this window has an answer in flight for. It is
+ * MODULE-level and keyed by approval id, not a ref on the component, because the
+ * component can unmount mid-answer (leave Settings, come back) while the request
+ * is still running on the host; a per-instance latch would let the returning
+ * instance send a second Share for the same card. It is a plain Set written
+ * synchronously (React state lands a render late, so two clicks in one tick would
+ * both pass a `disabled` check) and is cleared from the mutation's own promise,
+ * never from a `mutate()` callback: those are dropped when the observer unmounts,
+ * which would leave the latch set for good and make the card un-answerable.
+ */
+const answersInFlight = new Set<string>();
+
 /** Where focus goes when the control that opened a dialog is gone (UX U2). */
 export const GUARD_HEADING_SELECTOR = '[data-guard-heading="true"]';
 
@@ -170,8 +183,6 @@ export const GuardPromptEntries: FC = () => {
 	);
 	const [session, setSession] = useState<Session | null>(null);
 	const [unsentCards, setUnsentCards] = useState<UnsentCard[]>([]);
-	/** S-5: set synchronously, cleared when the answer settles. */
-	const inFlight = useRef(false);
 	/** The control that opened the dialog, and whether a close is awaiting focus. */
 	const opener = useRef<HTMLElement | null>(null);
 	const restoreFocus = useRef(false);
@@ -180,14 +191,28 @@ export const GuardPromptEntries: FC = () => {
 	 * A CARD ANOTHER SURFACE SETTLED WHILE THIS DIALOG WAS OPEN closes with
 	 * "Answered on <surface>"; a NEWER prompt for the same org replaces it with
 	 * "<Org> changed this request" (RFC §5.2.3, the terminal's screen_prompt_changed).
-	 * Only an idle or failed dialog is reconciled: while an answer is in flight or
-	 * its outcome is on screen, the row leaving the list is the answer's own effect.
+	 * Only an idle, failed or unconfirmed dialog is reconciled: while an answer is in
+	 * flight or its outcome is on screen, the row leaving the list is the answer's own
+	 * effect. `unconfirmed` joins them so a later successful re-read can say what became
+	 * of the answer instead of leaving "could not confirm" up for good (r3 N-1).
 	 */
 	useEffect(() => {
-		if (!session || (session.phase !== "idle" && session.phase !== "failed"))
+		if (
+			!session ||
+			(session.phase !== "idle" &&
+				session.phase !== "failed" &&
+				session.phase !== "unconfirmed")
+		)
 			return;
 		if (!prompts.isSuccess) return;
-		if (views.some((v) => v.approvalId === session.view.approvalId)) return;
+		if (views.some((v) => v.approvalId === session.view.approvalId)) {
+			// The list came back and the card is still waiting: nothing was answered,
+			// so the S-4 rule ("nothing changed" only when the card is still waiting)
+			// now holds and the unknown outcome is no longer unknown (r3 N-1).
+			if (session.phase === "unconfirmed")
+				setSession({ ...session, phase: "failed" });
+			return;
+		}
 		const next = views.find((v) => v.tenant === session.view.tenant);
 		if (next) {
 			setSession({
@@ -271,25 +296,49 @@ export const GuardPromptEntries: FC = () => {
 		});
 	};
 
+	/** Send one answer under the in-flight latch; `done`/`failed` run on settle. */
+	const send = (
+		approvalId: string,
+		request: GuardPromptView["declineRequest"],
+		onDone: (outcome: GuardAnswerOutcome) => void,
+		onFailed: () => void,
+	) => {
+		answersInFlight.add(approvalId);
+		answer.mutateAsync(request).then(
+			(outcome) => {
+				answersInFlight.delete(approvalId);
+				onDone(outcome);
+			},
+			() => {
+				answersInFlight.delete(approvalId);
+				onFailed();
+			},
+		);
+	};
+
+	const unsentOf = (
+		outcome: Extract<GuardAnswerOutcome, { kind: "not_applied" }>,
+	): GuardUnsent => ({
+		reason: outcome.reason,
+		remedy: outcome.remedy,
+		retryable: outcome.retryable,
+	});
+
 	const settle = (
 		phase: GuardDialogPhase,
 		request: GuardPromptView["declineRequest"],
 	) => {
-		if (!session || inFlight.current) return;
-		inFlight.current = true;
+		if (!session || answersInFlight.has(session.view.approvalId)) return;
 		const current = session;
 		setSession({ ...current, phase: "working" });
-		answer.mutate(request, {
-			onSuccess: (outcome: GuardAnswerOutcome) => {
-				inFlight.current = false;
+		send(
+			current.view.approvalId,
+			request,
+			(outcome) => {
 				if (outcome.kind === "done") {
 					setSession({ ...current, phase });
 				} else if (outcome.kind === "not_applied") {
-					const unsent = {
-						reason: outcome.reason,
-						remedy: outcome.remedy,
-						retryable: outcome.retryable,
-					};
+					const unsent = unsentOf(outcome);
 					setUnsentCards((cards) => [
 						...cards.filter(
 							(c) => c.view.approvalId !== current.view.approvalId,
@@ -302,46 +351,65 @@ export const GuardPromptEntries: FC = () => {
 					void confirmAfterFailure(current);
 				}
 			},
-			onError: () => {
-				inFlight.current = false;
-				void confirmAfterFailure(current);
-			},
-		});
+			() => void confirmAfterFailure(current),
+		);
 	};
 
 	/** Re-apply a signed card: the host's own retry, which never signs again. */
 	const retry = () => {
-		if (!session || session.phase !== "not_applied" || inFlight.current) return;
+		if (
+			!session ||
+			session.phase !== "not_applied" ||
+			answersInFlight.has(session.view.approvalId)
+		)
+			return;
 		const request = guardApplyRequest(session.view);
 		if (!request) return;
-		inFlight.current = true;
 		const current = session;
+		const approvalId = current.view.approvalId;
 		setSession({ ...current, retrying: true });
-		answer.mutate(request, {
-			onSuccess: (outcome: GuardAnswerOutcome) => {
-				inFlight.current = false;
+		/*
+		 * Apply a result to the dialog only while it is still the one for this card:
+		 * the person can press Close during a retry, and a late result must not
+		 * reopen a dialog they dismissed (security r2 S-8). The row list below is
+		 * updated either way.
+		 */
+		const ifStillOpen = (next: Session) =>
+			setSession((open) =>
+				open && open.view.approvalId === approvalId ? next : open,
+			);
+		const setUnsent = (unsent: GuardUnsent) => {
+			setUnsentCards((cards) =>
+				cards.map((c) =>
+					c.view.approvalId === approvalId ? { ...c, unsent } : c,
+				),
+			);
+			ifStillOpen({ ...current, retrying: false, unsent });
+		};
+		// Nothing readable came back (r3 M-2): the retry may or may not have landed, so
+		// the host's earlier sentence cannot be repeated as fact. Say so, keep Try again.
+		const unconfirmed = () =>
+			setUnsent({
+				...(current.unsent ?? { reason: "", remedy: "", retryable: true }),
+				unconfirmed: true,
+			});
+		send(
+			approvalId,
+			request,
+			(outcome) => {
 				if (outcome.kind === "done") {
 					setUnsentCards((cards) =>
-						cards.filter((c) => c.view.approvalId !== current.view.approvalId),
+						cards.filter((c) => c.view.approvalId !== approvalId),
 					);
-					setSession({ view: current.view, phase: "shared" });
+					ifStillOpen({ view: current.view, phase: "shared" });
 				} else if (outcome.kind === "not_applied") {
-					const unsent = {
-						reason: outcome.reason,
-						remedy: outcome.remedy,
-						retryable: outcome.retryable,
-					};
-					setSession({ ...current, retrying: false, unsent });
+					setUnsent(unsentOf(outcome));
 				} else {
-					setSession({ ...current, retrying: false });
+					unconfirmed();
 				}
 			},
-			// Nothing new is known: the signed card and the host's earlier sentence stand.
-			onError: () => {
-				inFlight.current = false;
-				setSession({ ...current, retrying: false });
-			},
-		});
+			unconfirmed,
+		);
 	};
 
 	const open = (view: GuardPromptView, from: HTMLElement) => {
@@ -371,7 +439,10 @@ export const GuardPromptEntries: FC = () => {
 					view={card.view}
 					summary={{
 						title: t("ui.guard.screen_title"),
-						line: card.unsent.reason || t("ui.guard.screen_unavailable"),
+						line:
+							card.unsent.unconfirmed || !card.unsent.reason
+								? t("ui.guard.screen_unconfirmed")
+								: card.unsent.reason,
 					}}
 					onReview={(from) => open(card.view, from)}
 				/>

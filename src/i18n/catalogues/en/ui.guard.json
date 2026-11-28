@@ -72,6 +72,7 @@
 	"ui.guard.screen_declined": "Not sharing with {org}.",
 	"ui.guard.screen_revoked": "Stopped sharing with {org}.",
 	"ui.guard.screen_unavailable": "Guard can't read its settings on this computer. Nothing was shared or sent from this screen.",
+	"ui.guard.screen_unconfirmed": "We couldn't confirm your choice. Check Guard in Settings before trying again.",
 	"ui.guard.screen_prompt_changed": "{org} changed this request. Check the new one below.",
 	"ui.guard.badge_waiting_aria": "{count, plural, one {# Guard question is waiting for your answer} other {# Guard questions are waiting for your answer}}",
 	"ui.guard.card_ask_owner": "Ask your owner to upgrade",

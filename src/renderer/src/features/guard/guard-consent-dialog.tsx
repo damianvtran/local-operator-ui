@@ -85,6 +85,12 @@ export type GuardUnsent = {
 	reason: string;
 	remedy: string;
 	retryable: boolean;
+	/**
+	 * A Try again whose result this window could not read (r3 M-2). The host's earlier
+	 * `reason`/`remedy` may no longer be true (the retry may have landed), so they are
+	 * not drawn: the dialog says it could not confirm, and Try again stays offered.
+	 */
+	unconfirmed?: boolean;
 };
 
 export type GuardConsentDialogProps = {
@@ -179,8 +185,10 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 			open={open}
 			onOpenChange={(next) => {
 				if (next) return;
-				// Esc/scrim while an answer is in flight would hide its outcome.
-				if (busy) return;
+				// Esc/scrim while an answer or a retry is in flight would hide its
+				// outcome, and a retry that settles after a close would reopen the
+				// dialog unasked (security r2 S-8).
+				if (busy || retrying) return;
 				if (settled || unsentShown) onDone();
 				else onLater();
 			}}
@@ -277,8 +285,27 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 								data-testid="guard-not-applied"
 							>
 								<div className="flex flex-col gap-1">
-									<p>{unsent?.reason || t("ui.guard.screen_unavailable")}</p>
-									{unsent?.remedy ? <p>{unsent.remedy}</p> : null}
+									{unsent?.unconfirmed || !unsent?.reason ? (
+										<p>{t("ui.guard.screen_unconfirmed")}</p>
+									) : (
+										<>
+											{/*
+											 * The host's sentences are English whatever the locale
+											 * (`approval_copy.outcome()` takes no locale), so they are
+											 * isolated: in an RTL page their full stop would otherwise
+											 * jump to the wrong end (design r2 D8). The catalogue text
+											 * around them keeps inheriting the page direction.
+											 */}
+											<p>
+												<bdi>{unsent.reason}</bdi>
+											</p>
+											{unsent.remedy ? (
+												<p>
+													<bdi>{unsent.remedy}</bdi>
+												</p>
+											) : null}
+										</>
+									)}
 								</div>
 							</Alert>
 							{retrying ? (
@@ -320,7 +347,7 @@ export const GuardConsentDialog: FC<GuardConsentDialogProps> = ({
 									role="alert"
 									data-testid="guard-unconfirmed"
 								>
-									{t("ui.guard.screen_unavailable")}
+									{t("ui.guard.screen_unconfirmed")}
 								</Alert>
 							) : null}
 							{busy ? (

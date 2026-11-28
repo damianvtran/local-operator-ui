@@ -364,6 +364,11 @@
 		"tone": "plain, calm, factual; privacy copy, never alarming",
 		"note": "No placeholders. Says only what this screen did not do; a local stop may already have been saved."
 	},
+	"ui.guard.screen_unconfirmed": {
+		"role": "Guard consent dialog alert (and a not-sent card's summary when the host gave no reason) when the answer may or may not have landed and a re-read could not tell",
+		"tone": "plain, calm, factual; privacy copy, never alarming",
+		"note": "No placeholders. Deliberately asserts nothing about the outcome - it must NOT say nothing was shared or sent (the answer may have landed); only that the choice could not be confirmed and where to look. 'Guard' is the product name and 'Settings' is the app's Settings."
+	},
 	"ui.guard.screen_prompt_changed": {
 		"role": "TUI /guard prompt card line when the org replaced the request between showing it and the answer (review R2-3)",
 		"tone": "plain, calm, factual; privacy copy, never alarming",
